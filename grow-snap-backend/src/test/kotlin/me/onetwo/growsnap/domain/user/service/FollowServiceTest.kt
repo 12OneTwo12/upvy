@@ -4,7 +4,9 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.LocalDateTime
 import java.util.UUID
+import me.onetwo.growsnap.domain.user.event.FollowEvent
 import me.onetwo.growsnap.domain.user.exception.AlreadyFollowingException
 import me.onetwo.growsnap.domain.user.exception.CannotFollowSelfException
 import me.onetwo.growsnap.domain.user.exception.NotFollowingException
@@ -14,12 +16,14 @@ import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserProfile
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
+import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 
 /**
  * FollowService 단위 테스트
@@ -31,6 +35,8 @@ class FollowServiceTest {
     private lateinit var followRepository: FollowRepository
     private lateinit var userService: UserService
     private lateinit var userProfileService: UserProfileService
+    private lateinit var userProfileRepository: UserProfileRepository
+    private lateinit var applicationEventPublisher: ApplicationEventPublisher
     private lateinit var followService: FollowService
 
     private lateinit var followerUser: User
@@ -43,7 +49,15 @@ class FollowServiceTest {
         followRepository = mockk()
         userService = mockk()
         userProfileService = mockk()
-        followService = FollowServiceImpl(followRepository, userService, userProfileService)
+        userProfileRepository = mockk()
+        applicationEventPublisher = mockk(relaxed = true)
+        followService = FollowServiceImpl(
+            followRepository,
+            userService,
+            userProfileService,
+            userProfileRepository,
+            applicationEventPublisher
+        )
 
         followerUser = User(
             id = UUID.randomUUID(),
@@ -113,6 +127,13 @@ class FollowServiceTest {
         verify(exactly = 1) { followRepository.save(any()) }
         verify(exactly = 1) { userProfileService.incrementFollowingCount(followerId) }
         verify(exactly = 1) { userProfileService.incrementFollowerCount(followingId) }
+        verify(exactly = 1) {
+            applicationEventPublisher.publishEvent(
+                match<FollowEvent> { event ->
+                    event.followerId == followerId && event.followingId == followingId
+                }
+            )
+        }
     }
 
     @Test
@@ -261,16 +282,16 @@ class FollowServiceTest {
     @Test
     @DisplayName("팔로잉 수 조회")
     fun getFollowingCount_ReturnsCount() {
-        // Given
+        // Given: 팔로잉 수를 조회할 사용자
         val userId = UUID.randomUUID()
         val count = 5
 
         every { followRepository.countByFollowerId(userId) } returns count
 
-        // When
+        // When: 팔로잉 수 조회
         val result = followService.getFollowingCount(userId)
 
-        // Then
+        // Then: 팔로잉 수 반환
         assertEquals(count, result)
         verify(exactly = 1) { followRepository.countByFollowerId(userId) }
     }
@@ -278,17 +299,145 @@ class FollowServiceTest {
     @Test
     @DisplayName("팔로워 수 조회")
     fun getFollowerCount_ReturnsCount() {
-        // Given
+        // Given: 팔로워 수를 조회할 사용자
         val userId = UUID.randomUUID()
         val count = 10
 
         every { followRepository.countByFollowingId(userId) } returns count
 
-        // When
+        // When: 팔로워 수 조회
         val result = followService.getFollowerCount(userId)
 
-        // Then
+        // Then: 팔로워 수 반환
         assertEquals(count, result)
         verify(exactly = 1) { followRepository.countByFollowingId(userId) }
+    }
+
+    @Test
+    @DisplayName("팔로워 목록 조회 - 성공")
+    fun getFollowers_Success() {
+        // Given: 팔로워 목록
+        val userId = UUID.randomUUID()
+        val follower1Id = UUID.randomUUID()
+        val follower2Id = UUID.randomUUID()
+
+        val follower1Profile = UserProfile(
+            id = 1L,
+            userId = follower1Id,
+            nickname = "follower1",
+            profileImageUrl = "https://example.com/profile1.jpg",
+            bio = "follower1 bio",
+            followerCount = 10,
+            followingCount = 5,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+
+        val follower2Profile = UserProfile(
+            id = 2L,
+            userId = follower2Id,
+            nickname = "follower2",
+            profileImageUrl = null,
+            bio = null,
+            followerCount = 20,
+            followingCount = 15,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+
+        every { followRepository.findFollowerUserIds(userId) } returns setOf(follower1Id, follower2Id)
+        every { userProfileRepository.findByUserIds(setOf(follower1Id, follower2Id)) } returns
+            listOf(follower1Profile, follower2Profile)
+
+        // When
+        val result = followService.getFollowers(userId)
+
+        // Then
+        assertEquals(2, result.size)
+        assertEquals("follower1", result.find { it.userId == follower1Id }?.nickname)
+        assertEquals("follower2", result.find { it.userId == follower2Id }?.nickname)
+        verify(exactly = 1) { followRepository.findFollowerUserIds(userId) }
+        verify(exactly = 1) { userProfileRepository.findByUserIds(setOf(follower1Id, follower2Id)) }
+    }
+
+    @Test
+    @DisplayName("팔로워 목록 조회 - 팔로워가 없는 경우")
+    fun getFollowers_NoFollowers_ReturnsEmptyList() {
+        // Given: 팔로워가 없음
+        val userId = UUID.randomUUID()
+
+        every { followRepository.findFollowerUserIds(userId) } returns emptySet()
+
+        // When
+        val result = followService.getFollowers(userId)
+
+        // Then
+        assertTrue(result.isEmpty())
+        verify(exactly = 1) { followRepository.findFollowerUserIds(userId) }
+        verify(exactly = 0) { userProfileRepository.findByUserIds(any()) }
+    }
+
+    @Test
+    @DisplayName("팔로잉 목록 조회 - 성공")
+    fun getFollowing_Success() {
+        // Given: 팔로잉 목록
+        val userId = UUID.randomUUID()
+        val following1Id = UUID.randomUUID()
+        val following2Id = UUID.randomUUID()
+
+        val following1Profile = UserProfile(
+            id = 3L,
+            userId = following1Id,
+            nickname = "following1",
+            profileImageUrl = "https://example.com/profile3.jpg",
+            bio = "following1 bio",
+            followerCount = 100,
+            followingCount = 50,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+
+        val following2Profile = UserProfile(
+            id = 4L,
+            userId = following2Id,
+            nickname = "following2",
+            profileImageUrl = null,
+            bio = "Hello",
+            followerCount = 200,
+            followingCount = 150,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+
+        every { followRepository.findFollowingUserIds(userId) } returns setOf(following1Id, following2Id)
+        every { userProfileRepository.findByUserIds(setOf(following1Id, following2Id)) } returns
+            listOf(following1Profile, following2Profile)
+
+        // When
+        val result = followService.getFollowing(userId)
+
+        // Then
+        assertEquals(2, result.size)
+        assertEquals("following1", result.find { it.userId == following1Id }?.nickname)
+        assertEquals("following2", result.find { it.userId == following2Id }?.nickname)
+        verify(exactly = 1) { followRepository.findFollowingUserIds(userId) }
+        verify(exactly = 1) { userProfileRepository.findByUserIds(setOf(following1Id, following2Id)) }
+    }
+
+    @Test
+    @DisplayName("팔로잉 목록 조회 - 팔로잉이 없는 경우")
+    fun getFollowing_NoFollowing_ReturnsEmptyList() {
+        // Given: 팔로잉이 없음
+        val userId = UUID.randomUUID()
+
+        every { followRepository.findFollowingUserIds(userId) } returns emptySet()
+
+        // When
+        val result = followService.getFollowing(userId)
+
+        // Then
+        assertTrue(result.isEmpty())
+        verify(exactly = 1) { followRepository.findFollowingUserIds(userId) }
+        verify(exactly = 0) { userProfileRepository.findByUserIds(any()) }
     }
 }

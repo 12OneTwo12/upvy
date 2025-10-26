@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.user.service
 
+import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.model.Follow
 import java.util.UUID
 
@@ -60,4 +61,24 @@ interface FollowService {
      * @return 팔로워 수
      */
     fun getFollowerCount(userId: UUID): Int
+
+    /**
+     * 사용자의 팔로워 목록 조회
+     *
+     * 해당 사용자를 팔로우하는 사용자들의 프로필 목록을 반환합니다.
+     *
+     * @param userId 사용자 ID
+     * @return 팔로워 프로필 목록
+     */
+    fun getFollowers(userId: UUID): List<UserProfileResponse>
+
+    /**
+     * 사용자의 팔로잉 목록 조회
+     *
+     * 해당 사용자가 팔로우하는 사용자들의 프로필 목록을 반환합니다.
+     *
+     * @param userId 사용자 ID
+     * @return 팔로잉 프로필 목록
+     */
+    fun getFollowing(userId: UUID): List<UserProfileResponse>
 }

@@ -43,7 +43,8 @@ class FollowRepository(
 
     fun existsByFollowerIdAndFollowingId(followerId: UUID, followingId: UUID): Boolean {
         return dsl.fetchExists(
-            dsl.selectFrom(FOLLOWS)
+            dsl.select(FOLLOWS.ID)
+                .from(FOLLOWS)
                 .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
                 .and(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
                 .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
@@ -51,19 +52,19 @@ class FollowRepository(
     }
 
     fun countByFollowerId(followerId: UUID): Int {
-        return dsl.fetchCount(
-            dsl.selectFrom(FOLLOWS)
-                .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
-                .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
-        )
+        return dsl.selectCount()
+            .from(FOLLOWS)
+            .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
+            .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
+            .fetchOne(0, Int::class.java) ?: 0
     }
 
     fun countByFollowingId(followingId: UUID): Int {
-        return dsl.fetchCount(
-            dsl.selectFrom(FOLLOWS)
-                .where(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
-                .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
-        )
+        return dsl.selectCount()
+            .from(FOLLOWS)
+            .where(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
+            .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
+            .fetchOne(0, Int::class.java) ?: 0
     }
 
     /**
@@ -94,5 +95,45 @@ class FollowRepository(
             .where(FOLLOWS.FOLLOWING_ID.eq(userId.toString()))
             .and(FOLLOWS.DELETED_AT.isNull)
             .execute()
+    }
+
+    /**
+     * 사용자의 팔로워 사용자 ID 목록 조회
+     *
+     * 해당 사용자를 팔로우하는 사용자들의 ID 목록을 반환합니다.
+     * Soft Delete된 팔로우 관계는 제외됩니다.
+     *
+     * @param userId 사용자 ID
+     * @return 팔로워 사용자 ID 목록 (Set)
+     */
+    fun findFollowerUserIds(userId: UUID): Set<UUID> {
+        return dsl
+            .select(FOLLOWS.FOLLOWER_ID)
+            .from(FOLLOWS)
+            .where(FOLLOWS.FOLLOWING_ID.eq(userId.toString()))
+            .and(FOLLOWS.DELETED_AT.isNull)
+            .fetch()
+            .map { UUID.fromString(it.getValue(FOLLOWS.FOLLOWER_ID)) }
+            .toSet()
+    }
+
+    /**
+     * 사용자의 팔로잉 사용자 ID 목록 조회
+     *
+     * 해당 사용자가 팔로우하는 사용자들의 ID 목록을 반환합니다.
+     * Soft Delete된 팔로우 관계는 제외됩니다.
+     *
+     * @param userId 사용자 ID
+     * @return 팔로잉 사용자 ID 목록 (Set)
+     */
+    fun findFollowingUserIds(userId: UUID): Set<UUID> {
+        return dsl
+            .select(FOLLOWS.FOLLOWING_ID)
+            .from(FOLLOWS)
+            .where(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
+            .and(FOLLOWS.DELETED_AT.isNull)
+            .fetch()
+            .map { UUID.fromString(it.getValue(FOLLOWS.FOLLOWING_ID)) }
+            .toSet()
     }
 }

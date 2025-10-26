@@ -122,6 +122,27 @@ class UserProfileRepository(
             }
     }
 
+    /**
+     * 여러 사용자의 전체 프로필을 일괄 조회
+     *
+     * N+1 쿼리 문제를 방지하기 위해 IN 절을 사용하여 한 번에 조회합니다.
+     *
+     * @param userIds 조회할 사용자 ID 목록
+     * @return UserProfile 목록
+     */
+    fun findByUserIds(userIds: Set<UUID>): List<UserProfile> {
+        if (userIds.isEmpty()) {
+            return emptyList()
+        }
+
+        return dsl
+            .selectFrom(USER_PROFILES)
+            .where(USER_PROFILES.USER_ID.`in`(userIds.map { it.toString() }))
+            .and(USER_PROFILES.DELETED_AT.isNull)
+            .fetch()
+            .map { mapToUserProfile(it) }
+    }
+
     private fun mapToUserProfile(record: UserProfilesRecord): UserProfile {
         return UserProfile(
             id = record.id,
