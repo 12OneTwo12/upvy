@@ -98,6 +98,8 @@ include::follow/delete.adoc[]
 include::follow/check.adoc[]
 include::follow/stats-get.adoc[]
 include::follow/stats-get-me.adoc[]
+include::follow/followers-list.adoc[]
+include::follow/following-list.adoc[]
 
 [[feed-api]]
 == Feed API

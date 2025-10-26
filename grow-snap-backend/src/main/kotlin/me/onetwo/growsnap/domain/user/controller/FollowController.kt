@@ -65,9 +65,9 @@ class FollowController(
         return principal
             .map { UUID.fromString(it.name) }
             .flatMap { userId ->
-                Mono.fromRunnable {
+                Mono.fromRunnable<Void> {
                     followService.unfollow(userId, followingId)
-                }.then(Mono.just(ResponseEntity.noContent().build<Void>()))
+                }.then(Mono.just(ResponseEntity.noContent().build()))
             }
     }
 
