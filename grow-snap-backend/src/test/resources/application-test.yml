@@ -33,6 +33,17 @@ spring:
       mode: always
       schema-locations: classpath:sql/create-table-sql.sql
 
+  # AWS Configuration for Test
+  cloud:
+    aws:
+      credentials:
+        access-key: test-access-key
+        secret-key: test-secret-key
+      region:
+        static: us-east-1
+      s3:
+        bucket: test-bucket
+
 # JWT Configuration
 jwt:
   secret: test-secret-key-for-jwt-token-generation-minimum-256-bits-required-for-testing
