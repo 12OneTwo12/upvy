@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.user.controller
 import me.onetwo.growsnap.domain.user.dto.FollowCheckResponse
 import me.onetwo.growsnap.domain.user.dto.FollowResponse
 import me.onetwo.growsnap.domain.user.dto.FollowStatsResponse
+import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.service.FollowService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -41,9 +42,12 @@ class FollowController(
     ): Mono<ResponseEntity<FollowResponse>> {
         return principal
             .map { UUID.fromString(it.name) }
-            .map { userId ->
-                val follow = followService.follow(userId, followingId)
-                ResponseEntity.status(HttpStatus.CREATED).body(FollowResponse.from(follow))
+            .flatMap { userId ->
+                Mono.fromCallable {
+                    followService.follow(userId, followingId)
+                }.map { follow ->
+                    ResponseEntity.status(HttpStatus.CREATED).body(FollowResponse.from(follow))
+                }
             }
     }
 
@@ -60,8 +64,11 @@ class FollowController(
     ): Mono<ResponseEntity<Void>> {
         return principal
             .map { UUID.fromString(it.name) }
-            .doOnNext { userId -> followService.unfollow(userId, followingId) }
-            .map { ResponseEntity.noContent().build<Void>() }
+            .flatMap { userId ->
+                Mono.fromRunnable {
+                    followService.unfollow(userId, followingId)
+                }.then(Mono.just(ResponseEntity.noContent().build<Void>()))
+            }
     }
 
     /**
@@ -78,9 +85,12 @@ class FollowController(
     ): Mono<ResponseEntity<FollowCheckResponse>> {
         return principal
             .map { UUID.fromString(it.name) }
-            .map { userId ->
-                val isFollowing = followService.isFollowing(userId, followingId)
-                ResponseEntity.ok(FollowCheckResponse(userId, followingId, isFollowing))
+            .flatMap { userId ->
+                Mono.fromCallable {
+                    followService.isFollowing(userId, followingId)
+                }.map { isFollowing ->
+                    ResponseEntity.ok(FollowCheckResponse(userId, followingId, isFollowing))
+                }
             }
     }
 
@@ -113,10 +123,50 @@ class FollowController(
     ): Mono<ResponseEntity<FollowStatsResponse>> {
         return principal
             .map { UUID.fromString(it.name) }
-            .map { userId ->
-                val followerCount = followService.getFollowerCount(userId)
-                val followingCount = followService.getFollowingCount(userId)
-                ResponseEntity.ok(FollowStatsResponse(userId, followerCount, followingCount))
+            .flatMap { userId ->
+                Mono.fromCallable {
+                    val followerCount = followService.getFollowerCount(userId)
+                    val followingCount = followService.getFollowingCount(userId)
+                    FollowStatsResponse(userId, followerCount, followingCount)
+                }.map { stats ->
+                    ResponseEntity.ok(stats)
+                }
             }
+    }
+
+    /**
+     * 팔로워 목록 조회
+     *
+     * 해당 사용자를 팔로우하는 사용자들의 프로필 목록을 반환합니다.
+     *
+     * @param userId 조회할 사용자 ID
+     * @return 팔로워 프로필 목록
+     */
+    @GetMapping("/followers/{userId}")
+    fun getFollowers(
+        @PathVariable userId: UUID
+    ): Mono<ResponseEntity<List<UserProfileResponse>>> {
+        return Mono.fromCallable {
+            val followers = followService.getFollowers(userId)
+            ResponseEntity.ok(followers)
+        }
+    }
+
+    /**
+     * 팔로잉 목록 조회
+     *
+     * 해당 사용자가 팔로우하는 사용자들의 프로필 목록을 반환합니다.
+     *
+     * @param userId 조회할 사용자 ID
+     * @return 팔로잉 프로필 목록
+     */
+    @GetMapping("/following/{userId}")
+    fun getFollowing(
+        @PathVariable userId: UUID
+    ): Mono<ResponseEntity<List<UserProfileResponse>>> {
+        return Mono.fromCallable {
+            val following = followService.getFollowing(userId)
+            ResponseEntity.ok(following)
+        }
     }
 }

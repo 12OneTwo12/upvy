@@ -231,4 +231,94 @@ class FollowRepositoryTest {
         assertEquals(1, followRepository.countByFollowerId(follower.id!!))
         assertEquals(1, followRepository.countByFollowingId(follower.id!!))
     }
+
+    @Test
+    @DisplayName("팔로워 사용자 ID 목록 조회 - 팔로워가 있는 경우")
+    fun findFollowerUserIds_WithFollowers_ReturnsFollowerIds() {
+        // Given: following 사용자를 follower와 anotherUser가 팔로우
+        followRepository.save(Follow(followerId = follower.id!!, followingId = following.id!!))
+        followRepository.save(Follow(followerId = anotherUser.id!!, followingId = following.id!!))
+
+        // When: following 사용자의 팔로워 목록 조회
+        val followerUserIds = followRepository.findFollowerUserIds(following.id!!)
+
+        // Then: 2명의 팔로워 ID가 조회됨
+        assertEquals(2, followerUserIds.size)
+        assertTrue(followerUserIds.contains(follower.id!!))
+        assertTrue(followerUserIds.contains(anotherUser.id!!))
+    }
+
+    @Test
+    @DisplayName("팔로워 사용자 ID 목록 조회 - 팔로워가 없는 경우")
+    fun findFollowerUserIds_NoFollowers_ReturnsEmptySet() {
+        // When: 팔로워가 없는 사용자의 팔로워 목록 조회
+        val followerUserIds = followRepository.findFollowerUserIds(following.id!!)
+
+        // Then: 빈 Set 반환
+        assertTrue(followerUserIds.isEmpty())
+    }
+
+    @Test
+    @DisplayName("팔로워 사용자 ID 목록 조회 - Soft Delete된 팔로우는 제외")
+    fun findFollowerUserIds_ExcludesSoftDeleted() {
+        // Given: following 사용자를 follower와 anotherUser가 팔로우
+        followRepository.save(Follow(followerId = follower.id!!, followingId = following.id!!))
+        followRepository.save(Follow(followerId = anotherUser.id!!, followingId = following.id!!))
+
+        // follower의 팔로우를 soft delete
+        followRepository.softDelete(follower.id!!, following.id!!)
+
+        // When: following 사용자의 팔로워 목록 조회
+        val followerUserIds = followRepository.findFollowerUserIds(following.id!!)
+
+        // Then: anotherUser만 조회됨 (follower는 제외)
+        assertEquals(1, followerUserIds.size)
+        assertTrue(followerUserIds.contains(anotherUser.id!!))
+        assertFalse(followerUserIds.contains(follower.id!!))
+    }
+
+    @Test
+    @DisplayName("팔로잉 사용자 ID 목록 조회 - 팔로잉이 있는 경우")
+    fun findFollowingUserIds_WithFollowing_ReturnsFollowingIds() {
+        // Given: follower가 following과 anotherUser를 팔로우
+        followRepository.save(Follow(followerId = follower.id!!, followingId = following.id!!))
+        followRepository.save(Follow(followerId = follower.id!!, followingId = anotherUser.id!!))
+
+        // When: follower 사용자의 팔로잉 목록 조회
+        val followingUserIds = followRepository.findFollowingUserIds(follower.id!!)
+
+        // Then: 2명의 팔로잉 ID가 조회됨
+        assertEquals(2, followingUserIds.size)
+        assertTrue(followingUserIds.contains(following.id!!))
+        assertTrue(followingUserIds.contains(anotherUser.id!!))
+    }
+
+    @Test
+    @DisplayName("팔로잉 사용자 ID 목록 조회 - 팔로잉이 없는 경우")
+    fun findFollowingUserIds_NoFollowing_ReturnsEmptySet() {
+        // When: 팔로잉이 없는 사용자의 팔로잉 목록 조회
+        val followingUserIds = followRepository.findFollowingUserIds(follower.id!!)
+
+        // Then: 빈 Set 반환
+        assertTrue(followingUserIds.isEmpty())
+    }
+
+    @Test
+    @DisplayName("팔로잉 사용자 ID 목록 조회 - Soft Delete된 팔로우는 제외")
+    fun findFollowingUserIds_ExcludesSoftDeleted() {
+        // Given: follower가 following과 anotherUser를 팔로우
+        followRepository.save(Follow(followerId = follower.id!!, followingId = following.id!!))
+        followRepository.save(Follow(followerId = follower.id!!, followingId = anotherUser.id!!))
+
+        // following에 대한 팔로우를 soft delete
+        followRepository.softDelete(follower.id!!, following.id!!)
+
+        // When: follower 사용자의 팔로잉 목록 조회
+        val followingUserIds = followRepository.findFollowingUserIds(follower.id!!)
+
+        // Then: anotherUser만 조회됨 (following은 제외)
+        assertEquals(1, followingUserIds.size)
+        assertTrue(followingUserIds.contains(anotherUser.id!!))
+        assertFalse(followingUserIds.contains(following.id!!))
+    }
 }

@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.user.controller
 
+import java.time.LocalDateTime
 import java.util.UUID
 
 import com.ninjasquad.springmockk.MockkBean
@@ -7,6 +8,7 @@ import io.mockk.every
 import io.mockk.justRun
 import io.mockk.verify
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.exception.AlreadyFollowingException
 import me.onetwo.growsnap.domain.user.exception.CannotFollowSelfException
 import me.onetwo.growsnap.domain.user.exception.NotFollowingException
@@ -273,5 +275,181 @@ class FollowControllerTest {
                     )
                 )
             )
+    }
+
+    @Test
+    @DisplayName("팔로워 목록 조회")
+    fun getFollowers_Success() {
+        // Given: 팔로워 목록
+        val targetUserId = UUID.randomUUID()
+        val follower1 = UserProfileResponse(
+            id = 1L,
+            userId = UUID.randomUUID(),
+            nickname = "follower1",
+            profileImageUrl = "https://example.com/profile1.jpg",
+            bio = "follower1 bio",
+            followerCount = 10,
+            followingCount = 5,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+        val follower2 = UserProfileResponse(
+            id = 2L,
+            userId = UUID.randomUUID(),
+            nickname = "follower2",
+            profileImageUrl = null,
+            bio = null,
+            followerCount = 20,
+            followingCount = 15,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+
+        every { followService.getFollowers(targetUserId) } returns listOf(follower1, follower2)
+
+        // When & Then: API 호출 및 검증
+        webTestClient
+            .mutateWith(mockUser(UUID.randomUUID()))
+            .get()
+            .uri("/api/v1/follows/followers/{userId}", targetUserId)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].userId").isEqualTo(follower1.userId.toString())
+            .jsonPath("$[0].nickname").isEqualTo("follower1")
+            .jsonPath("$[0].profileImageUrl").isEqualTo("https://example.com/profile1.jpg")
+            .jsonPath("$[0].followerCount").isEqualTo(10)
+            .jsonPath("$[1].userId").isEqualTo(follower2.userId.toString())
+            .jsonPath("$[1].nickname").isEqualTo("follower2")
+            .consumeWith(
+                document(
+                    "follow-followers-list",
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("userId").description("조회할 사용자 ID (UUID)")
+                    ),
+                    responseFields(
+                        fieldWithPath("[].id").description("프로필 ID"),
+                        fieldWithPath("[].userId").description("사용자 ID"),
+                        fieldWithPath("[].nickname").description("닉네임"),
+                        fieldWithPath("[].profileImageUrl").description("프로필 이미지 URL").optional(),
+                        fieldWithPath("[].bio").description("자기소개").optional(),
+                        fieldWithPath("[].followerCount").description("팔로워 수"),
+                        fieldWithPath("[].followingCount").description("팔로잉 수"),
+                        fieldWithPath("[].createdAt").description("프로필 생성일시"),
+                        fieldWithPath("[].updatedAt").description("프로필 수정일시")
+                    )
+                )
+            )
+
+        verify(exactly = 1) { followService.getFollowers(targetUserId) }
+    }
+
+    @Test
+    @DisplayName("팔로워 목록 조회 - 팔로워가 없는 경우")
+    fun getFollowers_NoFollowers_ReturnsEmptyList() {
+        // Given: 팔로워가 없음
+        val targetUserId = UUID.randomUUID()
+        every { followService.getFollowers(targetUserId) } returns emptyList()
+
+        // When & Then: 빈 배열 반환
+        webTestClient
+            .mutateWith(mockUser(UUID.randomUUID()))
+            .get()
+            .uri("/api/v1/follows/followers/{userId}", targetUserId)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .json("[]")
+
+        verify(exactly = 1) { followService.getFollowers(targetUserId) }
+    }
+
+    @Test
+    @DisplayName("팔로잉 목록 조회")
+    fun getFollowing_Success() {
+        // Given: 팔로잉 목록
+        val targetUserId = UUID.randomUUID()
+        val following1 = UserProfileResponse(
+            id = 3L,
+            userId = UUID.randomUUID(),
+            nickname = "following1",
+            profileImageUrl = "https://example.com/profile3.jpg",
+            bio = "following1 bio",
+            followerCount = 100,
+            followingCount = 50,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+        val following2 = UserProfileResponse(
+            id = 4L,
+            userId = UUID.randomUUID(),
+            nickname = "following2",
+            profileImageUrl = null,
+            bio = "Hello",
+            followerCount = 200,
+            followingCount = 150,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+
+        every { followService.getFollowing(targetUserId) } returns listOf(following1, following2)
+
+        // When & Then: API 호출 및 검증
+        webTestClient
+            .mutateWith(mockUser(UUID.randomUUID()))
+            .get()
+            .uri("/api/v1/follows/following/{userId}", targetUserId)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].userId").isEqualTo(following1.userId.toString())
+            .jsonPath("$[0].nickname").isEqualTo("following1")
+            .jsonPath("$[0].profileImageUrl").isEqualTo("https://example.com/profile3.jpg")
+            .jsonPath("$[0].followerCount").isEqualTo(100)
+            .jsonPath("$[1].userId").isEqualTo(following2.userId.toString())
+            .jsonPath("$[1].nickname").isEqualTo("following2")
+            .consumeWith(
+                document(
+                    "follow-following-list",
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("userId").description("조회할 사용자 ID (UUID)")
+                    ),
+                    responseFields(
+                        fieldWithPath("[].id").description("프로필 ID"),
+                        fieldWithPath("[].userId").description("사용자 ID"),
+                        fieldWithPath("[].nickname").description("닉네임"),
+                        fieldWithPath("[].profileImageUrl").description("프로필 이미지 URL").optional(),
+                        fieldWithPath("[].bio").description("자기소개").optional(),
+                        fieldWithPath("[].followerCount").description("팔로워 수"),
+                        fieldWithPath("[].followingCount").description("팔로잉 수"),
+                        fieldWithPath("[].createdAt").description("프로필 생성일시"),
+                        fieldWithPath("[].updatedAt").description("프로필 수정일시")
+                    )
+                )
+            )
+
+        verify(exactly = 1) { followService.getFollowing(targetUserId) }
+    }
+
+    @Test
+    @DisplayName("팔로잉 목록 조회 - 팔로잉이 없는 경우")
+    fun getFollowing_NoFollowing_ReturnsEmptyList() {
+        // Given: 팔로잉이 없음
+        val targetUserId = UUID.randomUUID()
+        every { followService.getFollowing(targetUserId) } returns emptyList()
+
+        // When & Then: 빈 배열 반환
+        webTestClient
+            .mutateWith(mockUser(UUID.randomUUID()))
+            .get()
+            .uri("/api/v1/follows/following/{userId}", targetUserId)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .json("[]")
+
+        verify(exactly = 1) { followService.getFollowing(targetUserId) }
     }
 }
