@@ -168,14 +168,10 @@ class FollowServiceImpl(
             return emptyList()
         }
 
-        val userProfiles = userProfileRepository.findUserInfosByUserIds(followerUserIds)
+        // N+1 쿼리 문제를 방지하기 위해 한 번의 쿼리로 모든 프로필을 조회합니다.
+        val profiles = userProfileRepository.findByUserIds(followerUserIds)
 
-        return followerUserIds.mapNotNull { followerId ->
-            userProfiles[followerId]?.let { _ ->
-                val profile = userProfileRepository.findByUserId(followerId)
-                profile?.let { UserProfileResponse.from(it) }
-            }
-        }
+        return profiles.map { UserProfileResponse.from(it) }
     }
 
     /**
@@ -194,14 +190,10 @@ class FollowServiceImpl(
             return emptyList()
         }
 
-        val userProfiles = userProfileRepository.findUserInfosByUserIds(followingUserIds)
+        // N+1 쿼리 문제를 방지하기 위해 한 번의 쿼리로 모든 프로필을 조회합니다.
+        val profiles = userProfileRepository.findByUserIds(followingUserIds)
 
-        return followingUserIds.mapNotNull { followingId ->
-            userProfiles[followingId]?.let { _ ->
-                val profile = userProfileRepository.findByUserId(followingId)
-                profile?.let { UserProfileResponse.from(it) }
-            }
-        }
+        return profiles.map { UserProfileResponse.from(it) }
     }
 
     companion object {

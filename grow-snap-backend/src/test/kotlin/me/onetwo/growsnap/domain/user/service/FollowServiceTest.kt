@@ -6,7 +6,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import java.time.LocalDateTime
 import java.util.UUID
-import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.event.FollowEvent
 import me.onetwo.growsnap.domain.user.exception.AlreadyFollowingException
 import me.onetwo.growsnap.domain.user.exception.CannotFollowSelfException
@@ -347,12 +346,8 @@ class FollowServiceTest {
         )
 
         every { followRepository.findFollowerUserIds(userId) } returns setOf(follower1Id, follower2Id)
-        every { userProfileRepository.findUserInfosByUserIds(setOf(follower1Id, follower2Id)) } returns mapOf(
-            follower1Id to Pair("follower1", "https://example.com/profile1.jpg"),
-            follower2Id to Pair("follower2", null)
-        )
-        every { userProfileRepository.findByUserId(follower1Id) } returns follower1Profile
-        every { userProfileRepository.findByUserId(follower2Id) } returns follower2Profile
+        every { userProfileRepository.findByUserIds(setOf(follower1Id, follower2Id)) } returns
+            listOf(follower1Profile, follower2Profile)
 
         // When
         val result = followService.getFollowers(userId)
@@ -362,7 +357,7 @@ class FollowServiceTest {
         assertEquals("follower1", result.find { it.userId == follower1Id }?.nickname)
         assertEquals("follower2", result.find { it.userId == follower2Id }?.nickname)
         verify(exactly = 1) { followRepository.findFollowerUserIds(userId) }
-        verify(exactly = 1) { userProfileRepository.findUserInfosByUserIds(setOf(follower1Id, follower2Id)) }
+        verify(exactly = 1) { userProfileRepository.findByUserIds(setOf(follower1Id, follower2Id)) }
     }
 
     @Test
@@ -379,7 +374,7 @@ class FollowServiceTest {
         // Then
         assertTrue(result.isEmpty())
         verify(exactly = 1) { followRepository.findFollowerUserIds(userId) }
-        verify(exactly = 0) { userProfileRepository.findUserInfosByUserIds(any()) }
+        verify(exactly = 0) { userProfileRepository.findByUserIds(any()) }
     }
 
     @Test
@@ -415,12 +410,8 @@ class FollowServiceTest {
         )
 
         every { followRepository.findFollowingUserIds(userId) } returns setOf(following1Id, following2Id)
-        every { userProfileRepository.findUserInfosByUserIds(setOf(following1Id, following2Id)) } returns mapOf(
-            following1Id to Pair("following1", "https://example.com/profile3.jpg"),
-            following2Id to Pair("following2", null)
-        )
-        every { userProfileRepository.findByUserId(following1Id) } returns following1Profile
-        every { userProfileRepository.findByUserId(following2Id) } returns following2Profile
+        every { userProfileRepository.findByUserIds(setOf(following1Id, following2Id)) } returns
+            listOf(following1Profile, following2Profile)
 
         // When
         val result = followService.getFollowing(userId)
@@ -430,7 +421,7 @@ class FollowServiceTest {
         assertEquals("following1", result.find { it.userId == following1Id }?.nickname)
         assertEquals("following2", result.find { it.userId == following2Id }?.nickname)
         verify(exactly = 1) { followRepository.findFollowingUserIds(userId) }
-        verify(exactly = 1) { userProfileRepository.findUserInfosByUserIds(setOf(following1Id, following2Id)) }
+        verify(exactly = 1) { userProfileRepository.findByUserIds(setOf(following1Id, following2Id)) }
     }
 
     @Test
@@ -447,6 +438,6 @@ class FollowServiceTest {
         // Then
         assertTrue(result.isEmpty())
         verify(exactly = 1) { followRepository.findFollowingUserIds(userId) }
-        verify(exactly = 0) { userProfileRepository.findUserInfosByUserIds(any()) }
+        verify(exactly = 0) { userProfileRepository.findByUserIds(any()) }
     }
 }

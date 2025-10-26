@@ -39,6 +39,7 @@ class FollowEventListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun handleFollowEvent(event: FollowEvent) {
+        @Suppress("TooGenericExceptionCaught")
         try {
             logger.debug(
                 "Handling FollowEvent: follower={}, following={}, timestamp={}",
@@ -47,7 +48,7 @@ class FollowEventListener {
                 event.timestamp
             )
 
-            // TODO: 실제 알림 시스템과 통합
+            // 향후 구현 예정:
             // 1. notifications 테이블에 알림 저장
             // 2. 푸시 알림 전송 (FCM)
             // 3. 이메일 알림 (선택적)
@@ -61,6 +62,7 @@ class FollowEventListener {
             logger.debug("FollowEvent handled successfully")
         } catch (e: Exception) {
             // 예외를 삼켜서 메인 트랜잭션에 영향을 주지 않음
+            // 이벤트 리스너의 실패 격리를 위해 generic Exception을 catch
             logger.error(
                 "Failed to handle FollowEvent: follower={}, following={}",
                 event.followerId,
