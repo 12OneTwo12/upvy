@@ -1,6 +1,5 @@
 package me.onetwo.growsnap.domain.content.dto
 
-import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -19,6 +18,13 @@ import java.time.LocalDateTime
  * @property contentType 콘텐츠 타입 (VIDEO, PHOTO)
  * @property fileName 파일 이름
  * @property fileSize 파일 크기 (바이트)
+ *
+ * ## 파일 크기 제한
+ * - 비디오: 최대 500MB (ContentUploadServiceImpl에서 검증)
+ * - 사진: 최대 50MB (ContentUploadServiceImpl에서 검증)
+ *
+ * DTO에서는 최소값(1바이트)만 검증하고, 최대값은 contentType에 따라
+ * 서비스 계층에서 동적으로 검증합니다.
  */
 data class ContentUploadUrlRequest(
     @field:NotNull(message = "콘텐츠 타입은 필수입니다")
@@ -30,7 +36,6 @@ data class ContentUploadUrlRequest(
 
     @field:NotNull(message = "파일 크기는 필수입니다")
     @field:Min(value = 1, message = "파일 크기는 1바이트 이상이어야 합니다")
-    @field:Max(value = 524288000, message = "파일 크기는 500MB 이하여야 합니다")  // 500MB
     val fileSize: Long
 )
 
