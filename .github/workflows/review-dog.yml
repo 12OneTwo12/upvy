@@ -3,6 +3,8 @@ name: review-dog
 on:
   pull_request:
     branches: [ main, dev ]
+    paths:
+      - 'grow-snap-backend/**'
 
 permissions:
   pull-requests: write
