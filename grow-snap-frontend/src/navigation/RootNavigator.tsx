@@ -1,9 +1,9 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View } from 'react-native';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
+import { LoadingSpinner } from '@/components/common';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
@@ -23,11 +23,7 @@ export default function RootNavigator() {
 
   // 초기 로딩 중
   if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#22c55e" />
-      </View>
-    );
+    return <LoadingSpinner fullScreen message="로딩 중..." />;
   }
 
   return (

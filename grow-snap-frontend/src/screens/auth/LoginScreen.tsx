@@ -2,16 +2,27 @@ import React, { useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
   SafeAreaView,
-  Image,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAuthStore } from '@/stores/authStore';
+import { Button } from '@/components/common';
+import { theme } from '@/theme';
+import { showErrorAlert } from '@/utils/errorHandler';
+import { responsive, isSmallDevice } from '@/utils/responsive';
 
+const { width } = Dimensions.get('window');
+
+/**
+ * 로그인 화면 (인스타그램 스타일)
+ * 깔끔하고 미니멀한 디자인으로 전문적인 느낌
+ */
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
   const { checkAuth } = useAuthStore();
 
@@ -23,93 +34,237 @@ export default function LoginScreen() {
   // 에러 처리
   useEffect(() => {
     if (error) {
-      Alert.alert('로그인 실패', error, [{ text: '확인' }]);
+      showErrorAlert(error, '로그인 실패');
     }
   }, [error]);
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 px-6 justify-between py-12">
-        {/* 상단: 로고 및 소개 */}
-        <View className="flex-1 justify-center items-center">
-          <View className="items-center mb-12">
-            {/* 로고 영역 (추후 이미지로 교체) */}
-            <View className="w-20 h-20 bg-primary-500 rounded-3xl items-center justify-center mb-6">
-              <Text className="text-white text-3xl font-bold">G</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(insets.top, theme.spacing[8]),
+            paddingBottom: Math.max(insets.bottom, theme.spacing[6]),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 중앙 컨텐츠 */}
+        <View style={styles.content}>
+          {/* 로고 */}
+          <View style={styles.logoSection}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoEmoji}>🌱</Text>
             </View>
-
-            <Text className="text-4xl font-bold text-gray-900 mb-3">GrowSnap</Text>
-            <Text className="text-lg text-gray-600 text-center px-8">
-              스크롤 시간을 성장 시간으로
-            </Text>
+            <Text style={styles.title}>GrowSnap</Text>
+            <Text style={styles.tagline}>성장을 위한 첫 걸음</Text>
           </View>
 
-          {/* 서비스 특징 */}
-          <View className="w-full mt-8 space-y-3">
-            <FeatureItem icon="📚" text="매일 새로운 인사이트" />
-            <FeatureItem icon="🎯" text="나만의 성장 여정" />
-            <FeatureItem icon="✨" text="재미있는 학습 경험" />
+          {/* 가치 제안 */}
+          <View style={styles.valuePropsContainer}>
+            <ValueProp
+              title="매일 성장하는 습관"
+              description="짧지만 깊이 있는 콘텐츠로 매일 배우는 즐거움"
+            />
+            <ValueProp
+              title="나만의 학습 여정"
+              description="관심사에 맞춘 개인화된 추천"
+            />
+            <ValueProp
+              title="전문가의 인사이트"
+              description="검증된 크리에이터의 양질의 콘텐츠"
+            />
           </View>
         </View>
 
-        {/* 하단: 로그인 버튼 및 약관 */}
-        <View className="w-full">
-          {/* Google 로그인 버튼 */}
-          <TouchableOpacity
-            className="w-full bg-white border-2 border-gray-300 rounded-xl py-4 flex-row items-center justify-center mb-4"
+        {/* 하단: 로그인 버튼 */}
+        <View style={styles.bottomSection}>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
             onPress={handleGoogleLogin}
-            disabled={isLoading || !isReady}
+            disabled={!isReady}
+            loading={isLoading}
+            style={styles.googleButton}
           >
-            {isLoading ? (
-              <ActivityIndicator color="#4285F4" />
-            ) : (
-              <>
-                {/* Google 아이콘 (추후 실제 이미지로 교체) */}
-                <View className="w-6 h-6 bg-blue-500 rounded-full mr-3" />
-                <Text className="text-gray-900 text-base font-semibold">
-                  Google로 시작하기
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+            Google로 계속하기
+          </Button>
 
           {/* 약관 동의 */}
-          <View className="items-center">
-            <Text className="text-xs text-gray-500 text-center leading-5">
-              계속 진행하면{' '}
-              <Text className="text-primary-600 underline">이용약관</Text> 및{' '}
-              <Text className="text-primary-600 underline">개인정보처리방침</Text>에
-              동의하는 것으로 간주됩니다.
-            </Text>
-          </View>
+          <Text style={styles.termsText}>
+            계속 진행하시면{' '}
+            <Text style={styles.termsLink}>서비스 약관</Text> 및{' '}
+            <Text style={styles.termsLink}>개인정보 보호정책</Text>에
+            동의하시는 것으로 간주됩니다.
+          </Text>
 
           {/* 개발 모드 표시 */}
           {__DEV__ && (
-            <View className="mt-6 p-3 bg-yellow-50 rounded-lg">
-              <Text className="text-xs text-yellow-800 text-center">
-                ⚠️ 개발 모드: Google OAuth 설정이 필요합니다
+            <View style={styles.devNotice}>
+              <Text style={styles.devNoticeText}>
+                개발 모드 • Google OAuth 설정 필요
               </Text>
             </View>
           )}
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 /**
- * 특징 아이템 컴포넌트
+ * 가치 제안 컴포넌트
  */
-interface FeatureItemProps {
-  icon: string;
-  text: string;
+interface ValuePropProps {
+  title: string;
+  description: string;
 }
 
-function FeatureItem({ icon, text }: FeatureItemProps) {
+function ValueProp({ title, description }: ValuePropProps) {
   return (
-    <View className="flex-row items-center">
-      <Text className="text-2xl mr-3">{icon}</Text>
-      <Text className="text-base text-gray-700">{text}</Text>
+    <View style={styles.valueProp}>
+      <View style={styles.valuePropDot} />
+      <View style={styles.valuePropContent}>
+        <Text style={styles.valuePropTitle}>{title}</Text>
+        <Text style={styles.valuePropDescription}>{description}</Text>
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+  },
+
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing[6],
+    justifyContent: 'space-between',
+  },
+
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingTop: theme.spacing[12],
+  },
+
+  // Logo Section
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: theme.spacing[12],
+  },
+
+  logoContainer: {
+    width: responsive({ xs: 96, md: 112, default: 96 }),
+    height: responsive({ xs: 96, md: 112, default: 96 }),
+    borderRadius: responsive({ xs: 48, md: 56, default: 48 }),
+    backgroundColor: theme.colors.background.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing[5],
+    borderWidth: 1,
+    borderColor: theme.colors.gray[200],
+  },
+
+  logoEmoji: {
+    fontSize: responsive({ xs: 48, md: 56, default: 48 }),
+  },
+
+  title: {
+    fontSize: responsive({
+      xs: 32,
+      md: 36,
+      default: 32,
+    }),
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[2],
+    letterSpacing: -0.5,
+  },
+
+  tagline: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+  },
+
+  // Value Props
+  valuePropsContainer: {
+    gap: theme.spacing[5],
+    paddingHorizontal: theme.spacing[2],
+  },
+
+  valueProp: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+
+  valuePropDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.primary[500],
+    marginTop: 8,
+    marginRight: theme.spacing[3],
+  },
+
+  valuePropContent: {
+    flex: 1,
+  },
+
+  valuePropTitle: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[1],
+  },
+
+  valuePropDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+  },
+
+  // Bottom Section
+  bottomSection: {
+    gap: theme.spacing[4],
+    paddingTop: theme.spacing[8],
+  },
+
+  googleButton: {
+    ...theme.shadows.sm,
+  },
+
+  termsText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
+    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.xs,
+    paddingHorizontal: theme.spacing[2],
+  },
+
+  termsLink: {
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+
+  // Dev Notice
+  devNotice: {
+    padding: theme.spacing[3],
+    backgroundColor: theme.colors.gray[100],
+    borderRadius: theme.borderRadius.base,
+    borderWidth: 1,
+    borderColor: theme.colors.gray[200],
+  },
+
+  devNoticeText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+});

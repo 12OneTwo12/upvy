@@ -9,6 +9,7 @@ import {
   CreateProfileRequest,
   CreateProfileResponse,
   User,
+  UserProfile,
 } from '@/types/auth.types';
 
 /**
