@@ -164,8 +164,8 @@ const styles = StyleSheet.create({
   },
 
   logoContainer: {
-    width: responsive({ xs: 96, md: 112, default: 96 }),
-    height: responsive({ xs: 96, md: 112, default: 96 }),
+    width: responsive({ xs: 140, md: 160, default: 140 }),
+    height: responsive({ xs: 140, md: 160, default: 140 }),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing[5],
