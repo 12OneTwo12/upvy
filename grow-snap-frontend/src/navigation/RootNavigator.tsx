@@ -15,11 +15,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  * 인증 상태와 프로필 존재 여부에 따라 화면을 표시합니다.
  */
 export default function RootNavigator() {
-  const { isAuthenticated, profile, isLoading } = useAuthStore((state) => ({
-    isAuthenticated: state.isAuthenticated,
-    profile: state.profile,
-    isLoading: state.isLoading,
-  }));
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const profile = useAuthStore((state) => state.profile);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   // 초기 로딩 중
   if (isLoading) {

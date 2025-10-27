@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
   isAuthenticated: false,
-  isLoading: true,
+  isLoading: false, // MVP: Skip auto-login for now
 
   // Set User
   setUser: (user) => {

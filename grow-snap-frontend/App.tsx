@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/components/common';
 import { logError } from './src/utils/errorHandler';
+import { useAuthStore } from './src/stores/authStore';
 
 // React Query Client
 const queryClient = new QueryClient({
@@ -20,6 +21,11 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  // MVP: Auto-login disabled for now
+  // useEffect(() => {
+  //   useAuthStore.getState().checkAuth();
+  // }, []);
+
   return (
     <ErrorBoundary onError={(error, errorInfo) => logError(error, 'App')}>
       <GestureHandlerRootView style={{ flex: 1 }}>

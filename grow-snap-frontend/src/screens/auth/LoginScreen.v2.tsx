@@ -20,12 +20,12 @@ import { responsive, isSmallDevice } from '@/utils/responsive';
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
-  const { checkAuth } = useAuthStore();
+  // const { checkAuth } = useAuthStore(); // MVP: Auto-login disabled
 
-  // 앱 시작 시 자동 로그인 체크
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  // MVP: Auto-login disabled for now
+  // useEffect(() => {
+  //   checkAuth();
+  // }, []);
 
   // 에러 처리
   useEffect(() => {
