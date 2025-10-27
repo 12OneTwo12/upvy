@@ -1,72 +1,114 @@
-import { useState } from 'react';
-import * as Google from 'expo-auth-session/providers/google';
+import { useState, useEffect } from 'react';
 import * as WebBrowser from 'expo-web-browser';
-import { googleLogin } from '@/api/auth.api';
+import * as Linking from 'expo-linking';
 import { useAuthStore } from '@/stores/authStore';
 import { getErrorMessage, logError } from '@/utils/errorHandler';
-
-// WebBrowser 완료 처리
-WebBrowser.maybeCompleteAuthSession();
+import { API_URL } from '@/constants/api';
 
 /**
- * Google OAuth Hook
- * Google 로그인 플로우를 관리합니다.
+ * Google OAuth Hook (Custom Tabs 방식)
+ *
+ * Issue #46: 백엔드 웹 OAuth 클라이언트 ID만 사용하는 방식
+ * - Custom Tabs/ASWebAuthenticationSession 사용
+ * - 딥링크로 토큰 수신: growsnap://oauth/callback
+ * - state 파라미터로 모바일 구분: mobile:xxx
  */
 export const useGoogleAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { login } = useAuthStore();
 
-  // Google OAuth Request
-  // TODO: Google Cloud Console에서 Client ID 발급 후 설정 필요
-  // 개발 중에는 에러가 발생하지만, 실제 Client ID 설정 후 정상 작동합니다.
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: 'YOUR_CLIENT_ID', // Google Cloud Console에서 발급
-    iosClientId: 'YOUR_IOS_CLIENT_ID',
-    androidClientId: 'YOUR_ANDROID_CLIENT_ID',
-    webClientId: 'YOUR_WEB_CLIENT_ID',
-  });
+  // 딥링크 리스너
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      try {
+        const url = event.url;
+        console.log('[OAuth] Deep link received:', url);
+
+        // growsnap://oauth/callback?accessToken=...&refreshToken=...
+        if (url.startsWith('growsnap://oauth/callback')) {
+          const parsed = Linking.parse(url);
+          const { accessToken, refreshToken, userId, email, error: errorParam } = parsed.queryParams as {
+            accessToken?: string;
+            refreshToken?: string;
+            userId?: string;
+            email?: string;
+            error?: string;
+          };
+
+          if (errorParam) {
+            throw new Error(errorParam);
+          }
+
+          if (!accessToken || !refreshToken) {
+            throw new Error('토큰을 받지 못했습니다.');
+          }
+
+          console.log('[OAuth] Tokens received, logging in...');
+
+          // Zustand Store에 저장
+          await login(
+            accessToken,
+            refreshToken,
+            { id: parseInt(userId || '0'), email: email || '' },
+            null // 프로필은 별도로 조회 필요
+          );
+
+          setIsLoading(false);
+        }
+      } catch (err) {
+        const message = getErrorMessage(err);
+        setError(message);
+        logError(err, 'useGoogleAuth.handleDeepLink');
+        setIsLoading(false);
+      }
+    };
+
+    // 딥링크 리스너 등록
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // 앱이 딥링크로 시작된 경우 처리
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [login]);
 
   /**
-   * Google 로그인 처리
-   * 네비게이션은 RootNavigator에서 상태 기반으로 자동 처리됩니다.
+   * Google 로그인 시작
+   * Custom Tabs로 백엔드 OAuth URL 열기
    */
   const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Google OAuth Prompt
-      const result = await promptAsync();
+      // state 파라미터: mobile:랜덤UUID
+      const state = `mobile:${Math.random().toString(36).substring(7)}`;
 
-      if (result.type === 'success') {
-        const { authentication } = result;
+      // 백엔드 OAuth URL
+      const authUrl = `${API_URL}/auth/oauth2/authorization/google?state=${state}`;
 
-        if (!authentication?.accessToken) {
-          throw new Error('Google에서 인증 토큰을 받지 못했습니다.');
-        }
+      console.log('[OAuth] Opening Custom Tabs:', authUrl);
 
-        // 백엔드 API 호출
-        const loginResponse = await googleLogin(authentication.accessToken);
+      // Custom Tabs로 OAuth 시작
+      await WebBrowser.openBrowserAsync(authUrl, {
+        // Android에서 Custom Tabs 사용
+        showTitle: true,
+        toolbarColor: '#34C759',
+        enableBarCollapsing: false,
+      });
 
-        // Zustand Store에 저장 (RootNavigator가 상태를 보고 자동으로 화면 전환)
-        await login(
-          loginResponse.accessToken,
-          loginResponse.refreshToken,
-          loginResponse.user,
-          loginResponse.profile
-        );
-      } else if (result.type === 'error') {
-        throw new Error('Google 로그인에 실패했습니다. 다시 시도해주세요.');
-      } else if (result.type === 'cancel') {
-        // 사용자가 취소한 경우
-        setError(null);
-      }
+      // 딥링크 리스너에서 처리됨 (로딩 상태 유지)
     } catch (err) {
       const message = getErrorMessage(err);
       setError(message);
       logError(err, 'useGoogleAuth.handleGoogleLogin');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -78,7 +120,7 @@ export const useGoogleAuth = () => {
     error,
     /** Google 로그인 핸들러 */
     handleGoogleLogin,
-    /** Google OAuth 준비 상태 (Client ID 설정 여부) */
-    isReady: !!request,
+    /** OAuth 준비 상태 (항상 true, Client ID 불필요) */
+    isReady: true,
   };
 };
