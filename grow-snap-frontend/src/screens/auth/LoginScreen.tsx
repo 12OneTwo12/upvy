@@ -13,7 +13,7 @@ import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/common';
 import { theme } from '@/theme';
-import { showErrorAlert } from '@/utils/errorHandler';
+import { showErrorAlert, logError } from '@/utils/errorHandler';
 import { responsive, isSmallDevice } from '@/utils/responsive';
 
 const { width } = Dimensions.get('window');
@@ -35,6 +35,7 @@ export default function LoginScreen() {
   // 에러 처리
   useEffect(() => {
     if (error) {
+      logError(new Error(error), 'LoginScreen.googleAuth');
       showErrorAlert(error, '로그인 실패');
     }
   }, [error]);

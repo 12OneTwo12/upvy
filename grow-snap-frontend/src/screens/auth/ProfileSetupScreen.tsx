@@ -68,7 +68,7 @@ export default function ProfileSetupScreen() {
    */
   const handleCreateProfile = async () => {
     if (!nickname || nicknameAvailable !== true) {
-      showErrorAlert('닉네임 중복 확인이 필요합니다.', '알림');
+      showErrorAlert('닉네임을 입력하고 중복 확인을 해주세요.', '알림');
       return;
     }
 
