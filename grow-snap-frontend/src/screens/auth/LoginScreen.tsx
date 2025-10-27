@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
@@ -55,7 +56,11 @@ export default function LoginScreen() {
           {/* 로고 */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoEmoji}>🌱</Text>
+              <Image
+                source={require('@/../assets/images/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.title}>GrowSnap</Text>
             <Text style={styles.tagline}>성장을 위한 첫 걸음</Text>
@@ -161,17 +166,14 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: responsive({ xs: 96, md: 112, default: 96 }),
     height: responsive({ xs: 96, md: 112, default: 96 }),
-    borderRadius: responsive({ xs: 48, md: 56, default: 48 }),
-    backgroundColor: theme.colors.background.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing[5],
-    borderWidth: 1,
-    borderColor: theme.colors.gray[200],
   },
 
-  logoEmoji: {
-    fontSize: responsive({ xs: 48, md: 56, default: 48 }),
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
 
   title: {
