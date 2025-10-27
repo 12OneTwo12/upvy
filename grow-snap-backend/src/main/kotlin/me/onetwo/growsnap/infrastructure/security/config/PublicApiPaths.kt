@@ -46,7 +46,10 @@ object PublicApiPaths {
             "/api/v1/profiles/check/nickname/*",    // 닉네임 중복 확인
 
             // 팔로우 통계
-            "/api/v1/follows/stats/*"
+            "/api/v1/follows/stats/*",
+
+            // 콘텐츠 개별 조회
+            "/api/v1/contents/*"
         )
     }
 }

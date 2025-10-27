@@ -55,10 +55,7 @@ class SecurityConfig(
                     .pathMatchers(*PublicApiPaths.AUTH_ENDPOINTS).permitAll()
                     // 조회 전용 공개 API (GET 메서드만 허용)
                     .pathMatchers(PublicApiPaths.GetOnly.METHOD, *PublicApiPaths.GetOnly.PATHS).permitAll()
-                    // 콘텐츠 개별 조회 (GET /api/v1/contents/{contentId}) - UUID 형식만 공개
-                    // 주의: /me 엔드포인트는 반드시 인증 필요하므로, 순서상 이 규칙이 뒤에 위치해야 함
-                    .pathMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/contents/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}").permitAll()
-                    // 나머지는 인증 필요 (여기에 /api/v1/contents/me 포함됨)
+                    // 나머지는 인증 필요
                     .anyExchange().authenticated()
             }
             .oauth2Login { oauth2 ->
