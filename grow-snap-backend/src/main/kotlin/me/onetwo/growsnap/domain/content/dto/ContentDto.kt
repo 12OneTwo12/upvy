@@ -59,7 +59,6 @@ data class ContentUploadUrlResponse(
  * @property description 설명
  * @property category 카테고리
  * @property tags 태그 목록
- * @property difficultyLevel 난이도
  * @property language 언어 코드 (ISO 639-1)
  * @property thumbnailUrl 썸네일 URL
  * @property duration 비디오 길이 (초, 사진인 경우 null)
@@ -81,8 +80,6 @@ data class ContentCreateRequest(
     val category: Category,
 
     val tags: List<String> = emptyList(),
-
-    val difficultyLevel: DifficultyLevel? = null,
 
     @field:NotBlank(message = "언어는 필수입니다")
     @field:Size(min = 2, max = 10, message = "언어 코드는 2-10자여야 합니다")
@@ -112,7 +109,6 @@ data class ContentCreateRequest(
  * @property description 설명
  * @property category 카테고리
  * @property tags 태그 목록
- * @property difficultyLevel 난이도
  * @property language 언어 코드
  */
 data class ContentUpdateRequest(
@@ -125,8 +121,6 @@ data class ContentUpdateRequest(
     val category: Category? = null,
 
     val tags: List<String>? = null,
-
-    val difficultyLevel: DifficultyLevel? = null,
 
     @field:Size(min = 2, max = 10, message = "언어 코드는 2-10자여야 합니다")
     val language: String? = null
@@ -150,7 +144,6 @@ data class ContentUpdateRequest(
  * @property description 설명
  * @property category 카테고리
  * @property tags 태그 목록
- * @property difficultyLevel 난이도
  * @property language 언어
  * @property createdAt 생성 시각
  * @property updatedAt 수정 시각
@@ -169,7 +162,6 @@ data class ContentResponse(
     val description: String?,
     val category: Category,
     val tags: List<String>,
-    val difficultyLevel: DifficultyLevel?,
     val language: String,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime

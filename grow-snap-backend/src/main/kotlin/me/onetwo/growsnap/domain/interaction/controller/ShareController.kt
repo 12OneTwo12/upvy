@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.interaction.controller
 import me.onetwo.growsnap.domain.interaction.dto.ShareLinkResponse
 import me.onetwo.growsnap.domain.interaction.dto.ShareResponse
 import me.onetwo.growsnap.domain.interaction.service.ShareService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -41,7 +42,7 @@ class ShareController(
         @PathVariable videoId: String
     ): Mono<ResponseEntity<ShareResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val contentId = UUID.fromString(videoId)
                 shareService.shareContent(userId, contentId)

@@ -163,6 +163,95 @@ class ContentRepositoryImpl(
     }
 
     /**
+     * 크리에이터의 콘텐츠와 메타데이터를 한 번에 조회합니다.
+     *
+     * JOIN을 사용하여 N+1 쿼리 문제를 방지합니다.
+     *
+     * @param creatorId 크리에이터 ID
+     * @return 콘텐츠와 메타데이터 쌍의 목록
+     */
+    override fun findWithMetadataByCreatorId(creatorId: UUID): List<Pair<Content, ContentMetadata>> {
+        return dslContext
+            .select(
+                CONTENTS.ID,
+                CONTENTS.CREATOR_ID,
+                CONTENTS.CONTENT_TYPE,
+                CONTENTS.URL,
+                CONTENTS.THUMBNAIL_URL,
+                CONTENTS.DURATION,
+                CONTENTS.WIDTH,
+                CONTENTS.HEIGHT,
+                CONTENTS.STATUS,
+                CONTENTS.CREATED_AT,
+                CONTENTS.CREATED_BY,
+                CONTENTS.UPDATED_AT,
+                CONTENTS.UPDATED_BY,
+                CONTENTS.DELETED_AT,
+                CONTENT_METADATA.ID,
+                CONTENT_METADATA.CONTENT_ID,
+                CONTENT_METADATA.TITLE,
+                CONTENT_METADATA.DESCRIPTION,
+                CONTENT_METADATA.CATEGORY,
+                CONTENT_METADATA.TAGS,
+                CONTENT_METADATA.LANGUAGE,
+                CONTENT_METADATA.CREATED_AT,
+                CONTENT_METADATA.CREATED_BY,
+                CONTENT_METADATA.UPDATED_AT,
+                CONTENT_METADATA.UPDATED_BY,
+                CONTENT_METADATA.DELETED_AT
+            )
+            .from(CONTENTS)
+            .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
+            .where(CONTENTS.CREATOR_ID.eq(creatorId.toString()))
+            .and(CONTENTS.DELETED_AT.isNull)
+            .and(CONTENT_METADATA.DELETED_AT.isNull)
+            .orderBy(CONTENTS.CREATED_AT.desc())
+            .fetch()
+            .map { record ->
+                val content = Content(
+                    id = UUID.fromString(record.getValue(CONTENTS.ID)),
+                    creatorId = UUID.fromString(record.getValue(CONTENTS.CREATOR_ID)),
+                    contentType = ContentType.valueOf(record.getValue(CONTENTS.CONTENT_TYPE)!!),
+                    url = record.getValue(CONTENTS.URL)!!,
+                    thumbnailUrl = record.getValue(CONTENTS.THUMBNAIL_URL)!!,
+                    duration = record.getValue(CONTENTS.DURATION),
+                    width = record.getValue(CONTENTS.WIDTH)!!,
+                    height = record.getValue(CONTENTS.HEIGHT)!!,
+                    status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
+                    createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
+                    createdBy = record.getValue(CONTENTS.CREATED_BY)?.let { UUID.fromString(it) },
+                    updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
+                    updatedBy = record.getValue(CONTENTS.UPDATED_BY)?.let { UUID.fromString(it) },
+                    deletedAt = record.getValue(CONTENTS.DELETED_AT)
+                )
+
+                val tagsJson = record.getValue(CONTENT_METADATA.TAGS)
+                val tags = if (tagsJson != null) {
+                    objectMapper.readValue(tagsJson.data(), Array<String>::class.java).toList()
+                } else {
+                    emptyList()
+                }
+
+                val metadata = ContentMetadata(
+                    id = record.getValue(CONTENT_METADATA.ID),
+                    contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
+                    title = record.getValue(CONTENT_METADATA.TITLE)!!,
+                    description = record.getValue(CONTENT_METADATA.DESCRIPTION),
+                    category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
+                    tags = tags,
+                    language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
+                    createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
+                    createdBy = record.getValue(CONTENT_METADATA.CREATED_BY)?.let { UUID.fromString(it) },
+                    updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
+                    updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY)?.let { UUID.fromString(it) },
+                    deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
+                )
+
+                Pair(content, metadata)
+            }
+    }
+
+    /**
      * 콘텐츠를 수정합니다.
      *
      * @param content 수정할 콘텐츠
@@ -223,7 +312,6 @@ class ContentRepositoryImpl(
                 .set(CONTENT_METADATA.DESCRIPTION, metadata.description)
                 .set(CONTENT_METADATA.CATEGORY, metadata.category.name)
                 .set(CONTENT_METADATA.TAGS, tagsJson)
-                .set(CONTENT_METADATA.DIFFICULTY_LEVEL, metadata.difficultyLevel?.name)
                 .set(CONTENT_METADATA.LANGUAGE, metadata.language)
                 .set(CONTENT_METADATA.CREATED_AT, metadata.createdAt)
                 .set(CONTENT_METADATA.CREATED_BY, metadata.createdBy?.toString())
@@ -284,7 +372,6 @@ class ContentRepositoryImpl(
                     description = record.getValue(CONTENT_METADATA.DESCRIPTION),
                     category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
                     tags = tags,
-                    difficultyLevel = record.getValue(CONTENT_METADATA.DIFFICULTY_LEVEL)?.let { DifficultyLevel.valueOf(it) },
                     language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                     createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
                     createdBy = record.getValue(CONTENT_METADATA.CREATED_BY)?.let { UUID.fromString(it) },
@@ -310,7 +397,6 @@ class ContentRepositoryImpl(
             .set(CONTENT_METADATA.DESCRIPTION, metadata.description)
             .set(CONTENT_METADATA.CATEGORY, metadata.category.name)
             .set(CONTENT_METADATA.TAGS, tagsJson)
-            .set(CONTENT_METADATA.DIFFICULTY_LEVEL, metadata.difficultyLevel?.name)
             .set(CONTENT_METADATA.LANGUAGE, metadata.language)
             .set(CONTENT_METADATA.UPDATED_AT, metadata.updatedAt)
             .set(CONTENT_METADATA.UPDATED_BY, metadata.updatedBy?.toString())

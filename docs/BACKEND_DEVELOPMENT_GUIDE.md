@@ -93,7 +93,7 @@ fun trackViewEvent(
     @RequestBody request: ViewEventRequest
 ): Mono<Void> {
     return principal
-        .map { UUID.fromString(it.name) }
+        .toUserId()
         .flatMap { userId ->
             analyticsService.trackViewEvent(userId, request)
         }

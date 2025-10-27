@@ -5,6 +5,7 @@ import me.onetwo.growsnap.domain.user.dto.FollowResponse
 import me.onetwo.growsnap.domain.user.dto.FollowStatsResponse
 import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.service.FollowService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -41,7 +42,7 @@ class FollowController(
         @PathVariable followingId: UUID
     ): Mono<ResponseEntity<FollowResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 Mono.fromCallable {
                     followService.follow(userId, followingId)
@@ -63,7 +64,7 @@ class FollowController(
         @PathVariable followingId: UUID
     ): Mono<ResponseEntity<Void>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 Mono.fromRunnable<Void> {
                     followService.unfollow(userId, followingId)
@@ -84,7 +85,7 @@ class FollowController(
         @PathVariable followingId: UUID
     ): Mono<ResponseEntity<FollowCheckResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 Mono.fromCallable {
                     followService.isFollowing(userId, followingId)
@@ -122,7 +123,7 @@ class FollowController(
         principal: Mono<Principal>
     ): Mono<ResponseEntity<FollowStatsResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 Mono.fromCallable {
                     val followerCount = followService.getFollowerCount(userId)

@@ -7,6 +7,7 @@ import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlResponse
 import me.onetwo.growsnap.domain.content.service.ContentService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -54,7 +55,7 @@ class ContentController(
         @Valid @RequestBody request: ContentUploadUrlRequest
     ): Mono<ResponseEntity<ContentUploadUrlResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 contentService.generateUploadUrl(userId, request)
             }
@@ -81,7 +82,7 @@ class ContentController(
         @Valid @RequestBody request: ContentCreateRequest
     ): Mono<ResponseEntity<ContentResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 contentService.createContent(userId, request)
             }
@@ -115,7 +116,7 @@ class ContentController(
         principal: Mono<Principal>
     ): Mono<ResponseEntity<List<ContentResponse>>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMapMany { userId ->
                 contentService.getContentsByCreator(userId)
             }
@@ -142,7 +143,7 @@ class ContentController(
         @Valid @RequestBody request: ContentUpdateRequest
     ): Mono<ResponseEntity<ContentResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 contentService.updateContent(userId, contentId, request)
             }
@@ -173,7 +174,7 @@ class ContentController(
         @PathVariable contentId: UUID
     ): Mono<ResponseEntity<Void>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 contentService.deleteContent(userId, contentId)
             }

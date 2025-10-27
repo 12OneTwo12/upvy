@@ -4,6 +4,7 @@ import me.onetwo.growsnap.domain.feed.dto.FeedResponse
 import me.onetwo.growsnap.domain.feed.service.FeedCacheService
 import me.onetwo.growsnap.domain.feed.service.FeedService
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -50,7 +51,7 @@ class FeedController(
         @RequestParam(required = false, defaultValue = "20") limit: Int
     ): Mono<ResponseEntity<FeedResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
                 feedService.getMainFeed(userId, pageRequest)
@@ -79,7 +80,7 @@ class FeedController(
         @RequestParam(required = false, defaultValue = "20") limit: Int
     ): Mono<ResponseEntity<FeedResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
                 feedService.getFollowingFeed(userId, pageRequest)
@@ -111,7 +112,7 @@ class FeedController(
         principal: Mono<Principal>
     ): Mono<Void> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 feedCacheService.clearUserCache(userId)
             }

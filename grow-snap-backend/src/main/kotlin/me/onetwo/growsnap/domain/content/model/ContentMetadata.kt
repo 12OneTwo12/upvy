@@ -14,7 +14,6 @@ import java.util.UUID
  * @property description 콘텐츠 설명
  * @property category 카테고리
  * @property tags 태그 목록
- * @property difficultyLevel 난이도
  * @property language 언어 코드 (ISO 639-1, 예: ko, en)
  * @property createdAt 생성 시각
  * @property createdBy 생성한 사용자 ID
@@ -29,7 +28,6 @@ data class ContentMetadata(
     val description: String? = null,
     val category: Category,
     val tags: List<String> = emptyList(),
-    val difficultyLevel: DifficultyLevel? = null,
     val language: String = "ko",
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val createdBy: UUID? = null,

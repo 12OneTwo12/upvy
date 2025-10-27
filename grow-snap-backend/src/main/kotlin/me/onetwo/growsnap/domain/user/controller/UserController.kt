@@ -2,6 +2,7 @@ package me.onetwo.growsnap.domain.user.controller
 
 import me.onetwo.growsnap.domain.user.dto.UserResponse
 import me.onetwo.growsnap.domain.user.service.UserService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -33,7 +34,7 @@ class UserController(
     @GetMapping("/me")
     fun getMe(principal: Mono<Principal>): Mono<ResponseEntity<UserResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .map { userId -> userService.getUserById(userId) }
             .map { user -> ResponseEntity.ok(UserResponse.from(user)) }
     }
@@ -66,7 +67,7 @@ class UserController(
     @DeleteMapping("/me")
     fun withdrawMe(principal: Mono<Principal>): Mono<ResponseEntity<Void>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .doOnNext { userId -> userService.withdrawUser(userId) }
             .map { ResponseEntity.noContent().build<Void>() }
     }

@@ -16,9 +16,19 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
+import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
+import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
+import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
+import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
+import org.springframework.restdocs.payload.PayloadDocumentation.requestFields
+import org.springframework.restdocs.payload.PayloadDocumentation.responseFields
+import org.springframework.restdocs.request.RequestDocumentation.parameterWithName
+import org.springframework.restdocs.request.RequestDocumentation.pathParameters
+import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
@@ -27,6 +37,7 @@ import java.util.UUID
 
 @WebFluxTest(ContentController::class)
 @Import(TestSecurityConfig::class)
+@AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 Controller 테스트")
 class ContentControllerTest {
@@ -73,6 +84,23 @@ class ContentControllerTest {
                 .jsonPath("$.contentId").isNotEmpty
                 .jsonPath("$.uploadUrl").isEqualTo(response.uploadUrl)
                 .jsonPath("$.expiresIn").isEqualTo(900)
+                .consumeWith(
+                    document(
+                        "content-generate-upload-url",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        requestFields(
+                            fieldWithPath("contentType").description("콘텐츠 타입 (VIDEO, PHOTO)"),
+                            fieldWithPath("fileName").description("파일 이름"),
+                            fieldWithPath("fileSize").description("파일 크기 (bytes)")
+                        ),
+                        responseFields(
+                            fieldWithPath("contentId").description("생성된 콘텐츠 ID"),
+                            fieldWithPath("uploadUrl").description("S3 Presigned Upload URL"),
+                            fieldWithPath("expiresIn").description("URL 만료 시간 (초)")
+                        )
+                    )
+                )
         }
     }
 
@@ -114,7 +142,6 @@ class ContentControllerTest {
                 description = request.description,
                 category = request.category,
                 tags = request.tags,
-                difficultyLevel = null,
                 language = request.language,
                 createdAt = LocalDateTime.now(),
                 updatedAt = LocalDateTime.now()
@@ -135,6 +162,43 @@ class ContentControllerTest {
                 .jsonPath("$.id").isEqualTo(contentId.toString())
                 .jsonPath("$.title").isEqualTo(request.title)
                 .jsonPath("$.category").isEqualTo("PROGRAMMING")
+                .consumeWith(
+                    document(
+                        "content-create",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        requestFields(
+                            fieldWithPath("contentId").description("업로드된 콘텐츠 ID"),
+                            fieldWithPath("title").description("콘텐츠 제목"),
+                            fieldWithPath("description").description("콘텐츠 설명").optional(),
+                            fieldWithPath("category").description("카테고리"),
+                            fieldWithPath("tags").description("태그 목록"),
+                            fieldWithPath("language").description("언어 코드 (ko, en)"),
+                            fieldWithPath("thumbnailUrl").description("썸네일 URL"),
+                            fieldWithPath("duration").description("동영상 길이 (초)").optional(),
+                            fieldWithPath("width").description("가로 해상도"),
+                            fieldWithPath("height").description("세로 해상도")
+                        ),
+                        responseFields(
+                            fieldWithPath("id").description("콘텐츠 ID"),
+                            fieldWithPath("creatorId").description("생성자 ID"),
+                            fieldWithPath("contentType").description("콘텐츠 타입"),
+                            fieldWithPath("url").description("콘텐츠 URL"),
+                            fieldWithPath("thumbnailUrl").description("썸네일 URL"),
+                            fieldWithPath("duration").description("동영상 길이 (초)").optional(),
+                            fieldWithPath("width").description("가로 해상도"),
+                            fieldWithPath("height").description("세로 해상도"),
+                            fieldWithPath("status").description("콘텐츠 상태"),
+                            fieldWithPath("title").description("제목"),
+                            fieldWithPath("description").description("설명").optional(),
+                            fieldWithPath("category").description("카테고리"),
+                            fieldWithPath("tags").description("태그 목록"),
+                            fieldWithPath("language").description("언어"),
+                            fieldWithPath("createdAt").description("생성 시각"),
+                            fieldWithPath("updatedAt").description("수정 시각")
+                        )
+                    )
+                )
         }
     }
 
@@ -162,7 +226,6 @@ class ContentControllerTest {
                 description = "Test Description",
                 category = Category.PROGRAMMING,
                 tags = listOf("test"),
-                difficultyLevel = null,
                 language = "ko",
                 createdAt = LocalDateTime.now(),
                 updatedAt = LocalDateTime.now()
@@ -173,12 +236,39 @@ class ContentControllerTest {
             // When & Then: API 호출 및 검증
             webTestClient
                 .get()
-                .uri("/api/v1/contents/$contentId")
+                .uri("/api/v1/contents/{contentId}", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
                 .jsonPath("$.id").isEqualTo(contentId.toString())
                 .jsonPath("$.title").isEqualTo("Test Video")
+                .consumeWith(
+                    document(
+                        "content-get",
+                        preprocessResponse(prettyPrint()),
+                        pathParameters(
+                            parameterWithName("contentId").description("콘텐츠 ID")
+                        ),
+                        responseFields(
+                            fieldWithPath("id").description("콘텐츠 ID"),
+                            fieldWithPath("creatorId").description("생성자 ID"),
+                            fieldWithPath("contentType").description("콘텐츠 타입"),
+                            fieldWithPath("url").description("콘텐츠 URL"),
+                            fieldWithPath("thumbnailUrl").description("썸네일 URL"),
+                            fieldWithPath("duration").description("동영상 길이 (초)").optional(),
+                            fieldWithPath("width").description("가로 해상도"),
+                            fieldWithPath("height").description("세로 해상도"),
+                            fieldWithPath("status").description("콘텐츠 상태"),
+                            fieldWithPath("title").description("제목"),
+                            fieldWithPath("description").description("설명").optional(),
+                            fieldWithPath("category").description("카테고리"),
+                            fieldWithPath("tags").description("태그 목록"),
+                            fieldWithPath("language").description("언어"),
+                            fieldWithPath("createdAt").description("생성 시각"),
+                            fieldWithPath("updatedAt").description("수정 시각")
+                        )
+                    )
+                )
         }
 
         @Test

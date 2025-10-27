@@ -6,6 +6,7 @@ import me.onetwo.growsnap.domain.user.dto.NicknameCheckResponse
 import me.onetwo.growsnap.domain.user.dto.UpdateProfileRequest
 import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.service.UserProfileService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
@@ -45,7 +46,7 @@ class UserProfileController(
         principal: Mono<Principal>
     ): Mono<ResponseEntity<UserProfileResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .map { userId ->
                 val profile = userProfileService.getProfileByUserId(userId)
                 ResponseEntity.ok(UserProfileResponse.from(profile))
@@ -97,7 +98,7 @@ class UserProfileController(
         @Valid @RequestBody request: UpdateProfileRequest
     ): Mono<ResponseEntity<UserProfileResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .map { userId ->
                 val profile = userProfileService.updateProfile(
                     userId = userId,
@@ -140,7 +141,7 @@ class UserProfileController(
         @RequestPart("file") filePart: Mono<FilePart>
     ): Mono<ResponseEntity<ImageUploadResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 filePart.flatMap { file ->
                     userProfileService.uploadProfileImage(userId, file)

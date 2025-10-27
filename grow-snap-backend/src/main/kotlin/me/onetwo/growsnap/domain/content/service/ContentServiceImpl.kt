@@ -86,14 +86,22 @@ class ContentServiceImpl(
             val contentId = UUID.fromString(request.contentId)
             val now = LocalDateTime.now()
 
-            // S3 URL 구성 (실제로는 업로드 시 생성된 key 사용)
+            // TODO: CRITICAL - S3 URL 하드코딩 문제
+            // - 버킷 이름과 경로가 하드코딩되어 있음
+            // - generateUploadUrl에서 생성한 실제 S3 객체 키와 다를 수 있음
+            // - 해결 방법: ContentUploadService에서 생성한 객체 키 정보를 Redis/DB에 저장하고,
+            //   createContent에서 조회하여 사용하도록 아키텍처 수정 필요
             val s3Url = "https://bucket.s3.amazonaws.com/contents/$contentId/${request.contentId}"
 
+            // TODO: CRITICAL - contentType 하드코딩 문제
+            // - VIDEO로 고정되어 있어 사진 콘텐츠를 생성할 수 없음
+            // - 해결 방법: ContentCreateRequest에 contentType 필드 추가하거나,
+            //   generateUploadUrl 시점에 저장한 contentType을 조회하여 사용
             // Content 엔티티 생성 및 저장
             val content = Content(
                 id = contentId,
                 creatorId = userId,
-                contentType = me.onetwo.growsnap.domain.content.model.ContentType.VIDEO,  // request에서 추론 필요
+                contentType = me.onetwo.growsnap.domain.content.model.ContentType.VIDEO,
                 url = s3Url,
                 thumbnailUrl = request.thumbnailUrl,
                 duration = request.duration,
@@ -116,7 +124,6 @@ class ContentServiceImpl(
                 description = request.description,
                 category = request.category,
                 tags = request.tags,
-                difficultyLevel = request.difficultyLevel,
                 language = request.language,
                 createdAt = now,
                 createdBy = userId,
@@ -143,7 +150,6 @@ class ContentServiceImpl(
                 description = metadata.description,
                 category = metadata.category,
                 tags = metadata.tags,
-                difficultyLevel = metadata.difficultyLevel,
                 language = metadata.language,
                 createdAt = content.createdAt,
                 updatedAt = content.updatedAt
@@ -187,7 +193,6 @@ class ContentServiceImpl(
                 description = metadata.description,
                 category = metadata.category,
                 tags = metadata.tags,
-                difficultyLevel = metadata.difficultyLevel,
                 language = metadata.language,
                 createdAt = content.createdAt,
                 updatedAt = content.updatedAt
@@ -205,33 +210,27 @@ class ContentServiceImpl(
         logger.info("Getting contents by creator: creatorId=$creatorId")
 
         return Mono.fromCallable {
-            contentRepository.findByCreatorId(creatorId)
-        }.flatMapMany { contents ->
-            Flux.fromIterable(contents).flatMap { content ->
-                Mono.fromCallable {
-                    val metadata = contentRepository.findMetadataByContentId(content.id!!)
-                        ?: throw NoSuchElementException("Content metadata not found: ${content.id}")
-
-                    ContentResponse(
-                        id = content.id.toString(),
-                        creatorId = content.creatorId.toString(),
-                        contentType = content.contentType,
-                        url = content.url,
-                        thumbnailUrl = content.thumbnailUrl,
-                        duration = content.duration,
-                        width = content.width,
-                        height = content.height,
-                        status = content.status,
-                        title = metadata.title,
-                        description = metadata.description,
-                        category = metadata.category,
-                        tags = metadata.tags,
-                        difficultyLevel = metadata.difficultyLevel,
-                        language = metadata.language,
-                        createdAt = content.createdAt,
-                        updatedAt = content.updatedAt
-                    )
-                }
+            contentRepository.findWithMetadataByCreatorId(creatorId)
+        }.flatMapMany { contentWithMetadataList ->
+            Flux.fromIterable(contentWithMetadataList).map { (content, metadata) ->
+                ContentResponse(
+                    id = content.id.toString(),
+                    creatorId = content.creatorId.toString(),
+                    contentType = content.contentType,
+                    url = content.url,
+                    thumbnailUrl = content.thumbnailUrl,
+                    duration = content.duration,
+                    width = content.width,
+                    height = content.height,
+                    status = content.status,
+                    title = metadata.title,
+                    description = metadata.description,
+                    category = metadata.category,
+                    tags = metadata.tags,
+                    language = metadata.language,
+                    createdAt = content.createdAt,
+                    updatedAt = content.updatedAt
+                )
             }
         }
     }
@@ -270,7 +269,6 @@ class ContentServiceImpl(
                 description = request.description ?: metadata.description,
                 category = request.category ?: metadata.category,
                 tags = request.tags ?: metadata.tags,
-                difficultyLevel = request.difficultyLevel ?: metadata.difficultyLevel,
                 language = request.language ?: metadata.language,
                 updatedAt = LocalDateTime.now(),
                 updatedBy = userId
@@ -297,7 +295,6 @@ class ContentServiceImpl(
                 description = metadata.description,
                 category = metadata.category,
                 tags = metadata.tags,
-                difficultyLevel = metadata.difficultyLevel,
                 language = metadata.language,
                 createdAt = content.createdAt,
                 updatedAt = metadata.updatedAt

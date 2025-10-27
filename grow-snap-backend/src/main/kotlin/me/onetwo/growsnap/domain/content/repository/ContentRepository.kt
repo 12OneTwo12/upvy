@@ -36,6 +36,16 @@ interface ContentRepository {
     fun findByCreatorId(creatorId: UUID): List<Content>
 
     /**
+     * 크리에이터의 콘텐츠와 메타데이터를 한 번에 조회합니다.
+     *
+     * JOIN을 사용하여 N+1 쿼리 문제를 방지합니다.
+     *
+     * @param creatorId 크리에이터 ID
+     * @return 콘텐츠와 메타데이터 쌍의 목록
+     */
+    fun findWithMetadataByCreatorId(creatorId: UUID): List<Pair<Content, ContentMetadata>>
+
+    /**
      * 콘텐츠를 수정합니다.
      *
      * @param content 수정할 콘텐츠
