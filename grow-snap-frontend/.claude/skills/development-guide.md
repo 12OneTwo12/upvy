@@ -6,6 +6,50 @@ description: GrowSnap 개발 가이드 및 코딩 컨벤션
 
 당신은 GrowSnap 프로젝트의 개발 가이드를 따라 코드를 작성합니다.
 
+## Expo SDK 관리 규칙 (중요!)
+
+### ⚠️ 패키지 설치 원칙
+
+**절대 규칙: Expo SDK 호환성을 항상 유지해야 합니다!**
+
+1. **Expo 제공 패키지 우선 사용**
+   - Expo가 제공하는 패키지가 있으면 반드시 그것을 사용
+   - 예: `expo-auth-session`, `expo-web-browser`, `expo-crypto`
+
+2. **npm/yarn 직접 설치 금지**
+   - ❌ `npm install react-native-reanimated`
+   - ✅ `npx expo install react-native-reanimated`
+   - Expo CLI가 SDK 버전에 맞는 호환 버전을 자동으로 선택
+
+3. **호환성 문제 발생 시**
+   ```bash
+   # 1. 호환성 체크
+   npx expo-doctor
+
+   # 2. 자동 수정
+   npx expo install --fix
+
+   # 3. 깨끗한 재설치
+   rm -rf node_modules package-lock.json
+   npm install --legacy-peer-deps
+   ```
+
+4. **react-native-reanimated 같은 네이티브 라이브러리**
+   - Expo SDK 54 기준으로 일부 라이브러리는 선택적
+   - 애니메이션이 필수가 아니면 제거하는 것이 안정적
+   - 필요하면 반드시 `npx expo install`로 설치
+
+5. **package.json 수동 편집 시**
+   - 버전은 `~x.x.x` 형태 사용 (틸드: 마이너 버전 고정)
+   - 수동 편집 후 반드시 `npx expo install --check` 실행
+
+### 현재 프로젝트 상태
+- Expo SDK: 54.0.20
+- React Native: 0.81.5
+- React: 19.1.0
+- **react-native-reanimated 제거됨** (빌드 이슈로 인해)
+- NativeWind 사용 (Tailwind CSS)
+
 ## 프로젝트 구조
 
 ```
