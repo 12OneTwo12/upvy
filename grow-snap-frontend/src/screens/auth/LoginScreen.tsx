@@ -69,16 +69,16 @@ export default function LoginScreen() {
           {/* 가치 제안 */}
           <View style={styles.valuePropsContainer}>
             <ValueProp
+              title="가볍게 성장하는 쇼츠"
+              description="나도 모르는 사이 성장해 있는 숏폼"
+            />
+            <ValueProp
               title="매일 성장하는 습관"
-              description="짧지만 깊이 있는 콘텐츠로 매일 배우는 즐거움"
+              description="짧고 깊이있는 콘텐츠로 매일 배우는 즐거움"
             />
             <ValueProp
               title="나만의 학습 여정"
               description="관심사에 맞춘 개인화된 추천"
-            />
-            <ValueProp
-              title="전문가의 인사이트"
-              description="검증된 크리에이터의 양질의 콘텐츠"
             />
           </View>
         </View>

@@ -3,7 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useAuthStore } from '@/stores/authStore';
 import { getErrorMessage, logError } from '@/utils/errorHandler';
-import { API_URL } from '@/constants/api';
+import { API_BASE_URL } from '@/constants/api';
 
 /**
  * Google OAuth Hook (Custom Tabs 방식)
@@ -92,7 +92,7 @@ export const useGoogleAuth = () => {
       const state = `mobile:${Math.random().toString(36).substring(7)}`;
 
       // 백엔드 OAuth URL
-      const authUrl = `${API_URL}/auth/oauth2/authorization/google?state=${state}`;
+      const authUrl = `${API_BASE_URL}/auth/oauth2/authorization/google?state=${state}`;
 
       console.log('[OAuth] Opening Custom Tabs:', authUrl);
 
