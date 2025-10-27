@@ -39,7 +39,7 @@ data class ContentUploadUrlRequest(
  *
  * S3 Presigned URL 정보를 반환합니다.
  *
- * @property contentId 콘텐츠 ID
+ * @property contentId 콘텐츠 ID (upload token 역할)
  * @property uploadUrl S3 업로드 URL
  * @property expiresIn URL 유효기간 (초)
  */
@@ -54,7 +54,7 @@ data class ContentUploadUrlResponse(
  *
  * S3 업로드 완료 후 콘텐츠 메타데이터를 등록할 때 사용합니다.
  *
- * @property contentId 콘텐츠 ID (업로드 URL 요청 시 받은 ID)
+ * @property contentId 콘텐츠 ID (업로드 URL 요청 시 받은 upload token)
  * @property title 제목
  * @property description 설명
  * @property category 카테고리

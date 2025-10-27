@@ -10,6 +10,7 @@ import me.onetwo.growsnap.domain.content.model.ContentMetadata
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
@@ -28,7 +29,11 @@ import java.util.UUID
 @Service
 class ContentServiceImpl(
     private val contentUploadService: ContentUploadService,
-    private val contentRepository: ContentRepository
+    private val contentRepository: ContentRepository,
+    private val uploadSessionRepository: me.onetwo.growsnap.domain.content.repository.UploadSessionRepository,
+    private val s3Client: software.amazon.awssdk.services.s3.S3Client,
+    @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
+    @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
 
     private val logger = LoggerFactory.getLogger(ContentServiceImpl::class.java)
@@ -86,22 +91,31 @@ class ContentServiceImpl(
             val contentId = UUID.fromString(request.contentId)
             val now = LocalDateTime.now()
 
-            // TODO: CRITICAL - S3 URL 하드코딩 문제
-            // - 버킷 이름과 경로가 하드코딩되어 있음
-            // - generateUploadUrl에서 생성한 실제 S3 객체 키와 다를 수 있음
-            // - 해결 방법: ContentUploadService에서 생성한 객체 키 정보를 Redis/DB에 저장하고,
-            //   createContent에서 조회하여 사용하도록 아키텍처 수정 필요
-            val s3Url = "https://bucket.s3.amazonaws.com/contents/$contentId/${request.contentId}"
+            // 1. Redis에서 업로드 세션 조회
+            val uploadSession = uploadSessionRepository.findById(request.contentId).orElseThrow {
+                IllegalArgumentException("Invalid or expired upload token. Please generate a new upload URL.")
+            }
 
-            // TODO: CRITICAL - contentType 하드코딩 문제
-            // - VIDEO로 고정되어 있어 사진 콘텐츠를 생성할 수 없음
-            // - 해결 방법: ContentCreateRequest에 contentType 필드 추가하거나,
-            //   generateUploadUrl 시점에 저장한 contentType을 조회하여 사용
-            // Content 엔티티 생성 및 저장
+            // 2. 권한 확인 - 업로드 요청한 사용자와 콘텐츠 생성 요청한 사용자가 같은지 확인
+            if (uploadSession.userId != userId.toString()) {
+                throw IllegalAccessException("You are not authorized to create content with this upload token.")
+            }
+
+            // 3. S3에 파일이 실제로 존재하는지 확인
+            if (!checkS3ObjectExists(uploadSession.s3Key)) {
+                throw IllegalStateException("File not found in S3. Please upload the file first.")
+            }
+
+            logger.info("S3 file verified: s3Key=${uploadSession.s3Key}")
+
+            // 4. S3 URL 생성
+            val s3Url = "https://$bucketName.s3.$region.amazonaws.com/${uploadSession.s3Key}"
+
+            // 5. Content 엔티티 생성 및 저장
             val content = Content(
                 id = contentId,
                 creatorId = userId,
-                contentType = me.onetwo.growsnap.domain.content.model.ContentType.VIDEO,
+                contentType = uploadSession.contentType,
                 url = s3Url,
                 thumbnailUrl = request.thumbnailUrl,
                 duration = request.duration,
@@ -133,6 +147,10 @@ class ContentServiceImpl(
 
             val savedMetadata = contentRepository.saveMetadata(metadata)
                 ?: throw IllegalStateException("Failed to save content metadata")
+
+            // 6. Redis에서 업로드 세션 삭제 (1회성 토큰)
+            uploadSessionRepository.deleteById(request.contentId)
+            logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
 
             Pair(savedContent, savedMetadata)
         }.map { (content, metadata) ->
@@ -338,6 +356,28 @@ class ContentServiceImpl(
             logger.info("Content deleted successfully: contentId=$contentId")
         }.doOnError { error ->
             logger.error("Failed to delete content: userId=$userId, contentId=$contentId", error)
+        }
+    }
+
+    /**
+     * S3 객체 존재 확인
+     *
+     * @param s3Key S3 object key
+     * @return 파일이 존재하면 true, 아니면 false
+     */
+    private fun checkS3ObjectExists(s3Key: String): Boolean {
+        return try {
+            s3Client.headObject {
+                it.bucket(bucketName)
+                it.key(s3Key)
+            }
+            true
+        } catch (e: software.amazon.awssdk.services.s3.model.NoSuchKeyException) {
+            logger.warn("S3 object not found: s3Key=$s3Key")
+            false
+        } catch (e: Exception) {
+            logger.error("Failed to check S3 object existence: s3Key=$s3Key", e)
+            false
         }
     }
 }

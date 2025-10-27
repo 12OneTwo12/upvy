@@ -1,6 +1,8 @@
 package me.onetwo.growsnap.domain.content.service
 
 import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.content.model.UploadSession
+import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -23,6 +25,7 @@ import java.util.UUID
 @Service
 class ContentUploadServiceImpl(
     private val s3Presigner: S3Presigner,
+    private val uploadSessionRepository: UploadSessionRepository,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String
 ) : ContentUploadService {
 
@@ -76,6 +79,19 @@ class ContentUploadServiceImpl(
             val presignedUrl = createPresignedUrl(key, mimeType, fileSize)
 
             logger.info("Presigned URL generated successfully: contentId=$contentId, key=$key")
+
+            // Redis에 업로드 세션 저장 (TTL 15분)
+            val uploadSession = UploadSession(
+                contentId = contentId.toString(),
+                userId = userId.toString(),
+                s3Key = key,
+                contentType = contentType,
+                fileName = fileName,
+                fileSize = fileSize
+            )
+            uploadSessionRepository.save(uploadSession)
+
+            logger.info("Upload session saved to Redis: contentId=$contentId")
 
             PresignedUrlInfo(
                 contentId = contentId,

@@ -12,15 +12,22 @@ import me.onetwo.growsnap.domain.content.model.Content
 import me.onetwo.growsnap.domain.content.model.ContentMetadata
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.content.model.UploadSession
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
+import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse
 import java.time.LocalDateTime
+import java.util.Optional
 import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
@@ -33,8 +40,25 @@ class ContentServiceImplTest {
     @MockK
     private lateinit var contentRepository: ContentRepository
 
-    @InjectMockKs
+    @MockK
+    private lateinit var uploadSessionRepository: UploadSessionRepository
+
+    @MockK
+    private lateinit var s3Client: S3Client
+
     private lateinit var contentService: ContentServiceImpl
+
+    @BeforeEach
+    fun setUp() {
+        contentService = ContentServiceImpl(
+            contentUploadService = contentUploadService,
+            contentRepository = contentRepository,
+            uploadSessionRepository = uploadSessionRepository,
+            s3Client = s3Client,
+            bucketName = "test-bucket",
+            region = "ap-northeast-2"
+        )
+    }
 
     @Nested
     @DisplayName("generateUploadUrl - Presigned URL 생성")
@@ -89,6 +113,8 @@ class ContentServiceImplTest {
             // Given: 테스트 데이터
             val userId = UUID.randomUUID()
             val contentId = UUID.randomUUID()
+            val s3Key = "contents/VIDEO/$userId/$contentId/test_123456.mp4"
+
             val request = ContentCreateRequest(
                 contentId = contentId.toString(),
                 title = "Test Video",
@@ -102,11 +128,20 @@ class ContentServiceImplTest {
                 height = 1080
             )
 
+            val uploadSession = UploadSession(
+                contentId = contentId.toString(),
+                userId = userId.toString(),
+                s3Key = s3Key,
+                contentType = ContentType.VIDEO,
+                fileName = "test.mp4",
+                fileSize = 1000000L
+            )
+
             val savedContent = Content(
                 id = contentId,
                 creatorId = userId,
                 contentType = ContentType.VIDEO,
-                url = "https://s3.amazonaws.com/video.mp4",
+                url = "https://test-bucket.s3.ap-northeast-2.amazonaws.com/$s3Key",
                 thumbnailUrl = request.thumbnailUrl,
                 duration = request.duration,
                 width = request.width,
@@ -132,8 +167,18 @@ class ContentServiceImplTest {
                 updatedBy = userId
             )
 
+            // Mock Redis: 업로드 세션 조회
+            every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
+
+            // Mock S3: 파일 존재 확인
+            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
+
+            // Mock Repository: 저장
             every { contentRepository.save(any()) } returns savedContent
             every { contentRepository.saveMetadata(any()) } returns savedMetadata
+
+            // Mock Redis: 세션 삭제
+            every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
 
             // When: 메서드 실행
             val result = contentService.createContent(userId, request)
@@ -144,11 +189,15 @@ class ContentServiceImplTest {
                     assertThat(response.id).isEqualTo(contentId.toString())
                     assertThat(response.title).isEqualTo(request.title)
                     assertThat(response.category).isEqualTo(request.category)
+                    assertThat(response.contentType).isEqualTo(ContentType.VIDEO)
                 }
                 .verifyComplete()
 
+            verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
+            verify(exactly = 1) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
+            verify(exactly = 1) { uploadSessionRepository.deleteById(contentId.toString()) }
         }
     }
 

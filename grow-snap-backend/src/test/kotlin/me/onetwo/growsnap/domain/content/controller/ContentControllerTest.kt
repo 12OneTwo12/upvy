@@ -95,7 +95,7 @@ class ContentControllerTest {
                             fieldWithPath("fileSize").description("파일 크기 (bytes)")
                         ),
                         responseFields(
-                            fieldWithPath("contentId").description("생성된 콘텐츠 ID"),
+                            fieldWithPath("contentId").description("생성된 콘텐츠 ID (upload token)"),
                             fieldWithPath("uploadUrl").description("S3 Presigned Upload URL"),
                             fieldWithPath("expiresIn").description("URL 만료 시간 (초)")
                         )
@@ -168,7 +168,7 @@ class ContentControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         requestFields(
-                            fieldWithPath("contentId").description("업로드된 콘텐츠 ID"),
+                            fieldWithPath("contentId").description("업로드된 콘텐츠 ID (upload token)"),
                             fieldWithPath("title").description("콘텐츠 제목"),
                             fieldWithPath("description").description("콘텐츠 설명").optional(),
                             fieldWithPath("category").description("카테고리"),

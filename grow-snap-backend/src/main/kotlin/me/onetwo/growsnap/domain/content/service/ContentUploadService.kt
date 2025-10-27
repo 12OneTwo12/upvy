@@ -40,7 +40,7 @@ interface ContentUploadService {
 /**
  * Presigned URL 정보
  *
- * @property contentId 콘텐츠 고유 ID
+ * @property contentId 콘텐츠 고유 ID (upload token 역할)
  * @property uploadUrl S3 Presigned Upload URL
  * @property expiresIn URL 유효기간 (초)
  */

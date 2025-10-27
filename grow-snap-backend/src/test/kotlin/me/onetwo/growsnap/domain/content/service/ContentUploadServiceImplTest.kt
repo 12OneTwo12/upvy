@@ -6,6 +6,8 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.content.model.UploadSession
+import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -31,14 +33,21 @@ class ContentUploadServiceImplTest {
     @MockK
     private lateinit var presignedPutObjectRequest: PresignedPutObjectRequest
 
+    @MockK
+    private lateinit var uploadSessionRepository: UploadSessionRepository
+
     private lateinit var contentUploadService: ContentUploadServiceImpl
 
     @BeforeEach
     fun setUp() {
         contentUploadService = ContentUploadServiceImpl(
             s3Presigner = s3Presigner,
+            uploadSessionRepository = uploadSessionRepository,
             bucketName = "test-bucket"
         )
+
+        // Mock Redis save operation
+        every { uploadSessionRepository.save(any<UploadSession>()) } answers { firstArg() }
     }
 
     @Nested
