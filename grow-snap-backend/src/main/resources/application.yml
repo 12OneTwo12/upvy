@@ -56,6 +56,7 @@ spring:
 # Application Configuration
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  mobile-deeplink-url: ${MOBILE_DEEPLINK_URL:growsnap://oauth/callback}
   upload:
     max-file-size: 5242880  # 5MB (바이트)
     allowed-image-types:

@@ -14,20 +14,25 @@ import java.net.URI
  * OAuth2 인증 실패 핸들러
  *
  * OAuth2 로그인 실패 시 에러 정보를 포함하여
- * 프론트엔드로 리다이렉트합니다.
+ * 프론트엔드(웹) 또는 모바일 딥링크로 리다이렉트합니다.
  *
- * @property frontendUrl 프론트엔드 URL
+ * @property frontendUrl 프론트엔드 URL (웹)
+ * @property mobileDeeplinkUrl 모바일 딥링크 URL
  */
 @Component
 class OAuth2AuthenticationFailureHandler(
     @Value("\${app.frontend-url:http://localhost:3000}")
-    private val frontendUrl: String
+    private val frontendUrl: String,
+    @Value("\${app.mobile-deeplink-url:growsnap://oauth/callback}")
+    private val mobileDeeplinkUrl: String
 ) : ServerAuthenticationFailureHandler {
 
     /**
      * OAuth2 인증 실패 시 처리
      *
-     * 에러 정보를 쿼리 파라미터로 포함하여 프론트엔드로 리다이렉트합니다.
+     * 1. state 파라미터로 플랫폼 구분 (웹 vs 모바일)
+     * 2. 에러 정보를 쿼리 파라미터로 포함
+     * 3. 플랫폼에 따라 웹 프론트엔드 또는 모바일 딥링크로 리다이렉트
      *
      * @param webFilterExchange WebFilterExchange
      * @param exception 인증 예외
@@ -37,14 +42,29 @@ class OAuth2AuthenticationFailureHandler(
         webFilterExchange: WebFilterExchange,
         exception: AuthenticationException
     ): Mono<Void> {
-        // 프론트엔드 에러 페이지로 리다이렉트
-        val redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl)
-            .path("/auth/oauth2/error")
-            .queryParam("error", exception.message ?: "인증에 실패했습니다")
-            .build()
-            .toUriString()
-
         val exchange = webFilterExchange.exchange
+        val errorMessage = exception.message ?: "인증에 실패했습니다"
+
+        // state 파라미터로 플랫폼 구분
+        val state = exchange.request.queryParams.getFirst("state") ?: ""
+        val isMobile = state.startsWith("mobile:")
+
+        // 플랫폼에 따라 리다이렉트 URL 생성
+        val redirectUrl = if (isMobile) {
+            // 모바일: 딥링크로 리다이렉트
+            UriComponentsBuilder.fromUriString(mobileDeeplinkUrl)
+                .queryParam("error", errorMessage)
+                .build()
+                .toUriString()
+        } else {
+            // 웹: 기존 프론트엔드 에러 페이지로 리다이렉트
+            UriComponentsBuilder.fromUriString(frontendUrl)
+                .path("/auth/oauth2/error")
+                .queryParam("error", errorMessage)
+                .build()
+                .toUriString()
+        }
+
         exchange.response.statusCode = HttpStatus.FOUND
         exchange.response.headers.location = URI.create(redirectUrl)
 
