@@ -5,6 +5,9 @@ import me.onetwo.growsnap.domain.content.dto.ContentResponse
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlResponse
+import me.onetwo.growsnap.domain.content.exception.FileNotUploadedException
+import me.onetwo.growsnap.domain.content.exception.UploadSessionNotFoundException
+import me.onetwo.growsnap.domain.content.exception.UploadSessionUnauthorizedException
 import me.onetwo.growsnap.domain.content.model.Content
 import me.onetwo.growsnap.domain.content.model.ContentMetadata
 import me.onetwo.growsnap.domain.content.model.ContentStatus
@@ -93,17 +96,17 @@ class ContentServiceImpl(
 
             // 1. Redis에서 업로드 세션 조회
             val uploadSession = uploadSessionRepository.findById(request.contentId).orElseThrow {
-                IllegalArgumentException("Invalid or expired upload token. Please generate a new upload URL.")
+                UploadSessionNotFoundException(request.contentId)
             }
 
             // 2. 권한 확인 - 업로드 요청한 사용자와 콘텐츠 생성 요청한 사용자가 같은지 확인
             if (uploadSession.userId != userId.toString()) {
-                throw IllegalAccessException("You are not authorized to create content with this upload token.")
+                throw UploadSessionUnauthorizedException(request.contentId)
             }
 
             // 3. S3에 파일이 실제로 존재하는지 확인
             if (!checkS3ObjectExists(uploadSession.s3Key)) {
-                throw IllegalStateException("File not found in S3. Please upload the file first.")
+                throw FileNotUploadedException(request.contentId)
             }
 
             logger.info("S3 file verified: s3Key=${uploadSession.s3Key}")

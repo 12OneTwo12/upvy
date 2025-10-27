@@ -7,6 +7,9 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
+import me.onetwo.growsnap.domain.content.exception.FileNotUploadedException
+import me.onetwo.growsnap.domain.content.exception.UploadSessionNotFoundException
+import me.onetwo.growsnap.domain.content.exception.UploadSessionUnauthorizedException
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.Content
 import me.onetwo.growsnap.domain.content.model.ContentMetadata
@@ -198,6 +201,145 @@ class ContentServiceImplTest {
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
             verify(exactly = 1) { uploadSessionRepository.deleteById(contentId.toString()) }
+        }
+
+        @Test
+        @DisplayName("업로드 세션이 존재하지 않으면, UploadSessionNotFoundException이 발생한다")
+        fun createContent_WhenUploadSessionNotFound_ThrowsUploadSessionNotFoundException() {
+            // Given: 만료되거나 존재하지 않는 업로드 토큰
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+
+            val request = ContentCreateRequest(
+                contentId = contentId.toString(),
+                title = "Test Video",
+                description = "Test Description",
+                category = Category.PROGRAMMING,
+                tags = listOf("test", "video"),
+                language = "ko",
+                thumbnailUrl = "https://s3.amazonaws.com/thumbnail.jpg",
+                duration = 60,
+                width = 1920,
+                height = 1080
+            )
+
+            // Mock Redis: 세션 없음 (만료됨)
+            every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.empty()
+
+            // When & Then: 예외 발생
+            val result = contentService.createContent(userId, request)
+
+            StepVerifier.create(result)
+                .expectErrorMatches { error ->
+                    error is UploadSessionNotFoundException &&
+                        error.message!!.contains("Upload session not found or expired")
+                }
+                .verify()
+
+            verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
+            verify(exactly = 0) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+        }
+
+        @Test
+        @DisplayName("업로드 토큰의 소유자와 요청자가 다르면, UploadSessionUnauthorizedException이 발생한다")
+        fun createContent_WhenUserIdMismatch_ThrowsUploadSessionUnauthorizedException() {
+            // Given: 다른 사용자의 업로드 토큰
+            val tokenOwnerId = UUID.randomUUID()
+            val requestUserId = UUID.randomUUID()  // 다른 사용자
+            val contentId = UUID.randomUUID()
+            val s3Key = "contents/VIDEO/$tokenOwnerId/$contentId/test_123456.mp4"
+
+            val request = ContentCreateRequest(
+                contentId = contentId.toString(),
+                title = "Test Video",
+                description = "Test Description",
+                category = Category.PROGRAMMING,
+                tags = listOf("test", "video"),
+                language = "ko",
+                thumbnailUrl = "https://s3.amazonaws.com/thumbnail.jpg",
+                duration = 60,
+                width = 1920,
+                height = 1080
+            )
+
+            val uploadSession = UploadSession(
+                contentId = contentId.toString(),
+                userId = tokenOwnerId.toString(),  // 토큰 소유자
+                s3Key = s3Key,
+                contentType = ContentType.VIDEO,
+                fileName = "test.mp4",
+                fileSize = 1000000L
+            )
+
+            // Mock Redis: 다른 사용자의 세션
+            every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
+
+            // When & Then: 권한 예외 발생
+            val result = contentService.createContent(requestUserId, request)  // 다른 사용자가 요청
+
+            StepVerifier.create(result)
+                .expectErrorMatches { error ->
+                    error is UploadSessionUnauthorizedException &&
+                        error.message!!.contains("not authorized to use this upload token")
+                }
+                .verify()
+
+            verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
+            verify(exactly = 0) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+        }
+
+        @Test
+        @DisplayName("S3에 파일이 존재하지 않으면, FileNotUploadedException이 발생한다")
+        fun createContent_WhenS3FileNotExists_ThrowsFileNotUploadedException() {
+            // Given: 파일 업로드를 완료하지 않은 경우
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+            val s3Key = "contents/VIDEO/$userId/$contentId/test_123456.mp4"
+
+            val request = ContentCreateRequest(
+                contentId = contentId.toString(),
+                title = "Test Video",
+                description = "Test Description",
+                category = Category.PROGRAMMING,
+                tags = listOf("test", "video"),
+                language = "ko",
+                thumbnailUrl = "https://s3.amazonaws.com/thumbnail.jpg",
+                duration = 60,
+                width = 1920,
+                height = 1080
+            )
+
+            val uploadSession = UploadSession(
+                contentId = contentId.toString(),
+                userId = userId.toString(),
+                s3Key = s3Key,
+                contentType = ContentType.VIDEO,
+                fileName = "test.mp4",
+                fileSize = 1000000L
+            )
+
+            // Mock Redis: 세션 존재
+            every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
+
+            // Mock S3: 파일 없음 (NoSuchKeyException)
+            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } throws
+                software.amazon.awssdk.services.s3.model.NoSuchKeyException.builder()
+                    .message("The specified key does not exist.")
+                    .build()
+
+            // When & Then: 예외 발생
+            val result = contentService.createContent(userId, request)
+
+            StepVerifier.create(result)
+                .expectErrorMatches { error ->
+                    error is FileNotUploadedException &&
+                        error.message!!.contains("File not found in S3")
+                }
+                .verify()
+
+            verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
+            verify(exactly = 1) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 0) { contentRepository.save(any()) }
         }
     }
 
