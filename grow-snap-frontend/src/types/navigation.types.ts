@@ -5,6 +5,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
  */
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
+  ProfileSetup: undefined;
   Main: NavigatorScreenParams<MainTabParamList>;
 };
 

@@ -7,7 +7,7 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 /**
  * Auth Navigator
- * 로그인 화면만 포함합니다.
+ * 로그인 화면을 포함합니다.
  */
 export default function AuthNavigator() {
   return (
