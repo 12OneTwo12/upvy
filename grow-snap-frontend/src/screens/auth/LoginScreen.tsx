@@ -8,14 +8,10 @@ import {
   SafeAreaView,
   Image,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '@/types/navigation.types';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAuthStore } from '@/stores/authStore';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
-
-export default function LoginScreen({ navigation }: Props) {
+export default function LoginScreen() {
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
   const { checkAuth } = useAuthStore();
 
@@ -61,7 +57,7 @@ export default function LoginScreen({ navigation }: Props) {
           {/* Google 로그인 버튼 */}
           <TouchableOpacity
             className="w-full bg-white border-2 border-gray-300 rounded-xl py-4 flex-row items-center justify-center mb-4"
-            onPress={() => handleGoogleLogin(() => navigation.navigate('ProfileSetup'))}
+            onPress={handleGoogleLogin}
             disabled={isLoading || !isReady}
           >
             {isLoading ? (

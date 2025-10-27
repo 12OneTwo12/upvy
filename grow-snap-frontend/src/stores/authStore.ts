@@ -11,7 +11,7 @@ import {
   removeItem,
   STORAGE_KEYS,
 } from '@/utils/storage';
-import { getCurrentUser } from '@/api/auth.api';
+import { getCurrentUser, getMyProfile, logout as apiLogout } from '@/api/auth.api';
 
 interface AuthState {
   // State
@@ -76,6 +76,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // Logout
   logout: async () => {
     try {
+      // 백엔드 로그아웃 API 호출 (리프레시 토큰 무효화)
+      try {
+        await apiLogout();
+      } catch (error) {
+        // 백엔드 로그아웃 실패해도 클라이언트 정리는 계속 진행
+        console.warn('Backend logout failed:', error);
+      }
+
       // Remove tokens
       await removeTokens();
       await removeItem(STORAGE_KEYS.USER_INFO);
@@ -109,14 +117,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Verify token by fetching current user
       try {
         const user = await getCurrentUser();
+
+        // 프로필 조회 (프로필이 없는 경우 404 에러 발생)
+        let profile: UserProfile | null = null;
+        try {
+          profile = await getMyProfile();
+        } catch (profileError) {
+          // 프로필이 없는 경우 (첫 로그인)
+          console.log('No profile found, user needs to create profile');
+        }
+
         set({
           user,
+          profile,
           isAuthenticated: true,
           isLoading: false,
         });
-
-        // Fetch profile if needed
-        // TODO: Fetch user profile
       } catch (error) {
         // Token expired or invalid
         await get().logout();

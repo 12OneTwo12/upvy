@@ -26,9 +26,9 @@ export const useGoogleAuth = () => {
 
   /**
    * Google 로그인 처리
-   * @param onNeedProfile 프로필이 없을 때 호출되는 콜백
+   * 네비게이션은 RootNavigator에서 상태 기반으로 처리됩니다.
    */
-  const handleGoogleLogin = async (onNeedProfile?: () => void) => {
+  const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -45,18 +45,13 @@ export const useGoogleAuth = () => {
         // 백엔드 API 호출
         const loginResponse = await googleLogin(authentication.accessToken);
 
-        // Store에 저장
+        // Store에 저장 (RootNavigator가 상태를 보고 화면 전환)
         await login(
           loginResponse.accessToken,
           loginResponse.refreshToken,
           loginResponse.user,
           loginResponse.profile
         );
-
-        // 프로필이 없으면 프로필 설정 화면으로 이동
-        if (!loginResponse.profile && onNeedProfile) {
-          onNeedProfile();
-        }
       } else if (result.type === 'error') {
         throw new Error('Google login failed');
       }

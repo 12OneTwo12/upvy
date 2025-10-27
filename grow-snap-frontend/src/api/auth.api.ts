@@ -30,7 +30,7 @@ export const refreshAccessToken = async (
 ): Promise<RefreshTokenResponse> => {
   const response = await apiClient.post<RefreshTokenResponse>(
     API_ENDPOINTS.AUTH.REFRESH,
-    { refreshToken } as RefreshTokenRequest
+    { refreshToken }
   );
   return response.data;
 };
@@ -51,12 +51,20 @@ export const getCurrentUser = async (): Promise<User> => {
 };
 
 /**
+ * 내 프로필 조회
+ */
+export const getMyProfile = async (): Promise<UserProfile> => {
+  const response = await apiClient.get<UserProfile>(API_ENDPOINTS.PROFILE.ME);
+  return response.data;
+};
+
+/**
  * 닉네임 중복 확인
  */
 export const checkNickname = async (nickname: string): Promise<CheckNicknameResponse> => {
   const response = await apiClient.post<CheckNicknameResponse>(
     API_ENDPOINTS.PROFILE.CHECK_NICKNAME,
-    { nickname } as CheckNicknameRequest
+    { nickname }
   );
   return response.data;
 };
@@ -79,6 +87,7 @@ export const createProfile = async (
  */
 export const uploadProfileImage = async (imageUri: string): Promise<{ imageUrl: string }> => {
   const formData = new FormData();
+  // React Native의 FormData는 웹 표준과 다른 파일 객체 형식을 사용하므로 타입 단언이 필요합니다.
   formData.append('image', {
     uri: imageUri,
     type: 'image/jpeg',
