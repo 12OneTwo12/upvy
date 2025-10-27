@@ -29,6 +29,60 @@ replay_pid*
 .idea
 .DS_Store
 
+### Frontend (React Native + Expo) ###
+grow-snap-frontend/node_modules/
+grow-snap-frontend/.expo/
+grow-snap-frontend/.expo-shared/
+grow-snap-frontend/dist/
+grow-snap-frontend/npm-debug.*
+grow-snap-frontend/*.jks
+grow-snap-frontend/*.p8
+grow-snap-frontend/*.p12
+grow-snap-frontend/*.key
+grow-snap-frontend/*.mobileprovision
+grow-snap-frontend/*.orig.*
+grow-snap-frontend/web-build/
+grow-snap-frontend/coverage/
+grow-snap-frontend/.env
+grow-snap-frontend/.env.local
+grow-snap-frontend/.env.*.local
+
+### iOS ###
+grow-snap-frontend/ios/Pods/
+grow-snap-frontend/ios/build/
+grow-snap-frontend/ios/.xcode.env.local
+
+### Android ###
+grow-snap-frontend/android/build/
+grow-snap-frontend/android/app/build/
+grow-snap-frontend/android/.gradle/
+grow-snap-frontend/android/local.properties
+grow-snap-frontend/android/.cxx/
+grow-snap-frontend/android/app/release/
+
+### macOS ###
+grow-snap-frontend/*.DS_Store
+grow-snap-frontend/.AppleDouble
+grow-snap-frontend/.LSOverride
+
+### Logs ###
+grow-snap-frontend/logs/
+grow-snap-frontend/*.log
+grow-snap-frontend/npm-debug.log*
+grow-snap-frontend/yarn-debug.log*
+grow-snap-frontend/yarn-error.log*
+
+### Temporary Files ###
+grow-snap-frontend/*.tmp
+grow-snap-frontend/*.temp
+grow-snap-frontend/*.swp
+grow-snap-frontend/*.swo
+grow-snap-frontend/*~
+
+### Test Coverage ###
+grow-snap-frontend/.nyc_output/
+grow-snap-frontend/coverage/
+
 ### Backend (Spring Boot + Gradle) ###
 grow-snap-backend/HELP.md
 grow-snap-backend/.gradle

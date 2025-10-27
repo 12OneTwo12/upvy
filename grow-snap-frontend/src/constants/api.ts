@@ -1,3 +1,4 @@
+// @ts-ignore
 import Constants from 'expo-constants';
 
 /**
