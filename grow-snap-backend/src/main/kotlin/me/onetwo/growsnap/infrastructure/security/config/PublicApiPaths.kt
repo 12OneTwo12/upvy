@@ -35,6 +35,8 @@ object PublicApiPaths {
 
         /**
          * 공개 경로 목록
+         *
+         * 주의: `/me` 엔드포인트는 인증이 필요하므로 와일드카드 패턴 사용 시 주의
          */
         val PATHS = arrayOf(
             // 사용자 조회
@@ -46,10 +48,20 @@ object PublicApiPaths {
             "/api/v1/profiles/check/nickname/*",    // 닉네임 중복 확인
 
             // 팔로우 통계
-            "/api/v1/follows/stats/*",
+            "/api/v1/follows/stats/*"
 
-            // 콘텐츠 개별 조회
-            "/api/v1/contents/*"
+            // 콘텐츠 개별 조회 (GET /api/v1/contents/{contentId})
+            // 주의: SecurityConfig에서 /me를 먼저 authenticated()로 선언하여
+            // /api/v1/contents/me가 공개되지 않도록 함
+        )
+
+        /**
+         * 콘텐츠 조회 전용 경로
+         *
+         * `/api/v1/contents/me`를 제외하고 개별 콘텐츠 조회만 허용
+         */
+        val CONTENT_PATHS = arrayOf(
+            "/api/v1/contents/*"  // GET /api/v1/contents/{contentId}
         )
     }
 }
