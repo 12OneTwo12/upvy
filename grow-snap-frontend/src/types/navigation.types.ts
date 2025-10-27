@@ -13,6 +13,7 @@ export type RootStackParamList = {
  */
 export type AuthStackParamList = {
   Login: undefined;
+  ProfileSetup: undefined;
 };
 
 /**
