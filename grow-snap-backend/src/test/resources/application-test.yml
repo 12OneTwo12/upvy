@@ -44,6 +44,11 @@ spring:
       s3:
         bucket: test-bucket
 
+# Application Configuration
+app:
+  frontend-url: http://localhost:3000
+  mobile-deeplink-url: growsnap://oauth/callback
+
 # JWT Configuration
 jwt:
   secret: test-secret-key-for-jwt-token-generation-minimum-256-bits-required-for-testing
