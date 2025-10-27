@@ -72,7 +72,7 @@ class AnalyticsController(
         @Valid @RequestBody request: ViewEventRequest
     ): Mono<Void> {
         return principal
-            .map { UUID.fromString(it.name) }  // Principal에서 userId 추출
+            .toUserId()  // Principal에서 userId 추출
             .flatMap { userId ->
                 analyticsService.trackViewEvent(userId, request)
             }
@@ -104,7 +104,7 @@ fun trackViewEvent(
 ### Principal 추출 체크리스트
 
 - [ ] **userId는 Principal에서 추출**: Request Body나 Path Variable로 받지 않기
-- [ ] **WebFlux 패턴**: `Mono<Principal>`로 받아 `.map { UUID.fromString(it.name) }`로 변환
+- [ ] **WebFlux 패턴**: `Mono<Principal>`로 받아 `.toUserId()`로 변환
 - [ ] **JWT 토큰 검증 의존**: Spring Security가 토큰을 검증한 후 userId 제공
 - [ ] **보안 우선**: 클라이언트가 userId를 임의로 변경할 수 없도록 설계
 

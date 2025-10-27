@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.analytics.controller
 import jakarta.validation.Valid
 import me.onetwo.growsnap.domain.analytics.dto.ViewEventRequest
 import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -64,7 +65,7 @@ class AnalyticsController(
         @Valid @RequestBody request: ViewEventRequest
     ): Mono<Void> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 analyticsService.trackViewEvent(userId, request)
             }

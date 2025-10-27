@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.interaction.controller
 import me.onetwo.growsnap.domain.interaction.dto.LikeCountResponse
 import me.onetwo.growsnap.domain.interaction.dto.LikeResponse
 import me.onetwo.growsnap.domain.interaction.service.LikeService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -42,7 +43,7 @@ class LikeController(
         @PathVariable videoId: String
     ): Mono<ResponseEntity<LikeResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val contentId = UUID.fromString(videoId)
                 likeService.likeContent(userId, contentId)
@@ -65,7 +66,7 @@ class LikeController(
         @PathVariable videoId: String
     ): Mono<ResponseEntity<LikeResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val contentId = UUID.fromString(videoId)
                 likeService.unlikeContent(userId, contentId)

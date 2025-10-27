@@ -4,6 +4,7 @@ import jakarta.validation.Valid
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.dto.CommentResponse
 import me.onetwo.growsnap.domain.interaction.service.CommentService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -31,7 +32,7 @@ class CommentController(
         @Valid @RequestBody request: CommentRequest
     ): Mono<ResponseEntity<CommentResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val contentId = UUID.fromString(videoId)
                 commentService.createComment(userId, contentId, request)
@@ -52,7 +53,7 @@ class CommentController(
         @PathVariable commentId: String
     ): Mono<ResponseEntity<Void>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val id = UUID.fromString(commentId)
                 commentService.deleteComment(userId, id)

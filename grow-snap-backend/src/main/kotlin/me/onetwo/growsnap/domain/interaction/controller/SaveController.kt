@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.interaction.controller
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
 import me.onetwo.growsnap.domain.interaction.service.SaveService
+import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -43,7 +44,7 @@ class SaveController(
         @PathVariable videoId: String
     ): Mono<ResponseEntity<SaveResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val contentId = UUID.fromString(videoId)
                 saveService.saveContent(userId, contentId)
@@ -66,7 +67,7 @@ class SaveController(
         @PathVariable videoId: String
     ): Mono<ResponseEntity<SaveResponse>> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMap { userId ->
                 val contentId = UUID.fromString(videoId)
                 saveService.unsaveContent(userId, contentId)
@@ -87,7 +88,7 @@ class SaveController(
         principal: Mono<Principal>
     ): Flux<SavedContentResponse> {
         return principal
-            .map { UUID.fromString(it.name) }
+            .toUserId()
             .flatMapMany { userId ->
                 saveService.getSavedContents(userId)
             }
