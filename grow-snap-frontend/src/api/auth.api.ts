@@ -7,6 +7,9 @@ import {
   CreateProfileResponse,
   User,
   UserProfile,
+  FollowStats,
+  CheckFollowResponse,
+  FollowResponse,
 } from '@/types/auth.types';
 
 /**
@@ -93,6 +96,91 @@ export const uploadProfileImage = async (imageUri: string): Promise<{ imageUrl: 
         'Content-Type': 'multipart/form-data',
       },
     }
+  );
+  return response.data;
+};
+
+/**
+ * 다른 사용자 프로필 조회 (userId로)
+ */
+export const getProfileByUserId = async (userId: string): Promise<UserProfile> => {
+  const response = await apiClient.get<UserProfile>(
+    API_ENDPOINTS.PROFILE.BY_USER_ID(userId)
+  );
+  return response.data;
+};
+
+/**
+ * 다른 사용자 프로필 조회 (nickname으로)
+ */
+export const getProfileByNickname = async (nickname: string): Promise<UserProfile> => {
+  const response = await apiClient.get<UserProfile>(
+    API_ENDPOINTS.PROFILE.BY_NICKNAME(nickname)
+  );
+  return response.data;
+};
+
+/**
+ * 사용자 팔로우
+ */
+export const followUser = async (userId: string): Promise<FollowResponse> => {
+  const response = await apiClient.post<FollowResponse>(
+    API_ENDPOINTS.FOLLOW.FOLLOW(userId)
+  );
+  return response.data;
+};
+
+/**
+ * 사용자 언팔로우
+ */
+export const unfollowUser = async (userId: string): Promise<void> => {
+  await apiClient.delete(API_ENDPOINTS.FOLLOW.UNFOLLOW(userId));
+};
+
+/**
+ * 팔로우 여부 확인
+ */
+export const checkFollowing = async (userId: string): Promise<CheckFollowResponse> => {
+  const response = await apiClient.get<CheckFollowResponse>(
+    API_ENDPOINTS.FOLLOW.CHECK(userId)
+  );
+  return response.data;
+};
+
+/**
+ * 내 팔로우 통계 조회
+ */
+export const getMyFollowStats = async (): Promise<FollowStats> => {
+  const response = await apiClient.get<FollowStats>(API_ENDPOINTS.FOLLOW.STATS_ME);
+  return response.data;
+};
+
+/**
+ * 특정 사용자 팔로우 통계 조회
+ */
+export const getFollowStats = async (userId: string): Promise<FollowStats> => {
+  const response = await apiClient.get<FollowStats>(
+    API_ENDPOINTS.FOLLOW.STATS(userId)
+  );
+  return response.data;
+};
+
+/**
+ * 팔로워 목록 조회
+ */
+export const getFollowers = async (userId: string): Promise<UserProfile[]> => {
+  const response = await apiClient.get<UserProfile[]>(
+    API_ENDPOINTS.FOLLOW.FOLLOWERS(userId)
+  );
+  return response.data;
+};
+
+/**
+ * 팔로잉 목록 조회
+ */
+export const getFollowing = async (userId: string): Promise<UserProfile[]> => {
+  const response = await apiClient.get<UserProfile[]>(
+    API_ENDPOINTS.FOLLOW.FOLLOWING(userId)
   );
   return response.data;
 };
