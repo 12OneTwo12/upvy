@@ -74,9 +74,6 @@ class OAuth2AuthenticationSuccessHandler(
                        userAgent.contains("Android", ignoreCase = true) ||
                        userAgent.contains("iPhone", ignoreCase = true)
 
-        logger.debug("OAuth2 인증 성공 - userId: {}, email: {}, User-Agent: {}, isMobile: {}",
-            customOAuth2User.userId, customOAuth2User.email, userAgent, isMobile)
-
         // 플랫폼에 따라 리다이렉트 URL 생성
         val redirectUrl = if (isMobile) {
             // 모바일: 딥링크로 리다이렉트

@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.infrastructure.security.jwt
 
+import org.slf4j.LoggerFactory
 import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.core.GrantedAuthority
@@ -10,7 +11,7 @@ import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
- * JWT를 Authentication 객체로 변환하는 Converter
+ * JWT를 Authentication 객체로 변환하는 Reactive Converter
  *
  * OAuth2 Resource Server에서 JWT 토큰을 파싱한 후,
  * Authentication 객체로 변환합니다.
@@ -23,27 +24,30 @@ import java.util.UUID
 @Component
 class JwtAuthenticationConverter : Converter<Jwt, Mono<AbstractAuthenticationToken>> {
 
+    private val logger = LoggerFactory.getLogger(JwtAuthenticationConverter::class.java)
+
     /**
-     * JWT를 Authentication 객체로 변환
+     * JWT를 Authentication 객체로 변환 (Reactive)
      *
      * @param jwt 파싱된 JWT 토큰
      * @return UUID를 principal로 갖는 UuidJwtAuthenticationToken
      */
     override fun convert(jwt: Jwt): Mono<AbstractAuthenticationToken> {
-        // JWT의 subject에서 UUID 추출
-        val userId = try {
-            UUID.fromString(jwt.subject)
-        } catch (e: IllegalArgumentException) {
-            throw IllegalStateException("Invalid UUID in JWT subject: ${jwt.subject}", e)
+        return Mono.fromCallable {
+            // JWT의 subject에서 UUID 추출
+            val userId = try {
+                UUID.fromString(jwt.subject)
+            } catch (e: IllegalArgumentException) {
+                logger.error("Invalid UUID in JWT subject: {}", jwt.subject)
+                throw IllegalStateException("Invalid UUID in JWT subject: ${jwt.subject}", e)
+            }
+
+            // JWT의 role claim에서 권한 추출
+            val authorities = extractAuthorities(jwt)
+
+            // UUID를 principal로 갖는 커스텀 Authentication 토큰 생성
+            UuidJwtAuthenticationToken(userId, jwt, authorities)
         }
-
-        // JWT의 role claim에서 권한 추출
-        val authorities = extractAuthorities(jwt)
-
-        // UUID를 principal로 갖는 커스텀 Authentication 토큰 생성
-        val authentication = UuidJwtAuthenticationToken(userId, jwt, authorities)
-
-        return Mono.just(authentication)
     }
 
     /**

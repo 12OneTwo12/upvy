@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
   isAuthenticated: false,
-  isLoading: false, // MVP: Skip auto-login for now
+  isLoading: true, // 앱 시작 시 자동 로그인 체크
 
   // Set User
   setUser: (user) => {

@@ -4,6 +4,8 @@ import * as Linking from 'expo-linking';
 import { useAuthStore } from '@/stores/authStore';
 import { getErrorMessage, logError } from '@/utils/errorHandler';
 import { API_HOST } from '@/constants/api';
+import { removeTokens, removeItem, STORAGE_KEYS, setAccessToken } from '@/utils/storage';
+import { getMyProfile } from '@/api/auth.api';
 
 /**
  * Google OAuth Hook (Custom Tabs 방식)
@@ -23,7 +25,6 @@ export const useGoogleAuth = () => {
     const handleDeepLink = async (event: { url: string }) => {
       try {
         const url = event.url;
-        console.log('[OAuth] Deep link received:', url);
 
         // growsnap://oauth/callback?accessToken=...&refreshToken=...
         if (url.startsWith('growsnap://oauth/callback')) {
@@ -44,14 +45,27 @@ export const useGoogleAuth = () => {
             throw new Error('토큰을 받지 못했습니다.');
           }
 
-          console.log('[OAuth] Tokens received, logging in...');
+          // AsyncStorage에서 기존 토큰 완전히 삭제
+          await removeTokens();
+          await removeItem(STORAGE_KEYS.USER_INFO);
+
+          // 토큰을 먼저 저장 (프로필 조회 API에 필요)
+          await setAccessToken(accessToken);
+
+          // 프로필 조회 시도 (있으면 함께 저장, 없으면 ProfileSetup으로)
+          let profile = null;
+          try {
+            profile = await getMyProfile();
+          } catch (profileError) {
+            // 프로필이 없는 경우 (첫 로그인) - ProfileSetup으로 이동
+          }
 
           // Zustand Store에 저장
           await login(
             accessToken,
             refreshToken,
             { id: userId || '', email: email || '' },
-            null // 프로필은 별도로 조회 필요
+            profile
           );
 
           setIsLoading(false);
@@ -94,16 +108,18 @@ export const useGoogleAuth = () => {
       // 백엔드 OAuth URL
       const authUrl = `${API_HOST}/oauth2/authorization/google?state=${state}`;
 
-      console.log('[OAuth] Opening Custom Tabs:', authUrl);
-
       // Custom Tabs로 OAuth 시작
-      await WebBrowser.openBrowserAsync(authUrl, {
+      const result = await WebBrowser.openBrowserAsync(authUrl, {
         // Android에서 Custom Tabs 사용
         showTitle: true,
         toolbarColor: '#34C759',
         enableBarCollapsing: false,
       });
 
+      // 사용자가 브라우저를 닫은 경우 (딥링크로 돌아오지 않음)
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        setIsLoading(false);
+      }
       // 딥링크 리스너에서 처리됨 (로딩 상태 유지)
     } catch (err) {
       const message = getErrorMessage(err);
