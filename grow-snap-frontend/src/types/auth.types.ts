@@ -5,7 +5,6 @@ export interface User {
   id: string;
   email: string;
   provider: 'GOOGLE' | 'NAVER' | 'KAKAO';
-  providerId: string;
   role: 'USER' | 'CREATOR' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
@@ -61,8 +60,8 @@ export interface CheckNicknameRequest {
  * 닉네임 중복 확인 응답
  */
 export interface CheckNicknameResponse {
-  available: boolean;
-  message?: string;
+  nickname: string;
+  isDuplicated: boolean;
 }
 
 /**
@@ -70,12 +69,11 @@ export interface CheckNicknameResponse {
  */
 export interface CreateProfileRequest {
   nickname: string;
+  profileImageUrl?: string;
   bio?: string;
 }
 
 /**
- * 프로필 생성 응답
+ * 프로필 생성 응답 (백엔드는 UserProfileResponse를 직접 반환)
  */
-export interface CreateProfileResponse {
-  profile: UserProfile;
-}
+export type CreateProfileResponse = UserProfile;

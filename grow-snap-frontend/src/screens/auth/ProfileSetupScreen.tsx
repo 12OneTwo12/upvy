@@ -53,10 +53,11 @@ export default function ProfileSetupScreen() {
     setIsCheckingNickname(false);
 
     if (result) {
-      setNicknameAvailable(result.available);
-      if (!result.available) {
+      // isDuplicated: true면 중복, false면 사용 가능
+      setNicknameAvailable(!result.isDuplicated);
+      if (result.isDuplicated) {
         showErrorAlert(
-          result.message || '이미 사용 중인 닉네임입니다.',
+          '이미 사용 중인 닉네임입니다.',
           '알림'
         );
       }
@@ -85,7 +86,8 @@ export default function ProfileSetupScreen() {
     setIsCreating(false);
 
     if (result) {
-      updateProfile(result.profile);
+      // 백엔드는 UserProfileResponse를 직접 반환
+      updateProfile(result);
     }
   };
 
@@ -141,7 +143,6 @@ export default function ProfileSetupScreen() {
                     setNicknameAvailable(null);
                   }}
                   maxLength={20}
-                  autoCapitalize="none"
                   containerStyle={styles.nicknameInput}
                   error={
                     nicknameAvailable === false
