@@ -276,6 +276,105 @@ API 호출이 실패하거나 데이터가 올바르지 않을 때:
    - 새로운 API 통합 시 실제 호출 테스트 필수
    - 백엔드 로그와 프론트엔드 네트워크 탭을 함께 확인
 
+## 🔌 로컬 환경 설정 (Android 에뮬레이터)
+
+### ADB Reverse 설정 (필수)
+
+**⚠️ 중요**: Android 에뮬레이터에서 로컬 백엔드 API를 테스트할 때는 **반드시** ADB reverse 설정이 필요합니다.
+
+#### 설정 방법
+
+```bash
+# 에뮬레이터의 localhost를 호스트 머신의 localhost로 포워딩
+adb reverse tcp:8080 tcp:8080
+```
+
+#### 설정 이유
+
+- Android 에뮬레이터의 `localhost`는 에뮬레이터 자체를 가리킴
+- 호스트 머신의 백엔드 서버(localhost:8080)에 접근하려면 포트 포워딩 필요
+- `10.0.2.2`를 사용할 수도 있지만, `localhost`를 그대로 사용하는 것이 더 간편함
+
+#### 설정 확인
+
+```bash
+# 포트 포워딩 목록 확인
+adb reverse --list
+
+# 출력 예시:
+# (reverse) tcp:8080 tcp:8080
+```
+
+#### 해제 방법
+
+```bash
+# 특정 포트 포워딩 해제
+adb reverse --remove tcp:8080
+
+# 모든 포트 포워딩 해제
+adb reverse --remove-all
+```
+
+#### app.json 설정
+
+```json
+{
+  "expo": {
+    "extra": {
+      "apiUrl": "http://localhost:8080"  // ✅ adb reverse 설정 시 localhost 사용 가능
+    }
+  }
+}
+```
+
+#### 트러블슈팅
+
+1. **"cannot connect to daemon" 에러**
+   ```bash
+   adb kill-server
+   adb start-server
+   adb reverse tcp:8080 tcp:8080
+   ```
+
+2. **에뮬레이터가 여러 개인 경우**
+   ```bash
+   # 연결된 디바이스 확인
+   adb devices
+
+   # 특정 디바이스에 설정
+   adb -s emulator-5554 reverse tcp:8080 tcp:8080
+   ```
+
+3. **백엔드 서버가 다른 포트를 사용하는 경우**
+   ```bash
+   # 예: 백엔드가 3000번 포트 사용
+   adb reverse tcp:3000 tcp:3000
+   ```
+
+#### 실제 디바이스에서 테스트하는 경우
+
+실제 Android 디바이스에서는 `adb reverse` 대신:
+
+1. **같은 Wi-Fi 네트워크 사용**
+2. **호스트 머신의 IP 주소 사용**
+   ```json
+   {
+     "expo": {
+       "extra": {
+         "apiUrl": "http://192.168.0.10:8080"  // 호스트 머신 IP
+       }
+     }
+   }
+   ```
+
+#### 참고
+
+- 이 설정은 **로컬 개발 환경 전용**입니다
+- 프로덕션 빌드에서는 실제 서버 URL을 사용해야 합니다
+- 에뮬레이터 재시작 시 `adb reverse` 설정이 초기화되므로 다시 실행 필요
+
+---
+
 ## 📌 참고 자료
 
 - 백엔드 API 설계: `.claude/skills/api-design.md`
