@@ -68,6 +68,9 @@ dependencies {
     // Redis Reactive
     implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
 
+    // Spring Session for WebFlux (OAuth2 authorization request storage)
+    implementation("org.springframework.session:spring-session-data-redis")
+
     // BCrypt
     implementation("org.springframework.security:spring-security-crypto")
 

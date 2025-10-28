@@ -50,23 +50,25 @@ class OAuth2AuthenticationFailureHandler(
         val isMobile = state.startsWith("mobile:")
 
         // 플랫폼에 따라 리다이렉트 URL 생성
-        val redirectUrl = if (isMobile) {
+        val redirectUri = if (isMobile) {
             // 모바일: 딥링크로 리다이렉트
             UriComponentsBuilder.fromUriString(mobileDeeplinkUrl)
                 .queryParam("error", errorMessage)
                 .build()
-                .toUriString()
+                .encode()
+                .toUri()
         } else {
             // 웹: 기존 프론트엔드 에러 페이지로 리다이렉트
             UriComponentsBuilder.fromUriString(frontendUrl)
                 .path("/auth/oauth2/error")
                 .queryParam("error", errorMessage)
                 .build()
-                .toUriString()
+                .encode()
+                .toUri()
         }
 
         exchange.response.statusCode = HttpStatus.FOUND
-        exchange.response.headers.location = URI.create(redirectUrl)
+        exchange.response.headers.location = redirectUri
 
         return exchange.response.setComplete()
     }
