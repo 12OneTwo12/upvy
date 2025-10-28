@@ -50,7 +50,7 @@ export const useGoogleAuth = () => {
           await login(
             accessToken,
             refreshToken,
-            { id: parseInt(userId || '0'), email: email || '' },
+            { id: userId || '', email: email || '' },
             null // 프로필은 별도로 조회 필요
           );
 
