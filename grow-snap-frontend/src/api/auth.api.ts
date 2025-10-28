@@ -1,10 +1,7 @@
 import apiClient from './client';
 import { API_ENDPOINTS } from '@/constants/api';
 import {
-  LoginResponse,
-  RefreshTokenRequest,
   RefreshTokenResponse,
-  CheckNicknameRequest,
   CheckNicknameResponse,
   CreateProfileRequest,
   CreateProfileResponse,
@@ -13,18 +10,9 @@ import {
 } from '@/types/auth.types';
 
 /**
- * Google OAuth 로그인
- * @param accessToken Google Access Token
- */
-export const googleLogin = async (accessToken: string): Promise<LoginResponse> => {
-  const response = await apiClient.post<LoginResponse>(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, {
-    accessToken,
-  });
-  return response.data;
-};
-
-/**
  * Refresh Token으로 Access Token 갱신
+ *
+ * Note: OAuth2 로그인은 백엔드 Custom Tabs 방식 사용 (useGoogleAuth 참고)
  */
 export const refreshAccessToken = async (
   refreshToken: string

@@ -18,7 +18,6 @@ export const API_BASE_URL = `${API_HOST}/api/v1`;
 export const API_ENDPOINTS = {
   // Auth
   AUTH: {
-    GOOGLE_LOGIN: '/auth/google',
     REFRESH: '/auth/refresh',
     LOGOUT: '/auth/logout',
   },
