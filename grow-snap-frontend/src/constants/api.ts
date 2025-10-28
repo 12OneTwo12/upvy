@@ -32,11 +32,11 @@ export const API_ENDPOINTS = {
   // Profile
   PROFILE: {
     ME: '/profiles/me',
-    BY_USER_ID: (userId: string) => `/profiles/user/${userId}`,
+    BY_USER_ID: (userId: string) => `/profiles/${userId}`,
     BY_NICKNAME: (nickname: string) => `/profiles/nickname/${nickname}`,
-    UPDATE: '/profiles/me',
-    CHECK_NICKNAME: '/profiles/check-nickname',
-    UPLOAD_IMAGE: '/profiles/me/image',
+    UPDATE: '/profiles',
+    CHECK_NICKNAME: (nickname: string) => `/profiles/check/nickname/${nickname}`,
+    UPLOAD_IMAGE: '/profiles/image',
   },
 
   // Follow

@@ -63,21 +63,22 @@ export const getMyProfile = async (): Promise<UserProfile> => {
  * 닉네임 중복 확인
  */
 export const checkNickname = async (nickname: string): Promise<CheckNicknameResponse> => {
-  const response = await apiClient.post<CheckNicknameResponse>(
-    API_ENDPOINTS.PROFILE.CHECK_NICKNAME,
-    { nickname }
+  const response = await apiClient.get<CheckNicknameResponse>(
+    API_ENDPOINTS.PROFILE.CHECK_NICKNAME(nickname)
   );
   return response.data;
 };
 
 /**
- * 프로필 생성 (첫 로그인)
+ * 프로필 수정
+ * 백엔드에서 프로필은 OAuth 로그인 시 자동 생성되므로,
+ * 최초 프로필 설정도 업데이트 API를 사용합니다.
  */
 export const createProfile = async (
   data: CreateProfileRequest
 ): Promise<CreateProfileResponse> => {
-  const response = await apiClient.post<CreateProfileResponse>(
-    API_ENDPOINTS.PROFILE.ME,
+  const response = await apiClient.patch<CreateProfileResponse>(
+    API_ENDPOINTS.PROFILE.UPDATE,
     data
   );
   return response.data;
@@ -89,7 +90,8 @@ export const createProfile = async (
 export const uploadProfileImage = async (imageUri: string): Promise<{ imageUrl: string }> => {
   const formData = new FormData();
   // React Native의 FormData는 웹 표준과 다른 파일 객체 형식을 사용하므로 타입 단언이 필요합니다.
-  formData.append('image', {
+  // 백엔드는 'file' 파라미터명을 사용합니다.
+  formData.append('file', {
     uri: imageUri,
     type: 'image/jpeg',
     name: 'profile.jpg',
