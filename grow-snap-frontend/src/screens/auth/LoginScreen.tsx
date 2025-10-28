@@ -112,6 +112,18 @@ export default function LoginScreen() {
               <Text style={styles.devNoticeText}>
                 개발 모드 • Google OAuth 설정 필요
               </Text>
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={async () => {
+                  const { logout } = useAuthStore.getState();
+                  await logout();
+                  showErrorAlert('AsyncStorage 데이터가 모두 삭제되었습니다.', '초기화 완료');
+                }}
+                style={{ marginTop: theme.spacing[2] }}
+              >
+                데이터 초기화 (개발용)
+              </Button>
             </View>
           )}
         </View>
