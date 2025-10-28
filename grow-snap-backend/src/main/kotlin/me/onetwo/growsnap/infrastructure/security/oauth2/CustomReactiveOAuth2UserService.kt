@@ -3,6 +3,7 @@ package me.onetwo.growsnap.infrastructure.security.oauth2
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.service.UserService
+import org.slf4j.LoggerFactory
 import org.springframework.security.oauth2.client.userinfo.DefaultReactiveOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
 import org.springframework.security.oauth2.client.userinfo.ReactiveOAuth2UserService
@@ -23,6 +24,7 @@ class CustomReactiveOAuth2UserService(
     private val userService: UserService
 ) : ReactiveOAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
+    private val logger = LoggerFactory.getLogger(CustomReactiveOAuth2UserService::class.java)
     private val delegate = DefaultReactiveOAuth2UserService()
 
     /**
@@ -51,6 +53,7 @@ class CustomReactiveOAuth2UserService(
 
                 // 사용자 조회 또는 생성 (프로필 자동 생성 포함)
                 Mono.fromCallable {
+                    logger.debug("Loading OAuth2 user - email: {}, provider: {}", userInfo.email, provider)
                     userService.findOrCreateOAuthUser(
                         email = userInfo.email,
                         provider = provider,
@@ -59,6 +62,9 @@ class CustomReactiveOAuth2UserService(
                         profileImageUrl = userInfo.profileImageUrl
                     )
                 }.map { user ->
+                    logger.debug("User loaded from DB - id: {}, email: {}, role: {}", user.id, user.email, user.role)
+                    logger.debug("User ID type: {}", user.id!!.javaClass.name)
+
                     // OAuth2User에 사용자 ID, 이메일, 역할 정보 추가
                     CustomOAuth2User(
                         oauth2User = oauth2User,
