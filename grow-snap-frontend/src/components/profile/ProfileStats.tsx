@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { theme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 
 interface StatItem {
   label: string;
@@ -17,6 +18,8 @@ interface ProfileStatsProps {
  * 인스타그램 스타일의 팔로워/팔로잉 등 통계 표시
  */
 export default function ProfileStats({ stats }: ProfileStatsProps) {
+  const styles = useStyles();
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
@@ -51,7 +54,7 @@ export default function ProfileStats({ stats }: ProfileStatsProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   container: {
     flexDirection: 'row',
     justifyContent: 'space-around',

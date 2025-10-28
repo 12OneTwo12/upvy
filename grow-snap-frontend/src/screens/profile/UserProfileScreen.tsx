@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
@@ -23,6 +22,7 @@ import {
 import { UserProfile } from '@/types/auth.types';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
+import { createStyleSheet } from '@/utils/styles';
 
 type RouteParams = {
   UserProfile: {
@@ -34,7 +34,90 @@ type RouteParams = {
  * 다른 사용자 프로필 화면
  * 인스타그램 스타일의 사용자 프로필 보기
  */
+const useStyles = createStyleSheet({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+  },
+  headerRight: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing[4],
+    paddingBottom: theme.spacing[4],
+    gap: theme.spacing[2],
+  },
+  messageButton: {
+    width: 44,
+    height: 36,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.background.secondary,
+    borderWidth: 1,
+    borderColor: theme.colors.border.medium,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contentSection: {
+    flex: 1,
+    paddingTop: theme.spacing[4],
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
+  },
+  contentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: theme.spacing[4],
+  },
+  emptyContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing[12],
+    paddingHorizontal: theme.spacing[6],
+  },
+  emptyIcon: {
+    marginBottom: theme.spacing[4],
+  },
+  emptyText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+  },
+});
+
 export default function UserProfileScreen() {
+  const styles = useStyles();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'UserProfile'>>();
   const { userId } = route.params;
@@ -216,85 +299,3 @@ export default function UserProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-  },
-  headerRight: {
-    width: 40,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: theme.spacing[4],
-    paddingBottom: theme.spacing[4],
-    gap: theme.spacing[2],
-  },
-  messageButton: {
-    width: 44,
-    height: 36,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.background.secondary,
-    borderWidth: 1,
-    borderColor: theme.colors.border.medium,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  contentSection: {
-    flex: 1,
-    paddingTop: theme.spacing[4],
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
-  },
-  contentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: theme.spacing[4],
-  },
-  emptyContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing[12],
-    paddingHorizontal: theme.spacing[6],
-  },
-  emptyIcon: {
-    marginBottom: theme.spacing[4],
-  },
-  emptyText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-  },
-});

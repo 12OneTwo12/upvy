@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { theme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 
 interface Props {
   children: ReactNode;
@@ -58,6 +59,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       // 기본 폴백 UI
+      const styles = useStyles();
       return (
         <View style={styles.container}>
           <View style={styles.content}>
@@ -95,7 +97,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,

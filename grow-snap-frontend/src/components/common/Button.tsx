@@ -3,12 +3,12 @@ import {
   TouchableOpacity,
   Text,
   ActivityIndicator,
-  StyleSheet,
   ViewStyle,
   TextStyle,
   TouchableOpacityProps,
 } from 'react-native';
 import { theme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 
 export interface ButtonProps extends TouchableOpacityProps {
   /** 버튼 텍스트 */
@@ -44,6 +44,7 @@ export const Button: React.FC<ButtonProps> = ({
   textStyle,
   ...props
 }) => {
+  const styles = useStyles();
   const isDisabled = disabled || loading;
 
   const buttonStyle = [
@@ -87,7 +88,7 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   // Base
   base: {
     borderRadius: theme.borderRadius.xl,

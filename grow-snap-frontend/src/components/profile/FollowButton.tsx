@@ -1,6 +1,7 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react';
+import { TouchableOpacity, Text, ActivityIndicator } from 'react';
 import { theme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 
 interface FollowButtonProps {
   isFollowing: boolean;
@@ -19,6 +20,8 @@ export default function FollowButton({
   loading = false,
   disabled = false,
 }: FollowButtonProps) {
+  const styles = useStyles();
+
   return (
     <TouchableOpacity
       testID="follow-button"
@@ -51,7 +54,7 @@ export default function FollowButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   button: {
     paddingHorizontal: theme.spacing[6],
     paddingVertical: theme.spacing[2],

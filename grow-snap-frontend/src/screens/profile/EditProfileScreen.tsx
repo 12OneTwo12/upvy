@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 import { ProfileAvatar } from '@/components/profile';
 import { Button, Input } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
@@ -24,12 +23,106 @@ import {
 } from '@/api/auth.api';
 import { theme } from '@/theme';
 import { showErrorAlert, withErrorHandling } from '@/utils/errorHandler';
+import { createStyleSheet } from '@/utils/styles';
 
 /**
  * 프로필 수정 화면
  * 인스타그램 스타일의 프로필 수정
  */
+const useStyles = createStyleSheet({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing[8],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  changePhotoButton: {
+    marginTop: theme.spacing[4],
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[4],
+  },
+  changePhotoText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.primary[600],
+  },
+  formSection: {
+    paddingHorizontal: theme.spacing[4],
+    paddingTop: theme.spacing[6],
+  },
+  fieldContainer: {
+    marginBottom: theme.spacing[6],
+  },
+  label: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[2],
+  },
+  nicknameRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[2],
+  },
+  nicknameInput: {
+    flex: 1,
+  },
+  checkButton: {
+    paddingHorizontal: theme.spacing[3],
+  },
+  bioInput: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  successText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.success,
+    marginTop: theme.spacing[1],
+  },
+  errorText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.error,
+    marginTop: theme.spacing[1],
+  },
+  helperText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing[1],
+    textAlign: 'right',
+  },
+});
+
 export default function EditProfileScreen() {
+  const styles = useStyles();
   const navigation = useNavigation();
   const { profile: storeProfile, updateProfile } = useAuthStore();
 
@@ -58,6 +151,9 @@ export default function EditProfileScreen() {
   // 이미지 선택 (갤러리 또는 카메라)
   const pickImage = async (useCamera: boolean = false) => {
     try {
+      // 동적으로 expo-image-picker import
+      const ImagePicker = await import('expo-image-picker');
+
       // 권한 요청
       const permission = useCamera
         ? await ImagePicker.requestCameraPermissionsAsync()
@@ -307,95 +403,3 @@ export default function EditProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  avatarSection: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing[8],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  changePhotoButton: {
-    marginTop: theme.spacing[4],
-    paddingVertical: theme.spacing[2],
-    paddingHorizontal: theme.spacing[4],
-  },
-  changePhotoText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.primary[600],
-  },
-  formSection: {
-    paddingHorizontal: theme.spacing[4],
-    paddingTop: theme.spacing[6],
-  },
-  fieldContainer: {
-    marginBottom: theme.spacing[6],
-  },
-  label: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
-  },
-  nicknameRow: {
-    flexDirection: 'row',
-    gap: theme.spacing[2],
-  },
-  nicknameInput: {
-    flex: 1,
-  },
-  checkButton: {
-    paddingHorizontal: theme.spacing[3],
-  },
-  bioInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  successText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.success,
-    marginTop: theme.spacing[1],
-  },
-  errorText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.error,
-    marginTop: theme.spacing[1],
-  },
-  helperText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.tertiary,
-    marginTop: theme.spacing[1],
-    textAlign: 'right',
-  },
-});

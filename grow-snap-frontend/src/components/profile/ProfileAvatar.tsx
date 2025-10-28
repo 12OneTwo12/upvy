@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Image, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { View, Image, TouchableOpacity, ViewStyle } from 'react-native';
 import { theme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 
 interface ProfileAvatarProps {
   imageUrl?: string;
@@ -28,6 +29,7 @@ export default function ProfileAvatar({
   showBorder = false,
   style,
 }: ProfileAvatarProps) {
+  const styles = useStyles();
   const avatarSize = SIZES[size];
 
   const content = (
@@ -85,7 +87,7 @@ export default function ProfileAvatar({
   return content;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   container: {
     justifyContent: 'center',
     alignItems: 'center',

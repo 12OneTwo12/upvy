@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
@@ -17,12 +16,105 @@ import { useAuthStore } from '@/stores/authStore';
 import { getMyProfile } from '@/api/auth.api';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
+import { createStyleSheet } from '@/utils/styles';
 
 /**
  * 내 프로필 화면
  * 인스타그램 스타일의 프로필 관리 화면
  */
+const useStyles = createStyleSheet({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconButton: {
+    padding: theme.spacing[2],
+  },
+  scrollView: {
+    flex: 1,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing[4],
+    paddingBottom: theme.spacing[4],
+    gap: theme.spacing[2],
+  },
+  editButton: {
+    flex: 1,
+  },
+  editButtonText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+  },
+  creatorButton: {
+    flex: 1,
+  },
+  creatorButtonText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+  },
+  contentSection: {
+    flex: 1,
+    paddingTop: theme.spacing[4],
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
+  },
+  contentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: theme.spacing[4],
+  },
+  emptyContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing[12],
+    paddingHorizontal: theme.spacing[6],
+  },
+  emptyIcon: {
+    marginBottom: theme.spacing[4],
+  },
+  emptyText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing[1],
+  },
+  emptySubtext: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.normal,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
+  },
+});
+
 export default function ProfileScreen() {
+  const styles = useStyles();
   const navigation = useNavigation();
   const { profile: storeProfile, user, updateProfile, logout } = useAuthStore();
   const [profile, setProfile] = useState(storeProfile);
@@ -192,94 +284,3 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconButton: {
-    padding: theme.spacing[2],
-  },
-  scrollView: {
-    flex: 1,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: theme.spacing[4],
-    paddingBottom: theme.spacing[4],
-    gap: theme.spacing[2],
-  },
-  editButton: {
-    flex: 1,
-  },
-  editButtonText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-  },
-  creatorButton: {
-    flex: 1,
-  },
-  creatorButtonText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-  },
-  contentSection: {
-    flex: 1,
-    paddingTop: theme.spacing[4],
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
-  },
-  contentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: theme.spacing[4],
-  },
-  emptyContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing[12],
-    paddingHorizontal: theme.spacing[6],
-  },
-  emptyIcon: {
-    marginBottom: theme.spacing[4],
-  },
-  emptyText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing[1],
-  },
-  emptySubtext: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.normal,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
-  },
-});

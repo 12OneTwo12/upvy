@@ -3,7 +3,6 @@ import {
   View,
   Text,
   SafeAreaView,
-  StyleSheet,
   ScrollView,
   Dimensions,
   Image,
@@ -15,6 +14,7 @@ import { Button } from '@/components/common';
 import { theme } from '@/theme';
 import { showErrorAlert, logError } from '@/utils/errorHandler';
 import { responsive, isSmallDevice } from '@/utils/responsive';
+import { createStyleSheet } from '@/utils/styles';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +23,7 @@ const { width } = Dimensions.get('window');
  * 깔끔하고 미니멀한 디자인으로 전문적인 느낌
  */
 export default function LoginScreen() {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
   // const { checkAuth } = useAuthStore(); // MVP: Auto-login disabled
@@ -141,6 +142,7 @@ interface ValuePropProps {
 }
 
 function ValueProp({ title, description }: ValuePropProps) {
+  const styles = useStyles();
   return (
     <View style={styles.valueProp}>
       <View style={styles.valuePropDot} />
@@ -152,7 +154,7 @@ function ValueProp({ title, description }: ValuePropProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,

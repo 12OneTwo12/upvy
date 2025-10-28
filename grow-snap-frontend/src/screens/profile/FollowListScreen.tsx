@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   RefreshControl,
@@ -23,6 +22,7 @@ import {
 import { UserProfile } from '@/types/auth.types';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
+import { createStyleSheet } from '@/utils/styles';
 
 type RouteParams = {
   FollowList: {
@@ -39,7 +39,114 @@ type UserWithFollowState = UserProfile & {
  * 팔로워/팔로잉 목록 화면
  * 인스타그램 스타일의 사용자 목록
  */
+const useStyles = createStyleSheet({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+  },
+  headerRight: {
+    width: 40,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: theme.spacing[3],
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: theme.colors.text.primary,
+  },
+  tabText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.tertiary,
+  },
+  activeTabText: {
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.bold,
+  },
+  listContent: {
+    flexGrow: 1,
+  },
+  userItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
+  },
+  userInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: theme.spacing[3],
+  },
+  userText: {
+    flex: 1,
+    marginLeft: theme.spacing[3],
+  },
+  nickname: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[1],
+  },
+  bio: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing[16],
+    paddingHorizontal: theme.spacing[6],
+  },
+  emptyIcon: {
+    marginBottom: theme.spacing[4],
+  },
+  emptyText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+  },
+});
+
 export default function FollowListScreen() {
+  const styles = useStyles();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'FollowList'>>();
   const { userId, initialTab = 'followers' } = route.params;
@@ -284,109 +391,3 @@ export default function FollowListScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-  },
-  headerRight: {
-    width: 40,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: theme.spacing[3],
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomColor: theme.colors.text.primary,
-  },
-  tabText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.tertiary,
-  },
-  activeTabText: {
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.fontWeight.bold,
-  },
-  listContent: {
-    flexGrow: 1,
-  },
-  userItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
-  },
-  userInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: theme.spacing[3],
-  },
-  userText: {
-    flex: 1,
-    marginLeft: theme.spacing[3],
-  },
-  nickname: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
-  },
-  bio: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing[16],
-    paddingHorizontal: theme.spacing[6],
-  },
-  emptyIcon: {
-    marginBottom: theme.spacing[4],
-  },
-  emptyText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-  },
-});

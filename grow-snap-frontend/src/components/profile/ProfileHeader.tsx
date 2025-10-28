@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react';
+import { View, Text } from 'react';
 import { theme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import ProfileAvatar from './ProfileAvatar';
 import ProfileStats from './ProfileStats';
 import { UserProfile } from '@/types/auth.types';
@@ -26,6 +27,7 @@ export default function ProfileHeader({
   onFollowingPress,
   showStats = true,
 }: ProfileHeaderProps) {
+  const styles = useStyles();
   const stats = [
     {
       label: '콘텐츠',
@@ -72,7 +74,7 @@ export default function ProfileHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   container: {
     backgroundColor: theme.colors.background.primary,
     paddingHorizontal: theme.spacing[4],

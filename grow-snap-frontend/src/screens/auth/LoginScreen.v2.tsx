@@ -3,7 +3,6 @@ import {
   View,
   Text,
   SafeAreaView,
-  StyleSheet,
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,11 +12,13 @@ import { Button } from '@/components/common';
 import { theme } from '@/theme';
 import { showErrorAlert } from '@/utils/errorHandler';
 import { responsive, isSmallDevice } from '@/utils/responsive';
+import { createStyleSheet } from '@/utils/styles';
 
 /**
  * 로그인 화면 (반응형)
  */
 export default function LoginScreen() {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
   // const { checkAuth } = useAuthStore(); // MVP: Auto-login disabled
@@ -118,7 +119,7 @@ function FeatureItem({ icon, text }: FeatureItemProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,

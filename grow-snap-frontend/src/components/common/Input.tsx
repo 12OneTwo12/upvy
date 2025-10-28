@@ -3,13 +3,13 @@ import {
   View,
   TextInput,
   Text,
-  StyleSheet,
   ViewStyle,
   TextStyle,
   TextInputProps,
   TouchableOpacity,
 } from 'react-native';
 import { theme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 
 export interface InputProps extends TextInputProps {
   /** 라벨 */
@@ -52,6 +52,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
     },
     ref
   ) => {
+    const styles = useStyles();
     const [isFocused, setIsFocused] = useState(false);
 
     const inputContainerStyle = [
@@ -111,7 +112,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
 
 Input.displayName = 'Input';
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   container: {
     marginBottom: theme.spacing[4],
   },
