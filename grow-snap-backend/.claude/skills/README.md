@@ -102,11 +102,27 @@
 
 **토큰**: ~1,800
 
+### 9. frontend-api-integration.md (프론트엔드 API 통합) ⚠️ 필수
+
+**내용**: 프론트엔드 개발 시 백엔드 API 스펙 확인 및 타입 일치 가이드
+
+**사용 시기**:
+- **프론트엔드 타입 정의 작성 전 (필수)**
+- **프론트엔드 API 클라이언트 작성 전 (필수)**
+- 백엔드-프론트엔드 API 불일치 디버깅 시
+- 새로운 API 엔드포인트 추가 시
+
+**토큰**: ~3,000
+
+**⚠️ 중요**: 프론트엔드 작업 시 백엔드 Controller와 DTO를 **반드시** 먼저 확인해야 합니다!
+
 ## 작업별 필수 Skill 매핑
 
 | 작업 유형 | 필수 Skill | 예상 토큰 |
 |---------|-----------|---------  |
 | **새로운 API 개발** | core-principles → mvc-layers → testing-guide → api-design | ~8,000 |
+| **프론트엔드 타입 정의** | **frontend-api-integration (필수)** → api-design | ~5,000 |
+| **프론트엔드 API 클라이언트** | **frontend-api-integration (필수)** → api-design | ~5,000 |
 | **테스트 작성** | testing-guide → core-principles | ~4,000 |
 | **데이터베이스 쿼리** | database-query → core-principles | ~4,000 |
 | **코드 리뷰** | quick-reference | ~2,000 |
