@@ -227,7 +227,10 @@ class ContentRepositoryImpl(
 
                 val tagsJson = record.getValue(CONTENT_METADATA.TAGS)
                 val tags = if (tagsJson != null) {
-                    objectMapper.readValue(tagsJson.data(), Array<String>::class.java).toList()
+                    // tagsJson.data()가 문자열을 반환하므로, 먼저 String으로 읽고 다시 JSON으로 파싱
+                    val jsonString = objectMapper.readValue(tagsJson.data(), String::class.java)
+                    @Suppress("UNCHECKED_CAST")
+                    objectMapper.readValue(jsonString, List::class.java) as List<String>
                 } else {
                     emptyList()
                 }
@@ -360,7 +363,10 @@ class ContentRepositoryImpl(
             ?.let { record ->
                 val tagsJson = record.getValue(CONTENT_METADATA.TAGS)
                 val tags = if (tagsJson != null) {
-                    objectMapper.readValue(tagsJson.data(), Array<String>::class.java).toList()
+                    // tagsJson.data()가 문자열을 반환하므로, 먼저 String으로 읽고 다시 JSON으로 파싱
+                    val jsonString = objectMapper.readValue(tagsJson.data(), String::class.java)
+                    @Suppress("UNCHECKED_CAST")
+                    objectMapper.readValue(jsonString, List::class.java) as List<String>
                 } else {
                     emptyList()
                 }

@@ -25,7 +25,7 @@ class CommentRepositoryImpl(
         val now = LocalDateTime.now()
         val commentId = comment.id ?: UUID.randomUUID()
 
-        return dslContext
+        dslContext
             .insertInto(COMMENTS)
             .set(COMMENTS.ID, commentId.toString())
             .set(COMMENTS.CONTENT_ID, comment.contentId.toString())
@@ -37,7 +37,24 @@ class CommentRepositoryImpl(
             .set(COMMENTS.CREATED_BY, comment.userId.toString())
             .set(COMMENTS.UPDATED_AT, now)
             .set(COMMENTS.UPDATED_BY, comment.userId.toString())
-            .returning()
+            .execute()
+
+        return dslContext
+            .select(
+                COMMENTS.ID,
+                COMMENTS.CONTENT_ID,
+                COMMENTS.USER_ID,
+                COMMENTS.PARENT_COMMENT_ID,
+                COMMENTS.CONTENT,
+                COMMENTS.TIMESTAMP_SECONDS,
+                COMMENTS.CREATED_AT,
+                COMMENTS.CREATED_BY,
+                COMMENTS.UPDATED_AT,
+                COMMENTS.UPDATED_BY,
+                COMMENTS.DELETED_AT
+            )
+            .from(COMMENTS)
+            .where(COMMENTS.ID.eq(commentId.toString()))
             .fetchOne()
             ?.let { recordToComment(it) }
     }

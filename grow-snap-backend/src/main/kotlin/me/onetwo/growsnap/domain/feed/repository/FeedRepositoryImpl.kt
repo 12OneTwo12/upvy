@@ -252,7 +252,10 @@ class FeedRepositoryImpl(
         // 태그 파싱
         val tagsJson = record.get(CONTENT_METADATA.TAGS)
         val tags = if (tagsJson != null) {
-            objectMapper.readValue<List<String>>(tagsJson.toString())
+            // tagsJson.data()가 문자열을 반환하므로, 먼저 String으로 읽고 다시 JSON으로 파싱
+            val jsonString = objectMapper.readValue(tagsJson.data(), String::class.java)
+            @Suppress("UNCHECKED_CAST")
+            objectMapper.readValue(jsonString, List::class.java) as List<String>
         } else {
             emptyList()
         }
