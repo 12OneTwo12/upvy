@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types/navigation.types';
@@ -18,6 +18,12 @@ export default function RootNavigator() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const profile = useAuthStore((state) => state.profile);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  // 앱 시작 시 자동 로그인 체크
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   // 초기 로딩 중
   if (isLoading) {
