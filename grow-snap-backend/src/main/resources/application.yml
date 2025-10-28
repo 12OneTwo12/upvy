@@ -4,7 +4,7 @@ spring:
 
   # Datasource Configuration (JDBC for JOOQ)
   datasource:
-    url: jdbc:mysql://localhost:3306/growsnap?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/growsnap?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -33,7 +33,7 @@ spring:
             scope:
               - email
               - profile
-            redirect-uri: "{baseUrl}/api/v1/auth/oauth2/callback/{registrationId}"
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth

@@ -17,6 +17,9 @@ import reactor.core.publisher.Mono
  *
  * OAuth2 로그인, 토큰 갱신, 로그아웃 등의 인증 관련 API를 제공합니다.
  *
+ * OAuth2 로그인 시작 엔드포인트는 Spring Security가 자동으로 제공합니다:
+ * - GET /oauth2/authorization/{registrationId} (예: /oauth2/authorization/google)
+ *
  * @property authService 인증 서비스
  */
 @RestController
