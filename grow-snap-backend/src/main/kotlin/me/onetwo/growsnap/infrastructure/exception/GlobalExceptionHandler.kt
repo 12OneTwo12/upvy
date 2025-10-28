@@ -128,26 +128,39 @@ class GlobalExceptionHandler {
     /**
      * IllegalArgumentException 예외 처리
      *
+     * 토큰 관련 에러(오래된 토큰 등)는 401 Unauthorized로 응답합니다.
+     *
      * @param ex IllegalArgumentException
      * @param exchange ServerWebExchange
-     * @return 400 Bad Request 응답
+     * @return 400 Bad Request 또는 401 Unauthorized 응답
      */
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgumentException(
         ex: IllegalArgumentException,
         exchange: ServerWebExchange
     ): Mono<ResponseEntity<ErrorResponse>> {
-        logger.warn("Illegal argument: {}", ex.message)
+        // 토큰 관련 에러인지 확인
+        val isTokenError = ex.message?.contains("token", ignoreCase = true) ?: false
+
+        if (isTokenError) {
+            logger.warn("Invalid authentication token: {}", ex.message)
+        } else {
+            logger.warn("Illegal argument: {}", ex.message, ex)
+        }
+
+        // 토큰 에러인 경우 401 Unauthorized로 응답
+        val httpStatus = if (isTokenError) HttpStatus.UNAUTHORIZED else HttpStatus.BAD_REQUEST
+        val errorCode = if (isTokenError) "INVALID_TOKEN" else "ILLEGAL_ARGUMENT"
 
         val errorResponse = ErrorResponse(
-            status = HttpStatus.BAD_REQUEST.value(),
-            error = "Bad Request",
+            status = httpStatus.value(),
+            error = httpStatus.reasonPhrase,
             message = ex.message ?: "잘못된 인자입니다.",
             path = exchange.request.path.value(),
-            code = "ILLEGAL_ARGUMENT"
+            code = errorCode
         )
 
-        return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse))
+        return Mono.just(ResponseEntity.status(httpStatus).body(errorResponse))
     }
 
     /**
