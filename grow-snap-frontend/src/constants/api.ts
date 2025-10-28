@@ -3,12 +3,14 @@ import Constants from 'expo-constants';
 
 /**
  * API Base URL
- * Development: localhost:8080
+ * Development: 10.0.2.2:8080 (Android Emulator) or localhost:8080
  * Production: api.growsnap.com
  */
-export const API_BASE_URL =
+export const API_HOST =
   Constants.expoConfig?.extra?.apiUrl ||
-  (__DEV__ ? 'http://localhost:8080/api/v1' : 'https://api.growsnap.com/api/v1');
+  (__DEV__ ? 'http://localhost:8080' : 'https://api.growsnap.com');
+
+export const API_BASE_URL = `${API_HOST}/api/v1`;
 
 /**
  * API Endpoints
