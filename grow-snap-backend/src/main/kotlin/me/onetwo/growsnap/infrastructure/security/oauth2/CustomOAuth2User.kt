@@ -4,6 +4,7 @@ import me.onetwo.growsnap.domain.user.model.UserRole
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.core.user.OAuth2User
+import java.io.Serializable
 import java.util.UUID
 
 /**
@@ -11,6 +12,8 @@ import java.util.UUID
  *
  * Spring Security의 OAuth2User를 확장하여
  * 데이터베이스의 사용자 ID, 이메일, 역할 정보를 포함합니다.
+ *
+ * Redis 세션에 저장되므로 Serializable을 구현합니다.
  *
  * @property oauth2User 기본 OAuth2User 정보
  * @property userId 데이터베이스 사용자 ID
@@ -22,7 +25,11 @@ class CustomOAuth2User(
     val userId: UUID,
     val email: String,
     val role: UserRole
-) : OAuth2User {
+) : OAuth2User, Serializable {
+
+    companion object {
+        private const val serialVersionUID = 1L
+    }
 
     /**
      * OAuth2 속성 반환
