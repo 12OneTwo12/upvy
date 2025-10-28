@@ -21,6 +21,7 @@ export default function FollowButton({
 }: FollowButtonProps) {
   return (
     <TouchableOpacity
+      testID="follow-button"
       style={[
         styles.button,
         isFollowing ? styles.buttonFollowing : styles.buttonNotFollowing,
@@ -32,6 +33,7 @@ export default function FollowButton({
     >
       {loading ? (
         <ActivityIndicator
+          testID="follow-button-loading"
           size="small"
           color={isFollowing ? theme.colors.text.primary : theme.colors.text.inverse}
         />

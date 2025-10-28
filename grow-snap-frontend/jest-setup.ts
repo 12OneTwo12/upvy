@@ -29,9 +29,6 @@ jest.mock('expo-web-browser', () => ({
   maybeCompleteAuthSession: jest.fn(),
 }));
 
-// Silence the warning: Animated: `useNativeDriver` is not supported
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
-
 // Mock Gesture Handler
 jest.mock('react-native-gesture-handler', () => {
   const View = require('react-native').View;

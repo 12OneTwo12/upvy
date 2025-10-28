@@ -32,6 +32,7 @@ export default function ProfileAvatar({
 
   const content = (
     <View
+      testID="profile-avatar"
       style={[
         styles.container,
         {
@@ -45,6 +46,7 @@ export default function ProfileAvatar({
     >
       {imageUrl ? (
         <Image
+          testID="profile-avatar-image"
           source={{ uri: imageUrl }}
           style={[
             styles.image,
@@ -58,6 +60,7 @@ export default function ProfileAvatar({
         />
       ) : (
         <View
+          testID="profile-avatar-default"
           style={[
             styles.placeholder,
             {

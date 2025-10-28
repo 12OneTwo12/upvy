@@ -51,6 +51,7 @@ export default function FollowListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [followLoadingMap, setFollowLoadingMap] = useState<Record<string, boolean>>({});
+  const [userNickname, setUserNickname] = useState<string>('');
 
   // 데이터 로드
   const loadData = async (showLoading = true) => {
@@ -100,6 +101,13 @@ export default function FollowListScreen() {
 
       setFollowers(followersWithState);
       setFollowing(followingWithState);
+
+      // 닉네임 설정 (첫 번째 사용자의 닉네임 사용, 없으면 팔로잉 목록에서)
+      if (followersWithState.length > 0) {
+        setUserNickname(followersWithState[0].nickname);
+      } else if (followingWithState.length > 0) {
+        setUserNickname(followingWithState[0].nickname);
+      }
     }
 
     if (showLoading) setLoading(false);
@@ -214,7 +222,9 @@ export default function FollowListScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>@닉네임</Text>
+        <Text style={styles.headerTitle}>
+          {userNickname ? `@${userNickname}` : '팔로우 목록'}
+        </Text>
         <View style={styles.headerRight} />
       </View>
 
