@@ -15,23 +15,26 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface FeedItemProps {
   item: FeedItemType;
   isFocused: boolean;
+  shouldPreload?: boolean; // Pre-loading을 위한 prop (±2 범위)
   onLike?: () => void;
   onComment?: () => void;
   onSave?: () => void;
   onShare?: () => void;
+  onFollow?: () => void;
   onCreatorPress?: () => void;
 }
 
 export const FeedItem: React.FC<FeedItemProps> = ({
   item,
   isFocused,
+  shouldPreload = false,
   onLike,
   onComment,
   onSave,
   onShare,
+  onFollow,
   onCreatorPress,
 }) => {
-  const [muted, setMuted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // 비디오만 표시 (사진은 나중에 구현)
@@ -54,10 +57,9 @@ export const FeedItem: React.FC<FeedItemProps> = ({
       <VideoPlayer
         uri={item.url}
         isFocused={isFocused}
+        shouldPreload={shouldPreload}
         onDoubleTap={onLike}
         onTap={handleVideoTap}
-        muted={muted}
-        onMutedChange={setMuted}
       />
 
       {/* 정보 오버레이 */}
@@ -70,6 +72,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         onComment={onComment}
         onSave={onSave}
         onShare={onShare}
+        onFollow={onFollow}
         onCreatorPress={onCreatorPress}
         isExpanded={isExpanded}
         setIsExpanded={setIsExpanded}

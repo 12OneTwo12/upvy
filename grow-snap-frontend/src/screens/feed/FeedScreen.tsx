@@ -7,7 +7,7 @@
  * - 커서 기반 페이지네이션
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -21,8 +21,12 @@ import {
   NativeSyntheticEvent,
 } from 'react-native';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
 import { FeedItem } from '@/components/feed';
 import { getMainFeed, getFollowingFeed, refreshFeed as refreshFeedApi } from '@/api/feed.api';
+import { createLike, deleteLike } from '@/api/like.api';
+import { createSave, deleteSave } from '@/api/save.api';
+import { followUser, unfollowUser } from '@/api/follow.api';
 import type { FeedTab, FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -35,6 +39,7 @@ export default function FeedScreen() {
   const flatListRef = useRef<FlatList>(null);
   const scrollYRef = useRef(0);
   const queryClient = useQueryClient();
+  const navigation = useNavigation();
 
   // 피드 데이터 fetching (무한 스크롤)
   const {
@@ -63,11 +68,157 @@ export default function FeedScreen() {
     },
   });
 
-  // 모든 페이지의 콘텐츠를 평탄화
-  const feedItems: FeedItemType[] = data?.pages.flatMap((page) => page.content) ?? [];
+  // 좋아요 mutation (Optimistic update)
+  const likeMutation = useMutation({
+    mutationFn: async ({ contentId, isLiked }: { contentId: string; isLiked: boolean }) => {
+      if (isLiked) {
+        await deleteLike(contentId);
+      } else {
+        await createLike(contentId);
+      }
+    },
+    onMutate: async ({ contentId }) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: ['feed', currentTab] });
+
+      const previousData = queryClient.getQueryData(['feed', currentTab]);
+
+      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            content: page.content.map((item: FeedItemType) =>
+              item.contentId === contentId
+                ? {
+                    ...item,
+                    interactions: {
+                      ...item.interactions,
+                      isLiked: !item.interactions.isLiked,
+                      likeCount: item.interactions.isLiked
+                        ? item.interactions.likeCount - 1
+                        : item.interactions.likeCount + 1,
+                    },
+                  }
+                : item
+            ),
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['feed', currentTab], context.previousData);
+      }
+    },
+  });
+
+  // 저장 mutation (Optimistic update)
+  const saveMutation = useMutation({
+    mutationFn: async ({ contentId, isSaved }: { contentId: string; isSaved: boolean }) => {
+      if (isSaved) {
+        await deleteSave(contentId);
+      } else {
+        await createSave(contentId);
+      }
+    },
+    onMutate: async ({ contentId }) => {
+      await queryClient.cancelQueries({ queryKey: ['feed', currentTab] });
+
+      const previousData = queryClient.getQueryData(['feed', currentTab]);
+
+      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            content: page.content.map((item: FeedItemType) =>
+              item.contentId === contentId
+                ? {
+                    ...item,
+                    interactions: {
+                      ...item.interactions,
+                      isSaved: !item.interactions.isSaved,
+                      saveCount: item.interactions.isSaved
+                        ? item.interactions.saveCount - 1
+                        : item.interactions.saveCount + 1,
+                    },
+                  }
+                : item
+            ),
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['feed', currentTab], context.previousData);
+      }
+    },
+  });
+
+  // 팔로우 mutation (Optimistic update)
+  const followMutation = useMutation({
+    mutationFn: async ({ userId, isFollowing }: { userId: string; isFollowing: boolean }) => {
+      if (isFollowing) {
+        await unfollowUser(userId);
+      } else {
+        await followUser(userId);
+      }
+    },
+    onMutate: async ({ userId }) => {
+      await queryClient.cancelQueries({ queryKey: ['feed', currentTab] });
+
+      const previousData = queryClient.getQueryData(['feed', currentTab]);
+
+      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            content: page.content.map((item: FeedItemType) =>
+              item.creator.userId === userId
+                ? {
+                    ...item,
+                    creator: {
+                      ...item.creator,
+                      isFollowing: !item.creator.isFollowing,
+                    },
+                  }
+                : item
+            ),
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['feed', currentTab], context.previousData);
+      }
+    },
+  });
+
+  // 모든 페이지의 콘텐츠를 평탄화 + uniqueKey 추가
+  const feedItems: (FeedItemType & { uniqueKey: string })[] =
+    data?.pages.flatMap((page, pageIndex) =>
+      page.content.map((item, itemIndex) => ({
+        ...item,
+        uniqueKey: `${pageIndex}-${itemIndex}-${item.contentId}`,
+      }))
+    ) ?? [];
 
   // 로딩 중일 때 보여줄 스켈레톤 아이템
-  const loadingFeedItem: FeedItemType = {
+  const loadingFeedItem: FeedItemType & { uniqueKey: string } = {
     contentId: 'loading',
     contentType: 'VIDEO',
     url: '',
@@ -91,6 +242,7 @@ export default function FeedScreen() {
       shareCount: 0,
     },
     subtitles: [],
+    uniqueKey: 'loading-0-loading',
   };
 
   // 데이터 없거나 로딩중 -> 스켈레톤, 실제 데이터 있음 -> 실제 데이터 표시
@@ -99,13 +251,46 @@ export default function FeedScreen() {
   // 스크롤 이벤트: 현재 보이는 아이템 인덱스 추적
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index ?? 0);
+      const currentIdx = viewableItems[0].index ?? 0;
+      setCurrentIndex(currentIdx);
     }
   }).current;
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 80,
   }).current;
+
+  // 무한 스크롤 최적화: 끝에서 2개 전에 다음 페이지 미리 로드
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && displayItems.length > 0) {
+      const distanceFromEnd = displayItems.length - currentIndex;
+      if (distanceFromEnd <= 2) {
+        fetchNextPage();
+      }
+    }
+  }, [currentIndex, hasNextPage, isFetchingNextPage, displayItems.length, fetchNextPage]);
+
+  // 네비게이션 탭 재클릭 시 새로고침 (Instagram 스타일)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress' as any, async (e) => {
+      // 이미 피드 화면에 있을 때 탭을 다시 누르면
+      if (navigation.isFocused()) {
+        e.preventDefault();
+        // 맨 위로 스크롤하고 새로고침
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        setCurrentIndex(0);
+        setRefreshing(true);
+        try {
+          await queryClient.invalidateQueries({ queryKey: ['feed'] });
+          await refetch();
+        } finally {
+          setRefreshing(false);
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, queryClient, refetch]);
 
   // Pull-to-Refresh - 현재 위치에서 데이터만 새로고침
   const handleRefresh = useCallback(async () => {
@@ -119,25 +304,25 @@ export default function FeedScreen() {
     }
   }, [queryClient, refetch]);
 
-  // 스크롤 이벤트 - Pull-to-Refresh 감지
+  // 스크롤 이벤트 - Pull-to-Refresh 감지 (Instagram 스타일: 첫 번째 아이템에서만)
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     scrollYRef.current = offsetY;
 
-    // Pull-to-Refresh 거리 계산 (헤더 영역에서)
-    if (offsetY < 0) {
+    // Pull-to-Refresh 거리 계산 (첫 번째 아이템에서만)
+    if (currentIndex === 0 && offsetY < 0) {
       setPullDistance(Math.abs(offsetY));
     } else {
       setPullDistance(0);
     }
-  }, []);
+  }, [currentIndex]);
 
-  // 스크롤 종료 시 - 페이지 스냅 및 새로고침 트리거
+  // 스크롤 종료 시 - 페이지 스냅 및 새로고침 트리거 (Instagram 스타일: 첫 번째에서만)
   const handleScrollEnd = useCallback(async (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
 
-    // Pull-to-Refresh 트리거
-    if (pullDistance > 80 && offsetY <= 0) {
+    // Pull-to-Refresh 트리거 (첫 번째 아이템에서만)
+    if (pullDistance > 60 && offsetY <= 0 && currentIndex === 0) {
       await handleRefresh();
       return;
     }
@@ -145,7 +330,7 @@ export default function FeedScreen() {
     // 인덱스 계산
     const index = Math.max(0, Math.round(offsetY / SCREEN_HEIGHT));
     setCurrentIndex(index);
-  }, [pullDistance, handleRefresh]);
+  }, [pullDistance, currentIndex, handleRefresh]);
 
   // 무한 스크롤: 끝에 도달 시 다음 페이지 로드
   const handleEndReached = useCallback(() => {
@@ -154,17 +339,24 @@ export default function FeedScreen() {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // 탭 전환
-  const handleTabChange = (tab: FeedTab) => {
-    setCurrentTab(tab);
-    setCurrentIndex(0);
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  // 탭 전환 (Instagram 스타일: 같은 탭 재클릭 시 새로고침)
+  const handleTabChange = async (tab: FeedTab) => {
+    if (tab === currentTab) {
+      // 같은 탭을 다시 클릭하면 새로고침
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      setCurrentIndex(0);
+      await handleRefresh();
+    } else {
+      // 다른 탭으로 전환
+      setCurrentTab(tab);
+      setCurrentIndex(0);
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
   };
 
-  // 인터랙션 핸들러 (나중에 API 연동)
-  const handleLike = (contentId: string) => {
-    console.log('Like:', contentId);
-    // TODO: API 연동
+  // 인터랙션 핸들러
+  const handleLike = (contentId: string, isLiked: boolean = false) => {
+    likeMutation.mutate({ contentId, isLiked });
   };
 
   const handleComment = (contentId: string) => {
@@ -172,14 +364,17 @@ export default function FeedScreen() {
     // TODO: 댓글 모달 열기
   };
 
-  const handleSave = (contentId: string) => {
-    console.log('Save:', contentId);
-    // TODO: API 연동
+  const handleSave = (contentId: string, isSaved: boolean = false) => {
+    saveMutation.mutate({ contentId, isSaved });
   };
 
   const handleShare = (contentId: string) => {
     console.log('Share:', contentId);
     // TODO: 공유 기능
+  };
+
+  const handleFollow = (userId: string, isFollowing: boolean = false) => {
+    followMutation.mutate({ userId, isFollowing });
   };
 
   const handleCreatorPress = (userId: string) => {
@@ -190,6 +385,8 @@ export default function FeedScreen() {
   // 렌더링
   const renderItem = ({ item, index }: { item: FeedItemType; index: number }) => {
     const isLoadingItem = item.contentId === 'loading';
+    // Pre-loading: 현재 인덱스 기준 ±2 범위의 비디오 미리 로드
+    const shouldPreload = Math.abs(index - currentIndex) <= 2;
 
     return (
       <View style={{
@@ -200,10 +397,12 @@ export default function FeedScreen() {
         <FeedItem
           item={item}
           isFocused={index === currentIndex}
-          onLike={() => handleLike(item.contentId)}
+          shouldPreload={shouldPreload}
+          onLike={() => handleLike(item.contentId, item.interactions.isLiked ?? false)}
           onComment={() => handleComment(item.contentId)}
-          onSave={() => handleSave(item.contentId)}
+          onSave={() => handleSave(item.contentId, item.interactions.isSaved ?? false)}
           onShare={() => handleShare(item.contentId)}
+          onFollow={() => handleFollow(item.creator.userId, item.creator.isFollowing ?? false)}
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
         />
 
@@ -240,6 +439,7 @@ export default function FeedScreen() {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
+        pointerEvents: 'box-none',
       }}>
         <TouchableOpacity
           onPress={() => handleTabChange('following')}
@@ -276,10 +476,10 @@ export default function FeedScreen() {
       </View>
 
       {/* Pull-to-Refresh 인디케이터 */}
-      {pullDistance > 50 && (
+      {pullDistance > 30 && currentIndex === 0 && (
         <View style={{
           position: 'absolute',
-          top: 80,
+          top: 60 + pullDistance * 0.5,
           left: 0,
           right: 0,
           zIndex: 100,
@@ -292,7 +492,7 @@ export default function FeedScreen() {
             paddingHorizontal: 20,
           }}>
             <Text style={{ color: 'white', fontSize: 14 }}>
-              {pullDistance > 80 ? '🔄 놓아서 새로고침' : '⬇️ 당겨서 새로고침'}
+              {pullDistance > 60 ? '🔄 놓아서 새로고침' : '⬇️ 당겨서 새로고침'}
             </Text>
           </View>
         </View>
@@ -317,7 +517,7 @@ export default function FeedScreen() {
         ref={flatListRef}
         data={displayItems}
         renderItem={renderItem}
-        keyExtractor={(item, index) => `${item.contentId}-${index}`}
+        keyExtractor={(item) => item.uniqueKey}
         showsVerticalScrollIndicator={false}
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
@@ -345,11 +545,11 @@ export default function FeedScreen() {
           offset: SCREEN_HEIGHT * index,
           index,
         })}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        initialNumToRender={1}
-        updateCellsBatchingPeriod={100}
+        removeClippedSubviews={false}
+        maxToRenderPerBatch={5}
+        windowSize={11}
+        initialNumToRender={5}
+        updateCellsBatchingPeriod={50}
       />
     </View>
   );
