@@ -11,6 +11,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuthStore } from '@/stores/authStore';
 import type { CreatorInfo, InteractionInfo } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -25,6 +26,7 @@ interface FeedOverlayProps {
   onComment?: () => void;
   onSave?: () => void;
   onShare?: () => void;
+  onFollow?: () => void;
   onCreatorPress?: () => void;
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
@@ -47,12 +49,16 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onComment,
   onSave,
   onShare,
+  onFollow,
   onCreatorPress,
   isExpanded,
   setIsExpanded,
 }) => {
   const insets = useSafeAreaInsets();
+  const currentUser = useAuthStore((state) => state.user);
   const isLoading = isLoadingState(creator);
+  const isOwnPost = !isLoading && currentUser && currentUser.id === creator.userId;
+  const shouldShowFollowButton = !isLoading && currentUser && currentUser.id !== creator.userId;
   const [collapsedHeight, setCollapsedHeight] = useState(0);
   const [expandedHeight, setExpandedHeight] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -146,9 +152,14 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                   </View>
                 )}
                 <Text style={styles.creatorName}>{creator.nickname}</Text>
-                <TouchableOpacity style={styles.followButton}>
-                  <Text style={styles.followButtonText}>팔로우</Text>
-                </TouchableOpacity>
+                {/* 자기 게시물이 아닐 때만 팔로우 버튼 표시 */}
+                {shouldShowFollowButton && (
+                  <TouchableOpacity style={styles.followButton} onPress={onFollow}>
+                    <Text style={styles.followButtonText}>
+                      {creator.isFollowing ? '팔로잉' : '팔로우'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
             )}
 
@@ -181,7 +192,11 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           <View style={[styles.rightSection, { bottom: bottomPadding }]}>
             {/* 좋아요 */}
             <TouchableOpacity onPress={onLike} style={styles.actionButton}>
-              <Ionicons name="heart-outline" size={32} color="#FFFFFF" />
+              <Ionicons
+                name={interactions.isLiked ? "heart" : "heart-outline"}
+                size={32}
+                color={interactions.isLiked ? "#FF0000" : "#FFFFFF"}
+              />
               <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
                 {isLoading ? '0' : formatCount(interactions.likeCount)}
               </Text>
@@ -197,7 +212,11 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 
             {/* 저장 */}
             <TouchableOpacity onPress={onSave} style={styles.actionButton}>
-              <Ionicons name="bookmark-outline" size={30} color="#FFFFFF" />
+              <Ionicons
+                name={interactions.isSaved ? "bookmark" : "bookmark-outline"}
+                size={30}
+                color="#FFFFFF"
+              />
               <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
                 {isLoading ? '0' : formatCount(interactions.saveCount)}
               </Text>
