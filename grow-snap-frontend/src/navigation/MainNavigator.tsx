@@ -1,6 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '@/types/navigation.types';
+import { theme } from '@/theme';
 import FeedScreen from '@/screens/feed/FeedScreen';
 import SearchScreen from '@/screens/search/SearchScreen';
 import UploadScreen from '@/screens/upload/UploadScreen';
@@ -15,13 +17,32 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 export default function MainNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
           height: 60,
           paddingBottom: 8,
         },
-      }}
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap;
+
+          if (route.name === 'Feed') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Search') {
+            iconName = focused ? 'search' : 'search-outline';
+          } else if (route.name === 'Upload') {
+            iconName = focused ? 'add-circle' : 'add-circle-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
+          } else {
+            iconName = 'help-circle-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: theme.colors.primary[500],
+        tabBarInactiveTintColor: theme.colors.gray[400],
+      })}
     >
       <Tab.Screen
         name="Feed"
