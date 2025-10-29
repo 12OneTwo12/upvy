@@ -14,7 +14,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
+import { RootStackParamList } from '@/types/navigation.types';
 import { ProfileAvatar } from '@/components/profile';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -220,9 +222,11 @@ const useStyles = createStyleSheet({
   },
 });
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditProfile'>;
+
 export default function EditProfileScreen() {
   const styles = useStyles();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const { profile: storeProfile, updateProfile } = useAuthStore();
 
   const [profileImageUrl, setProfileImageUrl] = useState(

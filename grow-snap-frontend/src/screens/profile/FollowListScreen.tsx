@@ -21,6 +21,7 @@ import {
   checkFollowing,
   followUser,
   unfollowUser,
+  getProfileByUserId,
 } from '@/api/auth.api';
 import { UserProfile } from '@/types/auth.types';
 import { theme } from '@/theme';
@@ -165,6 +166,19 @@ export default function FollowListScreen() {
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
 
+    // 사용자 프로필 조회 (헤더 닉네임 표시용)
+    const profileResult = await withErrorHandling(
+      async () => await getProfileByUserId(userId),
+      {
+        showAlert: false,
+        logContext: 'FollowListScreen.loadProfile',
+      }
+    );
+
+    if (profileResult) {
+      setUserNickname(profileResult.nickname);
+    }
+
     // 팔로워 목록 로드
     const followersResult = await withErrorHandling(
       async () => await getFollowers(userId),
@@ -209,13 +223,6 @@ export default function FollowListScreen() {
 
       setFollowers(followersWithState);
       setFollowing(followingWithState);
-
-      // 닉네임 설정 (첫 번째 사용자의 닉네임 사용, 없으면 팔로잉 목록에서)
-      if (followersWithState.length > 0) {
-        setUserNickname(followersWithState[0].nickname);
-      } else if (followingWithState.length > 0) {
-        setUserNickname(followingWithState[0].nickname);
-      }
     }
 
     if (showLoading) setLoading(false);

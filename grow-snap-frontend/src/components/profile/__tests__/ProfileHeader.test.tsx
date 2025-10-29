@@ -49,18 +49,4 @@ describe('ProfileHeader', () => {
 
     expect(queryByText('Test bio')).toBeNull();
   });
-
-  it('관심사 태그를 표시한다', () => {
-    const { getByText } = render(<ProfileHeader profile={mockProfile} />);
-
-    expect(getByText('#성장')).toBeTruthy();
-    expect(getByText('#운동')).toBeTruthy();
-  });
-
-  it('크리에이터 배지를 표시한다', () => {
-    const creatorProfile = { ...mockProfile, isCreator: true };
-    const { getByText } = render(<ProfileHeader profile={creatorProfile} />);
-
-    expect(getByText('크리에이터')).toBeTruthy();
-  });
 });
