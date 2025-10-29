@@ -236,7 +236,7 @@ export default function FeedScreen() {
         ref={flatListRef}
         data={displayItems}
         renderItem={renderItem}
-        keyExtractor={(item) => item.contentId}
+        keyExtractor={(item, index) => `${item.contentId}-${index}`}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={SCREEN_HEIGHT}
