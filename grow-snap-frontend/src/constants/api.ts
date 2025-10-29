@@ -56,9 +56,11 @@ export const API_ENDPOINTS = {
     REFRESH: '/feed/refresh',
   },
 
-  // Like
+  // Like (백엔드 스펙: POST/DELETE 방식)
   LIKE: {
-    TOGGLE: (contentId: string) => `/likes/${contentId}`,
+    CREATE: (contentId: string) => `/likes/${contentId}`,
+    DELETE: (contentId: string) => `/likes/${contentId}`,
+    CHECK: (contentId: string) => `/likes/${contentId}/check`,
     COUNT: (contentId: string) => `/likes/${contentId}/count`,
   },
 
@@ -69,9 +71,11 @@ export const API_ENDPOINTS = {
     DELETE: (commentId: string) => `/comments/${commentId}`,
   },
 
-  // Save
+  // Save (백엔드 스펙: POST/DELETE 방식)
   SAVE: {
-    TOGGLE: (contentId: string) => `/saves/${contentId}`,
+    CREATE: (contentId: string) => `/saves/${contentId}`,
+    DELETE: (contentId: string) => `/saves/${contentId}`,
+    CHECK: (contentId: string) => `/saves/${contentId}/check`,
     LIST: '/saves/me',
   },
 

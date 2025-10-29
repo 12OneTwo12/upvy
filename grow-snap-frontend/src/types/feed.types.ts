@@ -45,7 +45,8 @@ export interface CreatorInfo {
   userId: string;
   nickname: string;
   profileImageUrl: string | null;
-  followerCount: number;
+  followerCount?: number;
+  isFollowing?: boolean; // 현재 사용자가 팔로우 중인지 여부
 }
 
 /**
@@ -57,7 +58,9 @@ export interface InteractionInfo {
   commentCount: number;
   saveCount: number;
   shareCount: number;
-  viewCount: number;
+  viewCount?: number;
+  isLiked?: boolean; // 현재 사용자가 좋아요 했는지 여부
+  isSaved?: boolean; // 현재 사용자가 저장했는지 여부
 }
 
 /**
