@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
@@ -150,6 +150,14 @@ export default function ProfileScreen() {
     await loadProfile(false);
     setRefreshing(false);
   };
+
+  // 화면이 포커스될 때마다 프로필 리로드
+  useFocusEffect(
+    useCallback(() => {
+      // 화면에 진입할 때 프로필 새로고침
+      loadProfile(false);
+    }, [])
+  );
 
   // 초기 로드
   useEffect(() => {
