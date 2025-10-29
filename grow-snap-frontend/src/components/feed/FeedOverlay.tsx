@@ -6,8 +6,8 @@
  * - 하단 우측: 인터랙션 버튼 (좋아요, 댓글, 저장, 공유)
  */
 
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Modal, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,10 +48,21 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const isLoading = isLoadingState(creator);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
   // 하단 패딩 = 내비게이션 바 높이 + 하단 안전 영역 + 여유 공간
   const bottomPadding = NAVIGATION_BAR_HEIGHT + insets.bottom + 16;
+
+  // 확장/축소 애니메이션
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: isExpanded ? 0 : SCREEN_HEIGHT,
+      useNativeDriver: true,
+      damping: 20,
+      stiffness: 90,
+    }).start();
+  }, [isExpanded, slideAnim]);
 
   // 설명이 길면 더보기 표시 (60자 이상)
   const shouldShowMore = (description || title).length > 60;
@@ -115,7 +126,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
             {/* 콘텐츠 설명 */}
             <TouchableOpacity
               style={styles.descriptionContainer}
-              onPress={() => shouldShowMore && setIsModalVisible(true)}
+              onPress={() => shouldShowMore && setIsExpanded(true)}
               disabled={!shouldShowMore || isLoading}
             >
               {isLoading ? (
@@ -179,19 +190,25 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         </View>
       </View>
 
-      {/* 설명 전체보기 모달 */}
-      <Modal
-        visible={isModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
+      {/* 설명 전체보기 패널 */}
+      {isExpanded && (
+        <>
+          {/* 반투명 배경 */}
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setIsExpanded(false)}
+          />
+
+          {/* 슬라이드 업 패널 */}
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
             {/* 상단 핸들 */}
             <View style={styles.modalHandle} />
 
@@ -216,9 +233,9 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                 {description || title}
               </Text>
             </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+          </Animated.View>
+        </>
+      )}
     </>
   );
 };
@@ -331,11 +348,18 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   modalOverlay: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
   },
   modalContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#1C1C1E',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
