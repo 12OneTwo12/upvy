@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { ProfileAvatar } from '@/components/profile';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -249,9 +250,6 @@ export default function EditProfileScreen() {
   // 이미지 선택 (갤러리 또는 카메라)
   const pickImage = async (useCamera: boolean = false) => {
     try {
-      // 동적으로 expo-image-picker import
-      const ImagePicker = await import('expo-image-picker');
-
       // 권한 요청
       const permission = useCamera
         ? await ImagePicker.requestCameraPermissionsAsync()
@@ -301,6 +299,7 @@ export default function EditProfileScreen() {
       }
     } catch (error) {
       setIsUploadingImage(false);
+      console.error('Image picker error:', error);
       showErrorAlert(
         '이미지를 선택하는 중 오류가 발생했습니다.',
         '오류'
