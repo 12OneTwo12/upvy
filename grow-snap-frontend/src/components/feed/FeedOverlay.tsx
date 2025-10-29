@@ -54,10 +54,10 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   // 하단 패딩 = 내비게이션 바 높이 + 하단 안전 영역 + 여유 공간
   const bottomPadding = NAVIGATION_BAR_HEIGHT + insets.bottom + 16;
 
-  // 확장/축소 애니메이션 - 위로 200px 올라가도록
+  // 확장/축소 애니메이션 - 위로 적당히 올라가도록 (화면의 20% 정도)
   useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: isExpanded ? -250 : 0,
+      toValue: isExpanded ? -(SCREEN_HEIGHT * 0.15) : 0,
       useNativeDriver: true,
       damping: 20,
       stiffness: 90,
@@ -385,9 +385,9 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   expandedDescriptionContainer: {
-    paddingTop: 16,
+    paddingTop: 8,
     paddingHorizontal: 12,
-    maxHeight: 200,
+    maxHeight: SCREEN_HEIGHT * 0.25,
   },
   expandedScrollView: {
     flex: 1,
@@ -395,6 +395,7 @@ const styles = StyleSheet.create({
   expandedDescription: {
     fontSize: 14,
     color: '#FFFFFF',
-    lineHeight: 22,
+    lineHeight: 20,
+    paddingBottom: 16,
   },
 });
