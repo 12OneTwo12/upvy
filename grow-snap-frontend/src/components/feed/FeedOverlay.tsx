@@ -10,6 +10,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CreatorInfo, InteractionInfo } from '@/types/feed.types';
 
 interface FeedOverlayProps {
@@ -29,6 +30,9 @@ const isLoadingState = (creator: CreatorInfo) => {
   return creator.userId === 'loading';
 };
 
+// 내비게이션 바 높이 (일반적으로 48-56px + safe area)
+const NAVIGATION_BAR_HEIGHT = 56;
+
 export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   creator,
   title,
@@ -40,7 +44,11 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onShare,
   onCreatorPress,
 }) => {
+  const insets = useSafeAreaInsets();
   const isLoading = isLoadingState(creator);
+
+  // 하단 패딩 = 내비게이션 바 높이 + 하단 안전 영역 + 여유 공간
+  const bottomPadding = NAVIGATION_BAR_HEIGHT + insets.bottom + 16;
 
   const formatCount = (count: number): string => {
     if (count >= 1000000) {
@@ -62,7 +70,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
       />
 
       {/* 하단 콘텐츠 */}
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingBottom: bottomPadding }]}>
         <View style={styles.content}>
           {/* 좌측: 크리에이터 정보 + 콘텐츠 정보 */}
           <View style={styles.leftSection}>
@@ -112,7 +120,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           </View>
 
           {/* 우측: 인터랙션 버튼 */}
-          <View style={styles.rightSection}>
+          <View style={[styles.rightSection, { bottom: bottomPadding }]}>
             {/* 좋아요 */}
             <TouchableOpacity onPress={onLike} style={styles.actionButton}>
               <Ionicons name="heart-outline" size={32} color="#FFFFFF" />
@@ -169,8 +177,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: 90, // 내비게이션 바 높이만큼 여유 공간 추가
     paddingHorizontal: 12,
+    // paddingBottom은 동적으로 설정됨
   },
   content: {
     flexDirection: 'row',
@@ -242,7 +250,7 @@ const styles = StyleSheet.create({
   rightSection: {
     position: 'absolute',
     right: 12,
-    bottom: 90, // 내비게이션 바 높이만큼 위로 이동
+    // bottom은 동적으로 설정됨
     alignItems: 'center',
     gap: 20,
   },
