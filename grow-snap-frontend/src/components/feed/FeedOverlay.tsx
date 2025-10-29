@@ -116,41 +116,33 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
             {/* 좋아요 */}
             <TouchableOpacity onPress={onLike} style={styles.actionButton}>
               <Ionicons name="heart-outline" size={32} color="#FFFFFF" />
-              {!isLoading && (
-                <Text style={styles.actionCount}>
-                  {formatCount(interactions.likeCount)}
-                </Text>
-              )}
+              <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
+                {isLoading ? '0' : formatCount(interactions.likeCount)}
+              </Text>
             </TouchableOpacity>
 
             {/* 댓글 */}
             <TouchableOpacity onPress={onComment} style={styles.actionButton}>
               <Ionicons name="chatbubble-outline" size={30} color="#FFFFFF" />
-              {!isLoading && (
-                <Text style={styles.actionCount}>
-                  {formatCount(interactions.commentCount)}
-                </Text>
-              )}
+              <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
+                {isLoading ? '0' : formatCount(interactions.commentCount)}
+              </Text>
             </TouchableOpacity>
 
             {/* 저장 */}
             <TouchableOpacity onPress={onSave} style={styles.actionButton}>
               <Ionicons name="bookmark-outline" size={30} color="#FFFFFF" />
-              {!isLoading && (
-                <Text style={styles.actionCount}>
-                  {formatCount(interactions.saveCount)}
-                </Text>
-              )}
+              <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
+                {isLoading ? '0' : formatCount(interactions.saveCount)}
+              </Text>
             </TouchableOpacity>
 
             {/* 공유 */}
             <TouchableOpacity onPress={onShare} style={styles.actionButton}>
               <Ionicons name="paper-plane-outline" size={30} color="#FFFFFF" />
-              {!isLoading && (
-                <Text style={styles.actionCount}>
-                  {formatCount(interactions.shareCount)}
-                </Text>
-              )}
+              <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
+                {isLoading ? '0' : formatCount(interactions.shareCount)}
+              </Text>
             </TouchableOpacity>
 
             {/* 더보기 (점 3개) */}
