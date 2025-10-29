@@ -61,8 +61,8 @@ export default function FeedScreen() {
   // 모든 페이지의 콘텐츠를 평탄화
   const feedItems: FeedItemType[] = data?.pages.flatMap((page) => page.content) ?? [];
 
-  // 빈 상태에서 보여줄 더미 데이터 (로딩 중 표시용)
-  const dummyFeedItem: FeedItemType = {
+  // 로딩 중일 때 보여줄 스켈레톤 아이템
+  const loadingFeedItem: FeedItemType = {
     contentId: 'loading',
     contentType: 'VIDEO',
     url: '',
@@ -70,13 +70,13 @@ export default function FeedScreen() {
     duration: 0,
     width: 1080,
     height: 1920,
-    title: '로딩 중...',
-    description: '피드를 불러오는 중입니다',
+    title: '',
+    description: '',
     category: 'GROWTH',
     tags: [],
     creator: {
       userId: 'loading',
-      nickname: '로딩 중...',
+      nickname: '',
       profileImageUrl: null,
     },
     interactions: {
@@ -88,8 +88,8 @@ export default function FeedScreen() {
     subtitles: [],
   };
 
-  // 실제 데이터가 없으면 더미 데이터 사용
-  const displayItems = feedItems.length > 0 ? feedItems : [dummyFeedItem];
+  // 데이터 없거나 로딩중 -> 스켈레톤, 실제 데이터 있음 -> 실제 데이터 표시
+  const displayItems = (isLoading || feedItems.length === 0) ? [loadingFeedItem] : feedItems;
 
   // 스크롤 이벤트: 현재 보이는 아이템 인덱스 추적
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -247,6 +247,22 @@ export default function FeedScreen() {
         maxToRenderPerBatch={3}
         windowSize={5}
       />
+
+      {/* 로딩 중 또는 데이터 없을 때 중앙 인디케이터 */}
+      {(isLoading || feedItems.length === 0) && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+          pointerEvents: 'none',
+        }}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
     </View>
   );
 }
