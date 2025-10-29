@@ -61,6 +61,36 @@ export default function FeedScreen() {
   // 모든 페이지의 콘텐츠를 평탄화
   const feedItems: FeedItemType[] = data?.pages.flatMap((page) => page.content) ?? [];
 
+  // 빈 상태에서 보여줄 더미 데이터 (로딩 중 표시용)
+  const dummyFeedItem: FeedItemType = {
+    contentId: 'loading',
+    contentType: 'VIDEO',
+    url: '',
+    thumbnailUrl: '',
+    duration: 0,
+    width: 1080,
+    height: 1920,
+    title: '로딩 중...',
+    description: '피드를 불러오는 중입니다',
+    category: 'GROWTH',
+    tags: [],
+    creator: {
+      userId: 'loading',
+      nickname: '로딩 중...',
+      profileImageUrl: null,
+    },
+    interactions: {
+      likeCount: 0,
+      commentCount: 0,
+      saveCount: 0,
+      shareCount: 0,
+    },
+    subtitles: [],
+  };
+
+  // 실제 데이터가 없으면 더미 데이터 사용
+  const displayItems = feedItems.length > 0 ? feedItems : [dummyFeedItem];
+
   // 스크롤 이벤트: 현재 보이는 아이템 인덱스 추적
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -182,7 +212,7 @@ export default function FeedScreen() {
       {/* 피드 리스트 */}
       <FlatList
         ref={flatListRef}
-        data={feedItems}
+        data={displayItems}
         renderItem={renderItem}
         keyExtractor={(item) => item.contentId}
         pagingEnabled
@@ -201,18 +231,8 @@ export default function FeedScreen() {
             tintColor="white"
           />
         }
-        ListEmptyComponent={
-          <View style={{
-            height: SCREEN_HEIGHT,
-            backgroundColor: '#000000',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-            <ActivityIndicator size="large" color="#FFFFFF" />
-          </View>
-        }
         ListFooterComponent={
-          isFetchingNextPage ? (
+          isFetchingNextPage && feedItems.length > 0 ? (
             <View style={{ paddingVertical: 16, backgroundColor: '#000000' }}>
               <ActivityIndicator size="large" color="#FFFFFF" />
             </View>

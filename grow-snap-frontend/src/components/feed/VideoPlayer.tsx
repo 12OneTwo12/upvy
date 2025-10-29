@@ -35,16 +35,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const lastTap = useRef<number>(0);
   const heartScale = useRef(new Animated.Value(0)).current;
 
+  // 빈 URL인 경우 (로딩 상태)
+  const isLoading = !uri || uri === '';
+
   // 포커스 상태에 따라 자동재생/정지
   useEffect(() => {
-    if (videoRef.current) {
+    if (videoRef.current && !isLoading) {
       if (isFocused) {
         videoRef.current.playAsync();
       } else {
         videoRef.current.pauseAsync();
       }
     }
-  }, [isFocused]);
+  }, [isFocused, isLoading]);
 
   // 비디오 재생 상태 업데이트
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
@@ -127,16 +130,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     <View className="flex-1 bg-black">
       <TouchableWithoutFeedback onPress={handleTap}>
         <View className="flex-1">
-          <Video
-            ref={videoRef}
-            source={{ uri }}
-            style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-            resizeMode={ResizeMode.CONTAIN}
-            shouldPlay={isFocused}
-            isLooping
-            isMuted={muted}
-            onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-          />
+          {!isLoading ? (
+            <Video
+              ref={videoRef}
+              source={{ uri }}
+              style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay={isFocused}
+              isLooping
+              isMuted={muted}
+              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+            />
+          ) : (
+            <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: '#000000' }} />
+          )}
 
           {/* 일시정지 아이콘 */}
           {showPlayIcon && !isPlaying && (
@@ -158,16 +165,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <Ionicons name="heart" size={120} color="white" />
           </Animated.View>
 
-          {/* 음소거 버튼 */}
-          <TouchableWithoutFeedback onPress={toggleMuted}>
-            <View className="absolute bottom-32 right-4 bg-black/40 rounded-full p-3">
-              <Ionicons
-                name={muted ? 'volume-mute' : 'volume-high'}
-                size={24}
-                color="white"
-              />
-            </View>
-          </TouchableWithoutFeedback>
+          {/* 음소거 버튼 (로딩 상태에서는 숨김) */}
+          {!isLoading && (
+            <TouchableWithoutFeedback onPress={toggleMuted}>
+              <View className="absolute bottom-32 right-4 bg-black/40 rounded-full p-3">
+                <Ionicons
+                  name={muted ? 'volume-mute' : 'volume-high'}
+                  size={24}
+                  color="white"
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          )}
         </View>
       </TouchableWithoutFeedback>
     </View>
