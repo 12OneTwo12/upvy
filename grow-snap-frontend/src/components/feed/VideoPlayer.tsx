@@ -32,6 +32,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
+  const [progress, setProgress] = useState(0);
   const lastTap = useRef<number>(0);
   const heartScale = useRef(new Animated.Value(0)).current;
 
@@ -54,9 +55,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (status.isLoaded) {
       setIsPlaying(status.isPlaying);
 
+      // 진행률 계산
+      if (status.durationMillis && status.durationMillis > 0) {
+        const progressValue = status.positionMillis / status.durationMillis;
+        setProgress(progressValue);
+      }
+
       // 비디오 종료 시 루프
       if (status.didJustFinish) {
         videoRef.current?.replayAsync();
+        setProgress(0);
       }
     }
   };
@@ -176,6 +184,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 />
               </View>
             </TouchableWithoutFeedback>
+          )}
+
+          {/* 비디오 진행률 바 */}
+          {!isLoading && (
+            <View style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            }}>
+              <View style={{
+                height: '100%',
+                width: `${progress * 100}%`,
+                backgroundColor: '#FFFFFF',
+              }} />
+            </View>
           )}
         </View>
       </TouchableWithoutFeedback>
