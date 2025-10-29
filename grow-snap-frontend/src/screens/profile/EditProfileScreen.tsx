@@ -9,12 +9,12 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { ProfileAvatar } from '@/components/profile';
-import { Button, Input } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
 import {
   checkNickname,
@@ -27,7 +27,7 @@ import { createStyleSheet } from '@/utils/styles';
 
 /**
  * 프로필 수정 화면
- * 인스타그램 스타일의 프로필 수정
+ * 인스타그램 스타일의 모던하고 깔끔한 프로필 수정
  */
 const useStyles = createStyleSheet({
   container: {
@@ -40,19 +40,28 @@ const useStyles = createStyleSheet({
     alignItems: 'center',
     paddingHorizontal: theme.spacing[4],
     paddingVertical: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.gray[200],
   },
   headerTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
+    letterSpacing: -0.5,
   },
   headerButton: {
-    width: 40,
+    minWidth: 50,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  headerButtonText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.primary[600],
+  },
+  cancelText: {
+    color: theme.colors.text.primary,
   },
   keyboardAvoid: {
     flex: 1,
@@ -62,62 +71,151 @@ const useStyles = createStyleSheet({
   },
   avatarSection: {
     alignItems: 'center',
-    paddingVertical: theme.spacing[8],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
+    paddingVertical: theme.spacing[10],
+    backgroundColor: theme.colors.background.primary,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary[600],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: theme.colors.background.primary,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   changePhotoButton: {
-    marginTop: theme.spacing[4],
-    paddingVertical: theme.spacing[2],
-    paddingHorizontal: theme.spacing[4],
+    marginTop: theme.spacing[5],
   },
   changePhotoText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.primary[600],
+    letterSpacing: -0.3,
   },
   formSection: {
-    paddingHorizontal: theme.spacing[4],
-    paddingTop: theme.spacing[6],
+    marginTop: theme.spacing[2],
   },
-  fieldContainer: {
-    marginBottom: theme.spacing[6],
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing[4],
+    paddingHorizontal: theme.spacing[5],
+    backgroundColor: theme.colors.background.primary,
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.gray[200],
+    minHeight: 56,
+  },
+  bioFieldRow: {
+    alignItems: 'flex-start',
+    paddingTop: theme.spacing[4],
+    paddingBottom: theme.spacing[3],
+    minHeight: 120,
   },
   label: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
+    width: 90,
+    letterSpacing: -0.3,
   },
-  nicknameRow: {
-    flexDirection: 'row',
-    gap: theme.spacing[2],
-  },
-  nicknameInput: {
+  inputWrapper: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  checkButton: {
-    paddingHorizontal: theme.spacing[3],
+  input: {
+    flex: 1,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    letterSpacing: -0.2,
+  },
+  bioInputWrapper: {
+    flex: 1,
+    minHeight: 80,
   },
   bioInput: {
-    height: 100,
+    flex: 1,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
     textAlignVertical: 'top',
+    letterSpacing: -0.2,
+  },
+  checkButton: {
+    marginLeft: theme.spacing[2],
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+    backgroundColor: theme.colors.primary[600],
+    borderRadius: theme.borderRadius.md,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  checkButtonDisabled: {
+    backgroundColor: theme.colors.gray[200],
+  },
+  checkButtonText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.inverse,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: theme.spacing[2],
+  },
+  statusIcon: {
+    marginRight: theme.spacing[1],
   },
   successText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.success,
-    marginTop: theme.spacing[1],
+    fontWeight: theme.typography.fontWeight.medium,
   },
   errorText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.error,
-    marginTop: theme.spacing[1],
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  helperTextRow: {
+    paddingHorizontal: theme.spacing[5],
+    paddingVertical: theme.spacing[2],
+    backgroundColor: theme.colors.background.primary,
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.gray[200],
   },
   helperText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    textAlign: 'right',
+  },
+  infoSection: {
+    paddingHorizontal: theme.spacing[5],
+    paddingVertical: theme.spacing[6],
+    backgroundColor: theme.colors.background.secondary,
+  },
+  infoText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.tertiary,
-    marginTop: theme.spacing[1],
-    textAlign: 'right',
+    lineHeight: 20,
+    letterSpacing: -0.2,
   },
 });
 
@@ -300,8 +398,9 @@ export default function EditProfileScreen() {
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.headerButton}
+          disabled={isSaving}
         >
-          <Ionicons name="close" size={28} color={theme.colors.text.primary} />
+          <Text style={[styles.headerButtonText, styles.cancelText]}>취소</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>프로필 수정</Text>
         <TouchableOpacity
@@ -312,11 +411,7 @@ export default function EditProfileScreen() {
           {isSaving ? (
             <ActivityIndicator size="small" color={theme.colors.primary[600]} />
           ) : (
-            <Ionicons
-              name="checkmark"
-              size={28}
-              color={theme.colors.primary[600]}
-            />
+            <Text style={styles.headerButtonText}>완료</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -326,77 +421,119 @@ export default function EditProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* 프로필 이미지 */}
+          {/* 프로필 이미지 섹션 */}
           <View style={styles.avatarSection}>
-            <ProfileAvatar
-              imageUrl={profileImageUrl}
-              size="xlarge"
-              showBorder={false}
-            />
+            <TouchableOpacity
+              onPress={showImageOptions}
+              style={styles.avatarContainer}
+              disabled={isUploadingImage}
+              activeOpacity={0.7}
+            >
+              <ProfileAvatar
+                imageUrl={profileImageUrl}
+                size="xlarge"
+                showBorder={true}
+              />
+              <View style={styles.avatarOverlay}>
+                {isUploadingImage ? (
+                  <ActivityIndicator size="small" color={theme.colors.text.inverse} />
+                ) : (
+                  <Ionicons name="camera" size={20} color={theme.colors.text.inverse} />
+                )}
+              </View>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={showImageOptions}
               style={styles.changePhotoButton}
               disabled={isUploadingImage}
+              activeOpacity={0.6}
             >
-              {isUploadingImage ? (
-                <ActivityIndicator size="small" color={theme.colors.primary[600]} />
-              ) : (
-                <Text style={styles.changePhotoText}>사진 변경</Text>
-              )}
+              <Text style={styles.changePhotoText}>
+                {isUploadingImage ? '업로드 중...' : '프로필 사진 변경'}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {/* 폼 */}
+          {/* 폼 필드들 */}
           <View style={styles.formSection}>
-            {/* 닉네임 */}
-            <View style={styles.fieldContainer}>
+            {/* 닉네임 필드 */}
+            <View style={styles.fieldRow}>
               <Text style={styles.label}>닉네임</Text>
-              <View style={styles.nicknameRow}>
-                <Input
+              <View style={styles.inputWrapper}>
+                <TextInput
                   value={nickname}
                   onChangeText={setNickname}
                   placeholder="닉네임을 입력하세요"
+                  placeholderTextColor={theme.colors.text.tertiary}
                   maxLength={20}
-                  style={styles.nicknameInput}
+                  style={styles.input}
                   autoCapitalize="none"
                 />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={handleCheckNickname}
-                  loading={isCheckingNickname}
-                  disabled={
-                    isCheckingNickname ||
-                    !nickname ||
-                    nickname === storeProfile?.nickname
-                  }
-                  style={styles.checkButton}
-                >
-                  중복 확인
-                </Button>
+                {nickname !== storeProfile?.nickname && nickname.length >= 2 && (
+                  <>
+                    {isCheckingNickname ? (
+                      <ActivityIndicator size="small" color={theme.colors.primary[600]} />
+                    ) : nicknameAvailable === null ? (
+                      <TouchableOpacity
+                        style={styles.checkButton}
+                        onPress={handleCheckNickname}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.checkButtonText}>확인</Text>
+                      </TouchableOpacity>
+                    ) : nicknameAvailable ? (
+                      <View style={styles.statusContainer}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color={theme.colors.success}
+                          style={styles.statusIcon}
+                        />
+                        <Text style={styles.successText}>사용가능</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.statusContainer}>
+                        <Ionicons
+                          name="close-circle"
+                          size={18}
+                          color={theme.colors.error}
+                          style={styles.statusIcon}
+                        />
+                        <Text style={styles.errorText}>중복됨</Text>
+                      </View>
+                    )}
+                  </>
+                )}
               </View>
-              {nicknameAvailable === true && nickname !== storeProfile?.nickname && (
-                <Text style={styles.successText}>사용 가능한 닉네임입니다</Text>
-              )}
-              {nicknameAvailable === false && (
-                <Text style={styles.errorText}>이미 사용 중인 닉네임입니다</Text>
-              )}
             </View>
 
-            {/* 자기소개 */}
-            <View style={styles.fieldContainer}>
+            {/* 자기소개 필드 */}
+            <View style={[styles.fieldRow, styles.bioFieldRow]}>
               <Text style={styles.label}>자기소개</Text>
-              <Input
-                value={bio}
-                onChangeText={setBio}
-                placeholder="자기소개를 입력하세요"
-                multiline
-                numberOfLines={4}
-                maxLength={150}
-                style={styles.bioInput}
-              />
-              <Text style={styles.helperText}>{bio.length}/150</Text>
+              <View style={styles.bioInputWrapper}>
+                <TextInput
+                  value={bio}
+                  onChangeText={setBio}
+                  placeholder="자기소개를 입력하세요"
+                  placeholderTextColor={theme.colors.text.tertiary}
+                  multiline
+                  maxLength={150}
+                  style={styles.bioInput}
+                />
+              </View>
             </View>
+
+            {/* 글자수 표시 */}
+            <View style={styles.helperTextRow}>
+              <Text style={styles.helperText}>{bio.length}/150자</Text>
+            </View>
+          </View>
+
+          {/* 추가 정보 */}
+          <View style={styles.infoSection}>
+            <Text style={styles.infoText}>
+              프로필 정보는 GrowSnap을 사용하는 모든 사용자에게 공개됩니다.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
