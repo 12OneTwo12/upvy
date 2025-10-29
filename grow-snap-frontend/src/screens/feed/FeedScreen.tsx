@@ -148,17 +148,39 @@ export default function FeedScreen() {
   };
 
   // 렌더링
-  const renderItem = ({ item, index }: { item: FeedItemType; index: number }) => (
-    <FeedItem
-      item={item}
-      isFocused={index === currentIndex}
-      onLike={() => handleLike(item.contentId)}
-      onComment={() => handleComment(item.contentId)}
-      onSave={() => handleSave(item.contentId)}
-      onShare={() => handleShare(item.contentId)}
-      onCreatorPress={() => handleCreatorPress(item.creator.userId)}
-    />
-  );
+  const renderItem = ({ item, index }: { item: FeedItemType; index: number }) => {
+    const isLoadingItem = item.contentId === 'loading';
+
+    return (
+      <View style={{ height: SCREEN_HEIGHT, backgroundColor: '#000000' }}>
+        <FeedItem
+          item={item}
+          isFocused={index === currentIndex}
+          onLike={() => handleLike(item.contentId)}
+          onComment={() => handleComment(item.contentId)}
+          onSave={() => handleSave(item.contentId)}
+          onShare={() => handleShare(item.contentId)}
+          onCreatorPress={() => handleCreatorPress(item.creator.userId)}
+        />
+
+        {/* 로딩 중일 때 이 아이템 중앙에 인디케이터 표시 */}
+        {isLoadingItem && (
+          <View style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none',
+          }}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
@@ -247,22 +269,6 @@ export default function FeedScreen() {
         maxToRenderPerBatch={3}
         windowSize={5}
       />
-
-      {/* 로딩 중 또는 데이터 없을 때 중앙 인디케이터 */}
-      {(isLoading || feedItems.length === 0) && (
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          justifyContent: 'center',
-          alignItems: 'center',
-          pointerEvents: 'none',
-        }}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
-        </View>
-      )}
     </View>
   );
 }
