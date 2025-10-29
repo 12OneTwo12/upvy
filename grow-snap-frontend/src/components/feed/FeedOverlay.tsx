@@ -54,10 +54,10 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   // 하단 패딩 = 내비게이션 바 높이 + 하단 안전 영역 + 여유 공간
   const bottomPadding = NAVIGATION_BAR_HEIGHT + insets.bottom + 16;
 
-  // 확장/축소 애니메이션 - 위로 적당히 올라가도록 (화면의 20% 정도)
+  // 확장/축소 애니메이션 - 위로 살짝만 올라가도록
   useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: isExpanded ? -(SCREEN_HEIGHT * 0.15) : 0,
+      toValue: isExpanded ? -80 : 0,
       useNativeDriver: true,
       damping: 20,
       stiffness: 90,

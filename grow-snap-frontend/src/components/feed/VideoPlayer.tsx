@@ -193,8 +193,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               bottom: 0,
               left: 0,
               right: 0,
-              height: 2,
+              height: 3,
               backgroundColor: 'rgba(255, 255, 255, 0.3)',
+              zIndex: 100,
             }}>
               <View style={{
                 height: '100%',
