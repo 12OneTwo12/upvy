@@ -24,6 +24,11 @@ interface FeedOverlayProps {
   onCreatorPress?: () => void;
 }
 
+// 로딩 상태인지 확인
+const isLoadingState = (creator: CreatorInfo) => {
+  return creator.userId === 'loading';
+};
+
 export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   creator,
   title,
@@ -35,6 +40,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onShare,
   onCreatorPress,
 }) => {
+  const isLoading = isLoadingState(creator);
+
   const formatCount = (count: number): string => {
     if (count >= 1000000) {
       return `${(count / 1000000).toFixed(1)}M`;
@@ -60,31 +67,47 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           {/* 좌측: 크리에이터 정보 + 콘텐츠 정보 */}
           <View style={styles.leftSection}>
             {/* 크리에이터 프로필 */}
-            <TouchableOpacity
-              onPress={onCreatorPress}
-              style={styles.creatorContainer}
-            >
-              {creator.profileImageUrl ? (
-                <Image
-                  source={{ uri: creator.profileImageUrl }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={styles.profilePlaceholder}>
-                  <Ionicons name="person" size={20} color="#FFFFFF" />
-                </View>
-              )}
-              <Text style={styles.creatorName}>{creator.nickname}</Text>
-              <TouchableOpacity style={styles.followButton}>
-                <Text style={styles.followButtonText}>팔로우</Text>
+            {isLoading ? (
+              // 스켈레톤 UI
+              <View style={styles.creatorContainer}>
+                <View style={[styles.profilePlaceholder, styles.skeleton]} />
+                <View style={[styles.skeletonText, { width: 100, marginLeft: 8 }]} />
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={onCreatorPress}
+                style={styles.creatorContainer}
+              >
+                {creator.profileImageUrl ? (
+                  <Image
+                    source={{ uri: creator.profileImageUrl }}
+                    style={styles.profileImage}
+                  />
+                ) : (
+                  <View style={styles.profilePlaceholder}>
+                    <Ionicons name="person" size={20} color="#FFFFFF" />
+                  </View>
+                )}
+                <Text style={styles.creatorName}>{creator.nickname}</Text>
+                <TouchableOpacity style={styles.followButton}>
+                  <Text style={styles.followButtonText}>팔로우</Text>
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
+            )}
 
             {/* 콘텐츠 설명 */}
             <View style={styles.descriptionContainer}>
-              <Text style={styles.description} numberOfLines={2}>
-                {description || title}
-              </Text>
+              {isLoading ? (
+                // 스켈레톤 UI
+                <>
+                  <View style={[styles.skeletonText, { width: '90%', marginBottom: 6 }]} />
+                  <View style={[styles.skeletonText, { width: '70%' }]} />
+                </>
+              ) : (
+                <Text style={styles.description} numberOfLines={2}>
+                  {description || title}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -93,33 +116,41 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
             {/* 좋아요 */}
             <TouchableOpacity onPress={onLike} style={styles.actionButton}>
               <Ionicons name="heart-outline" size={32} color="#FFFFFF" />
-              <Text style={styles.actionCount}>
-                {formatCount(interactions.likeCount)}
-              </Text>
+              {!isLoading && (
+                <Text style={styles.actionCount}>
+                  {formatCount(interactions.likeCount)}
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* 댓글 */}
             <TouchableOpacity onPress={onComment} style={styles.actionButton}>
               <Ionicons name="chatbubble-outline" size={30} color="#FFFFFF" />
-              <Text style={styles.actionCount}>
-                {formatCount(interactions.commentCount)}
-              </Text>
+              {!isLoading && (
+                <Text style={styles.actionCount}>
+                  {formatCount(interactions.commentCount)}
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* 저장 */}
             <TouchableOpacity onPress={onSave} style={styles.actionButton}>
               <Ionicons name="bookmark-outline" size={30} color="#FFFFFF" />
-              <Text style={styles.actionCount}>
-                {formatCount(interactions.saveCount)}
-              </Text>
+              {!isLoading && (
+                <Text style={styles.actionCount}>
+                  {formatCount(interactions.saveCount)}
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* 공유 */}
             <TouchableOpacity onPress={onShare} style={styles.actionButton}>
               <Ionicons name="paper-plane-outline" size={30} color="#FFFFFF" />
-              <Text style={styles.actionCount}>
-                {formatCount(interactions.shareCount)}
-              </Text>
+              {!isLoading && (
+                <Text style={styles.actionCount}>
+                  {formatCount(interactions.shareCount)}
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* 더보기 (점 3개) */}
@@ -146,7 +177,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: 16,
+    paddingBottom: 90, // 내비게이션 바 높이만큼 여유 공간 추가
     paddingHorizontal: 12,
   },
   content: {
@@ -180,6 +211,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  skeleton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 0,
+  },
+  skeletonText: {
+    height: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 4,
+  },
   creatorName: {
     fontSize: 14,
     fontWeight: '700',
@@ -210,7 +250,7 @@ const styles = StyleSheet.create({
   rightSection: {
     position: 'absolute',
     right: 12,
-    bottom: 16,
+    bottom: 90, // 내비게이션 바 높이만큼 위로 이동
     alignItems: 'center',
     gap: 20,
   },
