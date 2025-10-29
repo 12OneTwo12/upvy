@@ -7,13 +7,14 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CreatorInfo, InteractionInfo } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const MAX_EXPAND_HEIGHT = 150; // 최대 확장 높이
 
 interface FeedOverlayProps {
   creator: CreatorInfo;
@@ -25,6 +26,8 @@ interface FeedOverlayProps {
   onSave?: () => void;
   onShare?: () => void;
   onCreatorPress?: () => void;
+  isExpanded: boolean;
+  setIsExpanded: (expanded: boolean) => void;
 }
 
 // 로딩 상태인지 확인
@@ -45,24 +48,41 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onSave,
   onShare,
   onCreatorPress,
+  isExpanded,
+  setIsExpanded,
 }) => {
   const insets = useSafeAreaInsets();
   const isLoading = isLoadingState(creator);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [collapsedHeight, setCollapsedHeight] = useState(0);
+  const [expandedHeight, setExpandedHeight] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   // 하단 패딩 = 내비게이션 바 높이 + 하단 안전 영역 + 여유 공간
   const bottomPadding = NAVIGATION_BAR_HEIGHT + insets.bottom + 16;
 
-  // 확장/축소 애니메이션 - 위로 살짝만 올라가도록
+  // 축소된 상태의 설명 높이 측정
+  const handleCollapsedLayout = (event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    setCollapsedHeight(height);
+  };
+
+  // 확장된 상태의 설명 높이 측정
+  const handleExpandedLayout = (event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    setExpandedHeight(Math.min(height, MAX_EXPAND_HEIGHT));
+  };
+
+  // 확장/축소 애니메이션 - 실제 필요한 높이 차이만큼만 이동
   useEffect(() => {
+    const heightDifference = Math.max(0, expandedHeight - collapsedHeight);
+    const expandDistance = isExpanded ? -(heightDifference + 8) : 0; // 8px 여유공간
     Animated.spring(slideAnim, {
-      toValue: isExpanded ? -80 : 0,
+      toValue: expandDistance,
       useNativeDriver: true,
       damping: 20,
       stiffness: 90,
     }).start();
-  }, [isExpanded, slideAnim]);
+  }, [isExpanded, collapsedHeight, expandedHeight, slideAnim]);
 
   // 설명이 길면 더보기 표시 (60자 이상)
   const shouldShowMore = (description || title).length > 60;
@@ -96,6 +116,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           {
             paddingBottom: bottomPadding,
             transform: [{ translateY: slideAnim }],
+            overflow: 'visible',
           }
         ]}
       >
@@ -144,14 +165,14 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                   <View style={[styles.skeletonText, { width: '70%' }]} />
                 </>
               ) : (
-                <>
+                <View onLayout={handleCollapsedLayout}>
                   <Text style={styles.description} numberOfLines={2}>
                     {displayText}
                   </Text>
                   {shouldShowMore && (
                     <Text style={styles.moreText}>더보기</Text>
                   )}
-                </>
+                </View>
               )}
             </TouchableOpacity>
           </View>
@@ -200,12 +221,20 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         {/* 확장 시 전체 설명 영역 */}
         {isExpanded && (
           <TouchableOpacity
-            style={styles.expandedDescriptionContainer}
+            style={[styles.expandedDescriptionContainer, { maxHeight: expandedHeight }]}
             activeOpacity={1}
             onPress={() => setIsExpanded(false)}
           >
-            <ScrollView style={styles.expandedScrollView}>
-              <Text style={styles.expandedDescription}>
+            <ScrollView
+              style={styles.expandedScrollView}
+              bounces={false}
+              overScrollMode="never"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text
+                style={styles.expandedDescription}
+                onLayout={handleExpandedLayout}
+              >
                 {description || title}
               </Text>
             </ScrollView>
@@ -387,7 +416,6 @@ const styles = StyleSheet.create({
   expandedDescriptionContainer: {
     paddingTop: 8,
     paddingHorizontal: 12,
-    maxHeight: SCREEN_HEIGHT * 0.25,
   },
   expandedScrollView: {
     flex: 1,

@@ -32,11 +32,21 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   onCreatorPress,
 }) => {
   const [muted, setMuted] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // 비디오만 표시 (사진은 나중에 구현)
   if (item.contentType !== 'VIDEO') {
     return null;
   }
+
+  // 영상 탭 시 더보기 닫기 (더보기 상태일 때는 일시정지/재생하지 않음)
+  const handleVideoTap = () => {
+    if (isExpanded) {
+      setIsExpanded(false);
+      return true; // 이벤트 처리 완료, 비디오 탭 무시
+    }
+    return false; // 비디오 탭 진행
+  };
 
   return (
     <View style={{ height: SCREEN_HEIGHT }} className="relative">
@@ -45,6 +55,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         uri={item.url}
         isFocused={isFocused}
         onDoubleTap={onLike}
+        onTap={handleVideoTap}
         muted={muted}
         onMutedChange={setMuted}
       />
@@ -60,6 +71,8 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         onSave={onSave}
         onShare={onShare}
         onCreatorPress={onCreatorPress}
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
     </View>
   );

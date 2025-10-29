@@ -17,6 +17,8 @@ import {
   Text,
   ActivityIndicator,
   StatusBar,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FeedItem } from '@/components/feed';
@@ -28,7 +30,10 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function FeedScreen() {
   const [currentTab, setCurrentTab] = useState<FeedTab>('recommended');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+  const scrollYRef = useRef(0);
   const queryClient = useQueryClient();
 
   // 피드 데이터 fetching (무한 스크롤)
@@ -102,17 +107,52 @@ export default function FeedScreen() {
     itemVisiblePercentThreshold: 80,
   }).current;
 
+  // Pull-to-Refresh - 현재 위치에서 데이터만 새로고침
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setPullDistance(0);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['feed'] });
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient, refetch]);
+
+  // 스크롤 이벤트 - Pull-to-Refresh 감지
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    scrollYRef.current = offsetY;
+
+    // Pull-to-Refresh 거리 계산 (헤더 영역에서)
+    if (offsetY < 0) {
+      setPullDistance(Math.abs(offsetY));
+    } else {
+      setPullDistance(0);
+    }
+  }, []);
+
+  // 스크롤 종료 시 - 페이지 스냅 및 새로고침 트리거
+  const handleScrollEnd = useCallback(async (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+
+    // Pull-to-Refresh 트리거
+    if (pullDistance > 80 && offsetY <= 0) {
+      await handleRefresh();
+      return;
+    }
+
+    // 인덱스 계산
+    const index = Math.max(0, Math.round(offsetY / SCREEN_HEIGHT));
+    setCurrentIndex(index);
+  }, [pullDistance, handleRefresh]);
+
   // 무한 스크롤: 끝에 도달 시 다음 페이지 로드
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  // Pull-to-Refresh
-  const handleRefresh = useCallback(() => {
-    refreshMutation.mutate();
-  }, [refreshMutation]);
 
   // 탭 전환
   const handleTabChange = (tab: FeedTab) => {
@@ -152,7 +192,11 @@ export default function FeedScreen() {
     const isLoadingItem = item.contentId === 'loading';
 
     return (
-      <View style={{ height: SCREEN_HEIGHT, backgroundColor: '#000000' }}>
+      <View style={{
+        height: SCREEN_HEIGHT,
+        backgroundColor: '#000000',
+        overflow: 'hidden',
+      }}>
         <FeedItem
           item={item}
           isFocused={index === currentIndex}
@@ -231,28 +275,64 @@ export default function FeedScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Pull-to-Refresh 인디케이터 */}
+      {pullDistance > 50 && (
+        <View style={{
+          position: 'absolute',
+          top: 80,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          alignItems: 'center',
+        }}>
+          <View style={{
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            borderRadius: 20,
+            padding: 10,
+            paddingHorizontal: 20,
+          }}>
+            <Text style={{ color: 'white', fontSize: 14 }}>
+              {pullDistance > 80 ? '🔄 놓아서 새로고침' : '⬇️ 당겨서 새로고침'}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* 새로고침 중 인디케이터 */}
+      {refreshing && (
+        <View style={{
+          position: 'absolute',
+          top: 80,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          alignItems: 'center',
+        }}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
+
       {/* 피드 리스트 */}
       <FlatList
         ref={flatListRef}
         data={displayItems}
         renderItem={renderItem}
         keyExtractor={(item, index) => `${item.contentId}-${index}`}
-        pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
-        decelerationRate="normal"
+        decelerationRate="fast"
+        bounces={true}
+        alwaysBounceVertical={true}
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+        onScrollBeginDrag={handleScroll}
+        onScrollEndDrag={handleScrollEnd}
+        onMomentumScrollEnd={handleScrollEnd}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshMutation.isPending}
-            onRefresh={handleRefresh}
-            tintColor="white"
-          />
-        }
         ListFooterComponent={
           isFetchingNextPage && feedItems.length > 0 ? (
             <View style={{ paddingVertical: 16, backgroundColor: '#000000' }}>
@@ -265,9 +345,11 @@ export default function FeedScreen() {
           offset: SCREEN_HEIGHT * index,
           index,
         })}
-        removeClippedSubviews
-        maxToRenderPerBatch={3}
-        windowSize={5}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        initialNumToRender={1}
+        updateCellsBatchingPeriod={100}
       />
     </View>
   );
