@@ -29,8 +29,8 @@ export function createStyleSheet<T extends StyleSheet.NamedStyles<T>>(
 
   return () => {
     if (cached === null) {
-      cached = StyleSheet.create(styles);
+      cached = StyleSheet.create(styles) as T;
     }
-    return cached;
+    return cached as T;
   };
 }

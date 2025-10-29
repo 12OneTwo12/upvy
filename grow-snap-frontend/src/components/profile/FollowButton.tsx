@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator } from 'react';
+import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 

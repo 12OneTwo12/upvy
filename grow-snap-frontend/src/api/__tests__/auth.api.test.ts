@@ -36,14 +36,13 @@ describe('auth.api - Profile APIs', () => {
   });
 
   const mockProfile: UserProfile = {
+    id: 1,
     userId: 'user-123',
     nickname: 'testuser',
     bio: 'Test bio',
     profileImageUrl: 'https://example.com/profile.jpg',
-    interests: ['성장', '운동'],
     followerCount: 100,
     followingCount: 50,
-    isCreator: false,
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
   };
@@ -146,26 +145,24 @@ describe('auth.api - Follow APIs', () => {
     it('팔로워 목록을 조회한다', async () => {
       const mockFollowers: UserProfile[] = [
         {
+          id: 2,
           userId: 'user-1',
           nickname: 'follower1',
           bio: 'Follower 1',
           profileImageUrl: 'https://example.com/1.jpg',
-          interests: ['성장'],
           followerCount: 10,
           followingCount: 20,
-          isCreator: false,
           createdAt: '2025-01-01T00:00:00Z',
           updatedAt: '2025-01-01T00:00:00Z',
         },
         {
+          id: 3,
           userId: 'user-2',
           nickname: 'follower2',
           bio: 'Follower 2',
           profileImageUrl: 'https://example.com/2.jpg',
-          interests: ['운동'],
           followerCount: 15,
           followingCount: 25,
-          isCreator: true,
           createdAt: '2025-01-01T00:00:00Z',
           updatedAt: '2025-01-01T00:00:00Z',
         },
@@ -185,14 +182,13 @@ describe('auth.api - Follow APIs', () => {
     it('팔로잉 목록을 조회한다', async () => {
       const mockFollowing: UserProfile[] = [
         {
+          id: 4,
           userId: 'user-3',
           nickname: 'following1',
           bio: 'Following 1',
           profileImageUrl: 'https://example.com/3.jpg',
-          interests: ['독서'],
           followerCount: 30,
           followingCount: 40,
-          isCreator: false,
           createdAt: '2025-01-01T00:00:00Z',
           updatedAt: '2025-01-01T00:00:00Z',
         },

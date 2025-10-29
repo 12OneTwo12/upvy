@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react';
+import { View, Text } from 'react-native';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import ProfileAvatar from './ProfileAvatar';
@@ -14,6 +14,40 @@ interface ProfileHeaderProps {
   onFollowingPress?: () => void;
   showStats?: boolean;
 }
+
+const useStyles = createStyleSheet({
+  container: {
+    backgroundColor: theme.colors.background.primary,
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[4],
+  },
+  topSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing[4],
+  },
+  avatar: {
+    marginRight: theme.spacing[5],
+  },
+  statsContainer: {
+    flex: 1,
+  },
+  infoSection: {
+    marginTop: theme.spacing[2],
+  },
+  nickname: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[2],
+  },
+  bio: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.normal,
+    color: theme.colors.text.primary,
+    lineHeight: theme.typography.lineHeight.relaxed,
+  },
+});
 
 /**
  * 프로필 헤더 컴포넌트
@@ -73,37 +107,3 @@ export default function ProfileHeader({
     </View>
   );
 }
-
-const useStyles = createStyleSheet({
-  container: {
-    backgroundColor: theme.colors.background.primary,
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[4],
-  },
-  topSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing[4],
-  },
-  avatar: {
-    marginRight: theme.spacing[5],
-  },
-  statsContainer: {
-    flex: 1,
-  },
-  infoSection: {
-    marginTop: theme.spacing[2],
-  },
-  nickname: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
-  },
-  bio: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.normal,
-    color: theme.colors.text.primary,
-    lineHeight: theme.typography.lineHeight.relaxed,
-  },
-});

@@ -18,6 +18,25 @@ const SIZES = {
   xlarge: 96,
 };
 
+const useStyles = createStyleSheet({
+  container: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background.secondary,
+  },
+  border: {
+    borderWidth: 2,
+    borderColor: theme.colors.primary[600],
+    padding: 2,
+  },
+  image: {
+    backgroundColor: theme.colors.background.secondary,
+  },
+  placeholder: {
+    backgroundColor: theme.colors.gray[200],
+  },
+});
+
 /**
  * 프로필 아바타 컴포넌트
  * 인스타그램 스타일의 프로필 이미지
@@ -86,22 +105,3 @@ export default function ProfileAvatar({
 
   return content;
 }
-
-const useStyles = createStyleSheet({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background.secondary,
-  },
-  border: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary[600],
-    padding: 2,
-  },
-  image: {
-    backgroundColor: theme.colors.background.secondary,
-  },
-  placeholder: {
-    backgroundColor: theme.colors.gray[200],
-  },
-});

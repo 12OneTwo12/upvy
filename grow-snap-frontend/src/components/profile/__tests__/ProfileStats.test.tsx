@@ -14,10 +14,10 @@ describe('ProfileStats', () => {
   it('팔로워와 팔로잉 수를 렌더링한다', () => {
     const { getByText } = render(
       <ProfileStats
-        followersCount={100}
-        followingCount={50}
-        onFollowersPress={mockFollowersPress}
-        onFollowingPress={mockFollowingPress}
+        stats={[
+          { label: '팔로워', value: 100, onPress: mockFollowersPress },
+          { label: '팔로잉', value: 50, onPress: mockFollowingPress },
+        ]}
       />
     );
 
@@ -30,10 +30,10 @@ describe('ProfileStats', () => {
   it('큰 숫자를 K 포맷으로 표시한다', () => {
     const { getByText } = render(
       <ProfileStats
-        followersCount={1500}
-        followingCount={2000}
-        onFollowersPress={mockFollowersPress}
-        onFollowingPress={mockFollowingPress}
+        stats={[
+          { label: '팔로워', value: 1500, onPress: mockFollowersPress },
+          { label: '팔로잉', value: 2000, onPress: mockFollowingPress },
+        ]}
       />
     );
 
@@ -44,10 +44,10 @@ describe('ProfileStats', () => {
   it('매우 큰 숫자를 M 포맷으로 표시한다', () => {
     const { getByText } = render(
       <ProfileStats
-        followersCount={1500000}
-        followingCount={2000000}
-        onFollowersPress={mockFollowersPress}
-        onFollowingPress={mockFollowingPress}
+        stats={[
+          { label: '팔로워', value: 1500000, onPress: mockFollowersPress },
+          { label: '팔로잉', value: 2000000, onPress: mockFollowingPress },
+        ]}
       />
     );
 
@@ -58,10 +58,10 @@ describe('ProfileStats', () => {
   it('팔로워 클릭 이벤트를 처리한다', () => {
     const { getByText } = render(
       <ProfileStats
-        followersCount={100}
-        followingCount={50}
-        onFollowersPress={mockFollowersPress}
-        onFollowingPress={mockFollowingPress}
+        stats={[
+          { label: '팔로워', value: 100, onPress: mockFollowersPress },
+          { label: '팔로잉', value: 50, onPress: mockFollowingPress },
+        ]}
       />
     );
 
@@ -72,10 +72,10 @@ describe('ProfileStats', () => {
   it('팔로잉 클릭 이벤트를 처리한다', () => {
     const { getByText } = render(
       <ProfileStats
-        followersCount={100}
-        followingCount={50}
-        onFollowersPress={mockFollowersPress}
-        onFollowingPress={mockFollowingPress}
+        stats={[
+          { label: '팔로워', value: 100, onPress: mockFollowersPress },
+          { label: '팔로잉', value: 50, onPress: mockFollowingPress },
+        ]}
       />
     );
 

@@ -5,14 +5,13 @@ import { UserProfile } from '@/types/auth.types';
 
 describe('ProfileHeader', () => {
   const mockProfile: UserProfile = {
+    id: 1,
     userId: 'user-123',
     nickname: 'testuser',
     bio: 'Test bio',
     profileImageUrl: 'https://example.com/profile.jpg',
-    interests: ['성장', '운동'],
     followerCount: 100,
     followingCount: 50,
-    isCreator: false,
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
   };

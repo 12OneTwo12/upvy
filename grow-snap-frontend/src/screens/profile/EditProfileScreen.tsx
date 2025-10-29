@@ -362,7 +362,7 @@ export default function EditProfileScreen() {
                 />
                 <Button
                   variant="outline"
-                  size="small"
+                  size="sm"
                   onPress={handleCheckNickname}
                   loading={isCheckingNickname}
                   disabled={
