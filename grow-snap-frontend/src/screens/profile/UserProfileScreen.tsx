@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,26 +9,28 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
-import { ProfileHeader } from '@/components/profile';
-import { Button, LoadingSpinner } from '@/components/common';
+import { RootStackParamList } from '@/types/navigation.types';
+import { ProfileHeader, FollowButton } from '@/components/profile';
+import { LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
-import { getMyProfile } from '@/api/auth.api';
+import {
+  getProfileByUserId,
+  checkFollowing,
+  followUser,
+  unfollowUser,
+} from '@/api/auth.api';
+import { UserProfile } from '@/types/auth.types';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 
-type NavigationProp = CompositeNavigationProp<
-  BottomTabNavigationProp<MainTabParamList, 'Profile'>,
-  NativeStackNavigationProp<RootStackParamList>
->;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'UserProfile'>;
 
 /**
- * 내 프로필 화면
- * 인스타그램 스타일의 프로필 관리 화면
+ * 다른 사용자 프로필 화면
+ * 인스타그램 스타일의 사용자 프로필 보기
  */
 const useStyles = createStyleSheet({
   container: {
@@ -50,17 +52,19 @@ const useStyles = createStyleSheet({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border.light,
   },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
   },
-  headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconButton: {
-    padding: theme.spacing[2],
+  headerRight: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
@@ -71,12 +75,15 @@ const useStyles = createStyleSheet({
     paddingBottom: theme.spacing[4],
     gap: theme.spacing[2],
   },
-  editButton: {
-    flex: 1,
-  },
-  editButtonText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
+  messageButton: {
+    width: 44,
+    height: 36,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.background.secondary,
+    borderWidth: 1,
+    borderColor: theme.colors.border.medium,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   contentSection: {
     flex: 1,
@@ -104,44 +111,56 @@ const useStyles = createStyleSheet({
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    marginBottom: theme.spacing[1],
-  },
-  emptySubtext: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.normal,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
   },
 });
 
-export default function ProfileScreen() {
+export default function UserProfileScreen() {
   const styles = useStyles();
   const navigation = useNavigation<NavigationProp>();
-  const { profile: storeProfile, user, updateProfile, logout } = useAuthStore();
-  const [profile, setProfile] = useState(storeProfile);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const route = useRoute<RouteProp<RootStackParamList, 'UserProfile'>>();
+  const { userId } = route.params;
+  const { user: currentUser } = useAuthStore();
 
-  // 프로필 데이터 로드
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  // 프로필 및 팔로우 상태 로드
   const loadProfile = async (showLoading = true) => {
     if (showLoading) setLoading(true);
 
-    const result = await withErrorHandling(
-      async () => {
-        const data = await getMyProfile();
-        setProfile(data);
-        updateProfile(data);
-        return data;
-      },
+    // 프로필 조회
+    const profileResult = await withErrorHandling(
+      async () => await getProfileByUserId(userId),
       {
         showAlert: true,
         alertTitle: '프로필 조회 실패',
-        logContext: 'ProfileScreen.loadProfile',
+        logContext: 'UserProfileScreen.loadProfile',
       }
     );
 
+    if (profileResult) {
+      setProfile(profileResult);
+
+      // 팔로우 상태 확인 (본인이 아닐 때만)
+      if (currentUser?.id !== userId) {
+        const followResult = await withErrorHandling(
+          async () => await checkFollowing(userId),
+          {
+            showAlert: false,
+            logContext: 'UserProfileScreen.checkFollowing',
+          }
+        );
+
+        if (followResult) {
+          setIsFollowing(followResult.isFollowing);
+        }
+      }
+    }
+
     if (showLoading) setLoading(false);
-    return result;
   };
 
   // 새로고침
@@ -151,50 +170,58 @@ export default function ProfileScreen() {
     setRefreshing(false);
   };
 
-  // 화면이 포커스될 때마다 프로필 리로드
-  useFocusEffect(
-    useCallback(() => {
-      // 화면에 진입할 때 프로필 새로고침
-      loadProfile(false);
-    }, [])
-  );
-
   // 초기 로드
   useEffect(() => {
-    if (!profile) {
-      loadProfile();
+    loadProfile();
+  }, [userId]);
+
+  // 팔로우/언팔로우 토글
+  const handleFollowToggle = async () => {
+    setFollowLoading(true);
+
+    const result = isFollowing
+      ? await withErrorHandling(async () => await unfollowUser(userId), {
+          showAlert: true,
+          alertTitle: '언팔로우 실패',
+          logContext: 'UserProfileScreen.unfollow',
+        })
+      : await withErrorHandling(async () => await followUser(userId), {
+          showAlert: true,
+          alertTitle: '팔로우 실패',
+          logContext: 'UserProfileScreen.follow',
+        });
+
+    if (result !== null) {
+      // 성공 시 상태 업데이트
+      setIsFollowing(!isFollowing);
+
+      // 프로필 재로드 (팔로워 수 업데이트)
+      await loadProfile(false);
     }
-  }, []);
 
-  // 프로필 수정 화면으로 이동
-  const handleEditProfile = () => {
-    navigation.navigate('EditProfile');
-  };
-
-  // 설정 화면으로 이동
-  const handleSettings = () => {
-    // TODO: 설정 화면 구현 후 연결
-    Alert.alert('설정', '설정 화면은 추후 구현 예정입니다.');
+    setFollowLoading(false);
   };
 
   // 팔로워 목록으로 이동
   const handleFollowersPress = () => {
-    if (!user?.id) return;
     navigation.navigate('FollowList', {
-      userId: user.id,
+      userId,
       initialTab: 'followers',
     });
   };
 
   // 팔로잉 목록으로 이동
   const handleFollowingPress = () => {
-    if (!user?.id) return;
     navigation.navigate('FollowList', {
-      userId: user.id,
+      userId,
       initialTab: 'following',
     });
   };
 
+  // 메시지 보내기 (추후 구현)
+  const handleMessage = () => {
+    Alert.alert('메시지', '메시지 기능은 추후 구현 예정입니다.');
+  };
 
   if (loading || !profile) {
     return (
@@ -204,16 +231,20 @@ export default function ProfileScreen() {
     );
   }
 
+  const isOwnProfile = currentUser?.id === userId;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* 헤더 */}
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>{profile.nickname}</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={handleSettings} style={styles.iconButton}>
-            <Ionicons name="settings-outline" size={24} color={theme.colors.text.primary} />
-          </TouchableOpacity>
-        </View>
+        <View style={styles.headerRight} />
       </View>
 
       <ScrollView
@@ -224,23 +255,28 @@ export default function ProfileScreen() {
         {/* 프로필 헤더 */}
         <ProfileHeader
           profile={profile}
-          isOwnProfile={true}
+          isOwnProfile={false}
           onFollowersPress={handleFollowersPress}
           onFollowingPress={handleFollowingPress}
         />
 
         {/* 액션 버튼들 */}
-        <View style={styles.actionsContainer}>
-          <Button
-            variant="outline"
-            onPress={handleEditProfile}
-            style={styles.editButton}
-            textStyle={styles.editButtonText}
-          >
-            프로필 수정
-          </Button>
-
-        </View>
+        {!isOwnProfile && (
+          <View style={styles.actionsContainer}>
+            <FollowButton
+              isFollowing={isFollowing}
+              onPress={handleFollowToggle}
+              loading={followLoading}
+            />
+            <TouchableOpacity
+              onPress={handleMessage}
+              style={styles.messageButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="mail-outline" size={20} color={theme.colors.text.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* 콘텐츠 그리드 (추후 구현) */}
         <View style={styles.contentSection}>
@@ -255,7 +291,6 @@ export default function ProfileScreen() {
               style={styles.emptyIcon}
             />
             <Text style={styles.emptyText}>아직 업로드한 콘텐츠가 없습니다</Text>
-            <Text style={styles.emptySubtext}>첫 콘텐츠를 업로드해보세요!</Text>
           </View>
         </View>
       </ScrollView>

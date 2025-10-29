@@ -77,3 +77,30 @@ export interface CreateProfileRequest {
  * 프로필 생성 응답 (백엔드는 UserProfileResponse를 직접 반환)
  */
 export type CreateProfileResponse = UserProfile;
+
+/**
+ * 팔로우 통계
+ */
+export interface FollowStats {
+  followerCount: number;
+  followingCount: number;
+}
+
+/**
+ * 팔로우 체크 응답
+ */
+export interface CheckFollowResponse {
+  followerId: string;
+  followingId: string;
+  isFollowing: boolean;
+}
+
+/**
+ * 팔로우 응답
+ */
+export interface FollowResponse {
+  id: number;
+  followerId: string;
+  followingId: string;
+  createdAt: string;
+}

@@ -7,6 +7,9 @@ import { LoadingSpinner } from '@/components/common';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
+import EditProfileScreen from '@/screens/profile/EditProfileScreen';
+import UserProfileScreen from '@/screens/profile/UserProfileScreen';
+import FollowListScreen from '@/screens/profile/FollowListScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -38,7 +41,16 @@ export default function RootNavigator() {
         ) : !profile ? (
           <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
         ) : (
-          <Stack.Screen name="Main" component={MainNavigator} />
+          <>
+            <Stack.Screen name="Main" component={MainNavigator} />
+            <Stack.Screen
+              name="EditProfile"
+              component={EditProfileScreen}
+              options={{ presentation: 'modal' }}
+            />
+            <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+            <Stack.Screen name="FollowList" component={FollowListScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

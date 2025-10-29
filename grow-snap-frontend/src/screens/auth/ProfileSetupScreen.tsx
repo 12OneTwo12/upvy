@@ -5,7 +5,6 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
@@ -15,12 +14,14 @@ import { useAuthStore } from '@/stores/authStore';
 import { Button, Input } from '@/components/common';
 import { theme } from '@/theme';
 import { showErrorAlert, withErrorHandling } from '@/utils/errorHandler';
+import { createStyleSheet } from '@/utils/styles';
 
 /**
  * 프로필 설정 화면 (인스타그램 스타일)
  * 깔끔하고 직관적인 프로필 설정 경험
  */
 export default function ProfileSetupScreen() {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { updateProfile } = useAuthStore();
 
@@ -210,7 +211,7 @@ export default function ProfileSetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,

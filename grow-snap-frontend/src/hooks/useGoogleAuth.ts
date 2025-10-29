@@ -64,8 +64,15 @@ export const useGoogleAuth = () => {
           await login(
             accessToken,
             refreshToken,
-            { id: userId || '', email: email || '' },
-            profile
+            {
+              id: userId || '',
+              email: email || '',
+              provider: 'GOOGLE',
+              role: 'USER',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            profile || undefined
           );
 
           setIsLoading(false);

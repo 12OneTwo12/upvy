@@ -102,7 +102,19 @@
 
 **토큰**: ~1,800
 
-### 9. frontend-api-integration.md (프론트엔드 API 통합) ⚠️ 필수
+### 9. git.md (Git Convention)
+
+**내용**: 커밋 메시지 형식, 커밋 단위, PR 규칙, 브랜치 전략
+
+**사용 시기**:
+- 커밋 메시지 작성 전
+- PR 생성 전
+- 브랜치 생성 시
+- Git Convention 확인 시
+
+**토큰**: ~3,500
+
+### 10. frontend-api-integration.md (프론트엔드 API 통합) ⚠️ 필수
 
 **내용**: 프론트엔드 개발 시 백엔드 API 스펙 확인 및 타입 일치 가이드
 
@@ -129,6 +141,8 @@
 | **이벤트 기반 처리** | spring-event → mvc-layers → testing-guide | ~7,000 |
 | **코드 스타일 수정** | code-style → quick-reference | ~3,000 |
 | **리팩토링** | core-principles → mvc-layers → quick-reference | ~6,000 |
+| **커밋 작성** | git | ~3,500 |
+| **PR 생성** | git | ~3,500 |
 
 ## Skill 사용 방법
 

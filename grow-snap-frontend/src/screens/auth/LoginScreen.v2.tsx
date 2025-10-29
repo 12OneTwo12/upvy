@@ -3,7 +3,6 @@ import {
   View,
   Text,
   SafeAreaView,
-  StyleSheet,
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,112 +12,9 @@ import { Button } from '@/components/common';
 import { theme } from '@/theme';
 import { showErrorAlert } from '@/utils/errorHandler';
 import { responsive, isSmallDevice } from '@/utils/responsive';
+import { createStyleSheet } from '@/utils/styles';
 
-/**
- * 로그인 화면 (반응형)
- */
-export default function LoginScreen() {
-  const insets = useSafeAreaInsets();
-  const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
-  // const { checkAuth } = useAuthStore(); // MVP: Auto-login disabled
-
-  // MVP: Auto-login disabled for now
-  // useEffect(() => {
-  //   checkAuth();
-  // }, []);
-
-  // 에러 처리
-  useEffect(() => {
-    if (error) {
-      showErrorAlert(error, '로그인 실패');
-    }
-  }, [error]);
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          {
-            paddingTop: Math.max(insets.top, theme.spacing[4]),
-            paddingBottom: Math.max(insets.bottom, theme.spacing[4]),
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 상단: 로고 및 소개 */}
-        <View style={styles.content}>
-          <View style={styles.logoSection}>
-            {/* 로고 */}
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>G</Text>
-            </View>
-
-            <Text style={styles.title}>GrowSnap</Text>
-            <Text style={styles.subtitle}>스크롤 시간을 성장 시간으로</Text>
-          </View>
-
-          {/* 서비스 특징 */}
-          <View style={styles.featuresContainer}>
-            <FeatureItem icon="📚" text="매일 새로운 인사이트" />
-            <FeatureItem icon="🎯" text="나만의 성장 여정" />
-            <FeatureItem icon="✨" text="재미있는 학습 경험" />
-          </View>
-        </View>
-
-        {/* 하단: 로그인 버튼 */}
-        <View style={styles.bottomSection}>
-          <Button
-            variant="outline"
-            size={responsive({ xs: 'md', md: 'lg', default: 'md' })}
-            fullWidth
-            onPress={handleGoogleLogin}
-            disabled={!isReady}
-            loading={isLoading}
-          >
-            Google로 시작하기
-          </Button>
-
-          {/* 약관 동의 */}
-          <Text style={styles.termsText}>
-            계속 진행하면{' '}
-            <Text style={styles.termsLink}>이용약관</Text> 및{' '}
-            <Text style={styles.termsLink}>개인정보처리방침</Text>에 동의하는
-            것으로 간주됩니다.
-          </Text>
-
-          {/* 개발 모드 표시 */}
-          {__DEV__ && (
-            <View style={styles.devNotice}>
-              <Text style={styles.devNoticeText}>
-                ⚠️ 개발 모드: Google OAuth 설정이 필요합니다
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-/**
- * 특징 아이템 컴포넌트
- */
-interface FeatureItemProps {
-  icon: string;
-  text: string;
-}
-
-function FeatureItem({ icon, text }: FeatureItemProps) {
-  return (
-    <View style={styles.featureItem}>
-      <Text style={styles.featureIcon}>{icon}</Text>
-      <Text style={styles.featureText}>{text}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -228,3 +124,109 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+/**
+ * 특징 아이템 컴포넌트
+ */
+interface FeatureItemProps {
+  icon: string;
+  text: string;
+}
+
+function FeatureItem({ icon, text }: FeatureItemProps) {
+  const styles = useStyles();
+  return (
+    <View style={styles.featureItem}>
+      <Text style={styles.featureIcon}>{icon}</Text>
+      <Text style={styles.featureText}>{text}</Text>
+    </View>
+  );
+}
+
+/**
+ * 로그인 화면 (반응형)
+ */
+export default function LoginScreen() {
+  const styles = useStyles();
+  const insets = useSafeAreaInsets();
+  const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
+  // const { checkAuth } = useAuthStore(); // MVP: Auto-login disabled
+
+  // MVP: Auto-login disabled for now
+  // useEffect(() => {
+  //   checkAuth();
+  // }, []);
+
+  // 에러 처리
+  useEffect(() => {
+    if (error) {
+      showErrorAlert(error, '로그인 실패');
+    }
+  }, [error]);
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(insets.top, theme.spacing[4]),
+            paddingBottom: Math.max(insets.bottom, theme.spacing[4]),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 상단: 로고 및 소개 */}
+        <View style={styles.content}>
+          <View style={styles.logoSection}>
+            {/* 로고 */}
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoText}>G</Text>
+            </View>
+
+            <Text style={styles.title}>GrowSnap</Text>
+            <Text style={styles.subtitle}>스크롤 시간을 성장 시간으로</Text>
+          </View>
+
+          {/* 서비스 특징 */}
+          <View style={styles.featuresContainer}>
+            <FeatureItem icon="📚" text="매일 새로운 인사이트" />
+            <FeatureItem icon="🎯" text="나만의 성장 여정" />
+            <FeatureItem icon="✨" text="재미있는 학습 경험" />
+          </View>
+        </View>
+
+        {/* 하단: 로그인 버튼 */}
+        <View style={styles.bottomSection}>
+          <Button
+            variant="outline"
+            size={responsive({ xs: 'md', md: 'lg', default: 'md' })}
+            fullWidth
+            onPress={handleGoogleLogin}
+            disabled={!isReady}
+            loading={isLoading}
+          >
+            Google로 시작하기
+          </Button>
+
+          {/* 약관 동의 */}
+          <Text style={styles.termsText}>
+            계속 진행하면{' '}
+            <Text style={styles.termsLink}>이용약관</Text> 및{' '}
+            <Text style={styles.termsLink}>개인정보처리방침</Text>에 동의하는
+            것으로 간주됩니다.
+          </Text>
+
+          {/* 개발 모드 표시 */}
+          {__DEV__ && (
+            <View style={styles.devNotice}>
+              <Text style={styles.devNoticeText}>
+                ⚠️ 개발 모드: Google OAuth 설정이 필요합니다
+              </Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

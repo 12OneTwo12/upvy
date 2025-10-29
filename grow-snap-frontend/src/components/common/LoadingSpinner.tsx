@@ -2,11 +2,11 @@ import React from 'react';
 import {
   View,
   ActivityIndicator,
-  StyleSheet,
   ViewStyle,
   Text,
 } from 'react-native';
 import { theme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 
 export interface LoadingSpinnerProps {
   /** 크기 */
@@ -31,6 +31,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   fullScreen = false,
   containerStyle,
 }) => {
+  const styles = useStyles();
   const container = fullScreen ? styles.fullScreen : styles.container;
 
   return (
@@ -41,7 +42,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
