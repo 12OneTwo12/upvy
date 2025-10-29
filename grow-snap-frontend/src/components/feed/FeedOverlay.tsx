@@ -6,12 +6,14 @@
  * - 하단 우측: 인터랙션 버튼 (좋아요, 댓글, 저장, 공유)
  */
 
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Modal, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CreatorInfo, InteractionInfo } from '@/types/feed.types';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface FeedOverlayProps {
   creator: CreatorInfo;
@@ -46,9 +48,16 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const isLoading = isLoadingState(creator);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   // 하단 패딩 = 내비게이션 바 높이 + 하단 안전 영역 + 여유 공간
   const bottomPadding = NAVIGATION_BAR_HEIGHT + insets.bottom + 16;
+
+  // 설명이 길면 더보기 표시 (60자 이상)
+  const shouldShowMore = (description || title).length > 60;
+  const displayText = shouldShowMore
+    ? `${(description || title).slice(0, 60)}...`
+    : (description || title);
 
   const formatCount = (count: number): string => {
     if (count >= 1000000) {
@@ -104,7 +113,11 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
             )}
 
             {/* 콘텐츠 설명 */}
-            <View style={styles.descriptionContainer}>
+            <TouchableOpacity
+              style={styles.descriptionContainer}
+              onPress={() => shouldShowMore && setIsModalVisible(true)}
+              disabled={!shouldShowMore || isLoading}
+            >
               {isLoading ? (
                 // 스켈레톤 UI
                 <>
@@ -112,11 +125,16 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                   <View style={[styles.skeletonText, { width: '70%' }]} />
                 </>
               ) : (
-                <Text style={styles.description} numberOfLines={2}>
-                  {description || title}
-                </Text>
+                <>
+                  <Text style={styles.description} numberOfLines={2}>
+                    {displayText}
+                  </Text>
+                  {shouldShowMore && (
+                    <Text style={styles.moreText}>더보기</Text>
+                  )}
+                </>
               )}
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* 우측: 인터랙션 버튼 */}
@@ -160,6 +178,47 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           </View>
         </View>
       </View>
+
+      {/* 설명 전체보기 모달 */}
+      <Modal
+        visible={isModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            {/* 상단 핸들 */}
+            <View style={styles.modalHandle} />
+
+            {/* 크리에이터 정보 */}
+            <View style={styles.modalHeader}>
+              {creator.profileImageUrl ? (
+                <Image
+                  source={{ uri: creator.profileImageUrl }}
+                  style={styles.modalProfileImage}
+                />
+              ) : (
+                <View style={styles.modalProfilePlaceholder}>
+                  <Ionicons name="person" size={20} color="#FFFFFF" />
+                </View>
+              )}
+              <Text style={styles.modalCreatorName}>{creator.nickname}</Text>
+            </View>
+
+            {/* 전체 설명 */}
+            <ScrollView style={styles.modalScrollView}>
+              <Text style={styles.modalDescription}>
+                {description || title}
+              </Text>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 };
@@ -265,5 +324,64 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginTop: 2,
     textAlign: 'center',
+  },
+  moreText: {
+    fontSize: 13,
+    color: '#888888',
+    marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: SCREEN_HEIGHT * 0.7,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#48484A',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalProfileImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  modalProfilePlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#444444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCreatorName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 10,
+  },
+  modalScrollView: {
+    maxHeight: SCREEN_HEIGHT * 0.5,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    lineHeight: 22,
   },
 });
