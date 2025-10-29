@@ -49,15 +49,15 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const insets = useSafeAreaInsets();
   const isLoading = isLoadingState(creator);
   const [isExpanded, setIsExpanded] = useState(false);
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   // 하단 패딩 = 내비게이션 바 높이 + 하단 안전 영역 + 여유 공간
   const bottomPadding = NAVIGATION_BAR_HEIGHT + insets.bottom + 16;
 
-  // 확장/축소 애니메이션
+  // 확장/축소 애니메이션 - 위로 200px 올라가도록
   useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: isExpanded ? 0 : SCREEN_HEIGHT,
+      toValue: isExpanded ? -250 : 0,
       useNativeDriver: true,
       damping: 20,
       stiffness: 90,
@@ -89,8 +89,16 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         pointerEvents="none"
       />
 
-      {/* 하단 콘텐츠 */}
-      <View style={[styles.container, { paddingBottom: bottomPadding }]}>
+      {/* 하단 콘텐츠 - Animated */}
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            paddingBottom: bottomPadding,
+            transform: [{ translateY: slideAnim }],
+          }
+        ]}
+      >
         <View style={styles.content}>
           {/* 좌측: 크리에이터 정보 + 콘텐츠 정보 */}
           <View style={styles.leftSection}>
@@ -188,54 +196,22 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
 
-      {/* 설명 전체보기 패널 */}
-      {isExpanded && (
-        <>
-          {/* 반투명 배경 */}
+        {/* 확장 시 전체 설명 영역 */}
+        {isExpanded && (
           <TouchableOpacity
-            style={styles.modalOverlay}
+            style={styles.expandedDescriptionContainer}
             activeOpacity={1}
             onPress={() => setIsExpanded(false)}
-          />
-
-          {/* 슬라이드 업 패널 */}
-          <Animated.View
-            style={[
-              styles.modalContent,
-              {
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
           >
-            {/* 상단 핸들 */}
-            <View style={styles.modalHandle} />
-
-            {/* 크리에이터 정보 */}
-            <View style={styles.modalHeader}>
-              {creator.profileImageUrl ? (
-                <Image
-                  source={{ uri: creator.profileImageUrl }}
-                  style={styles.modalProfileImage}
-                />
-              ) : (
-                <View style={styles.modalProfilePlaceholder}>
-                  <Ionicons name="person" size={20} color="#FFFFFF" />
-                </View>
-              )}
-              <Text style={styles.modalCreatorName}>{creator.nickname}</Text>
-            </View>
-
-            {/* 전체 설명 */}
-            <ScrollView style={styles.modalScrollView}>
-              <Text style={styles.modalDescription}>
+            <ScrollView style={styles.expandedScrollView}>
+              <Text style={styles.expandedDescription}>
                 {description || title}
               </Text>
             </ScrollView>
-          </Animated.View>
-        </>
-      )}
+          </TouchableOpacity>
+        )}
+      </Animated.View>
     </>
   );
 };
@@ -404,6 +380,19 @@ const styles = StyleSheet.create({
     maxHeight: SCREEN_HEIGHT * 0.5,
   },
   modalDescription: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    lineHeight: 22,
+  },
+  expandedDescriptionContainer: {
+    paddingTop: 16,
+    paddingHorizontal: 12,
+    maxHeight: 200,
+  },
+  expandedScrollView: {
+    flex: 1,
+  },
+  expandedDescription: {
     fontSize: 14,
     color: '#FFFFFF',
     lineHeight: 22,
