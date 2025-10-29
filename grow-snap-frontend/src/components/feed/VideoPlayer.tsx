@@ -7,8 +7,8 @@
  * - 자동재생
  */
 
-import React, { useRef, useState, useEffect } from 'react';
-import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator } from 'react-native';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,65 +20,82 @@ const TOP_TAB_AREA = 50;
 interface VideoPlayerProps {
   uri: string;
   isFocused: boolean;
-  shouldPreload?: boolean; // Pre-loading을 위한 prop (±2 범위)
+  shouldPreload?: boolean;
+  hasBeenLoaded?: boolean;
+  onVideoLoaded?: () => void;
   onDoubleTap?: () => void;
-  onTap?: () => boolean; // true 반환 시 비디오 탭 무시
+  onTap?: () => boolean;
+  onProgressUpdate?: (progress: number, duration: number, isDragging: boolean) => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   uri,
   isFocused,
   shouldPreload = false,
+  hasBeenLoaded = false,
+  onVideoLoaded,
   onDoubleTap,
   onTap,
+  onProgressUpdate,
 }) => {
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [showPlayIcon, setShowPlayIcon] = useState<'play' | 'pause' | null>(null);
   const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const lastTap = useRef<number>(0);
   const heartScale = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
   // 빈 URL인 경우 (스켈레톤 로딩 상태)
   const isLoadingSkeleton = !uri || uri === '';
 
-  // Pre-loading: 현재 포커스이거나 Pre-loading 범위(±2)에 있을 때 Video 컴포넌트 렌더
-  const shouldRenderVideo = !isLoadingSkeleton && (isFocused || shouldPreload);
+  // Pre-loading 로직: 외부에서 관리되는 hasBeenLoaded 사용
+  const shouldRenderVideo = !isLoadingSkeleton && (isFocused || shouldPreload || hasBeenLoaded);
 
   // 비디오 컨테이너 높이: 상단 safe area + 탭 영역 + 하단 네비게이션 바 + 하단 safe area를 제외한 높이
   const videoContainerHeight = SCREEN_HEIGHT - NAVIGATION_BAR_HEIGHT - insets.bottom;
 
-  // 포커스 상태에 따라 비디오 재생/정지만 제어 (로드는 Video 컴포넌트가 자동 처리)
-  // Pre-loading된 비디오는 포커스될 때까지 일시정지 상태 유지
+  // Video source 메모이제이션 (재생성 방지)
+  const videoSource = useMemo(() => ({ uri }), [uri]);
+
+
+  // 포커스 상태에 따라 비디오 재생/정지만 제어
   useEffect(() => {
     const controlPlayback = async () => {
-      if (videoRef.current && shouldRenderVideo) {
+      if (videoRef.current && !isLoadingSkeleton) {
         try {
           const status = await videoRef.current.getStatusAsync();
 
           if (status.isLoaded) {
-            if (isFocused) {
+            // 로드 완료 시 외부 콜백 호출 (한 번만)
+            if (!hasBeenLoaded && onVideoLoaded) {
+              onVideoLoaded();
+            }
+
+            if (isFocused && !isDragging) {
               // 포커스 시 재생
               if (!status.isPlaying) {
                 await videoRef.current.playAsync();
               }
             } else {
-              // 포커스 해제 시 일시정지 (언로드 하지 않음 - Pre-loading 유지)
+              // 포커스 해제 시 일시정지
               if (status.isPlaying) {
                 await videoRef.current.pauseAsync();
               }
             }
           }
         } catch (error) {
-          // 에러 무시 (백그라운드에서 발생할 수 있음)
+          // 에러 무시
         }
       }
     };
 
     controlPlayback();
-  }, [isFocused, shouldRenderVideo]);
+  }, [isFocused, isLoadingSkeleton, isDragging, hasBeenLoaded, onVideoLoaded]);
 
   // 컴포넌트 언마운트 시 비디오 정리
   // 주의: Pre-loading을 위해 언로드하지 않음 (일시정지만 수행)
@@ -95,25 +112,40 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (status.isLoaded) {
       setIsPlaying(status.isPlaying);
 
-      // 버퍼링 상태 업데이트 (재생 중이면 항상 버퍼링 해제)
+      // Duration 저장
+      if (status.durationMillis) {
+        setDuration(status.durationMillis);
+      }
+
+      // 버퍼링 상태 업데이트
       if (status.isPlaying) {
         setIsBuffering(false);
       } else if (status.isBuffering) {
         setIsBuffering(true);
       } else {
-        // 일시정지 상태 (버퍼링 아님)
         setIsBuffering(false);
       }
 
-      // 진행률 계산
-      if (status.durationMillis && status.durationMillis > 0) {
+      // 진행률 계산 (드래그 중이 아닐 때만 업데이트)
+      if (!isDragging && status.durationMillis && status.durationMillis > 0) {
         const progressValue = status.positionMillis / status.durationMillis;
         setProgress(progressValue);
+
+        // 애니메이션으로 부드럽게 업데이트
+        Animated.timing(progressAnim, {
+          toValue: progressValue,
+          duration: 100,
+          useNativeDriver: false,
+        }).start();
+
+        // 부모에게 진행률 전달
+        onProgressUpdate?.(progressValue, status.durationMillis, isDragging);
       }
 
-      // 비디오 종료 시 progress 초기화 (isLooping이 true이므로 자동 루프됨)
+      // 비디오 종료 시 progress 초기화
       if (status.didJustFinish) {
         setProgress(0);
+        progressAnim.setValue(0);
       }
     }
   };
@@ -158,6 +190,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onDoubleTap();
   };
 
+  // Seek 함수를 외부로 노출
+  useEffect(() => {
+    (window as any).videoSeek = async (seekProgress: number) => {
+      if (!videoRef.current || !duration) return;
+
+      try {
+        const positionMillis = seekProgress * duration;
+        await videoRef.current.setPositionAsync(positionMillis);
+        setProgress(seekProgress);
+        progressAnim.setValue(seekProgress);
+      } catch (error) {
+        console.error('Seek error:', error);
+      }
+    };
+  }, [duration]);
+
   // 탭 이벤트 처리 (싱글/더블 구분)
   const handleTap = () => {
     const now = Date.now();
@@ -185,25 +233,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     <View style={{ height: videoContainerHeight, backgroundColor: '#000000', position: 'relative' }}>
       <TouchableWithoutFeedback onPress={handleTap}>
         <View style={{ height: videoContainerHeight }}>
-          {shouldRenderVideo ? (
+          {/* Video는 항상 렌더링 - 언마운트 절대 금지 */}
+          {!isLoadingSkeleton && (
             <Video
               ref={videoRef}
-              source={{ uri }}
+              source={videoSource}
               style={{ width: SCREEN_WIDTH, height: videoContainerHeight }}
               resizeMode={ResizeMode.CONTAIN}
               isLooping
-              shouldPlay={isFocused}
+              shouldPlay={isFocused && !isDragging}
               isMuted={false}
               onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-              progressUpdateIntervalMillis={100}
+              progressUpdateIntervalMillis={50}
               useNativeControls={false}
             />
-          ) : (
+          )}
+
+          {isLoadingSkeleton && (
             <View style={{ width: SCREEN_WIDTH, height: videoContainerHeight, backgroundColor: '#000000' }} />
           )}
 
           {/* 로딩 인디케이터 - 화면 중앙 */}
-          {isBuffering && shouldRenderVideo && (
+          {isBuffering && !isLoadingSkeleton && (
             <View style={{
               position: 'absolute',
               top: 0,
@@ -256,25 +307,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         </View>
       </TouchableWithoutFeedback>
-
-      {/* 비디오 진행률 바 - 비디오 컨테이너 바로 아래 */}
-      {shouldRenderVideo && (
-        <View style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          backgroundColor: 'rgba(255, 255, 255, 0.3)',
-          zIndex: 100,
-        }}>
-          <View style={{
-            height: '100%',
-            width: `${progress * 100}%`,
-            backgroundColor: '#FFFFFF',
-          }} />
-        </View>
-      )}
     </View>
   );
 };

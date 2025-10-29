@@ -35,9 +35,15 @@ export default function FeedScreen() {
   const [currentTab, setCurrentTab] = useState<FeedTab>('recommended');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoRefreshing, setAutoRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollYRef = useRef(0);
+  const hasAutoRefreshed = useRef(false);
+
+  // Video 로드 상태를 contentId별로 캐싱 (FlatList 재활용과 무관하게 유지)
+  const videoLoadedCache = useRef<Map<string, boolean>>(new Map());
+
   const queryClient = useQueryClient();
   const navigation = useNavigation();
 
@@ -246,7 +252,8 @@ export default function FeedScreen() {
   };
 
   // 데이터 없거나 로딩중 -> 스켈레톤, 실제 데이터 있음 -> 실제 데이터 표시
-  const displayItems = (isLoading || feedItems.length === 0) ? [loadingFeedItem] : feedItems;
+  // 자동 새로고침 중일 때도 스켈레톤 표시
+  const displayItems = (isLoading || feedItems.length === 0 || autoRefreshing) ? [loadingFeedItem] : feedItems;
 
   // 스크롤 이벤트: 현재 보이는 아이템 인덱스 추적
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -269,6 +276,57 @@ export default function FeedScreen() {
       }
     }
   }, [currentIndex, hasNextPage, isFetchingNextPage, displayItems.length, fetchNextPage]);
+
+  // 콘텐츠 끝 도달 시 자동 새로고침
+  useEffect(() => {
+    const performAutoRefresh = async () => {
+      // 마지막 아이템에 도달했고, 다음 페이지가 없고, 아직 자동 새로고침 안했을 때
+      if (
+        !hasNextPage &&
+        !isFetchingNextPage &&
+        !isLoading &&
+        displayItems.length > 0 &&
+        currentIndex >= displayItems.length - 1 &&
+        !hasAutoRefreshed.current &&
+        !autoRefreshing
+      ) {
+        hasAutoRefreshed.current = true;
+        setAutoRefreshing(true);
+
+        // 스켈레톤 화면 잠깐 표시 (1초)
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        try {
+          // 새로고침 실행
+          await queryClient.invalidateQueries({ queryKey: ['feed'] });
+          await refetch();
+
+          // 맨 위로 스크롤
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+          setCurrentIndex(0);
+        } finally {
+          setAutoRefreshing(false);
+        }
+      }
+    };
+
+    performAutoRefresh();
+  }, [
+    currentIndex,
+    displayItems.length,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    autoRefreshing,
+    queryClient,
+    refetch,
+  ]);
+
+  // 탭 전환 시 자동 새로고침 플래그 리셋 및 비디오 캐시 초기화
+  useEffect(() => {
+    hasAutoRefreshed.current = false;
+    videoLoadedCache.current.clear();
+  }, [currentTab]);
 
   // 네비게이션 탭 재클릭 시 새로고침 (Instagram 스타일)
   useEffect(() => {
@@ -382,11 +440,23 @@ export default function FeedScreen() {
     // TODO: 프로필 화면으로 이동
   };
 
+  // Video 로드 완료 콜백
+  const handleVideoLoaded = useCallback((contentId: string) => {
+    videoLoadedCache.current.set(contentId, true);
+  }, []);
+
+  // Video 로드 상태 확인
+  const isVideoLoaded = useCallback((contentId: string) => {
+    return videoLoadedCache.current.get(contentId) ?? false;
+  }, []);
+
   // 렌더링
   const renderItem = ({ item, index }: { item: FeedItemType; index: number }) => {
     const isLoadingItem = item.contentId === 'loading';
     // Pre-loading: 현재 인덱스 기준 ±2 범위의 비디오 미리 로드
     const shouldPreload = Math.abs(index - currentIndex) <= 2;
+    // 이미 로드된 비디오인지 확인
+    const hasBeenLoaded = isVideoLoaded(item.contentId);
 
     return (
       <View style={{
@@ -398,6 +468,8 @@ export default function FeedScreen() {
           item={item}
           isFocused={index === currentIndex}
           shouldPreload={shouldPreload}
+          hasBeenLoaded={hasBeenLoaded}
+          onVideoLoaded={() => handleVideoLoaded(item.contentId)}
           onLike={() => handleLike(item.contentId, item.interactions.isLiked ?? false)}
           onComment={() => handleComment(item.contentId)}
           onSave={() => handleSave(item.contentId, item.interactions.isSaved ?? false)}
@@ -518,12 +590,22 @@ export default function FeedScreen() {
         data={displayItems}
         renderItem={renderItem}
         keyExtractor={(item) => item.uniqueKey}
+        extraData={currentIndex}
         showsVerticalScrollIndicator={false}
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
         bounces={true}
         alwaysBounceVertical={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#FFFFFF"
+            colors={['#FFFFFF']}
+            progressBackgroundColor="#000000"
+          />
+        }
         scrollEventThrottle={16}
         onScroll={handleScroll}
         onScrollBeginDrag={handleScroll}
@@ -547,9 +629,10 @@ export default function FeedScreen() {
         })}
         removeClippedSubviews={false}
         maxToRenderPerBatch={5}
-        windowSize={11}
-        initialNumToRender={5}
+        windowSize={7}
+        initialNumToRender={3}
         updateCellsBatchingPeriod={50}
+        persistentScrollbar={false}
       />
     </View>
   );
