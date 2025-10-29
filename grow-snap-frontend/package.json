@@ -25,6 +25,7 @@
     "expo-av": "~16.0.7",
     "expo-crypto": "~15.0.7",
     "expo-image-picker": "^17.0.8",
+    "expo-linear-gradient": "^15.0.7",
     "expo-status-bar": "~3.0.8",
     "expo-web-browser": "~15.0.8",
     "nativewind": "^4.2.1",

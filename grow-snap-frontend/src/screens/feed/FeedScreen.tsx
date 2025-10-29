@@ -16,8 +16,9 @@ import {
   TouchableOpacity,
   Text,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FeedItem } from '@/components/feed';
 import { getMainFeed, getFollowingFeed, refreshFeed as refreshFeedApi } from '@/api/feed.api';
 import type { FeedTab, FeedItem as FeedItemType } from '@/types/feed.types';
@@ -130,40 +131,52 @@ export default function FeedScreen() {
   );
 
   return (
-    <View className="flex-1 bg-black">
-      {/* 탭 전환 버튼 */}
-      <View className="absolute top-12 left-0 right-0 z-10 flex-row justify-center">
-        <View className="flex-row bg-black/40 rounded-full p-1">
-          <TouchableOpacity
-            onPress={() => handleTabChange('recommended')}
-            className={`px-6 py-2 rounded-full ${
-              currentTab === 'recommended' ? 'bg-white' : 'bg-transparent'
-            }`}
-          >
-            <Text
-              className={`font-semibold ${
-                currentTab === 'recommended' ? 'text-black' : 'text-white'
-              }`}
-            >
-              추천
-            </Text>
-          </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
 
-          <TouchableOpacity
-            onPress={() => handleTabChange('following')}
-            className={`px-6 py-2 rounded-full ${
-              currentTab === 'following' ? 'bg-white' : 'bg-transparent'
-            }`}
-          >
-            <Text
-              className={`font-semibold ${
-                currentTab === 'following' ? 'text-black' : 'text-white'
-              }`}
-            >
-              팔로잉
-            </Text>
-          </TouchableOpacity>
-        </View>
+      {/* Instagram Reels 스타일 탭 */}
+      <View style={{
+        position: 'absolute',
+        top: 50,
+        left: 0,
+        right: 0,
+        zIndex: 10,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        <TouchableOpacity
+          onPress={() => handleTabChange('following')}
+          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+        >
+          <Text style={{
+            fontSize: 17,
+            fontWeight: currentTab === 'following' ? '700' : '400',
+            color: currentTab === 'following' ? '#FFFFFF' : '#888888',
+          }}>
+            팔로잉
+          </Text>
+        </TouchableOpacity>
+
+        <View style={{
+          width: 1,
+          height: 12,
+          backgroundColor: '#666666',
+          marginHorizontal: 4,
+        }} />
+
+        <TouchableOpacity
+          onPress={() => handleTabChange('recommended')}
+          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+        >
+          <Text style={{
+            fontSize: 17,
+            fontWeight: currentTab === 'recommended' ? '700' : '400',
+            color: currentTab === 'recommended' ? '#FFFFFF' : '#888888',
+          }}>
+            추천
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* 피드 리스트 */}
@@ -189,14 +202,19 @@ export default function FeedScreen() {
           />
         }
         ListEmptyComponent={
-          <View style={{ height: SCREEN_HEIGHT }} className="items-center justify-center">
-            <ActivityIndicator size="large" color="#22c55e" />
+          <View style={{
+            height: SCREEN_HEIGHT,
+            backgroundColor: '#000000',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
           </View>
         }
         ListFooterComponent={
           isFetchingNextPage ? (
-            <View className="py-4">
-              <ActivityIndicator size="large" color="#22c55e" />
+            <View style={{ paddingVertical: 16, backgroundColor: '#000000' }}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
             </View>
           ) : null
         }

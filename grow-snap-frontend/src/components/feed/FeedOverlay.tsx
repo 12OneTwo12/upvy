@@ -7,8 +7,9 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { CreatorInfo, InteractionInfo } from '@/types/feed.types';
 
 interface FeedOverlayProps {
@@ -45,85 +46,179 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   };
 
   return (
-    <View className="absolute bottom-0 left-0 right-0 pb-8">
-      <View className="flex-row justify-between items-end px-4">
-        {/* 좌측: 크리에이터 정보 */}
-        <View className="flex-1 mr-4">
-          <TouchableOpacity
-            onPress={onCreatorPress}
-            className="flex-row items-center mb-3"
-          >
-            {creator.profileImageUrl ? (
-              <Image
-                source={{ uri: creator.profileImageUrl }}
-                className="w-10 h-10 rounded-full border-2 border-white"
-              />
-            ) : (
-              <View className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center border-2 border-white">
-                <Ionicons name="person" size={20} color="white" />
-              </View>
-            )}
-            <Text className="text-white font-semibold text-base ml-2">
-              {creator.nickname}
-            </Text>
-          </TouchableOpacity>
+    <>
+      {/* 하단 그라디언트 오버레이 */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.6)']}
+        style={styles.gradient}
+        pointerEvents="none"
+      />
 
-          {/* 제목 */}
-          <Text className="text-white font-semibold text-base mb-1" numberOfLines={2}>
-            {title}
-          </Text>
+      {/* 하단 콘텐츠 */}
+      <View style={styles.container}>
+        <View style={styles.content}>
+          {/* 좌측: 크리에이터 정보 + 콘텐츠 정보 */}
+          <View style={styles.leftSection}>
+            {/* 크리에이터 프로필 */}
+            <TouchableOpacity
+              onPress={onCreatorPress}
+              style={styles.creatorContainer}
+            >
+              {creator.profileImageUrl ? (
+                <Image
+                  source={{ uri: creator.profileImageUrl }}
+                  style={styles.profileImage}
+                />
+              ) : (
+                <View style={styles.profilePlaceholder}>
+                  <Ionicons name="person" size={20} color="#FFFFFF" />
+                </View>
+              )}
+              <Text style={styles.creatorName}>{creator.nickname}</Text>
+              <TouchableOpacity style={styles.followButton}>
+                <Text style={styles.followButtonText}>팔로우</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
 
-          {/* 설명 */}
-          {description && (
-            <Text className="text-white/90 text-sm" numberOfLines={3}>
-              {description}
-            </Text>
-          )}
-        </View>
-
-        {/* 우측: 인터랙션 버튼 */}
-        <View className="items-center space-y-6">
-          {/* 좋아요 */}
-          <TouchableOpacity onPress={onLike} className="items-center">
-            <View className="bg-black/40 rounded-full p-3 mb-1">
-              <Ionicons name="heart" size={28} color="white" />
+            {/* 콘텐츠 설명 */}
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.description} numberOfLines={2}>
+                {description || title}
+              </Text>
             </View>
-            <Text className="text-white text-xs font-medium">
-              {formatCount(interactions.likeCount)}
-            </Text>
-          </TouchableOpacity>
+          </View>
 
-          {/* 댓글 */}
-          <TouchableOpacity onPress={onComment} className="items-center">
-            <View className="bg-black/40 rounded-full p-3 mb-1">
-              <Ionicons name="chatbubble" size={28} color="white" />
-            </View>
-            <Text className="text-white text-xs font-medium">
-              {formatCount(interactions.commentCount)}
-            </Text>
-          </TouchableOpacity>
+          {/* 우측: 인터랙션 버튼 */}
+          <View style={styles.rightSection}>
+            {/* 좋아요 */}
+            <TouchableOpacity onPress={onLike} style={styles.actionButton}>
+              <Ionicons name="heart-outline" size={32} color="#FFFFFF" />
+              <Text style={styles.actionCount}>
+                {formatCount(interactions.likeCount)}
+              </Text>
+            </TouchableOpacity>
 
-          {/* 저장 */}
-          <TouchableOpacity onPress={onSave} className="items-center">
-            <View className="bg-black/40 rounded-full p-3 mb-1">
-              <Ionicons name="bookmark" size={28} color="white" />
-            </View>
-            <Text className="text-white text-xs font-medium">
-              {formatCount(interactions.saveCount)}
-            </Text>
-          </TouchableOpacity>
+            {/* 댓글 */}
+            <TouchableOpacity onPress={onComment} style={styles.actionButton}>
+              <Ionicons name="chatbubble-outline" size={30} color="#FFFFFF" />
+              <Text style={styles.actionCount}>
+                {formatCount(interactions.commentCount)}
+              </Text>
+            </TouchableOpacity>
 
-          {/* 공유 */}
-          <TouchableOpacity onPress={onShare} className="items-center">
-            <View className="bg-black/40 rounded-full p-3 mb-1">
-              <Ionicons name="paper-plane" size={28} color="white" />
-            </View>
-            <Text className="text-white text-xs font-medium">
-              {formatCount(interactions.shareCount)}
-            </Text>
-          </TouchableOpacity>
+            {/* 저장 */}
+            <TouchableOpacity onPress={onSave} style={styles.actionButton}>
+              <Ionicons name="bookmark-outline" size={30} color="#FFFFFF" />
+              <Text style={styles.actionCount}>
+                {formatCount(interactions.saveCount)}
+              </Text>
+            </TouchableOpacity>
+
+            {/* 공유 */}
+            <TouchableOpacity onPress={onShare} style={styles.actionButton}>
+              <Ionicons name="paper-plane-outline" size={30} color="#FFFFFF" />
+              <Text style={styles.actionCount}>
+                {formatCount(interactions.shareCount)}
+              </Text>
+            </TouchableOpacity>
+
+            {/* 더보기 (점 3개) */}
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
+    </>
   );
 };
+
+const styles = StyleSheet.create({
+  gradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+  },
+  container: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 20,
+  },
+  content: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+  },
+  leftSection: {
+    flex: 1,
+    marginRight: 12,
+  },
+  creatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  profileImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  profilePlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#333333',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  creatorName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 10,
+  },
+  followButton: {
+    marginLeft: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  followButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  descriptionContainer: {
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    lineHeight: 20,
+  },
+  rightSection: {
+    alignItems: 'center',
+    gap: 24,
+  },
+  actionButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginTop: 4,
+  },
+});
