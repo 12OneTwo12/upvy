@@ -45,7 +45,7 @@ const useStyles = createStyleSheet({
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.normal,
     color: theme.colors.text.primary,
-    lineHeight: theme.typography.lineHeight.relaxed,
+    lineHeight: theme.typography.fontSize.base * 1.5,
   },
 });
 
@@ -102,7 +102,11 @@ export default function ProfileHeader({
         <Text style={styles.nickname}>{profile.nickname}</Text>
 
         {/* 자기소개 */}
-        {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
+        {profile.bio && (
+          <Text style={styles.bio} numberOfLines={0}>
+            {profile.bio}
+          </Text>
+        )}
       </View>
     </View>
   );
