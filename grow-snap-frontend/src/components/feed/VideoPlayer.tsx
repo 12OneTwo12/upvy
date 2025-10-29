@@ -8,7 +8,7 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { View, TouchableWithoutFeedback, Dimensions, Animated } from 'react-native';
+import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,70 +20,72 @@ const TOP_TAB_AREA = 50;
 interface VideoPlayerProps {
   uri: string;
   isFocused: boolean;
+  shouldPreload?: boolean; // Pre-loading을 위한 prop (±2 범위)
   onDoubleTap?: () => void;
   onTap?: () => boolean; // true 반환 시 비디오 탭 무시
-  muted?: boolean;
-  onMutedChange?: (muted: boolean) => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   uri,
   isFocused,
+  shouldPreload = false,
   onDoubleTap,
   onTap,
-  muted = false,
-  onMutedChange,
 }) => {
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showPlayIcon, setShowPlayIcon] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(true);
+  const [showPlayIcon, setShowPlayIcon] = useState<'play' | 'pause' | null>(null);
   const [progress, setProgress] = useState(0);
   const lastTap = useRef<number>(0);
   const heartScale = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
-  // 빈 URL인 경우 (로딩 상태)
-  const isLoading = !uri || uri === '';
+  // 빈 URL인 경우 (스켈레톤 로딩 상태)
+  const isLoadingSkeleton = !uri || uri === '';
+
+  // Pre-loading: 현재 포커스이거나 Pre-loading 범위(±2)에 있을 때 Video 컴포넌트 렌더
+  const shouldRenderVideo = !isLoadingSkeleton && (isFocused || shouldPreload);
 
   // 비디오 컨테이너 높이: 상단 safe area + 탭 영역 + 하단 네비게이션 바 + 하단 safe area를 제외한 높이
   const videoContainerHeight = SCREEN_HEIGHT - NAVIGATION_BAR_HEIGHT - insets.bottom;
 
-  // 포커스 상태에 따라 자동재생/정지
+  // 포커스 상태에 따라 비디오 재생/정지만 제어 (로드는 Video 컴포넌트가 자동 처리)
+  // Pre-loading된 비디오는 포커스될 때까지 일시정지 상태 유지
   useEffect(() => {
-    const loadAndPlay = async () => {
-      if (videoRef.current && !isLoading) {
-        if (isFocused) {
-          try {
-            // 비디오 상태 확인
-            const status = await videoRef.current.getStatusAsync();
+    const controlPlayback = async () => {
+      if (videoRef.current && shouldRenderVideo) {
+        try {
+          const status = await videoRef.current.getStatusAsync();
 
-            // 언로드된 상태면 다시 로드
-            if (!status.isLoaded) {
-              await videoRef.current.loadAsync({ uri }, {}, false);
+          if (status.isLoaded) {
+            if (isFocused) {
+              // 포커스 시 재생
+              if (!status.isPlaying) {
+                await videoRef.current.playAsync();
+              }
+            } else {
+              // 포커스 해제 시 일시정지 (언로드 하지 않음 - Pre-loading 유지)
+              if (status.isPlaying) {
+                await videoRef.current.pauseAsync();
+              }
             }
-
-            await videoRef.current.playAsync();
-          } catch (error) {
-            console.log('Video load error:', error);
           }
-        } else {
-          try {
-            await videoRef.current.pauseAsync();
-          } catch (error) {
-            // 이미 언로드된 경우 무시
-          }
+        } catch (error) {
+          // 에러 무시 (백그라운드에서 발생할 수 있음)
         }
       }
     };
 
-    loadAndPlay();
-  }, [isFocused, isLoading, uri]);
+    controlPlayback();
+  }, [isFocused, shouldRenderVideo]);
 
-  // 컴포넌트 언마운트 시 비디오 언로드
+  // 컴포넌트 언마운트 시 비디오 정리
+  // 주의: Pre-loading을 위해 언로드하지 않음 (일시정지만 수행)
   useEffect(() => {
     return () => {
       if (videoRef.current) {
-        videoRef.current.unloadAsync().catch(() => {});
+        videoRef.current.pauseAsync().catch(() => {});
       }
     };
   }, []);
@@ -93,15 +95,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (status.isLoaded) {
       setIsPlaying(status.isPlaying);
 
+      // 버퍼링 상태 업데이트 (재생 중이면 항상 버퍼링 해제)
+      if (status.isPlaying) {
+        setIsBuffering(false);
+      } else if (status.isBuffering) {
+        setIsBuffering(true);
+      } else {
+        // 일시정지 상태 (버퍼링 아님)
+        setIsBuffering(false);
+      }
+
       // 진행률 계산
       if (status.durationMillis && status.durationMillis > 0) {
         const progressValue = status.positionMillis / status.durationMillis;
         setProgress(progressValue);
       }
 
-      // 비디오 종료 시 루프
+      // 비디오 종료 시 progress 초기화 (isLooping이 true이므로 자동 루프됨)
       if (status.didJustFinish) {
-        videoRef.current?.replayAsync();
         setProgress(0);
       }
     }
@@ -112,14 +123,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!videoRef.current) return;
 
     if (isPlaying) {
+      // 일시정지 -> play 아이콘 표시
       await videoRef.current.pauseAsync();
+      setShowPlayIcon('play');
     } else {
+      // 재생 -> pause 아이콘 표시
       await videoRef.current.playAsync();
+      setShowPlayIcon('pause');
     }
 
-    // 일시정지 아이콘 표시
-    setShowPlayIcon(!isPlaying);
-    setTimeout(() => setShowPlayIcon(false), 800);
+    setTimeout(() => setShowPlayIcon(null), 800);
   };
 
   // 더블탭: 좋아요
@@ -168,26 +181,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     lastTap.current = now;
   };
 
-  // 음소거 토글
-  const toggleMuted = async () => {
-    const newMuted = !muted;
-    if (videoRef.current) {
-      await videoRef.current.setIsMutedAsync(newMuted);
-    }
-    onMutedChange?.(newMuted);
-  };
-
   return (
     <View style={{ height: videoContainerHeight, backgroundColor: '#000000', position: 'relative' }}>
       <TouchableWithoutFeedback onPress={handleTap}>
         <View style={{ height: videoContainerHeight }}>
-          {!isLoading ? (
+          {shouldRenderVideo ? (
             <Video
               ref={videoRef}
+              source={{ uri }}
               style={{ width: SCREEN_WIDTH, height: videoContainerHeight }}
               resizeMode={ResizeMode.CONTAIN}
               isLooping
-              isMuted={muted}
+              shouldPlay={isFocused}
+              isMuted={false}
               onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
               progressUpdateIntervalMillis={100}
               useNativeControls={false}
@@ -196,11 +202,43 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <View style={{ width: SCREEN_WIDTH, height: videoContainerHeight, backgroundColor: '#000000' }} />
           )}
 
-          {/* 일시정지 아이콘 */}
-          {showPlayIcon && !isPlaying && (
-            <View className="absolute inset-0 items-center justify-center">
-              <View className="bg-black/40 rounded-full p-8">
-                <Ionicons name="play" size={64} color="white" />
+          {/* 로딩 인디케이터 - 화면 중앙 */}
+          {isBuffering && shouldRenderVideo && (
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              justifyContent: 'center',
+              alignItems: 'center',
+              pointerEvents: 'none',
+            }}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
+            </View>
+          )}
+
+          {/* 재생/일시정지 아이콘 */}
+          {showPlayIcon && (
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+              <View style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                borderRadius: 64,
+                padding: 32,
+              }}>
+                <Ionicons
+                  name={showPlayIcon === 'play' ? 'play' : 'pause'}
+                  size={64}
+                  color="white"
+                />
               </View>
             </View>
           )}
@@ -216,24 +254,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <Ionicons name="heart" size={120} color="white" />
           </Animated.View>
 
-          {/* 음소거 버튼 (로딩 상태에서는 숨김) */}
-          {!isLoading && (
-            <TouchableWithoutFeedback onPress={toggleMuted}>
-              <View className="absolute bottom-32 right-4 bg-black/40 rounded-full p-3">
-                <Ionicons
-                  name={muted ? 'volume-mute' : 'volume-high'}
-                  size={24}
-                  color="white"
-                />
-              </View>
-            </TouchableWithoutFeedback>
-          )}
-
         </View>
       </TouchableWithoutFeedback>
 
       {/* 비디오 진행률 바 - 비디오 컨테이너 바로 아래 */}
-      {!isLoading && (
+      {shouldRenderVideo && (
         <View style={{
           position: 'absolute',
           bottom: 0,
