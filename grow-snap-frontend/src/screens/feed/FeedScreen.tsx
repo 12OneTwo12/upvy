@@ -219,7 +219,7 @@ export default function FeedScreen() {
         showsVerticalScrollIndicator={false}
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
-        decelerationRate="fast"
+        decelerationRate="normal"
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onEndReached={handleEndReached}
