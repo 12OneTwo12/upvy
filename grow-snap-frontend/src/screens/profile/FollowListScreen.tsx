@@ -8,7 +8,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CompositeNavigationProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
 import { ProfileAvatar, FollowButton } from '@/components/profile';
 import { LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
@@ -24,12 +27,10 @@ import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 
-type RouteParams = {
-  FollowList: {
-    userId: string;
-    initialTab?: 'followers' | 'following';
-  };
-};
+type NavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<RootStackParamList, 'FollowList'>,
+  BottomTabNavigationProp<MainTabParamList>
+>;
 
 type UserWithFollowState = UserProfile & {
   isFollowing: boolean;
@@ -147,8 +148,8 @@ const useStyles = createStyleSheet({
 
 export default function FollowListScreen() {
   const styles = useStyles();
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RouteParams, 'FollowList'>>();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'FollowList'>>();
   const { userId, initialTab = 'followers' } = route.params;
   const { user: currentUser } = useAuthStore();
 
@@ -270,10 +271,10 @@ export default function FollowListScreen() {
   const handleUserPress = (targetUserId: string) => {
     if (currentUser?.id === targetUserId) {
       // 본인 프로필
-      navigation.navigate('Profile' as never);
+      navigation.navigate('Main', { screen: 'Profile' });
     } else {
       // 다른 사용자 프로필
-      navigation.navigate('UserProfile' as never, { userId: targetUserId } as never);
+      navigation.navigate('UserProfile', { userId: targetUserId });
     }
   };
 

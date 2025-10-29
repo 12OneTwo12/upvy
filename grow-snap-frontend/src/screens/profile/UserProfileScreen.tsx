@@ -10,6 +10,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '@/types/navigation.types';
 import { ProfileHeader, FollowButton } from '@/components/profile';
 import { LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
@@ -24,11 +26,7 @@ import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 
-type RouteParams = {
-  UserProfile: {
-    userId: string;
-  };
-};
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'UserProfile'>;
 
 /**
  * 다른 사용자 프로필 화면
@@ -118,8 +116,8 @@ const useStyles = createStyleSheet({
 
 export default function UserProfileScreen() {
   const styles = useStyles();
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RouteParams, 'UserProfile'>>();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'UserProfile'>>();
   const { userId } = route.params;
   const { user: currentUser } = useAuthStore();
 
@@ -206,18 +204,18 @@ export default function UserProfileScreen() {
 
   // 팔로워 목록으로 이동
   const handleFollowersPress = () => {
-    navigation.navigate('FollowList' as never, {
+    navigation.navigate('FollowList', {
       userId,
       initialTab: 'followers',
-    } as never);
+    });
   };
 
   // 팔로잉 목록으로 이동
   const handleFollowingPress = () => {
-    navigation.navigate('FollowList' as never, {
+    navigation.navigate('FollowList', {
       userId,
       initialTab: 'following',
-    } as never);
+    });
   };
 
   // 메시지 보내기 (추후 구현)

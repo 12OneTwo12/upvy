@@ -9,7 +9,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
 import { ProfileHeader } from '@/components/profile';
 import { Button, LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
@@ -17,6 +20,11 @@ import { getMyProfile } from '@/api/auth.api';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
+
+type NavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Profile'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 /**
  * 내 프로필 화면
@@ -70,13 +78,6 @@ const useStyles = createStyleSheet({
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
   },
-  creatorButton: {
-    flex: 1,
-  },
-  creatorButtonText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-  },
   contentSection: {
     flex: 1,
     paddingTop: theme.spacing[4],
@@ -115,7 +116,7 @@ const useStyles = createStyleSheet({
 
 export default function ProfileScreen() {
   const styles = useStyles();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const { profile: storeProfile, user, updateProfile, logout } = useAuthStore();
   const [profile, setProfile] = useState(storeProfile);
   const [loading, setLoading] = useState(false);
@@ -159,7 +160,7 @@ export default function ProfileScreen() {
 
   // 프로필 수정 화면으로 이동
   const handleEditProfile = () => {
-    navigation.navigate('EditProfile' as never);
+    navigation.navigate('EditProfile');
   };
 
   // 설정 화면으로 이동
@@ -171,38 +172,21 @@ export default function ProfileScreen() {
   // 팔로워 목록으로 이동
   const handleFollowersPress = () => {
     if (!user?.id) return;
-    navigation.navigate('FollowList' as never, {
+    navigation.navigate('FollowList', {
       userId: user.id,
       initialTab: 'followers',
-    } as never);
+    });
   };
 
   // 팔로잉 목록으로 이동
   const handleFollowingPress = () => {
     if (!user?.id) return;
-    navigation.navigate('FollowList' as never, {
+    navigation.navigate('FollowList', {
       userId: user.id,
       initialTab: 'following',
-    } as never);
+    });
   };
 
-  // 크리에이터 전환 신청
-  const handleCreatorApplication = () => {
-    Alert.alert(
-      '크리에이터 전환',
-      '크리에이터로 전환하시겠습니까?\n콘텐츠를 업로드하고 팔로워를 모을 수 있습니다.',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '신청',
-          onPress: () => {
-            // TODO: 크리에이터 전환 API 구현 후 연결
-            Alert.alert('알림', '크리에이터 전환 신청이 접수되었습니다.');
-          },
-        },
-      ]
-    );
-  };
 
   if (loading || !profile) {
     return (
@@ -211,8 +195,6 @@ export default function ProfileScreen() {
       </SafeAreaView>
     );
   }
-
-  const isCreator = user?.role === 'CREATOR';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -250,16 +232,6 @@ export default function ProfileScreen() {
             프로필 수정
           </Button>
 
-          {!isCreator && (
-            <Button
-              variant="outline"
-              onPress={handleCreatorApplication}
-              style={styles.creatorButton}
-              textStyle={styles.creatorButtonText}
-            >
-              크리에이터 전환
-            </Button>
-          )}
         </View>
 
         {/* 콘텐츠 그리드 (추후 구현) */}
@@ -275,9 +247,7 @@ export default function ProfileScreen() {
               style={styles.emptyIcon}
             />
             <Text style={styles.emptyText}>아직 업로드한 콘텐츠가 없습니다</Text>
-            {isCreator && (
-              <Text style={styles.emptySubtext}>첫 콘텐츠를 업로드해보세요!</Text>
-            )}
+            <Text style={styles.emptySubtext}>첫 콘텐츠를 업로드해보세요!</Text>
           </View>
         </View>
       </ScrollView>
