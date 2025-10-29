@@ -189,28 +189,9 @@ export default function FeedScreen() {
           />
         }
         ListEmptyComponent={
-          isLoading ? (
-            <View style={{ height: SCREEN_HEIGHT }} className="items-center justify-center">
-              <ActivityIndicator size="large" color="#22c55e" />
-            </View>
-          ) : (
-            <View style={{ height: SCREEN_HEIGHT }} className="items-center justify-center px-8">
-              <Text className="text-white text-2xl font-bold mb-4">
-                {currentTab === 'recommended' ? '콘텐츠가 없어요' : '팔로잉 피드가 비어있어요'}
-              </Text>
-              <Text className="text-white/70 text-center mb-6">
-                {currentTab === 'recommended'
-                  ? '아직 추천할 콘텐츠가 없습니다.\n잠시 후 다시 확인해주세요.'
-                  : '팔로우한 크리에이터의\n새로운 콘텐츠가 아직 없습니다.'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => refetch()}
-                className="bg-green-500 px-6 py-3 rounded-full"
-              >
-                <Text className="text-white font-semibold">새로고침</Text>
-              </TouchableOpacity>
-            </View>
-          )
+          <View style={{ height: SCREEN_HEIGHT }} className="items-center justify-center">
+            <ActivityIndicator size="large" color="#22c55e" />
+          </View>
         }
         ListFooterComponent={
           isFetchingNextPage ? (
