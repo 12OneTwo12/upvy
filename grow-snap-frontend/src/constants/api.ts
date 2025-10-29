@@ -51,7 +51,7 @@ export const API_ENDPOINTS = {
 
   // Feed
   FEED: {
-    MAIN: '/feed/main',
+    MAIN: '/feed',
     FOLLOWING: '/feed/following',
     REFRESH: '/feed/refresh',
   },
