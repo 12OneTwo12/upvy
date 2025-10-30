@@ -14,6 +14,11 @@ import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// 재생바 관련 상수
+const PROGRESS_BAR_HEIGHT_NORMAL = 3;
+const PROGRESS_BAR_HEIGHT_DRAGGING = 7;
+const PROGRESS_BAR_BOTTOM_OFFSET = 8.2;
+
 interface FeedItemProps {
   item: FeedItemType;
   isFocused: boolean;
@@ -84,6 +89,11 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   // 재생바 드래그
   const dragStartDuration = useRef<number>(0);
 
+  // progress 계산 헬퍼 함수
+  const calculateProgress = (pageX: number): number => {
+    return Math.max(0, Math.min(1, pageX / SCREEN_WIDTH));
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -97,19 +107,27 @@ export const FeedItem: React.FC<FeedItemProps> = ({
       onPanResponderMove: (event, gestureState) => {
         // pageX: 화면 전체 기준 X 좌표 사용
         const pageX = event.nativeEvent.pageX;
-        const newProgress = Math.max(0, Math.min(1, pageX / SCREEN_WIDTH));
-        setProgress(newProgress);
+        const newProgress = calculateProgress(pageX);
+
+        // 애니메이션만 업데이트 (성능 최적화)
         progressAnim.setValue(newProgress);
       },
       onPanResponderRelease: async (event, gestureState) => {
         // pageX: 화면 전체 기준 X 좌표 사용
         const pageX = event.nativeEvent.pageX;
-        const newProgress = Math.max(0, Math.min(1, pageX / SCREEN_WIDTH));
+        const newProgress = calculateProgress(pageX);
         const seekDuration = dragStartDuration.current;
 
         // 저장된 duration 사용해서 seek
         if (videoPlayerRef.current && seekDuration > 0) {
-          await videoPlayerRef.current.seek(newProgress, seekDuration);
+          try {
+            await videoPlayerRef.current.seek(newProgress, seekDuration);
+            setProgress(newProgress);
+          } catch (error) {
+            console.error('Seek failed:', error);
+            // seek 실패 시 원래 progress로 복원
+            progressAnim.setValue(progress);
+          }
         }
 
         // 드래그 종료
@@ -157,7 +175,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           {...panResponder.panHandlers}
           style={{
             position: 'absolute',
-            bottom: tabBarHeight - 8.2,
+            bottom: tabBarHeight - PROGRESS_BAR_BOTTOM_OFFSET,
             left: 0,
             right: 0,
             height: 20,
@@ -166,7 +184,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           }}
         >
           <Animated.View style={{
-            height: isDragging ? 7 : 3,
+            height: isDragging ? PROGRESS_BAR_HEIGHT_DRAGGING : PROGRESS_BAR_HEIGHT_NORMAL,
             backgroundColor: 'rgba(255, 255, 255, 0.3)',
           }}>
             <Animated.View
