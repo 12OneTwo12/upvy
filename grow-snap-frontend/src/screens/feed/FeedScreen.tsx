@@ -604,7 +604,7 @@ export default function FeedScreen() {
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
-        bounces={false}
+        bounces={true}
         scrollEventThrottle={16}
         onScroll={handleScroll}
         onScrollBeginDrag={handleScroll}
