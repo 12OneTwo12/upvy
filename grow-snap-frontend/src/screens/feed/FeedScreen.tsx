@@ -398,9 +398,7 @@ export default function FeedScreen() {
   // 탭 전환 (Instagram 스타일: 같은 탭 재클릭 시 새로고침)
   const handleTabChange = async (tab: FeedTab) => {
     if (tab === currentTab) {
-      // 같은 탭을 다시 클릭하면 새로고침
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-      setCurrentIndex(0);
+      // 같은 탭을 다시 클릭하면 현재 위치에서 새로고침 (스크롤하지 않음)
       await handleRefresh();
     } else {
       // 다른 탭으로 전환

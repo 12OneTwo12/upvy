@@ -6,7 +6,6 @@
 
 import React, { useState, useRef } from 'react';
 import { View, Dimensions, Animated, PanResponder } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
 import { FeedOverlay } from './FeedOverlay';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
@@ -47,7 +46,6 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
-  const insets = useSafeAreaInsets();
 
   // 비디오만 표시 (사진은 나중에 구현)
   if (item.contentType !== 'VIDEO') {
@@ -104,8 +102,6 @@ export const FeedItem: React.FC<FeedItemProps> = ({
     })
   ).current;
 
-  const bottomPosition = NAVIGATION_BAR_HEIGHT + insets.bottom;
-
   return (
     <View style={{ height: SCREEN_HEIGHT }} className="relative">
       {/* 비디오 플레이어 */}
@@ -137,13 +133,13 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         setIsExpanded={setIsExpanded}
       />
 
-      {/* 비디오 진행률 바 - 네비게이션 바 바로 위 */}
+      {/* 비디오 진행률 바 - 네비게이션 바 바로 위 (고정 위치) */}
       {item.contentType === 'VIDEO' && item.url && (
         <View
           {...panResponder.panHandlers}
           style={{
             position: 'absolute',
-            bottom: bottomPosition,
+            bottom: NAVIGATION_BAR_HEIGHT,
             left: 0,
             right: 0,
             height: 20,
