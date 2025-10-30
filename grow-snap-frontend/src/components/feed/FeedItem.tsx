@@ -67,7 +67,6 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const handleProgressUpdate = (prog: number, dur: number, dragging: boolean) => {
     // duration은 항상 업데이트
     if (dur > 0 && dur !== duration) {
-      console.log('Duration updated in FeedItem:', dur);
       setDuration(dur);
     }
 
@@ -79,14 +78,6 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         duration: 100,
         useNativeDriver: false,
       }).start();
-    }
-  };
-
-  // Seek 함수 - FeedItem의 duration을 VideoPlayer에 전달
-  const handleSeek = async (seekProgress: number) => {
-    if (videoPlayerRef.current && duration > 0) {
-      console.log('handleSeek called - progress:', seekProgress, 'FeedItem duration:', duration);
-      await videoPlayerRef.current.seek(seekProgress, duration);
     }
   };
 
@@ -102,13 +93,11 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         // VideoPlayer에서 직접 duration 가져오기
         const videoDuration = videoPlayerRef.current?.getDuration() || 0;
         dragStartDuration.current = videoDuration;
-        console.log('Drag started - duration from VideoPlayer:', dragStartDuration.current);
       },
       onPanResponderMove: (event, gestureState) => {
         // pageX: 화면 전체 기준 X 좌표 사용
         const pageX = event.nativeEvent.pageX;
         const newProgress = Math.max(0, Math.min(1, pageX / SCREEN_WIDTH));
-        console.log('Dragging - pageX:', pageX, 'progress:', newProgress);
         setProgress(newProgress);
         progressAnim.setValue(newProgress);
       },
@@ -117,17 +106,13 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         const pageX = event.nativeEvent.pageX;
         const newProgress = Math.max(0, Math.min(1, pageX / SCREEN_WIDTH));
         const seekDuration = dragStartDuration.current;
-        console.log('Drag released - pageX:', pageX, 'progress:', newProgress, 'duration:', seekDuration);
 
         // 저장된 duration 사용해서 seek
         if (videoPlayerRef.current && seekDuration > 0) {
           await videoPlayerRef.current.seek(newProgress, seekDuration);
         }
 
-        // seek 후 약간의 딜레이를 줘서 position이 안정화되도록 함
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        console.log('Dragging ended, resuming playback');
+        // 드래그 종료
         setIsDragging(false);
       },
     })

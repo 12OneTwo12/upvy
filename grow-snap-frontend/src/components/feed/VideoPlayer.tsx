@@ -88,13 +88,11 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
             if (isFocused && !externalIsDragging) {
               // 포커스 시 재생
               if (!status.isPlaying) {
-                console.log('>>> Resuming playback at position:', status.positionMillis, 'ms');
                 await videoRef.current.playAsync();
               }
             } else {
               // 포커스 해제 또는 드래그 중 일시정지
               if (status.isPlaying) {
-                console.log('>>> Pausing playback at position:', status.positionMillis, 'ms');
                 await videoRef.current.pauseAsync();
               }
             }
@@ -211,33 +209,28 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   useImperativeHandle(ref, () => ({
     seek: async (seekProgress: number, durationMillis?: number) => {
       if (!videoRef.current) {
-        console.warn('Seek failed: videoRef is null');
         return;
       }
 
       const targetDuration = durationMillis || duration;
       if (!targetDuration || targetDuration <= 0) {
-        console.warn('Seek failed: invalid duration', targetDuration);
         return;
       }
 
       try {
         const positionMillis = Math.floor(seekProgress * targetDuration);
-        console.log('=== SEEK START ===');
-        console.log('Target position:', positionMillis, 'ms (', (seekProgress * 100).toFixed(1), '%)');
 
-        // 1. 먼저 재생 (iOS에서 pause 상태 seek 실패 방지)
-        await videoRef.current.playAsync();
-
-        // 2. tolerance 0으로 정확한 seek
+        // 1. tolerance 0으로 정확한 seek
         await videoRef.current.setPositionAsync(positionMillis, {
           toleranceMillisBefore: 0,
           toleranceMillisAfter: 0,
         });
 
+        // 2. seek 후 명시적으로 재생 (일시정지 방지)
+        await videoRef.current.playAsync();
+
         setProgress(seekProgress);
         progressAnim.setValue(seekProgress);
-        console.log('=== SEEK END ===');
       } catch (error) {
         console.error('Seek error:', error);
       }
