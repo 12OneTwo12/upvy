@@ -31,7 +31,8 @@ interface VideoPlayerProps {
 }
 
 export interface VideoPlayerRef {
-  seek: (progress: number) => Promise<void>;
+  seek: (progress: number, durationMillis?: number) => Promise<void>;
+  getDuration: () => number;
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, ref) => {
@@ -87,11 +88,13 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
             if (isFocused && !externalIsDragging) {
               // 포커스 시 재생
               if (!status.isPlaying) {
+                console.log('>>> Resuming playback at position:', status.positionMillis, 'ms');
                 await videoRef.current.playAsync();
               }
             } else {
-              // 포커스 해제 시 일시정지
+              // 포커스 해제 또는 드래그 중 일시정지
               if (status.isPlaying) {
+                console.log('>>> Pausing playback at position:', status.positionMillis, 'ms');
                 await videoRef.current.pauseAsync();
               }
             }
@@ -134,20 +137,26 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
         setIsBuffering(false);
       }
 
-      // 진행률 계산 (드래그 중이 아닐 때만 업데이트)
-      if (!externalIsDragging && status.durationMillis && status.durationMillis > 0) {
+      // 진행률 계산 및 업데이트
+      if (status.durationMillis && status.durationMillis > 0) {
         const progressValue = status.positionMillis / status.durationMillis;
-        setProgress(progressValue);
 
-        // 애니메이션으로 부드럽게 업데이트
-        Animated.timing(progressAnim, {
-          toValue: progressValue,
-          duration: 100,
-          useNativeDriver: false,
-        }).start();
+        // 드래그 중이 아닐 때만 진행률 UI 업데이트
+        if (!externalIsDragging) {
+          setProgress(progressValue);
 
-        // 부모에게 진행률 전달
-        onProgressUpdate?.(progressValue, status.durationMillis, externalIsDragging);
+          // 애니메이션으로 부드럽게 업데이트
+          Animated.timing(progressAnim, {
+            toValue: progressValue,
+            duration: 100,
+            useNativeDriver: false,
+          }).start();
+        }
+
+        // 부모에게 진행률과 duration 항상 전달
+        if (onProgressUpdate) {
+          onProgressUpdate(progressValue, status.durationMillis, externalIsDragging);
+        }
       }
 
       // 비디오 종료 시 progress 초기화
@@ -200,18 +209,40 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
   // Seek 함수를 ref로 노출
   useImperativeHandle(ref, () => ({
-    seek: async (seekProgress: number) => {
-      if (!videoRef.current || !duration) return;
+    seek: async (seekProgress: number, durationMillis?: number) => {
+      if (!videoRef.current) {
+        console.warn('Seek failed: videoRef is null');
+        return;
+      }
+
+      const targetDuration = durationMillis || duration;
+      if (!targetDuration || targetDuration <= 0) {
+        console.warn('Seek failed: invalid duration', targetDuration);
+        return;
+      }
 
       try {
-        const positionMillis = seekProgress * duration;
-        await videoRef.current.setPositionAsync(positionMillis);
+        const positionMillis = Math.floor(seekProgress * targetDuration);
+        console.log('=== SEEK START ===');
+        console.log('Target position:', positionMillis, 'ms (', (seekProgress * 100).toFixed(1), '%)');
+
+        // 1. 먼저 재생 (iOS에서 pause 상태 seek 실패 방지)
+        await videoRef.current.playAsync();
+
+        // 2. tolerance 0으로 정확한 seek
+        await videoRef.current.setPositionAsync(positionMillis, {
+          toleranceMillisBefore: 0,
+          toleranceMillisAfter: 0,
+        });
+
         setProgress(seekProgress);
         progressAnim.setValue(seekProgress);
+        console.log('=== SEEK END ===');
       } catch (error) {
         console.error('Seek error:', error);
       }
     },
+    getDuration: () => duration,
   }), [duration]);
 
   // 탭 이벤트 처리 (싱글/더블 구분)
