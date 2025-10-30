@@ -336,8 +336,8 @@ export default function FeedScreen() {
         // 현재 위치에서 새로고침 (스크롤하지 않음)
         setRefreshing(true);
         try {
-          await queryClient.invalidateQueries({ queryKey: ['feed'] });
-          await refetch();
+          // 기존 데이터 완전히 리셋하고 첫 페이지부터 다시 로드
+          await queryClient.resetQueries({ queryKey: ['feed', currentTab] });
         } finally {
           setRefreshing(false);
         }
@@ -345,19 +345,19 @@ export default function FeedScreen() {
     });
 
     return unsubscribe;
-  }, [navigation, queryClient, refetch]);
+  }, [navigation, queryClient, currentTab]);
 
   // Pull-to-Refresh - 현재 위치에서 데이터만 새로고침
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     setPullDistance(0);
     try {
-      await queryClient.invalidateQueries({ queryKey: ['feed'] });
-      await refetch();
+      // 기존 데이터 완전히 리셋하고 첫 페이지부터 다시 로드
+      await queryClient.resetQueries({ queryKey: ['feed', currentTab] });
     } finally {
       setRefreshing(false);
     }
-  }, [queryClient, refetch]);
+  }, [queryClient, currentTab]);
 
   // 스크롤 이벤트 - Pull-to-Refresh 감지 (Instagram 스타일: 첫 번째 아이템에서만)
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -398,7 +398,12 @@ export default function FeedScreen() {
   const handleTabChange = async (tab: FeedTab) => {
     if (tab === currentTab) {
       // 같은 탭을 다시 클릭하면 현재 위치에서 새로고침 (스크롤하지 않음)
-      await handleRefresh();
+      setRefreshing(true);
+      try {
+        await queryClient.resetQueries({ queryKey: ['feed', currentTab] });
+      } finally {
+        setRefreshing(false);
+      }
     } else {
       // 다른 탭으로 전환
       setCurrentTab(tab);
