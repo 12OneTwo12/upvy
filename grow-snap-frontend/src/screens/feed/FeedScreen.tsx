@@ -12,7 +12,6 @@ import {
   View,
   FlatList,
   Dimensions,
-  RefreshControl,
   TouchableOpacity,
   Text,
   ActivityIndicator,
@@ -591,17 +590,7 @@ export default function FeedScreen() {
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
-        bounces={true}
-        alwaysBounceVertical={true}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#FFFFFF"
-            colors={['#FFFFFF']}
-            progressBackgroundColor="#000000"
-          />
-        }
+        bounces={false}
         scrollEventThrottle={16}
         onScroll={handleScroll}
         onScrollBeginDrag={handleScroll}
