@@ -32,16 +32,17 @@ export interface VideoPlayerRef {
   seek: (progress: number) => Promise<void>;
 }
 
-export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
-  uri,
-  isFocused,
-  shouldPreload = false,
-  hasBeenLoaded = false,
-  onVideoLoaded,
-  onDoubleTap,
-  onTap,
-  onProgressUpdate,
-}) => {
+export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, ref) => {
+  const {
+    uri,
+    isFocused,
+    shouldPreload = false,
+    hasBeenLoaded = false,
+    onVideoLoaded,
+    onDoubleTap,
+    onTap,
+    onProgressUpdate,
+  } = props;
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
