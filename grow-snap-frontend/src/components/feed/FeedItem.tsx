@@ -166,7 +166,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           }}
         >
           <Animated.View style={{
-            height: isDragging ? 5 : 3,
+            height: isDragging ? 7 : 3,
             backgroundColor: 'rgba(255, 255, 255, 0.3)',
           }}>
             <Animated.View
