@@ -334,9 +334,7 @@ export default function FeedScreen() {
       // 이미 피드 화면에 있을 때 탭을 다시 누르면
       if (navigation.isFocused()) {
         e.preventDefault();
-        // 맨 위로 스크롤하고 새로고침
-        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-        setCurrentIndex(0);
+        // 현재 위치에서 새로고침 (스크롤하지 않음)
         setRefreshing(true);
         try {
           await queryClient.invalidateQueries({ queryKey: ['feed'] });

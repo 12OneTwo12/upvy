@@ -7,14 +7,14 @@
  * - 자동재생
  */
 
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const NAVIGATION_BAR_HEIGHT = 56;
+const NAVIGATION_BAR_HEIGHT = 60;
 const TOP_TAB_AREA = 50;
 
 interface VideoPlayerProps {
@@ -28,7 +28,11 @@ interface VideoPlayerProps {
   onProgressUpdate?: (progress: number, duration: number, isDragging: boolean) => void;
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({
+export interface VideoPlayerRef {
+  seek: (progress: number) => Promise<void>;
+}
+
+export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   uri,
   isFocused,
   shouldPreload = false,
@@ -190,9 +194,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onDoubleTap();
   };
 
-  // Seek 함수를 외부로 노출
-  useEffect(() => {
-    (window as any).videoSeek = async (seekProgress: number) => {
+  // Seek 함수를 ref로 노출
+  useImperativeHandle(ref, () => ({
+    seek: async (seekProgress: number) => {
       if (!videoRef.current || !duration) return;
 
       try {
@@ -203,8 +207,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       } catch (error) {
         console.error('Seek error:', error);
       }
-    };
-  }, [duration]);
+    },
+  }), [duration]);
 
   // 탭 이벤트 처리 (싱글/더블 구분)
   const handleTap = () => {
@@ -309,4 +313,4 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       </TouchableWithoutFeedback>
     </View>
   );
-};
+});

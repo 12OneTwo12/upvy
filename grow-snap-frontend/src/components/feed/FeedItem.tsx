@@ -7,12 +7,12 @@
 import React, { useState, useRef } from 'react';
 import { View, Dimensions, Animated, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { VideoPlayer } from './VideoPlayer';
+import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
 import { FeedOverlay } from './FeedOverlay';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const NAVIGATION_BAR_HEIGHT = 56;
+const NAVIGATION_BAR_HEIGHT = 60;
 
 interface FeedItemProps {
   item: FeedItemType;
@@ -46,6 +46,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const videoPlayerRef = useRef<VideoPlayerRef>(null);
   const insets = useSafeAreaInsets();
 
   // 비디오만 표시 (사진은 나중에 구현)
@@ -77,8 +78,8 @@ export const FeedItem: React.FC<FeedItemProps> = ({
 
   // Seek 함수
   const handleSeek = async (seekProgress: number) => {
-    if (duration > 0) {
-      (window as any).videoSeek?.(seekProgress);
+    if (duration > 0 && videoPlayerRef.current) {
+      await videoPlayerRef.current.seek(seekProgress);
     }
   };
 
@@ -109,6 +110,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
     <View style={{ height: SCREEN_HEIGHT }} className="relative">
       {/* 비디오 플레이어 */}
       <VideoPlayer
+        ref={videoPlayerRef}
         uri={item.url}
         isFocused={isFocused}
         shouldPreload={shouldPreload}
