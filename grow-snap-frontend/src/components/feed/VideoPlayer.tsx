@@ -12,6 +12,7 @@ import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const NAVIGATION_BAR_HEIGHT = 60;
@@ -22,6 +23,7 @@ interface VideoPlayerProps {
   isFocused: boolean;
   shouldPreload?: boolean;
   hasBeenLoaded?: boolean;
+  isDragging?: boolean;
   onVideoLoaded?: () => void;
   onDoubleTap?: () => void;
   onTap?: () => boolean;
@@ -38,6 +40,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     isFocused,
     shouldPreload = false,
     hasBeenLoaded = false,
+    isDragging: externalIsDragging = false,
     onVideoLoaded,
     onDoubleTap,
     onTap,
@@ -49,11 +52,11 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const [showPlayIcon, setShowPlayIcon] = useState<'play' | 'pause' | null>(null);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const lastTap = useRef<number>(0);
   const heartScale = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   // 빈 URL인 경우 (스켈레톤 로딩 상태)
   const isLoadingSkeleton = !uri || uri === '';
@@ -61,8 +64,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   // Pre-loading 로직: 외부에서 관리되는 hasBeenLoaded 사용
   const shouldRenderVideo = !isLoadingSkeleton && (isFocused || shouldPreload || hasBeenLoaded);
 
-  // 비디오 컨테이너 높이: 상단 safe area + 탭 영역 + 하단 네비게이션 바 + 하단 safe area를 제외한 높이
-  const videoContainerHeight = SCREEN_HEIGHT - NAVIGATION_BAR_HEIGHT - insets.bottom;
+  // 비디오 컨테이너 높이: 전체 화면 높이 (중앙 배치를 위해)
+  const videoContainerHeight = SCREEN_HEIGHT;
 
   // Video source 메모이제이션 (재생성 방지)
   const videoSource = useMemo(() => ({ uri }), [uri]);
@@ -81,7 +84,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               onVideoLoaded();
             }
 
-            if (isFocused && !isDragging) {
+            if (isFocused && !externalIsDragging) {
               // 포커스 시 재생
               if (!status.isPlaying) {
                 await videoRef.current.playAsync();
@@ -100,7 +103,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     };
 
     controlPlayback();
-  }, [isFocused, isLoadingSkeleton, isDragging, hasBeenLoaded, onVideoLoaded]);
+  }, [isFocused, isLoadingSkeleton, externalIsDragging, hasBeenLoaded, onVideoLoaded]);
 
   // 컴포넌트 언마운트 시 비디오 정리
   // 주의: Pre-loading을 위해 언로드하지 않음 (일시정지만 수행)
@@ -132,7 +135,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
       }
 
       // 진행률 계산 (드래그 중이 아닐 때만 업데이트)
-      if (!isDragging && status.durationMillis && status.durationMillis > 0) {
+      if (!externalIsDragging && status.durationMillis && status.durationMillis > 0) {
         const progressValue = status.positionMillis / status.durationMillis;
         setProgress(progressValue);
 
@@ -144,7 +147,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
         }).start();
 
         // 부모에게 진행률 전달
-        onProgressUpdate?.(progressValue, status.durationMillis, isDragging);
+        onProgressUpdate?.(progressValue, status.durationMillis, externalIsDragging);
       }
 
       // 비디오 종료 시 progress 초기화
@@ -235,9 +238,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   };
 
   return (
-    <View style={{ height: videoContainerHeight, backgroundColor: '#000000', position: 'relative' }}>
+    <View style={{ height: videoContainerHeight, backgroundColor: '#000000', position: 'relative', justifyContent: 'center', alignItems: 'center', paddingTop: tabBarHeight }}>
       <TouchableWithoutFeedback onPress={handleTap}>
-        <View style={{ height: videoContainerHeight }}>
+        <View style={{ height: videoContainerHeight, justifyContent: 'center', alignItems: 'center' }}>
           {/* Video는 항상 렌더링 - 언마운트 절대 금지 */}
           {!isLoadingSkeleton && (
             <Video
@@ -246,7 +249,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               style={{ width: SCREEN_WIDTH, height: videoContainerHeight }}
               resizeMode={ResizeMode.CONTAIN}
               isLooping
-              shouldPlay={isFocused && !isDragging}
+              shouldPlay={isFocused && !externalIsDragging}
               isMuted={false}
               onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
               progressUpdateIntervalMillis={50}

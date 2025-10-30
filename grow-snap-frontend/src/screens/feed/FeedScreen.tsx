@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeedItem } from '@/components/feed';
 import { getMainFeed, getFollowingFeed, refreshFeed as refreshFeedApi } from '@/api/feed.api';
 import { createLike, deleteLike } from '@/api/like.api';
@@ -31,6 +32,7 @@ import type { FeedTab, FeedItem as FeedItemType } from '@/types/feed.types';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function FeedScreen() {
+  const insets = useSafeAreaInsets();
   const [currentTab, setCurrentTab] = useState<FeedTab>('recommended');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);

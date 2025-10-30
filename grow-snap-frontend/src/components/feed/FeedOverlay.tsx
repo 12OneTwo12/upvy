@@ -30,6 +30,7 @@ interface FeedOverlayProps {
   onCreatorPress?: () => void;
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
+  tabBarHeight: number;
 }
 
 // 로딩 상태인지 확인
@@ -37,8 +38,8 @@ const isLoadingState = (creator: CreatorInfo) => {
   return creator.userId === 'loading';
 };
 
-// 내비게이션 바 높이 (일반적으로 48-56px + safe area)
-const NAVIGATION_BAR_HEIGHT = 56;
+// 재생바 영역 높이
+const PROGRESS_BAR_AREA = 20;
 
 export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   creator,
@@ -53,6 +54,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onCreatorPress,
   isExpanded,
   setIsExpanded,
+  tabBarHeight,
 }) => {
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
@@ -63,8 +65,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const [expandedHeight, setExpandedHeight] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
-  // 하단 패딩 = 내비게이션 바 높이 + 하단 안전 영역 + 여유 공간
-  const bottomPadding = NAVIGATION_BAR_HEIGHT + insets.bottom + 16;
+  // 하단 패딩 = 탭바 높이 + 재생바 영역 + 여유 공간
+  const bottomPadding = tabBarHeight + PROGRESS_BAR_AREA + 16;
 
   // 축소된 상태의 설명 높이 측정
   const handleCollapsedLayout = (event: LayoutChangeEvent) => {
@@ -189,7 +191,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           </View>
 
           {/* 우측: 인터랙션 버튼 */}
-          <View style={[styles.rightSection, { bottom: bottomPadding }]}>
+          <View style={[styles.rightSection, { bottom: bottomPadding - 30 }]}>
             {/* 좋아요 */}
             <TouchableOpacity onPress={onLike} style={styles.actionButton}>
               <Ionicons
@@ -349,10 +351,10 @@ const styles = StyleSheet.create({
   },
   rightSection: {
     position: 'absolute',
-    right: 12,
+    right: 0,
     // bottom은 동적으로 설정됨
     alignItems: 'center',
-    gap: 20,
+    gap: 12,
   },
   actionButton: {
     alignItems: 'center',

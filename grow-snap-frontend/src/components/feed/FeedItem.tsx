@@ -5,13 +5,14 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { View, Dimensions, Animated, PanResponder } from 'react-native';
+import { View, Dimensions, Animated, PanResponder, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
 import { FeedOverlay } from './FeedOverlay';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const NAVIGATION_BAR_HEIGHT = 60;
 
 interface FeedItemProps {
   item: FeedItemType;
@@ -40,6 +41,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   onFollow,
   onCreatorPress,
 }) => {
+  const tabBarHeight = useBottomTabBarHeight();
   const [isExpanded, setIsExpanded] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -111,6 +113,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         isFocused={isFocused}
         shouldPreload={shouldPreload}
         hasBeenLoaded={hasBeenLoaded}
+        isDragging={isDragging}
         onVideoLoaded={onVideoLoaded}
         onDoubleTap={onLike}
         onTap={handleVideoTap}
@@ -131,15 +134,16 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         onCreatorPress={onCreatorPress}
         isExpanded={isExpanded}
         setIsExpanded={setIsExpanded}
+        tabBarHeight={tabBarHeight}
       />
 
-      {/* 비디오 진행률 바 - 네비게이션 바 바로 위 (고정 위치) */}
+      {/* 비디오 진행률 바 - 탭바 바로 위 */}
       {item.contentType === 'VIDEO' && item.url && (
         <View
           {...panResponder.panHandlers}
           style={{
             position: 'absolute',
-            bottom: NAVIGATION_BAR_HEIGHT,
+            bottom: tabBarHeight - 8.2,
             left: 0,
             right: 0,
             height: 20,
