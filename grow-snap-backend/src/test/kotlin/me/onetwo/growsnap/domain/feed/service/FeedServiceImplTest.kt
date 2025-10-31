@@ -254,6 +254,7 @@ class FeedServiceImplTest {
             contentId = contentId,
             contentType = ContentType.VIDEO,
             url = "https://example.com/video.mp4",
+            photoUrls = null,
             thumbnailUrl = "https://example.com/thumbnail.jpg",
             duration = 30,
             width = 1080,

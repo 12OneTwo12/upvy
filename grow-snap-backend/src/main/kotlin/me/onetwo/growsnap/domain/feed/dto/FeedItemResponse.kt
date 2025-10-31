@@ -13,6 +13,7 @@ import java.util.UUID
  * @property contentId 콘텐츠 ID
  * @property contentType 콘텐츠 타입 (VIDEO, PHOTO)
  * @property url 콘텐츠 URL
+ * @property photoUrls 사진 URL 목록 (PHOTO 타입인 경우)
  * @property thumbnailUrl 썸네일 이미지 URL
  * @property duration 비디오 길이 (초, 사진인 경우 null)
  * @property width 콘텐츠 가로 크기 (픽셀)
@@ -29,6 +30,7 @@ data class FeedItemResponse(
     val contentId: UUID,
     val contentType: ContentType,
     val url: String,
+    val photoUrls: List<String>?,
     val thumbnailUrl: String,
     val duration: Int?,
     val width: Int,
