@@ -22,6 +22,7 @@ import {
   Animated,
   Alert,
   Easing,
+  PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,7 @@ import { getComments, getReplies, createComment as createCommentApi, deleteComme
 import { createCommentLike, deleteCommentLike, getCommentLikeCount, getCommentLikeStatus } from '@/api/commentLike.api';
 import { CommentItem } from './CommentItem';
 import { CommentInput } from './CommentInput';
+import { useAuthStore } from '@/stores/authStore';
 import type { CommentResponse } from '@/types/interaction.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -48,10 +50,15 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
+  const currentProfile = useAuthStore((state) => state.profile);
   const [replyTo, setReplyTo] = useState<{ commentId: string; nickname: string } | null>(null);
 
   // 댓글별 좋아요 개수/상태 저장
   const [commentLikes, setCommentLikes] = useState<Record<string, { count: number; isLiked: boolean }>>({});
+
+  // 새로 작성된 최상위 댓글 저장 (Optimistic Update용)
+  const [newComments, setNewComments] = useState<CommentResponse[]>([]);
 
   // 새로 작성된 답글 저장 (Optimistic Update용)
   const [newReplies, setNewReplies] = useState<Record<string, CommentResponse[]>>({});
@@ -62,6 +69,41 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 
   // FlatList ref (스크롤 제어용)
   const flatListRef = useRef<FlatList>(null);
+
+  // 드래그 제스처 핸들러
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // 수직 드래그가 수평 드래그보다 클 때만 감지
+        return Math.abs(gestureState.dy) > Math.abs(gestureState.dx) && Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // 아래로만 드래그 가능 (dy > 0)
+        if (gestureState.dy > 0) {
+          slideAnim.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const threshold = SCREEN_HEIGHT * 0.5; // 50% 이상 내리면 닫기
+        const velocity = gestureState.vy; // 속도 고려
+
+        // 빠르게 아래로 스와이프하거나, 50% 이상 내리면 닫기
+        if (gestureState.dy > threshold || (velocity > 0.5 && gestureState.dy > 100)) {
+          // 모달 닫기
+          handleClose();
+        } else {
+          // 원래 위치로 스냅백
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 20,
+            friction: 15,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   // 댓글 목록 조회 (무한 스크롤, 10개씩)
   const {
@@ -82,7 +124,13 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   });
 
   // 모든 페이지의 댓글을 하나의 배열로 합침
-  const comments = data?.pages?.flatMap((page) => page.comments) ?? [];
+  const loadedComments = data?.pages?.flatMap((page) => page.comments) ?? [];
+
+  // 새 댓글 + 로드된 댓글 (중복 제거)
+  const allComments = [
+    ...newComments,
+    ...loadedComments.filter((c) => !newComments.some((nc) => nc.id === c.id)),
+  ];
 
   // 모달 열기/닫기 애니메이션
   useEffect(() => {
@@ -91,12 +139,12 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 350,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
-          duration: 550,
+          duration: 900,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -105,8 +153,10 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       // 모달 닫기 시 데이터 초기화
       setReplyTo(null);
       setCommentLikes({});
+      setNewComments([]);
       setNewReplies({});
       loadedCommentIdsRef.current.clear();
+      processedCommentIdsRef.current.clear();
 
       // 댓글 쿼리 캐시 제거 (다음에 열 때 새로 로드)
       queryClient.removeQueries({ queryKey: ['comments', contentId] });
@@ -115,12 +165,12 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 0,
-          duration: 250,
+          duration: 500,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
-          duration: 400,
+          duration: 700,
           easing: Easing.in(Easing.ease),
           useNativeDriver: true,
         }),
@@ -133,20 +183,20 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 
   // 댓글이 로드되면 각 댓글의 좋아요 개수/상태 조회 (새 댓글만)
   useEffect(() => {
-    if (comments.length > 0 && visible) {
+    if (allComments.length > 0 && visible) {
       const loadCommentLikes = async () => {
         // 아직 로드하지 않은 새 댓글만 필터링 (Optimistic Update 보존)
-        const newComments = comments.filter(
-          (comment) => !loadedCommentIdsRef.current.has(comment.id)
+        const commentsToLoad = allComments.filter(
+          (comment) => !loadedCommentIdsRef.current.has(comment.id) && !comment.id.startsWith('temp-')
         );
 
-        if (newComments.length === 0) return;
+        if (commentsToLoad.length === 0) return;
 
         const likesData: Record<string, { count: number; isLiked: boolean }> = {};
 
         // 새 댓글의 좋아요 정보만 조회
         await Promise.all(
-          newComments.map(async (comment) => {
+          commentsToLoad.map(async (comment) => {
             try {
               const [countRes, statusRes] = await Promise.all([
                 getCommentLikeCount(comment.id),
@@ -172,44 +222,126 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 
       loadCommentLikes();
     }
-  }, [comments, visible]);
+  }, [allComments, visible]);
+
+  // 처리된 댓글 ID 추적 (중복 제거 방지)
+  const processedCommentIdsRef = useRef<Set<string>>(new Set());
+
+  // 실제 댓글이 로드되면 임시 댓글(optimistic update) 제거
+  useEffect(() => {
+    if (loadedComments.length > 0 && newComments.length > 0 && visible) {
+      // 새로 로드된 댓글만 확인 (이미 처리된 댓글은 제외)
+      const newlyLoadedComments = loadedComments.filter(
+        (comment) => !processedCommentIdsRef.current.has(comment.id)
+      );
+
+      if (newlyLoadedComments.length === 0) return;
+
+      // 새로 로드된 댓글의 ID 저장
+      newlyLoadedComments.forEach((comment) => {
+        processedCommentIdsRef.current.add(comment.id);
+      });
+
+      // 실제 댓글과 같은 content+userId를 가진 임시 댓글 제거
+      setNewComments((prev) => {
+        return prev.filter((tempComment) => {
+          // 같은 내용의 실제 댓글이 로드되었는지 확인
+          const hasRealComment = newlyLoadedComments.some(
+            (realComment) =>
+              realComment.content === tempComment.content &&
+              realComment.userId === tempComment.userId
+          );
+          // 실제 댓글이 없으면 임시 댓글 유지, 있으면 제거
+          return !hasRealComment;
+        });
+      });
+    }
+  }, [loadedComments.length, newComments.length, visible]);
 
   // 댓글 작성 mutation
   const createCommentMutation = useMutation({
     mutationFn: async ({ content, parentCommentId }: { content: string; parentCommentId?: string }) => {
       return await createCommentApi(contentId, { content, parentCommentId });
     },
-    onSuccess: (newComment, variables) => {
+    onMutate: async ({ content, parentCommentId }) => {
+      // Optimistic Update: 즉시 화면에 표시
+      const isReply = !!parentCommentId;
+      const tempId = `temp-${Date.now()}`;
+
+      // 임시 댓글 객체 생성
+      const tempComment: CommentResponse = {
+        id: tempId,
+        contentId,
+        userId: currentUser?.id || '',
+        userNickname: currentProfile?.nickname || currentUser?.email || 'Unknown',
+        userProfileImageUrl: currentProfile?.profileImageUrl || null,
+        content,
+        parentCommentId: parentCommentId || null,
+        createdAt: new Date().toISOString(),
+        replyCount: 0,
+        isDeleted: false,
+      };
+
+      if (isReply && parentCommentId) {
+        // 대댓글: newReplies에 추가
+        setNewReplies((prev) => ({
+          ...prev,
+          [parentCommentId]: [
+            ...(prev[parentCommentId] || []),
+            tempComment,
+          ],
+        }));
+      } else {
+        // 최상위 댓글: newComments 맨 위에 추가
+        setNewComments((prev) => [tempComment, ...prev]);
+
+        // 맨 위로 스크롤 (FlatList 업데이트 후)
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index: 0, animated: true });
+        }, 300);
+      }
+
+      // 이전 상태 저장 (롤백용)
+      return { tempId, tempComment, isReply, parentCommentId };
+    },
+    onSuccess: (newComment, variables, context) => {
       const isReply = !!variables.parentCommentId;
 
       if (isReply && variables.parentCommentId) {
-        // 대댓글인 경우: 화면에 즉시 추가 (Optimistic Update)
-        setNewReplies((prev) => ({
-          ...prev,
-          [variables.parentCommentId!]: [
-            ...(prev[variables.parentCommentId!] || []),
-            newComment,
-          ],
-        }));
-
         // 백엔드 데이터와 동기화를 위해 답글 쿼리 invalidate
         queryClient.invalidateQueries({ queryKey: ['replies', variables.parentCommentId] });
       }
 
-      // 댓글 목록 refetch
+      // 댓글 목록 refetch (실제 댓글 로드)
+      // 임시 댓글은 useEffect에서 자동으로 제거됨
       queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
       // 피드 목록도 refetch (댓글 개수 업데이트)
       queryClient.invalidateQueries({ queryKey: ['feed'] });
 
       // 답글 모드 초기화
       setReplyTo(null);
+    },
+    onError: (error, variables, context) => {
+      // 에러 발생 시 임시 댓글 제거 (롤백)
+      if (context) {
+        const isReply = !!variables.parentCommentId;
 
-      // 새 최상위 댓글인 경우에만 스크롤 (대댓글은 스크롤 안 함)
-      if (!isReply) {
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 300);
+        if (isReply && variables.parentCommentId) {
+          setNewReplies((prev) => {
+            const updated = { ...prev };
+            if (updated[variables.parentCommentId!]) {
+              updated[variables.parentCommentId!] = updated[variables.parentCommentId!].filter(
+                (c) => c.id !== context.tempId
+              );
+            }
+            return updated;
+          });
+        } else {
+          setNewComments((prev) => prev.filter((c) => c.id !== context.tempId));
+        }
       }
+
+      Alert.alert('오류', '댓글 작성에 실패했습니다.');
     },
   });
 
@@ -374,6 +506,11 @@ export const CommentModal: React.FC<CommentModalProps> = ({
             },
           ]}
         >
+          {/* 드래그 핸들 */}
+          <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
+            <View style={styles.dragHandle} />
+          </View>
+
           {/* 헤더 */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>댓글</Text>
@@ -390,7 +527,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary[500]} />
             </View>
-          ) : !data || comments.length === 0 ? (
+          ) : !data || allComments.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>🌱</Text>
               <Text style={styles.emptyText}>아직 댓글이 없습니다</Text>
@@ -399,7 +536,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
           ) : (
             <FlatList
               ref={flatListRef}
-              data={comments}
+              data={allComments}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <CommentItem
@@ -459,6 +596,16 @@ const styles = StyleSheet.create({
     borderTopRightRadius: theme.borderRadius.lg,
     maxHeight: SCREEN_HEIGHT * 0.85,
   },
+  dragHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing[2],
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.border.light,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -485,10 +632,10 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[20],
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: theme.spacing[20],
+    minHeight: 300,
   },
   emptyEmoji: {
     fontSize: 64,
