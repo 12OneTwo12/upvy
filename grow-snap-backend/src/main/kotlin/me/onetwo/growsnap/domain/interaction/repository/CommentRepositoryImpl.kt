@@ -265,6 +265,28 @@ class CommentRepositoryImpl(
             .fetchOne(0, Int::class.java) ?: 0
     }
 
+    override fun countRepliesByParentCommentIds(parentCommentIds: List<UUID>): Map<UUID, Int> {
+        if (parentCommentIds.isEmpty()) {
+            return emptyMap()
+        }
+
+        val parentCommentIdStrings = parentCommentIds.map { it.toString() }
+
+        return dslContext
+            .select(
+                COMMENTS.PARENT_COMMENT_ID,
+                DSL.count()
+            )
+            .from(COMMENTS)
+            .where(COMMENTS.PARENT_COMMENT_ID.`in`(parentCommentIdStrings))
+            .and(COMMENTS.DELETED_AT.isNull)
+            .groupBy(COMMENTS.PARENT_COMMENT_ID)
+            .fetch()
+            .associate { record ->
+                UUID.fromString(record.value1()) to record.value2()
+            }
+    }
+
     override fun delete(commentId: UUID, userId: UUID) {
         val now = LocalDateTime.now()
 

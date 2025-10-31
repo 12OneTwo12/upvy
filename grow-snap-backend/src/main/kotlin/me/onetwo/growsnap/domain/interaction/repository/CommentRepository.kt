@@ -72,6 +72,14 @@ interface CommentRepository {
     fun countRepliesByParentCommentId(parentCommentId: UUID): Int
 
     /**
+     * 여러 댓글의 대댓글 개수 일괄 조회 (N+1 문제 해결)
+     *
+     * @param parentCommentIds 부모 댓글 ID 목록
+     * @return 부모 댓글 ID를 키로, 대댓글 개수를 값으로 하는 Map
+     */
+    fun countRepliesByParentCommentIds(parentCommentIds: List<UUID>): Map<UUID, Int>
+
+    /**
      * 댓글 삭제 (Soft Delete)
      *
      * @param commentId 댓글 ID

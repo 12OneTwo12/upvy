@@ -148,9 +148,17 @@ class CommentServiceImpl(
                 emptyMap()
             }
 
+            // N+1 쿼리 문제 해결: 답글 수를 일괄 조회
+            val commentIds = actualComments.mapNotNull { it.id }
+            val replyCountMap = if (commentIds.isNotEmpty()) {
+                commentRepository.countRepliesByParentCommentIds(commentIds)
+            } else {
+                emptyMap()
+            }
+
             val responseList = actualComments.map { comment ->
                 val userInfo = userInfoMap[comment.userId] ?: Pair("Unknown", null)
-                val replyCount = commentRepository.countRepliesByParentCommentId(comment.id!!)
+                val replyCount = replyCountMap[comment.id] ?: 0
 
                 // 대댓글은 프론트엔드에서 명시적으로 요청할 때만 로드
                 mapToCommentResponse(comment, userInfo, replyCount)

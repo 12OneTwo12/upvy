@@ -81,7 +81,7 @@ class UserLikeRepositoryImpl(
      */
     override fun delete(userId: UUID, contentId: UUID) {
         val now = LocalDateTime.now()
-        val nowUnix = now.atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+        val nowUnix = now.toEpochSecond(java.time.ZoneOffset.UTC)
 
         dslContext
             .update(USER_LIKES)
