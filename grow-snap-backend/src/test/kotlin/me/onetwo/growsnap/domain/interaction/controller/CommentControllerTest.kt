@@ -248,7 +248,7 @@ class CommentControllerTest {
                             parameterWithName("limit").description("조회 개수 (기본값: 20)").optional()
                         ),
                         responseFields(
-                            fieldWithPath("comments[]").description("댓글 목록"),
+                            fieldWithPath("comments[]").description("댓글 목록 (인기순 정렬: 좋아요 수 + 대댓글 수 내림차순, 같은 점수면 오래된 순)"),
                             fieldWithPath("comments[].id").description("댓글 ID"),
                             fieldWithPath("comments[].contentId").description("콘텐츠 ID"),
                             fieldWithPath("comments[].userId").description("작성자 ID"),
@@ -352,7 +352,7 @@ class CommentControllerTest {
                             parameterWithName("limit").description("조회 개수 (기본값: 20)").optional()
                         ),
                         responseFields(
-                            fieldWithPath("comments[]").description("대댓글 목록"),
+                            fieldWithPath("comments[]").description("대댓글 목록 (작성 시간 오름차순 정렬)"),
                             fieldWithPath("comments[].id").description("댓글 ID"),
                             fieldWithPath("comments[].contentId").description("콘텐츠 ID"),
                             fieldWithPath("comments[].userId").description("작성자 ID"),

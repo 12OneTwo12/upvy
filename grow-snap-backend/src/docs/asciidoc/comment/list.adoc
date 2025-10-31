@@ -37,4 +37,4 @@ curl -X GET "http://localhost:8080/api/v1/contents/{contentId}/comments?cursor={
 * `hasNext`가 `true`이면 다음 페이지가 존재합니다
 * `nextCursor`를 사용하여 다음 페이지를 조회할 수 있습니다
 * 삭제된 댓글은 목록에 포함되지 않습니다
-* 생성 시간 오름차순으로 정렬됩니다
+* 인기순으로 정렬됩니다 (좋아요 수 + 대댓글 수 내림차순, 같은 점수면 오래된 순)

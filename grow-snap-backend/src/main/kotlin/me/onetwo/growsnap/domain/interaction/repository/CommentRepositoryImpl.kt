@@ -2,8 +2,10 @@ package me.onetwo.growsnap.domain.interaction.repository
 
 import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.jooq.generated.tables.Comments.Companion.COMMENTS
+import me.onetwo.growsnap.jooq.generated.tables.UserCommentLikes.Companion.USER_COMMENT_LIKES
 import org.jooq.DSLContext
 import org.jooq.Record
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 import java.util.UUID
@@ -123,7 +125,26 @@ class CommentRepositoryImpl(
     }
 
     override fun findTopLevelCommentsByContentId(contentId: UUID, cursor: UUID?, limit: Int): List<Comment> {
-        val query = dslContext
+        // 댓글별 alias 테이블 (self-join용)
+        val replies = COMMENTS.`as`("replies")
+
+        // 인기 점수 계산: 좋아요 수 + 대댓글 수
+        val likeCountField = DSL.countDistinct(USER_COMMENT_LIKES.ID)
+        val replyCountField = DSL.countDistinct(replies.ID)
+        val popularityScore = likeCountField.plus(replyCountField)
+
+        val whereConditions = mutableListOf(
+            COMMENTS.CONTENT_ID.eq(contentId.toString()),
+            COMMENTS.PARENT_COMMENT_ID.isNull,
+            COMMENTS.DELETED_AT.isNull
+        )
+
+        // Cursor가 있으면 해당 댓글 제외
+        if (cursor != null) {
+            whereConditions.add(COMMENTS.ID.ne(cursor.toString()))
+        }
+
+        return dslContext
             .select(
                 COMMENTS.ID,
                 COMMENTS.CONTENT_ID,
@@ -137,23 +158,42 @@ class CommentRepositoryImpl(
                 COMMENTS.DELETED_AT
             )
             .from(COMMENTS)
-            .where(COMMENTS.CONTENT_ID.eq(contentId.toString()))
-            .and(COMMENTS.PARENT_COMMENT_ID.isNull)
-            .and(COMMENTS.DELETED_AT.isNull)
-
-        // Cursor가 있으면 해당 댓글 이후의 데이터만 조회
-        if (cursor != null) {
-            val cursorComment = findById(cursor)
-            if (cursorComment != null) {
-                query.and(COMMENTS.CREATED_AT.gt(cursorComment.createdAt))
-            }
-        }
-
-        return query
-            .orderBy(COMMENTS.CREATED_AT.asc())
+            .leftJoin(USER_COMMENT_LIKES)
+                .on(COMMENTS.ID.eq(USER_COMMENT_LIKES.COMMENT_ID))
+                .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
+            .leftJoin(replies)
+                .on(COMMENTS.ID.eq(replies.PARENT_COMMENT_ID))
+                .and(replies.DELETED_AT.isNull)
+            .where(whereConditions)
+            .groupBy(
+                COMMENTS.ID,
+                COMMENTS.CONTENT_ID,
+                COMMENTS.USER_ID,
+                COMMENTS.PARENT_COMMENT_ID,
+                COMMENTS.CONTENT,
+                COMMENTS.CREATED_AT,
+                COMMENTS.CREATED_BY,
+                COMMENTS.UPDATED_AT,
+                COMMENTS.UPDATED_BY,
+                COMMENTS.DELETED_AT
+            )
+            .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc())
             .limit(limit + 1) // hasNext 확인을 위해 +1 조회
             .fetch()
-            .map { recordToComment(it) }
+            .map { record ->
+                Comment(
+                    id = UUID.fromString(record.getValue(COMMENTS.ID)),
+                    contentId = UUID.fromString(record.getValue(COMMENTS.CONTENT_ID)),
+                    userId = UUID.fromString(record.getValue(COMMENTS.USER_ID)),
+                    parentCommentId = record.getValue(COMMENTS.PARENT_COMMENT_ID)?.let { UUID.fromString(it) },
+                    content = record.getValue(COMMENTS.CONTENT)!!,
+                    createdAt = record.getValue(COMMENTS.CREATED_AT)!!,
+                    createdBy = record.getValue(COMMENTS.CREATED_BY)?.let { UUID.fromString(it) },
+                    updatedAt = record.getValue(COMMENTS.UPDATED_AT)!!,
+                    updatedBy = record.getValue(COMMENTS.UPDATED_BY)?.let { UUID.fromString(it) },
+                    deletedAt = record.getValue(COMMENTS.DELETED_AT)
+                )
+            }
     }
 
     override fun findRepliesByParentCommentId(parentCommentId: UUID, cursor: UUID?, limit: Int): List<Comment> {
