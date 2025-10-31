@@ -118,6 +118,7 @@ include::feed/refresh.adoc[]
 include::like/create.adoc[]
 include::like/delete.adoc[]
 include::like/count-get.adoc[]
+include::like/status-check.adoc[]
 
 [[comment-api]]
 == Comment API
@@ -136,6 +137,7 @@ include::comment/delete.adoc[]
 include::save/create.adoc[]
 include::save/delete.adoc[]
 include::save/list.adoc[]
+include::save/status-check.adoc[]
 
 [[share-api]]
 == Share API
