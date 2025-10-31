@@ -14,6 +14,7 @@ import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_SUBTITLES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
 import org.jooq.DSLContext
@@ -252,6 +253,88 @@ class FeedRepositoryImplTest {
             assertTrue(content1.subtitles.any { it.language == "ko" })
             assertTrue(content1.subtitles.any { it.language == "en" })
         }
+
+        @Test
+        @DisplayName("PHOTO 타입 콘텐츠 조회 시, photoUrls가 함께 반환된다")
+        fun findMainFeed_WithPhotoContent_ReturnsPhotoUrls() {
+            // Given: PHOTO 타입 콘텐츠 생성
+            val photoContentId = UUID.randomUUID()
+            insertPhotoContent(
+                contentId = photoContentId,
+                creatorId = creator1.id!!,
+                title = "Test Photo Content",
+                createdAt = LocalDateTime.now()
+            )
+            insertContentPhoto(
+                contentId = photoContentId,
+                photoUrl = "https://example.com/photo1.jpg",
+                displayOrder = 0,
+                createdBy = creator1.id!!
+            )
+            insertContentPhoto(
+                contentId = photoContentId,
+                photoUrl = "https://example.com/photo2.jpg",
+                displayOrder = 1,
+                createdBy = creator1.id!!
+            )
+            insertContentPhoto(
+                contentId = photoContentId,
+                photoUrl = "https://example.com/photo3.jpg",
+                displayOrder = 2,
+                createdBy = creator1.id!!
+            )
+
+            // When
+            val result = feedRepository.findMainFeed(
+                userId = viewer.id!!,
+                cursor = null,
+                limit = 10,
+                excludeContentIds = emptyList()
+            ).collectList().block()!!
+
+            // Then: PHOTO 콘텐츠의 photoUrls가 display_order 순으로 반환됨
+            val photoContent = result.find { it.contentId == photoContentId }!!
+            assertNotNull(photoContent.photoUrls)
+            assertEquals(3, photoContent.photoUrls!!.size)
+            assertEquals("https://example.com/photo1.jpg", photoContent.photoUrls!![0])
+            assertEquals("https://example.com/photo2.jpg", photoContent.photoUrls!![1])
+            assertEquals("https://example.com/photo3.jpg", photoContent.photoUrls!![2])
+        }
+
+        @Test
+        @DisplayName("VIDEO와 PHOTO 혼합 조회 시, PHOTO만 photoUrls를 가진다")
+        fun findMainFeed_WithMixedContent_ReturnsPhotoUrlsOnlyForPhoto() {
+            // Given: PHOTO 타입 콘텐츠 생성
+            val photoContentId = UUID.randomUUID()
+            insertPhotoContent(
+                contentId = photoContentId,
+                creatorId = creator1.id!!,
+                title = "Test Photo Content",
+                createdAt = LocalDateTime.now().minusMinutes(30)
+            )
+            insertContentPhoto(
+                contentId = photoContentId,
+                photoUrl = "https://example.com/photo1.jpg",
+                displayOrder = 0,
+                createdBy = creator1.id!!
+            )
+
+            // When
+            val result = feedRepository.findMainFeed(
+                userId = viewer.id!!,
+                cursor = null,
+                limit = 10,
+                excludeContentIds = emptyList()
+            ).collectList().block()!!
+
+            // Then: PHOTO는 photoUrls를 가지고, VIDEO는 null
+            val photoContent = result.find { it.contentId == photoContentId }!!
+            assertNotNull(photoContent.photoUrls)
+            assertEquals(1, photoContent.photoUrls!!.size)
+
+            val videoContent = result.find { it.contentId == content1Id }!!
+            assertNull(videoContent.photoUrls)
+        }
     }
 
     @Nested
@@ -325,6 +408,62 @@ class FeedRepositoryImplTest {
 
             // Then: 모든 콘텐츠 반환 (content1, content2, content3)
             assertEquals(3, result.size)
+        }
+
+        @Test
+        @DisplayName("PHOTO 타입 콘텐츠 조회 시, photoUrls가 순서대로 반환된다")
+        fun findFollowingFeed_WithPhotoContent_ReturnsPhotoUrlsInOrder() {
+            // Given: viewer가 creator1을 팔로우
+            followRepository.save(
+                Follow(
+                    followerId = viewer.id!!,
+                    followingId = creator1.id!!,
+                    createdBy = viewer.id!!
+                )
+            )
+
+            // Given: PHOTO 타입 콘텐츠 생성
+            val photoContentId = UUID.randomUUID()
+            insertPhotoContent(
+                contentId = photoContentId,
+                creatorId = creator1.id!!,
+                title = "Test Photo Content",
+                createdAt = LocalDateTime.now()
+            )
+            // display_order 역순으로 삽입 (정렬 테스트)
+            insertContentPhoto(
+                contentId = photoContentId,
+                photoUrl = "https://example.com/photo2.jpg",
+                displayOrder = 2,
+                createdBy = creator1.id!!
+            )
+            insertContentPhoto(
+                contentId = photoContentId,
+                photoUrl = "https://example.com/photo1.jpg",
+                displayOrder = 1,
+                createdBy = creator1.id!!
+            )
+            insertContentPhoto(
+                contentId = photoContentId,
+                photoUrl = "https://example.com/photo0.jpg",
+                displayOrder = 0,
+                createdBy = creator1.id!!
+            )
+
+            // When
+            val result = feedRepository.findFollowingFeed(
+                userId = viewer.id!!,
+                cursor = null,
+                limit = 10
+            ).collectList().block()!!
+
+            // Then: PHOTO 콘텐츠의 photoUrls가 display_order 순으로 반환됨 (역순 삽입했지만 정렬됨)
+            val photoContent = result.find { it.contentId == photoContentId }!!
+            assertNotNull(photoContent.photoUrls)
+            assertEquals(3, photoContent.photoUrls!!.size)
+            assertEquals("https://example.com/photo0.jpg", photoContent.photoUrls!![0])
+            assertEquals("https://example.com/photo1.jpg", photoContent.photoUrls!![1])
+            assertEquals("https://example.com/photo2.jpg", photoContent.photoUrls!![2])
         }
     }
 
@@ -753,6 +892,128 @@ class FeedRepositoryImplTest {
         }
     }
 
+    @Nested
+    @DisplayName("findByContentIds - 콘텐츠 ID 목록으로 피드 조회")
+    inner class FindByContentIds {
+
+        @Test
+        @DisplayName("여러 PHOTO 콘텐츠 조회 시, 각 콘텐츠의 photoUrls가 N+1 없이 반환된다")
+        fun findByContentIds_WithMultiplePhotoContent_ReturnsPhotoUrlsWithoutNPlusOne() {
+            // Given: 2개의 PHOTO 타입 콘텐츠 생성
+            val photoContent1Id = UUID.randomUUID()
+            val photoContent2Id = UUID.randomUUID()
+
+            insertPhotoContent(
+                contentId = photoContent1Id,
+                creatorId = creator1.id!!,
+                title = "Photo Content 1",
+                createdAt = LocalDateTime.now().minusHours(1)
+            )
+            insertContentPhoto(photoContent1Id, "https://example.com/content1-photo1.jpg", 0, creator1.id!!)
+            insertContentPhoto(photoContent1Id, "https://example.com/content1-photo2.jpg", 1, creator1.id!!)
+
+            insertPhotoContent(
+                contentId = photoContent2Id,
+                creatorId = creator2.id!!,
+                title = "Photo Content 2",
+                createdAt = LocalDateTime.now().minusHours(2)
+            )
+            insertContentPhoto(photoContent2Id, "https://example.com/content2-photo1.jpg", 0, creator2.id!!)
+            insertContentPhoto(photoContent2Id, "https://example.com/content2-photo2.jpg", 1, creator2.id!!)
+            insertContentPhoto(photoContent2Id, "https://example.com/content2-photo3.jpg", 2, creator2.id!!)
+
+            // When: 일괄 조회
+            val result = feedRepository.findByContentIds(
+                userId = viewer.id!!,
+                contentIds = listOf(photoContent1Id, photoContent2Id)
+            ).collectList().block()!!
+
+            // Then: 각 콘텐츠의 photoUrls가 올바르게 반환됨 (N+1 없이 batch loading)
+            assertEquals(2, result.size)
+
+            val content1 = result.find { it.contentId == photoContent1Id }!!
+            assertNotNull(content1.photoUrls)
+            assertEquals(2, content1.photoUrls!!.size)
+            assertEquals("https://example.com/content1-photo1.jpg", content1.photoUrls!![0])
+            assertEquals("https://example.com/content1-photo2.jpg", content1.photoUrls!![1])
+
+            val content2 = result.find { it.contentId == photoContent2Id }!!
+            assertNotNull(content2.photoUrls)
+            assertEquals(3, content2.photoUrls!!.size)
+            assertEquals("https://example.com/content2-photo1.jpg", content2.photoUrls!![0])
+            assertEquals("https://example.com/content2-photo2.jpg", content2.photoUrls!![1])
+            assertEquals("https://example.com/content2-photo3.jpg", content2.photoUrls!![2])
+        }
+
+        @Test
+        @DisplayName("VIDEO와 PHOTO 혼합 조회 시, PHOTO만 photoUrls를 가진다")
+        fun findByContentIds_WithMixedContentTypes_ReturnsPhotoUrlsOnlyForPhoto() {
+            // Given: VIDEO와 PHOTO 콘텐츠 생성
+            val photoContentId = UUID.randomUUID()
+            insertPhotoContent(
+                contentId = photoContentId,
+                creatorId = creator1.id!!,
+                title = "Photo Content",
+                createdAt = LocalDateTime.now()
+            )
+            insertContentPhoto(photoContentId, "https://example.com/photo.jpg", 0, creator1.id!!)
+
+            // When: VIDEO와 PHOTO 혼합 조회
+            val result = feedRepository.findByContentIds(
+                userId = viewer.id!!,
+                contentIds = listOf(content1Id, photoContentId) // content1Id는 VIDEO
+            ).collectList().block()!!
+
+            // Then: PHOTO는 photoUrls를 가지고, VIDEO는 null
+            assertEquals(2, result.size)
+
+            val videoContent = result.find { it.contentId == content1Id }!!
+            assertNull(videoContent.photoUrls)
+
+            val photoContent = result.find { it.contentId == photoContentId }!!
+            assertNotNull(photoContent.photoUrls)
+            assertEquals(1, photoContent.photoUrls!!.size)
+        }
+
+        @Test
+        @DisplayName("PHOTO 콘텐츠의 사진이 없으면, photoUrls가 null이다")
+        fun findByContentIds_WithPhotoContentButNoPhotos_ReturnsNullPhotoUrls() {
+            // Given: 사진이 없는 PHOTO 타입 콘텐츠 생성
+            val photoContentId = UUID.randomUUID()
+            insertPhotoContent(
+                contentId = photoContentId,
+                creatorId = creator1.id!!,
+                title = "Photo Content Without Photos",
+                createdAt = LocalDateTime.now()
+            )
+            // 사진을 삽입하지 않음
+
+            // When
+            val result = feedRepository.findByContentIds(
+                userId = viewer.id!!,
+                contentIds = listOf(photoContentId)
+            ).collectList().block()!!
+
+            // Then: photoUrls가 null (사진이 없는 PHOTO 콘텐츠)
+            assertEquals(1, result.size)
+            val photoContent = result[0]
+            assertNull(photoContent.photoUrls)
+        }
+
+        @Test
+        @DisplayName("콘텐츠 ID 목록이 비어있으면, 빈 목록을 반환한다")
+        fun findByContentIds_WithEmptyContentIds_ReturnsEmptyList() {
+            // When: 빈 ID 목록으로 조회
+            val result = feedRepository.findByContentIds(
+                userId = viewer.id!!,
+                contentIds = emptyList()
+            ).collectList().block()!!
+
+            // Then: 빈 목록 반환
+            assertTrue(result.isEmpty())
+        }
+    }
+
     /**
      * 인터랙션 카운트 데이터 클래스
      *
@@ -934,6 +1195,83 @@ class FeedRepositoryImplTest {
             .set(USER_VIEW_HISTORY.CREATED_BY, userId.toString())
             .set(USER_VIEW_HISTORY.UPDATED_AT, watchedAt)
             .set(USER_VIEW_HISTORY.UPDATED_BY, userId.toString())
+            .execute()
+    }
+
+    /**
+     * PHOTO 타입 콘텐츠 삽입 헬퍼 메서드
+     */
+    private fun insertPhotoContent(
+        contentId: UUID,
+        creatorId: UUID,
+        title: String,
+        createdAt: LocalDateTime
+    ) {
+        // Contents 테이블 (PHOTO 타입)
+        dslContext.insertInto(CONTENTS)
+            .set(CONTENTS.ID, contentId.toString())
+            .set(CONTENTS.CREATOR_ID, creatorId.toString())
+            .set(CONTENTS.CONTENT_TYPE, ContentType.PHOTO.name)
+            .set(CONTENTS.URL, "https://example.com/$contentId-cover.jpg") // 대표 이미지
+            .set(CONTENTS.THUMBNAIL_URL, "https://example.com/$contentId-thumb.jpg")
+            // PHOTO는 duration 없음 (null이 기본값)
+            .set(CONTENTS.WIDTH, 1080)
+            .set(CONTENTS.HEIGHT, 1080)
+            .set(CONTENTS.STATUS, ContentStatus.PUBLISHED.name)
+            .set(CONTENTS.CREATED_AT, createdAt)
+            .set(CONTENTS.CREATED_BY, creatorId.toString())
+            .set(CONTENTS.UPDATED_AT, createdAt)
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())
+            .execute()
+
+        // Content_Metadata 테이블
+        dslContext.insertInto(CONTENT_METADATA)
+            .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
+            .set(CONTENT_METADATA.TITLE, title)
+            .set(CONTENT_METADATA.DESCRIPTION, "Test Photo Description")
+            .set(CONTENT_METADATA.CATEGORY, Category.ART.name)
+            .set(CONTENT_METADATA.TAGS, JSON.valueOf("[\"test\", \"photo\"]"))
+            .set(CONTENT_METADATA.LANGUAGE, "ko")
+            .set(CONTENT_METADATA.CREATED_AT, createdAt)
+            .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
+            .set(CONTENT_METADATA.UPDATED_AT, createdAt)
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
+            .execute()
+
+        // Content_Interactions 테이블
+        dslContext.insertInto(CONTENT_INTERACTIONS)
+            .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
+            .set(CONTENT_INTERACTIONS.LIKE_COUNT, 100)
+            .set(CONTENT_INTERACTIONS.COMMENT_COUNT, 50)
+            .set(CONTENT_INTERACTIONS.SAVE_COUNT, 30)
+            .set(CONTENT_INTERACTIONS.SHARE_COUNT, 20)
+            .set(CONTENT_INTERACTIONS.VIEW_COUNT, 1000)
+            .set(CONTENT_INTERACTIONS.CREATED_AT, createdAt)
+            .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
+            .set(CONTENT_INTERACTIONS.UPDATED_AT, createdAt)
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
+            .execute()
+    }
+
+    /**
+     * 콘텐츠 사진 삽입 헬퍼 메서드
+     */
+    private fun insertContentPhoto(
+        contentId: UUID,
+        photoUrl: String,
+        displayOrder: Int,
+        createdBy: UUID
+    ) {
+        dslContext.insertInto(CONTENT_PHOTOS)
+            .set(CONTENT_PHOTOS.CONTENT_ID, contentId.toString())
+            .set(CONTENT_PHOTOS.PHOTO_URL, photoUrl)
+            .set(CONTENT_PHOTOS.DISPLAY_ORDER, displayOrder)
+            .set(CONTENT_PHOTOS.WIDTH, 1080)
+            .set(CONTENT_PHOTOS.HEIGHT, 1080)
+            .set(CONTENT_PHOTOS.CREATED_AT, LocalDateTime.now())
+            .set(CONTENT_PHOTOS.CREATED_BY, createdBy.toString())
+            .set(CONTENT_PHOTOS.UPDATED_AT, LocalDateTime.now())
+            .set(CONTENT_PHOTOS.UPDATED_BY, createdBy.toString())
             .execute()
     }
 }

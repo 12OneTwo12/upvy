@@ -89,6 +89,59 @@ class FeedServiceImplTest {
         }
 
         @Test
+        @DisplayName("PHOTO 타입 콘텐츠가 포함된 피드를 조회하면, photoUrls가 함께 반환된다")
+        fun getMainFeed_WithPhotoContent_ReturnsPhotoUrls() {
+            // Given: PHOTO 타입 콘텐츠를 포함한 배치
+            val pageRequest = CursorPageRequest(cursor = null, limit = 20)
+            val cachedBatch = List(21) { UUID.randomUUID() }
+
+            // VIDEO와 PHOTO 혼합
+            val feedItems = cachedBatch.mapIndexed { index, contentId ->
+                if (index % 3 == 0) {
+                    // 3개 중 1개는 PHOTO 타입
+                    createPhotoFeedItem(contentId, listOf(
+                        "https://example.com/photo1.jpg",
+                        "https://example.com/photo2.jpg",
+                        "https://example.com/photo3.jpg"
+                    ))
+                } else {
+                    // 나머지는 VIDEO 타입
+                    createFeedItem(contentId)
+                }
+            }
+
+            every { feedCacheService.getRecommendationBatch(userId, 0) } returns
+                Mono.just(cachedBatch)
+            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedRepository.findByContentIds(any(), any()) } returns
+                Flux.fromIterable(feedItems)
+
+            // When: 메인 피드 조회
+            val result = feedService.getMainFeed(userId, pageRequest)
+
+            // Then: PHOTO 타입 콘텐츠는 photoUrls를 가지고, VIDEO는 null
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response.content).hasSize(20)
+
+                    // PHOTO 타입 확인 (index 0, 3, 6, 9, 12, 15, 18)
+                    val photoContents = response.content.filter { it.contentType == ContentType.PHOTO }
+                    assertThat(photoContents).isNotEmpty
+                    photoContents.forEach { photoContent ->
+                        assertThat(photoContent.photoUrls).isNotNull
+                        assertThat(photoContent.photoUrls).hasSize(3)
+                    }
+
+                    // VIDEO 타입 확인
+                    val videoContents = response.content.filter { it.contentType == ContentType.VIDEO }
+                    videoContents.forEach { videoContent ->
+                        assertThat(videoContent.photoUrls).isNull()
+                    }
+                }
+                .verifyComplete()
+        }
+
+        @Test
         @DisplayName("캐시 miss: 새 배치를 생성하고 Redis에 저장한 후 피드를 반환한다")
         fun getMainFeed_WithoutCachedBatch_GeneratesAndCachesBatch() {
             // Given: 캐시 miss (empty Mono)
@@ -221,6 +274,50 @@ class FeedServiceImplTest {
         }
 
         @Test
+        @DisplayName("PHOTO 타입 콘텐츠가 포함된 팔로잉 피드를 조회하면, photoUrls가 함께 반환된다")
+        fun getFollowingFeed_WithPhotoContent_ReturnsPhotoUrls() {
+            // Given: PHOTO 타입을 포함한 팔로잉 피드
+            val pageRequest = CursorPageRequest(cursor = null, limit = 20)
+            val feedItems = listOf(
+                createPhotoFeedItem(UUID.randomUUID(), listOf(
+                    "https://example.com/photo1.jpg",
+                    "https://example.com/photo2.jpg"
+                )),
+                createFeedItem(UUID.randomUUID()), // VIDEO
+                createPhotoFeedItem(UUID.randomUUID(), listOf(
+                    "https://example.com/photo3.jpg"
+                ))
+            )
+
+            every { feedRepository.findFollowingFeed(userId, null, 21) } returns
+                Flux.fromIterable(feedItems)
+
+            // When: 팔로잉 피드 조회
+            val result = feedService.getFollowingFeed(userId, pageRequest)
+
+            // Then: PHOTO 타입 콘텐츠는 photoUrls를 가짐
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response.content).hasSize(3)
+
+                    // 첫 번째 PHOTO (2개 사진)
+                    assertThat(response.content[0].contentType).isEqualTo(ContentType.PHOTO)
+                    assertThat(response.content[0].photoUrls).isNotNull
+                    assertThat(response.content[0].photoUrls).hasSize(2)
+
+                    // VIDEO (photoUrls null)
+                    assertThat(response.content[1].contentType).isEqualTo(ContentType.VIDEO)
+                    assertThat(response.content[1].photoUrls).isNull()
+
+                    // 두 번째 PHOTO (1개 사진)
+                    assertThat(response.content[2].contentType).isEqualTo(ContentType.PHOTO)
+                    assertThat(response.content[2].photoUrls).isNotNull
+                    assertThat(response.content[2].photoUrls).hasSize(1)
+                }
+                .verifyComplete()
+        }
+
+        @Test
         @DisplayName("cursor를 UUID로 변환하여 조회한다")
         fun getFollowingFeed_WithCursor_ConvertsToUUID() {
             // Given: cursor = UUID
@@ -247,7 +344,7 @@ class FeedServiceImplTest {
     }
 
     /**
-     * 테스트용 FeedItemResponse 생성
+     * 테스트용 FeedItemResponse 생성 (VIDEO 타입)
      */
     private fun createFeedItem(contentId: UUID): FeedItemResponse {
         return FeedItemResponse(
@@ -275,6 +372,42 @@ class FeedServiceImplTest {
                 saveCount = 30,
                 shareCount = 20,
                 viewCount = 1000,
+                isLiked = false,
+                isSaved = false
+            ),
+            subtitles = emptyList()
+        )
+    }
+
+    /**
+     * 테스트용 FeedItemResponse 생성 (PHOTO 타입)
+     */
+    private fun createPhotoFeedItem(contentId: UUID, photoUrls: List<String>): FeedItemResponse {
+        return FeedItemResponse(
+            contentId = contentId,
+            contentType = ContentType.PHOTO,
+            url = photoUrls.firstOrNull() ?: "https://example.com/photo.jpg", // 대표 이미지
+            photoUrls = photoUrls,
+            thumbnailUrl = "https://example.com/thumbnail.jpg",
+            duration = null, // PHOTO는 duration 없음
+            width = 1080,
+            height = 1080,
+            title = "테스트 사진 제목",
+            description = "테스트 사진 설명",
+            category = Category.ART,
+            tags = listOf("photo", "test"),
+            creator = CreatorInfoResponse(
+                userId = UUID.randomUUID(),
+                nickname = "사진작가",
+                profileImageUrl = "https://example.com/profile.jpg",
+                followerCount = 200
+            ),
+            interactions = InteractionInfoResponse(
+                likeCount = 150,
+                commentCount = 75,
+                saveCount = 50,
+                shareCount = 30,
+                viewCount = 2000,
                 isLiked = false,
                 isSaved = false
             ),
