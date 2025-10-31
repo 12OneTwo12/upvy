@@ -62,7 +62,9 @@ object PublicApiPaths {
          * `/api/v1/contents/me`를 제외하고 개별 콘텐츠 조회만 허용
          */
         val CONTENT_PATHS = arrayOf(
-            "${ApiPaths.API_V1_CONTENTS}/*"  // GET ${ApiPaths.API_V1}/contents/{contentId}
+            "${ApiPaths.API_V1_CONTENTS}/*",  // GET ${ApiPaths.API_V1}/contents/{contentId}
+            "${ApiPaths.API_V1_CONTENTS}/**", // GET ${ApiPaths.API_V1}/contents/{contentId}/...
+            "${ApiPaths.API_V1}/comments/**", // GET ${ApiPaths.API_V1}/comments/{contentId}/...
         )
     }
 }

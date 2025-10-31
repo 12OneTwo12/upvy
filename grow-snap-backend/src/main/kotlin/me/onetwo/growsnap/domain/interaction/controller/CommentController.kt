@@ -29,35 +29,32 @@ class CommentController(
     @PostMapping("/contents/{contentId}/comments")
     fun createComment(
         principal: Mono<Principal>,
-        @PathVariable contentId: String,
+        @PathVariable contentId: UUID,
         @Valid @RequestBody request: CommentRequest
     ): Mono<ResponseEntity<CommentResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentUUID = UUID.fromString(contentId)
-                commentService.createComment(userId, contentUUID, request)
+                commentService.createComment(userId, contentId, request)
             }
             .map { response -> ResponseEntity.status(HttpStatus.CREATED).body(response) }
     }
 
     @GetMapping("/contents/{contentId}/comments")
-    fun getComments(@PathVariable contentId: String): Flux<CommentResponse> {
-        val contentUUID = UUID.fromString(contentId)
+    fun getComments(@PathVariable contentId: UUID): Flux<CommentResponse> {
 
-        return commentService.getComments(contentUUID)
+        return commentService.getComments(contentId)
     }
 
     @DeleteMapping("/comments/{commentId}")
     fun deleteComment(
         principal: Mono<Principal>,
-        @PathVariable commentId: String
+        @PathVariable commentId: UUID
     ): Mono<ResponseEntity<Void>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val id = UUID.fromString(commentId)
-                commentService.deleteComment(userId, id)
+                commentService.deleteComment(userId, commentId)
             }
             .then(Mono.just(ResponseEntity.noContent().build<Void>()))
     }

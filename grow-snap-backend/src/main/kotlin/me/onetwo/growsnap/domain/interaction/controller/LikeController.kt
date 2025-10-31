@@ -42,13 +42,12 @@ class LikeController(
     @PostMapping("/contents/{contentId}/like")
     fun likeContent(
         principal: Mono<Principal>,
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<LikeResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentUUID = UUID.fromString(contentId)
-                likeService.likeContent(userId, contentUUID)
+                likeService.likeContent(userId, contentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -65,13 +64,12 @@ class LikeController(
     @DeleteMapping("/contents/{contentId}/like")
     fun unlikeContent(
         principal: Mono<Principal>,
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<LikeResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentUUID = UUID.fromString(contentId)
-                likeService.unlikeContent(userId, contentUUID)
+                likeService.unlikeContent(userId, contentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -86,11 +84,9 @@ class LikeController(
      */
     @GetMapping("/contents/{contentId}/likes")
     fun getLikeCount(
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<LikeCountResponse>> {
-        val contentUUID = UUID.fromString(contentId)
-
-        return likeService.getLikeCount(contentUUID)
+        return likeService.getLikeCount(contentId)
             .map { response -> ResponseEntity.ok(response) }
     }
 
@@ -108,13 +104,12 @@ class LikeController(
     @GetMapping("/contents/{contentId}/like/status")
     fun getLikeStatus(
         principal: Mono<Principal>,
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<LikeStatusResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentUUID = UUID.fromString(contentId)
-                likeService.getLikeStatus(userId, contentUUID)
+                likeService.getLikeStatus(userId, contentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
