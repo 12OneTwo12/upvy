@@ -191,10 +191,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
     // 하트 애니메이션 표시 (좋아요가 안 되어있을 때만)
     if (!isLiked) {
-      console.log('[VideoPlayer] Double tap - showing heart animation');
       setShowLikeAnimation(true);
-    } else {
-      console.log('[VideoPlayer] Double tap - already liked, skipping animation');
     }
 
     onDoubleTap();
@@ -243,11 +240,15 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
 
-    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+    if (lastTap.current && now - lastTap.current < DOUBLE_TAP_DELAY) {
+      // 더블탭
+      lastTap.current = 0; // 리셋
       handleDoubleTap();
     } else {
+      // 싱글탭 대기
+      lastTap.current = now;
       setTimeout(() => {
-        if (Date.now() - lastTap.current >= DOUBLE_TAP_DELAY) {
+        if (lastTap.current === now) {
           // 싱글탭: 더보기 닫기 또는 일시정지/재생
           const handled = onTap?.();
           // 더보기가 닫혔으면 비디오 탭 무시
@@ -257,11 +258,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
         }
       }, DOUBLE_TAP_DELAY);
     }
-
-    lastTap.current = now;
   };
-
-  console.log('[VideoPlayer] Rendering - showLikeAnimation:', showLikeAnimation, 'isLiked:', isLiked);
 
   return (
     <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, backgroundColor: '#000000', position: 'relative' }}>
