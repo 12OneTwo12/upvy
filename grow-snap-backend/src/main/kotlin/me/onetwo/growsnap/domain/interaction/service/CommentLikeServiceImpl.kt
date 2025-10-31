@@ -4,6 +4,7 @@ import me.onetwo.growsnap.domain.interaction.dto.CommentLikeCountResponse
 import me.onetwo.growsnap.domain.interaction.dto.CommentLikeResponse
 import me.onetwo.growsnap.domain.interaction.dto.CommentLikeStatusResponse
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
+import org.jooq.exception.DataAccessException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
@@ -30,11 +31,13 @@ class CommentLikeServiceImpl(
      * 댓글 좋아요
      *
      * ### 처리 흐름
-     * 1. user_comment_likes 테이블에 레코드 생성
-     * 2. 댓글 좋아요 수 조회 및 응답 반환
+     * 1. user_comment_likes 테이블에 레코드 생성 시도
+     * 2. 중복 시 DataAccessException을 처리하여 idempotent 보장
+     * 3. 댓글 좋아요 수 조회 및 응답 반환
      *
      * ### 비즈니스 규칙
-     * - 이미 좋아요가 있으면 중복 생성 안 함 (idempotent)
+     * - UNIQUE 제약 조건을 활용하여 중복 방지
+     * - 이미 좋아요가 있으면 예외 처리로 안전하게 idempotent 보장
      *
      * @param userId 사용자 ID
      * @param commentId 댓글 ID
@@ -43,15 +46,11 @@ class CommentLikeServiceImpl(
     override fun likeComment(userId: UUID, commentId: UUID): Mono<CommentLikeResponse> {
         logger.debug("Liking comment: userId={}, commentId={}", userId, commentId)
 
-        return Mono.fromCallable { commentLikeRepository.exists(userId, commentId) }
-            .flatMap { exists ->
-                if (exists) {
-                    logger.debug("Comment already liked: userId={}, commentId={}", userId, commentId)
-                    getLikeResponse(commentId, true)
-                } else {
-                    Mono.fromCallable { commentLikeRepository.save(userId, commentId) }
-                        .then(getLikeResponse(commentId, true))
-                }
+        return Mono.fromCallable { commentLikeRepository.save(userId, commentId) }
+            .then(getLikeResponse(commentId, true))
+            .onErrorResume(DataAccessException::class.java) {
+                logger.debug("Comment already liked: userId={}, commentId={}", userId, commentId)
+                getLikeResponse(commentId, true)
             }
             .doOnSuccess { logger.debug("Comment liked successfully: userId={}, commentId={}", userId, commentId) }
             .doOnError { error ->
@@ -67,7 +66,7 @@ class CommentLikeServiceImpl(
      * 2. 댓글 좋아요 수 조회 및 응답 반환
      *
      * ### 비즈니스 규칙
-     * - 좋아요가 없으면 아무 작업 안 함 (idempotent)
+     * - delete는 idempotent하므로 좋아요가 없어도 안전하게 처리됨
      *
      * @param userId 사용자 ID
      * @param commentId 댓글 ID
@@ -76,16 +75,8 @@ class CommentLikeServiceImpl(
     override fun unlikeComment(userId: UUID, commentId: UUID): Mono<CommentLikeResponse> {
         logger.debug("Unliking comment: userId={}, commentId={}", userId, commentId)
 
-        return Mono.fromCallable { commentLikeRepository.exists(userId, commentId) }
-            .flatMap { exists ->
-                if (!exists) {
-                    logger.debug("Comment not liked: userId={}, commentId={}", userId, commentId)
-                    getLikeResponse(commentId, false)
-                } else {
-                    Mono.fromCallable { commentLikeRepository.delete(userId, commentId) }
-                        .then(getLikeResponse(commentId, false))
-                }
-            }
+        return Mono.fromCallable { commentLikeRepository.delete(userId, commentId) }
+            .then(getLikeResponse(commentId, false))
             .doOnSuccess { logger.debug("Comment unliked successfully: userId={}, commentId={}", userId, commentId) }
             .doOnError { error ->
                 logger.error("Failed to unlike comment: userId={}, commentId={}", userId, commentId, error)

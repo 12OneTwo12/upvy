@@ -7,6 +7,7 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import me.onetwo.growsnap.domain.interaction.model.CommentLike
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
+import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -52,7 +53,6 @@ class CommentLikeServiceTest {
                 updatedBy = testUserId
             )
 
-            every { commentLikeRepository.exists(testUserId, testCommentId) } returns false
             every { commentLikeRepository.save(testUserId, testCommentId) } returns commentLike
             every { commentLikeRepository.countByCommentId(testCommentId) } returns 1
 
@@ -75,7 +75,7 @@ class CommentLikeServiceTest {
         @DisplayName("이미 댓글 좋아요가 있으면, 중복 생성하지 않는다 (idempotent)")
         fun likeComment_AlreadyExists_Idempotent() {
             // Given
-            every { commentLikeRepository.exists(testUserId, testCommentId) } returns true
+            every { commentLikeRepository.save(testUserId, testCommentId) } throws DataAccessException("Duplicate key")
             every { commentLikeRepository.countByCommentId(testCommentId) } returns 1
 
             // When
@@ -90,7 +90,7 @@ class CommentLikeServiceTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 0) { commentLikeRepository.save(any(), any()) }
+            verify(exactly = 1) { commentLikeRepository.save(testUserId, testCommentId) }
         }
     }
 
@@ -102,7 +102,6 @@ class CommentLikeServiceTest {
         @DisplayName("댓글 좋아요를 취소하면, Repository에서 삭제하고 좋아요 응답을 반환한다")
         fun unlikeComment_Success() {
             // Given
-            every { commentLikeRepository.exists(testUserId, testCommentId) } returns true
             every { commentLikeRepository.delete(testUserId, testCommentId) } returns Unit
             every { commentLikeRepository.countByCommentId(testCommentId) } returns 0
 
@@ -122,10 +121,10 @@ class CommentLikeServiceTest {
         }
 
         @Test
-        @DisplayName("댓글 좋아요가 없으면, 삭제하지 않는다 (idempotent)")
+        @DisplayName("댓글 좋아요가 없어도, delete는 안전하게 처리된다 (idempotent)")
         fun unlikeComment_NotExists_Idempotent() {
             // Given
-            every { commentLikeRepository.exists(testUserId, testCommentId) } returns false
+            every { commentLikeRepository.delete(testUserId, testCommentId) } returns Unit
             every { commentLikeRepository.countByCommentId(testCommentId) } returns 0
 
             // When
@@ -140,7 +139,7 @@ class CommentLikeServiceTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 0) { commentLikeRepository.delete(any(), any()) }
+            verify(exactly = 1) { commentLikeRepository.delete(testUserId, testCommentId) }
         }
     }
 

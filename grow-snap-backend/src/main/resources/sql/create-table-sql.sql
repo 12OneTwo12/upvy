@@ -271,7 +271,6 @@ CREATE TABLE IF NOT EXISTS user_comment_likes (
     CONSTRAINT unique_user_comment_like UNIQUE (user_id, comment_id)
 );
 
-CREATE INDEX idx_user_comment_like_user_id ON user_comment_likes(user_id);
 CREATE INDEX idx_user_comment_like_comment_id ON user_comment_likes(comment_id);
 CREATE INDEX idx_user_comment_like_deleted_at ON user_comment_likes(deleted_at);
 CREATE INDEX idx_user_comment_like_composite ON user_comment_likes(user_id, comment_id);
