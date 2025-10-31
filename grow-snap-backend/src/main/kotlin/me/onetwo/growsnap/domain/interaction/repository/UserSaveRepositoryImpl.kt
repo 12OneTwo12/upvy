@@ -5,6 +5,7 @@ import me.onetwo.growsnap.jooq.generated.tables.UserSaves.Companion.USER_SAVES
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -50,7 +51,7 @@ class UserSaveRepositoryImpl(
 
     override fun delete(userId: UUID, contentId: UUID) {
         val now = LocalDateTime.now()
-        val nowUnix = now.toEpochSecond(java.time.ZoneOffset.UTC)
+        val nowUnix = now.toEpochSecond(ZoneOffset.UTC)
 
         dslContext
             .update(USER_SAVES)
