@@ -65,6 +65,7 @@ data class ContentUploadUrlResponse(
  * @property category 카테고리
  * @property tags 태그 목록
  * @property language 언어 코드 (ISO 639-1)
+ * @property photoUrls 사진 목록 (PHOTO 타입인 경우, 인스타그램 스타일 갤러리)
  * @property thumbnailUrl 썸네일 URL
  * @property duration 비디오 길이 (초, 사진인 경우 null)
  * @property width 가로 크기 (픽셀)
@@ -89,6 +90,8 @@ data class ContentCreateRequest(
     @field:NotBlank(message = "언어는 필수입니다")
     @field:Size(min = 2, max = 10, message = "언어 코드는 2-10자여야 합니다")
     val language: String = "ko",
+
+    val photoUrls: List<String>? = null,
 
     @field:NotBlank(message = "썸네일 URL은 필수입니다")
     val thumbnailUrl: String,
@@ -140,6 +143,7 @@ data class ContentUpdateRequest(
  * @property creatorId 크리에이터 ID
  * @property contentType 콘텐츠 타입
  * @property url 콘텐츠 URL
+ * @property photoUrls 사진 목록 (PHOTO 타입인 경우)
  * @property thumbnailUrl 썸네일 URL
  * @property duration 비디오 길이 (초)
  * @property width 가로 크기
@@ -158,6 +162,7 @@ data class ContentResponse(
     val creatorId: String,
     val contentType: ContentType,
     val url: String,
+    val photoUrls: List<String>?,
     val thumbnailUrl: String,
     val duration: Int?,
     val width: Int,

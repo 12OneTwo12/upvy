@@ -82,6 +82,26 @@ CREATE INDEX idx_status ON contents(status);
 CREATE INDEX idx_content_created_at ON contents(created_at);
 CREATE INDEX idx_content_deleted_at ON contents(deleted_at);
 
+-- Content Photos Table (사진 콘텐츠의 사진 목록 - 1:N 관계)
+CREATE TABLE IF NOT EXISTS content_photos (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id CHAR(36) NOT NULL,
+    photo_url VARCHAR(500) NOT NULL,
+    display_order INT NOT NULL DEFAULT 0,  -- 사진 표시 순서 (인스타그램 스타일)
+    width INT NOT NULL,
+    height INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by CHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_photo_content_id ON content_photos(content_id);
+CREATE INDEX idx_photo_display_order ON content_photos(content_id, display_order);
+CREATE INDEX idx_photo_deleted_at ON content_photos(deleted_at);
+
 -- Content Metadata Table (콘텐츠 메타데이터)
 CREATE TABLE IF NOT EXISTS content_metadata (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

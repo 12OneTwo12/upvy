@@ -44,6 +44,9 @@ class ContentServiceImplTest {
     private lateinit var contentRepository: ContentRepository
 
     @MockK
+    private lateinit var contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
+
+    @MockK
     private lateinit var uploadSessionRepository: UploadSessionRepository
 
     @MockK
@@ -56,6 +59,7 @@ class ContentServiceImplTest {
         contentService = ContentServiceImpl(
             contentUploadService = contentUploadService,
             contentRepository = contentRepository,
+            contentPhotoRepository = contentPhotoRepository,
             uploadSessionRepository = uploadSessionRepository,
             s3Client = s3Client,
             bucketName = "test-bucket",
