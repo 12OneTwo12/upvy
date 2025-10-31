@@ -397,4 +397,72 @@ class ContentControllerTest {
                 )
         }
     }
+
+    @Nested
+    @DisplayName("DELETE /api/v1/contents/{contentId} - 콘텐츠 삭제")
+    inner class DeleteContent {
+
+        @Test
+        @DisplayName("본인이 작성한 콘텐츠 삭제 시, 204를 반환한다")
+        fun deleteContent_WhenOwner_Returns204() {
+            // Given: 테스트 데이터
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+
+            every { contentService.deleteContent(userId, contentId) } returns Mono.empty()
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .delete()
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", contentId)
+                .exchange()
+                .expectStatus().isNoContent
+                .expectBody()
+                .consumeWith(
+                    document(
+                        "content-delete",
+                        pathParameters(
+                            parameterWithName("contentId").description("삭제할 콘텐츠 ID")
+                        )
+                    )
+                )
+        }
+
+        @Test
+        @DisplayName("다른 사용자의 콘텐츠 삭제 시, 403을 반환한다")
+        fun deleteContent_WhenNotOwner_Returns403() {
+            // Given: 권한 없는 사용자
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+
+            every { contentService.deleteContent(userId, contentId) } returns Mono.error(IllegalAccessException("권한이 없습니다"))
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .delete()
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", contentId)
+                .exchange()
+                .expectStatus().isForbidden
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 콘텐츠 삭제 시, 404를 반환한다")
+        fun deleteContent_WhenContentNotExists_Returns404() {
+            // Given: 존재하지 않는 contentId
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+
+            every { contentService.deleteContent(userId, contentId) } returns Mono.error(NoSuchElementException("콘텐츠를 찾을 수 없습니다"))
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .delete()
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", contentId)
+                .exchange()
+                .expectStatus().isNotFound
+        }
+    }
 }
