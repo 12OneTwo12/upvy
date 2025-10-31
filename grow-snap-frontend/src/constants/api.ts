@@ -68,6 +68,7 @@ export const API_ENDPOINTS = {
   COMMENT: {
     CREATE: (contentId: string) => `/contents/${contentId}/comments`,
     LIST: (contentId: string) => `/contents/${contentId}/comments`,
+    REPLIES: (commentId: string) => `/comments/${commentId}/replies`,
     DELETE: (commentId: string) => `/comments/${commentId}`,
   },
 

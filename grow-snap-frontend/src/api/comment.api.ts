@@ -6,7 +6,11 @@
 
 import apiClient from './client';
 import { API_ENDPOINTS } from '@/constants/api';
-import type { CommentRequest, CommentResponse } from '@/types/interaction.types';
+import type {
+  CommentRequest,
+  CommentResponse,
+  CommentListResponse,
+} from '@/types/interaction.types';
 
 /**
  * 댓글 작성
@@ -30,17 +34,57 @@ export const createComment = async (
 };
 
 /**
- * 댓글 목록 조회
+ * 댓글 목록 조회 (페이징)
  *
- * 백엔드: GET /api/v1/contents/{contentId}/comments
- * Response: CommentResponse[] (Flux로 반환되지만 배열로 받음)
+ * 백엔드: GET /api/v1/contents/{contentId}/comments?cursor={cursor}&limit={limit}
+ * Response: CommentListResponse
  *
  * @param contentId 콘텐츠 ID
- * @returns 댓글 목록
+ * @param cursor 페이징 커서 (이전 페이지의 마지막 댓글 ID)
+ * @param limit 페이지 크기 (기본 20)
+ * @returns 댓글 목록 응답 (페이징 정보 포함)
  */
-export const getComments = async (contentId: string): Promise<CommentResponse[]> => {
-  const response = await apiClient.get<CommentResponse[]>(
-    API_ENDPOINTS.COMMENT.LIST(contentId)
+export const getComments = async (
+  contentId: string,
+  cursor?: string | null,
+  limit: number = 20
+): Promise<CommentListResponse> => {
+  const params = new URLSearchParams();
+  if (cursor) {
+    params.append('cursor', cursor);
+  }
+  params.append('limit', limit.toString());
+
+  const response = await apiClient.get<CommentListResponse>(
+    `${API_ENDPOINTS.COMMENT.LIST(contentId)}?${params.toString()}`
+  );
+  return response.data;
+};
+
+/**
+ * 대댓글 목록 조회 (페이징)
+ *
+ * 백엔드: GET /api/v1/comments/{commentId}/replies?cursor={cursor}&limit={limit}
+ * Response: CommentListResponse
+ *
+ * @param commentId 부모 댓글 ID
+ * @param cursor 페이징 커서 (이전 페이지의 마지막 대댓글 ID)
+ * @param limit 페이지 크기 (기본 20)
+ * @returns 대댓글 목록 응답 (페이징 정보 포함)
+ */
+export const getReplies = async (
+  commentId: string,
+  cursor?: string | null,
+  limit: number = 20
+): Promise<CommentListResponse> => {
+  const params = new URLSearchParams();
+  if (cursor) {
+    params.append('cursor', cursor);
+  }
+  params.append('limit', limit.toString());
+
+  const response = await apiClient.get<CommentListResponse>(
+    `${API_ENDPOINTS.COMMENT.REPLIES(commentId)}?${params.toString()}`
   );
   return response.data;
 };

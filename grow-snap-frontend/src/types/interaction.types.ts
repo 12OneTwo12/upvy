@@ -105,7 +105,17 @@ export interface CommentResponse {
   content: string;
   parentCommentId: string | null;
   createdAt: string;
-  replies: CommentResponse[];
+  replyCount: number;
+}
+
+/**
+ * 댓글 목록 응답 (페이징)
+ * 백엔드: CommentListResponse
+ */
+export interface CommentListResponse {
+  comments: CommentResponse[];
+  hasNext: boolean;
+  nextCursor: string | null;
 }
 
 /**
