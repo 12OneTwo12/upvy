@@ -129,6 +129,16 @@ include::comment/create.adoc[]
 include::comment/list.adoc[]
 include::comment/delete.adoc[]
 
+[[comment-like-api]]
+== Comment Like API
+
+댓글 좋아요 관리 API
+
+include::comment-like/create.adoc[]
+include::comment-like/delete.adoc[]
+include::comment-like/count-get.adoc[]
+include::comment-like/status-check.adoc[]
+
 [[save-api]]
 == Save API
 

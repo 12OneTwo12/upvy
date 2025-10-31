@@ -1,0 +1,27 @@
+[[comment-like-status-check]]
+=== 댓글 좋아요 상태 조회
+
+특정 댓글에 대한 사용자의 좋아요 상태를 확인합니다.
+
+==== Request
+
+include::{snippets}/comment-like-status-check/http-request.adoc[]
+include::{snippets}/comment-like-status-check/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/comment-like-status-check/http-response.adoc[]
+include::{snippets}/comment-like-status-check/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/comments/{commentId}/likes/check \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 인증된 사용자 본인의 좋아요 상태만 조회할 수 있습니다
+* `isLiked` 필드가 `true`면 좋아요 상태, `false`면 좋아요하지 않은 상태입니다
