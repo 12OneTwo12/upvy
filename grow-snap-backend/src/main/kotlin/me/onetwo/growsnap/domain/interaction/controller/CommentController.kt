@@ -49,13 +49,12 @@ class CommentController(
         @RequestParam(required = false) cursor: String?,
         @RequestParam(defaultValue = "20") limit: Int
     ): Mono<CommentListResponse> {
-        return if (principal != null) {
-            principal.toUserId().flatMap { userId ->
+        return (principal ?: Mono.empty())
+            .toUserId()
+            .flatMap { userId ->
                 commentService.getComments(userId, contentId, cursor, limit)
             }
-        } else {
-            commentService.getComments(null, contentId, cursor, limit)
-        }
+            .switchIfEmpty(commentService.getComments(null, contentId, cursor, limit))
     }
 
     @GetMapping("/comments/{commentId}/replies")
@@ -65,13 +64,12 @@ class CommentController(
         @RequestParam(required = false) cursor: String?,
         @RequestParam(defaultValue = "20") limit: Int
     ): Mono<CommentListResponse> {
-        return if (principal != null) {
-            principal.toUserId().flatMap { userId ->
+        return (principal ?: Mono.empty())
+            .toUserId()
+            .flatMap { userId ->
                 commentService.getReplies(userId, commentId, cursor, limit)
             }
-        } else {
-            commentService.getReplies(null, commentId, cursor, limit)
-        }
+            .switchIfEmpty(commentService.getReplies(null, commentId, cursor, limit))
     }
 
     @DeleteMapping("/comments/{commentId}")

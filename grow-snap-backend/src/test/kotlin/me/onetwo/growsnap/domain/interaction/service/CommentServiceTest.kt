@@ -12,6 +12,7 @@ import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
+import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.growsnap.domain.interaction.repository.CommentRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -36,6 +37,9 @@ class CommentServiceTest {
 
     @MockK
     private lateinit var commentRepository: CommentRepository
+
+    @MockK
+    private lateinit var commentLikeRepository: CommentLikeRepository
 
     @MockK
     private lateinit var analyticsService: AnalyticsService
@@ -189,10 +193,12 @@ class CommentServiceTest {
                 )
             )
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
-            every { commentRepository.countRepliesByParentCommentId(any()) } returns 0
+            every { commentRepository.countRepliesByParentCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
 
             // When
-            val result = commentService.getComments(testContentId, null, 2)
+            val result = commentService.getComments(null, testContentId, null, 2)
 
             // Then
             StepVerifier.create(result)
@@ -228,10 +234,12 @@ class CommentServiceTest {
                 parentComment
             )
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
-            every { commentRepository.countRepliesByParentCommentId(testCommentId) } returns 5
+            every { commentRepository.countRepliesByParentCommentIds(listOf(testCommentId)) } returns mapOf(testCommentId to 5)
+            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
 
             // When
-            val result = commentService.getComments(testContentId, null, 20)
+            val result = commentService.getComments(null, testContentId, null, 20)
 
             // Then
             StepVerifier.create(result)
@@ -299,9 +307,11 @@ class CommentServiceTest {
                 )
             )
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
+            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
 
             // When
-            val result = commentService.getReplies(parentCommentId, null, 2)
+            val result = commentService.getReplies(null, parentCommentId, null, 2)
 
             // Then
             StepVerifier.create(result)
@@ -339,9 +349,11 @@ class CommentServiceTest {
             // limit=20인데 1개만 조회됨 -> hasNext = false
             every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 20) } returns listOf(reply)
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
+            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
 
             // When
-            val result = commentService.getReplies(parentCommentId, null, 20)
+            val result = commentService.getReplies(null, parentCommentId, null, 20)
 
             // Then
             StepVerifier.create(result)

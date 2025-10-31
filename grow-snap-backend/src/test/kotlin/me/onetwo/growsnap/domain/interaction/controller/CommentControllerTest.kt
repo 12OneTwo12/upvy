@@ -68,6 +68,8 @@ class CommentControllerTest {
                 parentCommentId = null,
                 createdAt = "2025-10-23T17:30:00",
                 replyCount = 0,
+                likeCount = 0,
+                isLiked = false
             )
 
             every { commentService.createComment(userId, UUID.fromString(contentId), request) } returns Mono.just(response)
@@ -106,7 +108,9 @@ class CommentControllerTest {
                             fieldWithPath("content").description("댓글 내용"),
                             fieldWithPath("parentCommentId").description("부모 댓글 ID").optional(),
                             fieldWithPath("createdAt").description("작성 시각"),
-                            fieldWithPath("replyCount").description("대댓글 개수")
+                            fieldWithPath("replyCount").description("대댓글 개수"),
+                            fieldWithPath("likeCount").description("좋아요 수"),
+                            fieldWithPath("isLiked").description("현재 사용자의 좋아요 여부")
                         )
                     )
                 )
@@ -160,6 +164,8 @@ class CommentControllerTest {
                 parentCommentId = parentCommentId,
                 createdAt = "2025-10-23T17:30:00",
                 replyCount = 0,
+                likeCount = 0,
+                isLiked = false
             )
 
             every { commentService.createComment(userId, UUID.fromString(contentId), request) } returns Mono.just(response)
@@ -202,6 +208,8 @@ class CommentControllerTest {
                 parentCommentId = parentCommentId,
                 createdAt = "2025-10-23T17:31:00",
                 replyCount = 0,
+                likeCount = 0,
+                isLiked = false
             )
 
             val parentComment = CommentResponse(
@@ -213,7 +221,9 @@ class CommentControllerTest {
                 content = "Parent comment",
                 parentCommentId = null,
                 createdAt = "2025-10-23T17:30:00",
-                replyCount = 1
+                replyCount = 1,
+                likeCount = 0,
+                isLiked = false
             )
 
             val response = CommentListResponse(
@@ -222,7 +232,7 @@ class CommentControllerTest {
                 nextCursor = null
             )
 
-            every { commentService.getComments(UUID.fromString(contentId), null, 20) } returns Mono.just(response)
+            every { commentService.getComments(null, UUID.fromString(contentId), null, 20) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -258,13 +268,15 @@ class CommentControllerTest {
                             fieldWithPath("comments[].parentCommentId").description("부모 댓글 ID (null이면 최상위 댓글)").optional(),
                             fieldWithPath("comments[].createdAt").description("작성 시각"),
                             fieldWithPath("comments[].replyCount").description("대댓글 개수 (0이면 대댓글 없음)"),
+                            fieldWithPath("comments[].likeCount").description("좋아요 수"),
+                            fieldWithPath("comments[].isLiked").description("현재 사용자의 좋아요 여부"),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
                             fieldWithPath("nextCursor").description("다음 페이지 커서").optional()
                         )
                     )
                 )
 
-            verify(exactly = 1) { commentService.getComments(UUID.fromString(contentId), null, 20) }
+            verify(exactly = 1) { commentService.getComments(null, UUID.fromString(contentId), null, 20) }
         }
 
         @Test
@@ -280,7 +292,7 @@ class CommentControllerTest {
                 nextCursor = null
             )
 
-            every { commentService.getComments(UUID.fromString(contentId), null, 20) } returns Mono.just(response)
+            every { commentService.getComments(null, UUID.fromString(contentId), null, 20) } returns Mono.just(response)
 
             // When & Then: 빈 배열 반환 검증
             webTestClient
@@ -292,7 +304,7 @@ class CommentControllerTest {
                 .jsonPath("$.comments.length()").isEqualTo(0)
                 .jsonPath("$.hasNext").isEqualTo(false)
 
-            verify(exactly = 1) { commentService.getComments(UUID.fromString(contentId), null, 20) }
+            verify(exactly = 1) { commentService.getComments(null, UUID.fromString(contentId), null, 20) }
         }
     }
 
@@ -317,7 +329,9 @@ class CommentControllerTest {
                 content = "Reply comment",
                 parentCommentId = parentCommentId,
                 createdAt = "2025-10-23T17:31:00",
-                replyCount = 0
+                replyCount = 0,
+                likeCount = 0,
+                isLiked = false
             )
 
             val response = CommentListResponse(
@@ -326,7 +340,7 @@ class CommentControllerTest {
                 nextCursor = null
             )
 
-            every { commentService.getReplies(UUID.fromString(parentCommentId), null, 20) } returns Mono.just(response)
+            every { commentService.getReplies(null, UUID.fromString(parentCommentId), null, 20) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -362,13 +376,15 @@ class CommentControllerTest {
                             fieldWithPath("comments[].parentCommentId").description("부모 댓글 ID"),
                             fieldWithPath("comments[].createdAt").description("작성 시각"),
                             fieldWithPath("comments[].replyCount").description("대댓글 개수 (대댓글의 대댓글은 지원하지 않으므로 항상 0)"),
+                            fieldWithPath("comments[].likeCount").description("좋아요 수"),
+                            fieldWithPath("comments[].isLiked").description("현재 사용자의 좋아요 여부"),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
                             fieldWithPath("nextCursor").description("다음 페이지 커서").optional()
                         )
                     )
                 )
 
-            verify(exactly = 1) { commentService.getReplies(UUID.fromString(parentCommentId), null, 20) }
+            verify(exactly = 1) { commentService.getReplies(null, UUID.fromString(parentCommentId), null, 20) }
         }
 
         @Test
@@ -384,7 +400,7 @@ class CommentControllerTest {
                 nextCursor = null
             )
 
-            every { commentService.getReplies(UUID.fromString(parentCommentId), null, 20) } returns Mono.just(response)
+            every { commentService.getReplies(null, UUID.fromString(parentCommentId), null, 20) } returns Mono.just(response)
 
             // When & Then: 빈 배열 반환 검증
             webTestClient
@@ -396,7 +412,7 @@ class CommentControllerTest {
                 .jsonPath("$.comments.length()").isEqualTo(0)
                 .jsonPath("$.hasNext").isEqualTo(false)
 
-            verify(exactly = 1) { commentService.getReplies(UUID.fromString(parentCommentId), null, 20) }
+            verify(exactly = 1) { commentService.getReplies(null, UUID.fromString(parentCommentId), null, 20) }
         }
     }
 
