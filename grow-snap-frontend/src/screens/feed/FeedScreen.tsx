@@ -23,6 +23,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeedItem } from '@/components/feed';
+import { CommentModal } from '@/components/comment';
 import { getMainFeed, getFollowingFeed, refreshFeed as refreshFeedApi } from '@/api/feed.api';
 import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
@@ -39,6 +40,8 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefreshing, setAutoRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const scrollYRef = useRef(0);
   const hasAutoRefreshed = useRef(false);
@@ -477,8 +480,8 @@ export default function FeedScreen() {
   };
 
   const handleComment = (contentId: string) => {
-    console.log('Comment:', contentId);
-    // TODO: 댓글 모달 열기
+    setSelectedContentId(contentId);
+    setCommentModalVisible(true);
   };
 
   const handleSave = (contentId: string, isSaved: boolean = false) => {
@@ -687,6 +690,15 @@ export default function FeedScreen() {
         updateCellsBatchingPeriod={50}
         persistentScrollbar={false}
       />
+
+      {/* 댓글 모달 */}
+      {selectedContentId && (
+        <CommentModal
+          visible={commentModalVisible}
+          contentId={selectedContentId}
+          onClose={() => setCommentModalVisible(false)}
+        />
+      )}
     </View>
   );
 }
