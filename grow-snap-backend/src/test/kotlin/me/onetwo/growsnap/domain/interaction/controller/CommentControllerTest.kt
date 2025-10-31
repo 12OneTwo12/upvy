@@ -4,6 +4,7 @@ import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import io.mockk.verify
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.domain.interaction.dto.CommentListResponse
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.dto.CommentResponse
 import me.onetwo.growsnap.domain.interaction.exception.CommentException
@@ -54,7 +55,6 @@ class CommentControllerTest {
             val contentId = UUID.randomUUID().toString()
             val request = CommentRequest(
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null
             )
 
@@ -65,10 +65,11 @@ class CommentControllerTest {
                 userNickname = "TestUser",
                 userProfileImageUrl = null,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = "2025-10-23T17:30:00",
-                replies = emptyList()
+                replyCount = 0,
+                likeCount = 0,
+                isLiked = false
             )
 
             every { commentService.createComment(userId, UUID.fromString(contentId), request) } returns Mono.just(response)
@@ -96,7 +97,6 @@ class CommentControllerTest {
                         ),
                         requestFields(
                             fieldWithPath("content").description("댓글 내용"),
-                            fieldWithPath("timestampSeconds").description("타임스탬프 (초)").optional(),
                             fieldWithPath("parentCommentId").description("부모 댓글 ID (대댓글인 경우)").optional()
                         ),
                         responseFields(
@@ -106,10 +106,11 @@ class CommentControllerTest {
                             fieldWithPath("userNickname").description("작성자 닉네임"),
                             fieldWithPath("userProfileImageUrl").description("작성자 프로필 이미지 URL").optional(),
                             fieldWithPath("content").description("댓글 내용"),
-                            fieldWithPath("timestampSeconds").description("타임스탬프 (초)").optional(),
                             fieldWithPath("parentCommentId").description("부모 댓글 ID").optional(),
                             fieldWithPath("createdAt").description("작성 시각"),
-                            fieldWithPath("replies[]").description("대댓글 목록")
+                            fieldWithPath("replyCount").description("대댓글 개수"),
+                            fieldWithPath("likeCount").description("좋아요 수"),
+                            fieldWithPath("isLiked").description("현재 사용자의 좋아요 여부")
                         )
                     )
                 )
@@ -125,7 +126,6 @@ class CommentControllerTest {
             val contentId = UUID.randomUUID().toString()
             val request = mapOf(
                 "content" to "",
-                "timestampSeconds" to null,
                 "parentCommentId" to null
             )
 
@@ -151,7 +151,6 @@ class CommentControllerTest {
             val parentCommentId = UUID.randomUUID().toString()
             val request = CommentRequest(
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentCommentId
             )
 
@@ -162,10 +161,11 @@ class CommentControllerTest {
                 userNickname = "TestUser",
                 userProfileImageUrl = null,
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentCommentId,
                 createdAt = "2025-10-23T17:30:00",
-                replies = emptyList()
+                replyCount = 0,
+                likeCount = 0,
+                isLiked = false
             )
 
             every { commentService.createComment(userId, UUID.fromString(contentId), request) } returns Mono.just(response)
@@ -205,10 +205,11 @@ class CommentControllerTest {
                 userNickname = "User2",
                 userProfileImageUrl = null,
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentCommentId,
                 createdAt = "2025-10-23T17:31:00",
-                replies = emptyList()
+                replyCount = 0,
+                likeCount = 0,
+                isLiked = false
             )
 
             val parentComment = CommentResponse(
@@ -218,26 +219,32 @@ class CommentControllerTest {
                 userNickname = "User1",
                 userProfileImageUrl = null,
                 content = "Parent comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = "2025-10-23T17:30:00",
-                replies = listOf(reply)
+                replyCount = 1,
+                likeCount = 0,
+                isLiked = false
             )
 
-            every { commentService.getComments(UUID.fromString(contentId)) } returns Flux.just(parentComment)
+            val response = CommentListResponse(
+                comments = listOf(parentComment),
+                hasNext = false,
+                nextCursor = null
+            )
+
+            every { commentService.getComments(null, UUID.fromString(contentId), null, 20) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
-                .mutateWith(mockUser(userId))
                 .get()
                 .uri("${ApiPaths.API_V1}/contents/{contentId}/comments", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$[0].id").isEqualTo(parentCommentId)
-                .jsonPath("$[0].content").isEqualTo("Parent comment")
-                .jsonPath("$[0].replies.length()").isEqualTo(1)
-                .jsonPath("$[0].replies[0].content").isEqualTo("Reply comment")
+                .jsonPath("$.comments[0].id").isEqualTo(parentCommentId)
+                .jsonPath("$.comments[0].content").isEqualTo("Parent comment")
+                .jsonPath("$.comments[0].replyCount").isEqualTo(1)
+                .jsonPath("$.hasNext").isEqualTo(false)
                 .consumeWith(
                     document(
                         "comment-list",
@@ -246,54 +253,166 @@ class CommentControllerTest {
                         pathParameters(
                             parameterWithName("contentId").description("콘텐츠 ID")
                         ),
+                        queryParameters(
+                            parameterWithName("cursor").description("페이징 커서 (댓글 ID)").optional(),
+                            parameterWithName("limit").description("조회 개수 (기본값: 20)").optional()
+                        ),
                         responseFields(
-                            fieldWithPath("[].id").description("댓글 ID"),
-                            fieldWithPath("[].contentId").description("콘텐츠 ID"),
-                            fieldWithPath("[].userId").description("작성자 ID"),
-                            fieldWithPath("[].userNickname").description("작성자 닉네임"),
-                            fieldWithPath("[].userProfileImageUrl").description("작성자 프로필 이미지 URL").optional(),
-                            fieldWithPath("[].content").description("댓글 내용"),
-                            fieldWithPath("[].timestampSeconds").description("타임스탬프 (초)").optional(),
-                            fieldWithPath("[].parentCommentId").description("부모 댓글 ID").optional(),
-                            fieldWithPath("[].createdAt").description("작성 시각"),
-                            fieldWithPath("[].replies[]").description("대댓글 목록"),
-                            fieldWithPath("[].replies[].id").description("대댓글 ID"),
-                            fieldWithPath("[].replies[].contentId").description("콘텐츠 ID"),
-                            fieldWithPath("[].replies[].userId").description("작성자 ID"),
-                            fieldWithPath("[].replies[].userNickname").description("작성자 닉네임"),
-                            fieldWithPath("[].replies[].userProfileImageUrl").description("작성자 프로필 이미지 URL").optional(),
-                            fieldWithPath("[].replies[].content").description("댓글 내용"),
-                            fieldWithPath("[].replies[].timestampSeconds").description("타임스탬프 (초)").optional(),
-                            fieldWithPath("[].replies[].parentCommentId").description("부모 댓글 ID").optional(),
-                            fieldWithPath("[].replies[].createdAt").description("작성 시각"),
-                            fieldWithPath("[].replies[].replies[]").description("대대댓글 목록")
+                            fieldWithPath("comments[]").description("댓글 목록 (인기순 정렬: 좋아요 수 + 대댓글 수 내림차순, 같은 점수면 오래된 순)"),
+                            fieldWithPath("comments[].id").description("댓글 ID"),
+                            fieldWithPath("comments[].contentId").description("콘텐츠 ID"),
+                            fieldWithPath("comments[].userId").description("작성자 ID"),
+                            fieldWithPath("comments[].userNickname").description("작성자 닉네임"),
+                            fieldWithPath("comments[].userProfileImageUrl").description("작성자 프로필 이미지 URL").optional(),
+                            fieldWithPath("comments[].content").description("댓글 내용"),
+                            fieldWithPath("comments[].parentCommentId").description("부모 댓글 ID (null이면 최상위 댓글)").optional(),
+                            fieldWithPath("comments[].createdAt").description("작성 시각"),
+                            fieldWithPath("comments[].replyCount").description("대댓글 개수 (0이면 대댓글 없음)"),
+                            fieldWithPath("comments[].likeCount").description("좋아요 수"),
+                            fieldWithPath("comments[].isLiked").description("현재 사용자의 좋아요 여부"),
+                            fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
+                            fieldWithPath("nextCursor").description("다음 페이지 커서").optional()
                         )
                     )
                 )
 
-            verify(exactly = 1) { commentService.getComments(UUID.fromString(contentId)) }
+            verify(exactly = 1) { commentService.getComments(null, UUID.fromString(contentId), null, 20) }
         }
 
         @Test
-        @DisplayName("댓글이 없으면, 빈 배열을 반환한다")
-        fun getComments_WithNoComments_ReturnsEmptyArray() {
+        @DisplayName("댓글이 없으면, 빈 comments 배열을 반환한다")
+        fun getComments_WithNoComments_ReturnsEmptyList() {
             // Given: 댓글이 없는 콘텐츠
             val userId = UUID.randomUUID()
             val contentId = UUID.randomUUID().toString()
 
-            every { commentService.getComments(UUID.fromString(contentId)) } returns Flux.empty()
+            val response = CommentListResponse(
+                comments = emptyList(),
+                hasNext = false,
+                nextCursor = null
+            )
+
+            every { commentService.getComments(null, UUID.fromString(contentId), null, 20) } returns Mono.just(response)
 
             // When & Then: 빈 배열 반환 검증
             webTestClient
-                .mutateWith(mockUser(userId))
                 .get()
                 .uri("${ApiPaths.API_V1}/contents/$contentId/comments")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .json("[]")
+                .jsonPath("$.comments.length()").isEqualTo(0)
+                .jsonPath("$.hasNext").isEqualTo(false)
 
-            verify(exactly = 1) { commentService.getComments(UUID.fromString(contentId)) }
+            verify(exactly = 1) { commentService.getComments(null, UUID.fromString(contentId), null, 20) }
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/comments/{commentId}/replies - 대댓글 목록 조회")
+    inner class GetReplies {
+
+        @Test
+        @DisplayName("대댓글 목록을 페이징으로 조회하면, CommentListResponse를 반환한다")
+        fun getReplies_WithPagination_ReturnsCommentListResponse() {
+            // Given: 대댓글이 있는 댓글
+            val userId = UUID.randomUUID()
+            val parentCommentId = UUID.randomUUID().toString()
+            val replyId = UUID.randomUUID().toString()
+
+            val reply = CommentResponse(
+                id = replyId,
+                contentId = UUID.randomUUID().toString(),
+                userId = userId.toString(),
+                userNickname = "ReplyUser",
+                userProfileImageUrl = null,
+                content = "Reply comment",
+                parentCommentId = parentCommentId,
+                createdAt = "2025-10-23T17:31:00",
+                replyCount = 0,
+                likeCount = 0,
+                isLiked = false
+            )
+
+            val response = CommentListResponse(
+                comments = listOf(reply),
+                hasNext = false,
+                nextCursor = null
+            )
+
+            every { commentService.getReplies(null, UUID.fromString(parentCommentId), null, 20) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .get()
+                .uri("${ApiPaths.API_V1}/comments/{commentId}/replies", parentCommentId)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.comments[0].id").isEqualTo(replyId)
+                .jsonPath("$.comments[0].content").isEqualTo("Reply comment")
+                .jsonPath("$.comments[0].parentCommentId").isEqualTo(parentCommentId)
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .consumeWith(
+                    document(
+                        "comment-replies",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        pathParameters(
+                            parameterWithName("commentId").description("부모 댓글 ID")
+                        ),
+                        queryParameters(
+                            parameterWithName("cursor").description("페이징 커서 (댓글 ID)").optional(),
+                            parameterWithName("limit").description("조회 개수 (기본값: 20)").optional()
+                        ),
+                        responseFields(
+                            fieldWithPath("comments[]").description("대댓글 목록 (작성 시간 오름차순 정렬)"),
+                            fieldWithPath("comments[].id").description("댓글 ID"),
+                            fieldWithPath("comments[].contentId").description("콘텐츠 ID"),
+                            fieldWithPath("comments[].userId").description("작성자 ID"),
+                            fieldWithPath("comments[].userNickname").description("작성자 닉네임"),
+                            fieldWithPath("comments[].userProfileImageUrl").description("작성자 프로필 이미지 URL").optional(),
+                            fieldWithPath("comments[].content").description("댓글 내용"),
+                            fieldWithPath("comments[].parentCommentId").description("부모 댓글 ID"),
+                            fieldWithPath("comments[].createdAt").description("작성 시각"),
+                            fieldWithPath("comments[].replyCount").description("대댓글 개수 (대댓글의 대댓글은 지원하지 않으므로 항상 0)"),
+                            fieldWithPath("comments[].likeCount").description("좋아요 수"),
+                            fieldWithPath("comments[].isLiked").description("현재 사용자의 좋아요 여부"),
+                            fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
+                            fieldWithPath("nextCursor").description("다음 페이지 커서").optional()
+                        )
+                    )
+                )
+
+            verify(exactly = 1) { commentService.getReplies(null, UUID.fromString(parentCommentId), null, 20) }
+        }
+
+        @Test
+        @DisplayName("대댓글이 없으면, 빈 comments 배열을 반환한다")
+        fun getReplies_WithNoReplies_ReturnsEmptyList() {
+            // Given: 대댓글이 없는 댓글
+            val userId = UUID.randomUUID()
+            val parentCommentId = UUID.randomUUID().toString()
+
+            val response = CommentListResponse(
+                comments = emptyList(),
+                hasNext = false,
+                nextCursor = null
+            )
+
+            every { commentService.getReplies(null, UUID.fromString(parentCommentId), null, 20) } returns Mono.just(response)
+
+            // When & Then: 빈 배열 반환 검증
+            webTestClient
+                .get()
+                .uri("${ApiPaths.API_V1}/comments/$parentCommentId/replies")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.comments.length()").isEqualTo(0)
+                .jsonPath("$.hasNext").isEqualTo(false)
+
+            verify(exactly = 1) { commentService.getReplies(null, UUID.fromString(parentCommentId), null, 20) }
         }
     }
 

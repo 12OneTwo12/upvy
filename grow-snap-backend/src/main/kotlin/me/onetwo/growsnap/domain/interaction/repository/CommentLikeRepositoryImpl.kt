@@ -68,10 +68,12 @@ class CommentLikeRepositoryImpl(
      */
     override fun delete(userId: UUID, commentId: UUID) {
         val now = LocalDateTime.now()
+        val unixTimestamp = now.toEpochSecond(java.time.ZoneOffset.UTC)
 
         dslContext
             .update(USER_COMMENT_LIKES)
             .set(USER_COMMENT_LIKES.DELETED_AT, now)
+            .set(USER_COMMENT_LIKES.DELETED_AT_UNIX, unixTimestamp)
             .set(USER_COMMENT_LIKES.UPDATED_AT, now)
             .set(USER_COMMENT_LIKES.UPDATED_BY, userId.toString())
             .where(USER_COMMENT_LIKES.USER_ID.eq(userId.toString()))
@@ -143,6 +145,63 @@ class CommentLikeRepositoryImpl(
             .where(USER_COMMENT_LIKES.COMMENT_ID.eq(commentId.toString()))
             .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
             .fetchOne(0, Int::class.java) ?: 0
+    }
+
+    /**
+     * 여러 댓글의 좋아요 수 일괄 조회 (N+1 문제 해결)
+     *
+     * deleted_at이 NULL인 레코드만 카운트합니다.
+     *
+     * @param commentIds 댓글 ID 목록
+     * @return 댓글 ID를 키로, 좋아요 수를 값으로 하는 Map
+     */
+    override fun countByCommentIds(commentIds: List<UUID>): Map<UUID, Int> {
+        if (commentIds.isEmpty()) {
+            return emptyMap()
+        }
+
+        val commentIdStrings = commentIds.map { it.toString() }
+
+        return dslContext
+            .select(
+                USER_COMMENT_LIKES.COMMENT_ID,
+                org.jooq.impl.DSL.count()
+            )
+            .from(USER_COMMENT_LIKES)
+            .where(USER_COMMENT_LIKES.COMMENT_ID.`in`(commentIdStrings))
+            .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
+            .groupBy(USER_COMMENT_LIKES.COMMENT_ID)
+            .fetch()
+            .associate { record ->
+                UUID.fromString(record.value1()) to record.value2()
+            }
+    }
+
+    /**
+     * 사용자가 좋아요한 댓글 ID 목록 조회 (N+1 문제 해결)
+     *
+     * deleted_at이 NULL인 레코드만 조회합니다.
+     *
+     * @param userId 사용자 ID
+     * @param commentIds 댓글 ID 목록
+     * @return 사용자가 좋아요한 댓글 ID 집합
+     */
+    override fun findLikedCommentIds(userId: UUID, commentIds: List<UUID>): Set<UUID> {
+        if (commentIds.isEmpty()) {
+            return emptySet()
+        }
+
+        val commentIdStrings = commentIds.map { it.toString() }
+
+        return dslContext
+            .select(USER_COMMENT_LIKES.COMMENT_ID)
+            .from(USER_COMMENT_LIKES)
+            .where(USER_COMMENT_LIKES.USER_ID.eq(userId.toString()))
+            .and(USER_COMMENT_LIKES.COMMENT_ID.`in`(commentIdStrings))
+            .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
+            .fetch()
+            .map { UUID.fromString(it.value1()) }
+            .toSet()
     }
 
     /**

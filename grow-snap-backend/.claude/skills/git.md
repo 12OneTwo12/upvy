@@ -12,53 +12,53 @@ Conventional Commits 스타일을 따르며, 명확한 변경 이력 추적을 �
 ### 기본 구조
 
 ```
-[Type] 간단한 설명
+<type>(<scope>): <subject>
 
-상세 설명 (선택사항)
+<body> (optional)
 
-Closes #이슈번호
+<footer> (optional)
 ```
 
 ### Type 분류
 
-| Type | 사용 시기 | 예시 |
-|------|----------|------|
-| **[Feat]** | 새로운 기능 추가 | `[Feat] Google OAuth 로그인 구현` |
-| **[Fix]** | 버그 수정 | `[Fix] 좋아요 중복 처리 문제 해결` |
-| **[Refactor]** | 코드 리팩토링 (기능 변경 없음) | `[Refactor] UserService 책임 분리` |
-| **[Docs]** | 문서 수정/추가 | `[Docs] API 명세서 업데이트` |
-| **[Test]** | 테스트 추가/수정 | `[Test] PostController 통합 테스트 추가` |
-| **[Chore]** | 빌드/설정 변경 | `[Chore] Gradle 의존성 업데이트` |
-| **[Perf]** | 성능 개선 | `[Perf] 게시글 조회 쿼리 최적화` |
-| **[Style]** | 코드 스타일 변경 (포맷팅 등) | `[Style] Ktlint 적용` |
+| Type | 설명 | 예시 |
+|------|------|------|
+| **feat** | 기능 추가 | `feat(auth): 사용자 인증 기능 추가` |
+| **fix** | 버그 수정 | `fix(like): 좋아요 중복 처리 문제 해결` |
+| **refactor** | 리팩토링 (기능 변경 없음) | `refactor(user): UserService 책임 분리` |
+| **docs** | 문서 수정/추가 | `docs(api): API 명세서 업데이트` |
+| **test** | 테스트 추가/수정 | `test(post): PostController 통합 테스트 추가` |
+| **chore** | 빌드/설정 변경 | `chore(deps): 의존성 업데이트` |
+| **perf** | 성능 개선 | `perf(post): 게시글 조회 쿼리 최적화` |
+| **style** | 코드 스타일 변경 (포맷팅 등) | `style: Prettier 적용` |
 
 ### 커밋 메시지 작성 규칙
 
-1. **한글 사용**: 제목과 본문 모두 한글로 작성
-2. **명령형 현재 시제**: "추가", "수정", "구현" (X: "추가했음", "수정됨")
-3. **간결한 제목**: 50자 이내로 요약
+1. **제목은 50자 이내, 본문은 72자 이내**
+2. **마침표 `.` 사용 금지**
+3. **명령형 현재 시제**: "추가", "수정", "구현"
 4. **본문 상세 설명** (선택):
    - 무엇을 왜 변경했는지 설명
    - 어떻게는 코드로 설명되므로 생략 가능
-5. **이슈 연결**: 관련 이슈가 있으면 하단에 `Closes #번호` 추가
+5. **이슈 연결**: `Closes #번호` 추가
 
 ### 커밋 예시
 
 ```
-[Feat] 사용자 프로필 조회 API 구현
+feat(profile): 사용자 프로필 조회 API 구현
 
-- GET /api/v1/users/{userId}/profile 엔드포인트 추가
-- UserProfileResponse DTO 생성
-- 팔로워/팔로잉 수 집계 로직 추가
+GET /api/v1/users/{userId}/profile 엔드포인트 추가
+UserProfileResponse DTO 생성
+팔로워/팔로잉 수 집계 로직 추가
 
 Closes #42
 ```
 
 ```
-[Fix] Soft Delete 적용 시 deletedAt NULL 체크 누락 해결
+fix(repository): Soft Delete 적용 시 deletedAt NULL 체크 누락 해결
 
-PostRepository의 findAll() 메서드에서 deletedAt IS NULL 조건이
-누락되어 삭제된 게시글이 조회되던 문제 수정.
+PostRepository의 findAll() 메서드에서 deletedAt IS NULL 조건 누락
+삭제된 게시글이 조회되던 문제 수정
 
 Fixes #58
 ```
@@ -86,7 +86,7 @@ Fixes #58
 ### 커밋 단위 원칙
 
 1. **하나의 논리적 변경 = 하나의 커밋**
-   - ✅ GOOD: `[Feat] 게시글 좋아요 기능 추가` (Controller + Service + Repository + Tests)
+   - ✅ GOOD: `feat(like): 게시글 좋아요 기능 추가` (Controller + Service + Repository + Tests)
    - ❌ BAD: 여러 기능을 한 커밋에 섞음
 
 2. **테스트가 통과하는 단위로 커밋**
@@ -95,7 +95,7 @@ Fixes #58
 
 3. **문서화와 함께 커밋**
    - KDoc, REST Docs, Asciidoc 작성 완료 후 커밋
-   - 문서 누락 시 별도 `[Docs]` 커밋으로 추가
+   - 문서 누락 시 별도 `docs(...)` 커밋으로 추가
 
 4. **독립적으로 리뷰 가능한 크기**
    - 한 커밋이 500줄을 초과하지 않도록 권장
@@ -105,11 +105,11 @@ Fixes #58
 
 **✅ GOOD: 적절한 커밋 단위**
 ```
-Commit 1: [Feat] 댓글 생성 API 구현
-Commit 2: [Feat] 댓글 수정 API 구현
-Commit 3: [Feat] 댓글 삭제 API 구현
-Commit 4: [Test] 댓글 API 통합 테스트 추가
-Commit 5: [Docs] 댓글 API 명세서 작성
+Commit 1: feat(comment): 댓글 생성 API 구현
+Commit 2: feat(comment): 댓글 수정 API 구현
+Commit 3: feat(comment): 댓글 삭제 API 구현
+Commit 4: test(comment): 댓글 API 통합 테스트 추가
+Commit 5: docs(comment): 댓글 API 명세서 작성
 ```
 
 **❌ BAD: 너무 작은 단위**
@@ -123,7 +123,7 @@ Commit 5: 테스트 작성  ← 각 레이어를 분리하면 리뷰가 어려�
 
 **❌ BAD: 너무 큰 단위**
 ```
-Commit 1: [Feat] 사용자 관리 시스템 전체 구현
+Commit 1: feat(user): 사용자 관리 시스템 전체 구현
 - 로그인, 로그아웃, 프로필 조회, 프로필 수정, 팔로우...
 ← 한 커밋에 너무 많은 기능이 섞임
 ```
@@ -258,7 +258,7 @@ git rebase -i HEAD~3
 ### 커밋 전 체크리스트
 - [ ] 빌드가 성공하는가? (`./gradlew build`)
 - [ ] 모든 테스트가 통과하는가? (`./gradlew test`)
-- [ ] 커밋 메시지 형식이 올바른가? (`[Type] 설명`)
+- [ ] 커밋 메시지 형식이 올바른가? (`<type>(<scope>): <subject>`)
 - [ ] KDoc과 REST Docs가 작성되었는가?
 
 ### PR 생성 전 체크리스트

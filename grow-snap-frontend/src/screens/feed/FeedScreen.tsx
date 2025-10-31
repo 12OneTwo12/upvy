@@ -23,9 +23,11 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeedItem } from '@/components/feed';
+import { CommentModal } from '@/components/comment';
 import { getMainFeed, getFollowingFeed, refreshFeed as refreshFeedApi } from '@/api/feed.api';
 import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
+import { shareContent } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
 import type { FeedTab, FeedItem as FeedItemType } from '@/types/feed.types';
 
@@ -38,6 +40,8 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefreshing, setAutoRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const scrollYRef = useRef(0);
   const hasAutoRefreshed = useRef(false);
@@ -79,9 +83,9 @@ export default function FeedScreen() {
   const likeMutation = useMutation({
     mutationFn: async ({ contentId, isLiked }: { contentId: string; isLiked: boolean }) => {
       if (isLiked) {
-        await deleteLike(contentId);
+        return await deleteLike(contentId);
       } else {
-        await createLike(contentId);
+        return await createLike(contentId);
       }
     },
     onMutate: async ({ contentId }) => {
@@ -116,6 +120,30 @@ export default function FeedScreen() {
 
       return { previousData };
     },
+    onSuccess: (response) => {
+      // 백엔드 응답으로 정확한 값 업데이트
+      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            content: page.content.map((item: FeedItemType) =>
+              item.contentId === response.contentId
+                ? {
+                    ...item,
+                    interactions: {
+                      ...item.interactions,
+                      isLiked: response.isLiked,
+                      likeCount: response.likeCount,
+                    },
+                  }
+                : item
+            ),
+          })),
+        };
+      });
+    },
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousData) {
@@ -128,9 +156,9 @@ export default function FeedScreen() {
   const saveMutation = useMutation({
     mutationFn: async ({ contentId, isSaved }: { contentId: string; isSaved: boolean }) => {
       if (isSaved) {
-        await deleteSave(contentId);
+        return await deleteSave(contentId);
       } else {
-        await createSave(contentId);
+        return await createSave(contentId);
       }
     },
     onMutate: async ({ contentId }) => {
@@ -163,6 +191,30 @@ export default function FeedScreen() {
       });
 
       return { previousData };
+    },
+    onSuccess: (response) => {
+      // 백엔드 응답으로 정확한 값 업데이트
+      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            content: page.content.map((item: FeedItemType) =>
+              item.contentId === response.contentId
+                ? {
+                    ...item,
+                    interactions: {
+                      ...item.interactions,
+                      isSaved: response.isSaved,
+                      saveCount: response.saveCount,
+                    },
+                  }
+                : item
+            ),
+          })),
+        };
+      });
     },
     onError: (err, variables, context) => {
       if (context?.previousData) {
@@ -235,7 +287,7 @@ export default function FeedScreen() {
     height: 1920,
     title: '',
     description: '',
-    category: 'GROWTH',
+    category: 'TECH',
     tags: [],
     creator: {
       userId: 'loading',
@@ -331,10 +383,9 @@ export default function FeedScreen() {
 
   // 네비게이션 탭 재클릭 시 새로고침 (Instagram 스타일)
   useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress' as any, async (e) => {
+    const unsubscribe = navigation.addListener('tabPress' as any, async () => {
       // 이미 피드 화면에 있을 때 탭을 다시 누르면
       if (navigation.isFocused()) {
-        e.preventDefault();
         // 첫 번째부터 새로고침
         setRefreshing(true);
         try {
@@ -429,17 +480,21 @@ export default function FeedScreen() {
   };
 
   const handleComment = (contentId: string) => {
-    console.log('Comment:', contentId);
-    // TODO: 댓글 모달 열기
+    setSelectedContentId(contentId);
+    setCommentModalVisible(true);
   };
 
   const handleSave = (contentId: string, isSaved: boolean = false) => {
     saveMutation.mutate({ contentId, isSaved });
   };
 
-  const handleShare = (contentId: string) => {
-    console.log('Share:', contentId);
-    // TODO: 공유 기능
+  const handleShare = async (contentId: string) => {
+    try {
+      await shareContent(contentId);
+      // TODO: 공유 UI (공유 링크 가져오기, 클립보드 복사 등)
+    } catch (error) {
+      console.error('Share failed:', error);
+    }
   };
 
   const handleFollow = (userId: string, isFollowing: boolean = false) => {
@@ -600,7 +655,7 @@ export default function FeedScreen() {
         ref={flatListRef}
         data={displayItems}
         renderItem={renderItem}
-        keyExtractor={(item) => item.uniqueKey}
+        keyExtractor={(item) => (item as FeedItemType & { uniqueKey: string }).uniqueKey}
         extraData={currentIndex}
         showsVerticalScrollIndicator={false}
         snapToInterval={SCREEN_HEIGHT}
@@ -635,6 +690,15 @@ export default function FeedScreen() {
         updateCellsBatchingPeriod={50}
         persistentScrollbar={false}
       />
+
+      {/* 댓글 모달 */}
+      {selectedContentId && (
+        <CommentModal
+          visible={commentModalVisible}
+          contentId={selectedContentId}
+          onClose={() => setCommentModalVisible(false)}
+        />
+      )}
     </View>
   );
 }

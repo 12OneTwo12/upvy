@@ -14,7 +14,6 @@ import java.util.UUID
  * @property userId 작성자 ID
  * @property parentCommentId 부모 댓글 ID (대댓글인 경우)
  * @property content 댓글 내용
- * @property timestampSeconds 타임스탬프 (비디오의 특정 시점에 대한 댓글)
  * @property createdAt 생성 시각
  * @property createdBy 생성한 사용자 ID
  * @property updatedAt 최종 수정 시각
@@ -27,7 +26,6 @@ data class Comment(
     val userId: UUID,
     val parentCommentId: UUID? = null,
     val content: String,
-    val timestampSeconds: Int? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val createdBy: UUID? = null,
     val updatedAt: LocalDateTime = LocalDateTime.now(),

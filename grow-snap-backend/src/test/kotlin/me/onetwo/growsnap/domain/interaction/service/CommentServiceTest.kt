@@ -12,9 +12,11 @@ import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
+import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.growsnap.domain.interaction.repository.CommentRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -35,6 +37,9 @@ class CommentServiceTest {
 
     @MockK
     private lateinit var commentRepository: CommentRepository
+
+    @MockK
+    private lateinit var commentLikeRepository: CommentLikeRepository
 
     @MockK
     private lateinit var analyticsService: AnalyticsService
@@ -62,7 +67,6 @@ class CommentServiceTest {
             // Given
             val request = CommentRequest(
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null
             )
 
@@ -71,7 +75,6 @@ class CommentServiceTest {
                 contentId = testContentId,
                 userId = testUserId,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = testUserId,
@@ -119,7 +122,6 @@ class CommentServiceTest {
             val parentCommentId = UUID.randomUUID()
             val request = CommentRequest(
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentCommentId.toString()
             )
 
@@ -138,19 +140,18 @@ class CommentServiceTest {
     }
 
     @Nested
-    @DisplayName("getComments - 댓글 목록 조회")
+    @DisplayName("getComments - 댓글 목록 페이징 조회")
     inner class GetComments {
 
         @Test
-        @DisplayName("콘텐츠의 댓글을 조회하면, 계층 구조로 반환한다")
-        fun getComments_ReturnsHierarchy() {
+        @DisplayName("콘텐츠의 댓글을 페이징 조회하면, CommentListResponse를 반환한다")
+        fun getComments_WithPagination_ReturnsCommentListResponse() {
             // Given
-            val parentComment = Comment(
+            val comment1 = Comment(
                 id = testCommentId,
                 contentId = testContentId,
                 userId = testUserId,
-                content = "Parent comment",
-                timestampSeconds = null,
+                content = "Comment 1",
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = testUserId,
@@ -158,14 +159,13 @@ class CommentServiceTest {
                 updatedBy = testUserId
             )
 
-            val replyCommentId = UUID.randomUUID()
-            val replyComment = Comment(
-                id = replyCommentId,
+            val comment2Id = UUID.randomUUID()
+            val comment2 = Comment(
+                id = comment2Id,
                 contentId = testContentId,
                 userId = testUserId,
-                content = "Reply comment",
-                timestampSeconds = null,
-                parentCommentId = testCommentId,
+                content = "Comment 2",
+                parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = testUserId,
                 updatedAt = LocalDateTime.now(),
@@ -176,20 +176,191 @@ class CommentServiceTest {
                 testUserId to Pair("TestUser", "https://example.com/profile.jpg")
             )
 
-            every { commentRepository.findByContentId(testContentId) } returns listOf(parentComment, replyComment)
+            // limit=2로 요청하지만, limit+1=3개를 조회하여 hasNext 확인
+            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 2) } returns listOf(
+                comment1,
+                comment2,
+                Comment(
+                    id = UUID.randomUUID(),
+                    contentId = testContentId,
+                    userId = testUserId,
+                    content = "Comment 3",
+                    parentCommentId = null,
+                    createdAt = LocalDateTime.now(),
+                    createdBy = testUserId,
+                    updatedAt = LocalDateTime.now(),
+                    updatedBy = testUserId
+                )
+            )
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
+            every { commentRepository.countRepliesByParentCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
 
             // When
-            val result = commentService.getComments(testContentId)
+            val result = commentService.getComments(null, testContentId, null, 2)
 
             // Then
             StepVerifier.create(result)
                 .assertNext { response ->
-                    assertEquals(testCommentId.toString(), response.id)
-                    assertEquals("Parent comment", response.content)
-                    assertEquals(1, response.replies.size)
-                    assertEquals(replyCommentId.toString(), response.replies[0].id)
-                    assertEquals("Reply comment", response.replies[0].content)
+                    assertEquals(2, response.comments.size)
+                    assertEquals(true, response.hasNext)
+                    assertEquals(comment2Id.toString(), response.nextCursor)
+                }
+                .verifyComplete()
+        }
+
+        @Test
+        @DisplayName("대댓글은 프론트엔드 요청 시에만 로드되도록 빈 리스트가 반환된다")
+        fun getComments_DoesNotPreloadReplies() {
+            // Given
+            val parentComment = Comment(
+                id = testCommentId,
+                contentId = testContentId,
+                userId = testUserId,
+                content = "Parent comment",
+                parentCommentId = null,
+                createdAt = LocalDateTime.now(),
+                createdBy = testUserId,
+                updatedAt = LocalDateTime.now(),
+                updatedBy = testUserId
+            )
+
+            val userInfoMap = mapOf(
+                testUserId to Pair("TestUser", "https://example.com/profile.jpg")
+            )
+
+            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 20) } returns listOf(
+                parentComment
+            )
+            every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
+            every { commentRepository.countRepliesByParentCommentIds(listOf(testCommentId)) } returns mapOf(testCommentId to 5)
+            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
+
+            // When
+            val result = commentService.getComments(null, testContentId, null, 20)
+
+            // Then
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertEquals(1, response.comments.size)
+                    assertEquals(5, response.comments[0].replyCount) // 개수만 표시
+                }
+                .verifyComplete()
+        }
+    }
+
+    @Nested
+    @DisplayName("getReplies - 대댓글 목록 페이징 조회")
+    inner class GetReplies {
+
+        @Test
+        @DisplayName("부모 댓글의 대댓글을 페이징 조회하면, CommentListResponse를 반환한다")
+        fun getReplies_WithPagination_ReturnsCommentListResponse() {
+            // Given
+            val parentCommentId = UUID.randomUUID()
+            val reply1Id = UUID.randomUUID()
+            val reply2Id = UUID.randomUUID()
+
+            val reply1 = Comment(
+                id = reply1Id,
+                contentId = testContentId,
+                userId = testUserId,
+                content = "Reply 1",
+                parentCommentId = parentCommentId,
+                createdAt = LocalDateTime.now(),
+                createdBy = testUserId,
+                updatedAt = LocalDateTime.now(),
+                updatedBy = testUserId
+            )
+
+            val reply2 = Comment(
+                id = reply2Id,
+                contentId = testContentId,
+                userId = testUserId,
+                content = "Reply 2",
+                parentCommentId = parentCommentId,
+                createdAt = LocalDateTime.now(),
+                createdBy = testUserId,
+                updatedAt = LocalDateTime.now(),
+                updatedBy = testUserId
+            )
+
+            val userInfoMap = mapOf(
+                testUserId to Pair("TestUser", "https://example.com/profile.jpg")
+            )
+
+            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 2) } returns listOf(
+                reply1,
+                reply2,
+                Comment(
+                    id = UUID.randomUUID(),
+                    contentId = testContentId,
+                    userId = testUserId,
+                    content = "Reply 3",
+                    parentCommentId = parentCommentId,
+                    createdAt = LocalDateTime.now(),
+                    createdBy = testUserId,
+                    updatedAt = LocalDateTime.now(),
+                    updatedBy = testUserId
+                )
+            )
+            every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
+            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
+
+            // When
+            val result = commentService.getReplies(null, parentCommentId, null, 2)
+
+            // Then
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertEquals(2, response.comments.size)
+                    assertEquals(true, response.hasNext)
+                    assertEquals(reply2Id.toString(), response.nextCursor)
+                    assertEquals("Reply 1", response.comments[0].content)
+                    assertEquals("Reply 2", response.comments[1].content)
+                }
+                .verifyComplete()
+        }
+
+        @Test
+        @DisplayName("더 이상 조회할 대댓글이 없으면, hasNext가 false이다")
+        fun getReplies_NoMoreReplies_HasNextIsFalse() {
+            // Given
+            val parentCommentId = UUID.randomUUID()
+            val reply = Comment(
+                id = UUID.randomUUID(),
+                contentId = testContentId,
+                userId = testUserId,
+                content = "Last reply",
+                parentCommentId = parentCommentId,
+                createdAt = LocalDateTime.now(),
+                createdBy = testUserId,
+                updatedAt = LocalDateTime.now(),
+                updatedBy = testUserId
+            )
+
+            val userInfoMap = mapOf(
+                testUserId to Pair("TestUser", "https://example.com/profile.jpg")
+            )
+
+            // limit=20인데 1개만 조회됨 -> hasNext = false
+            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 20) } returns listOf(reply)
+            every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
+            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
+
+            // When
+            val result = commentService.getReplies(null, parentCommentId, null, 20)
+
+            // Then
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertEquals(1, response.comments.size)
+                    assertEquals(false, response.hasNext)
+                    assertNull(response.nextCursor)
                 }
                 .verifyComplete()
         }
@@ -208,7 +379,6 @@ class CommentServiceTest {
                 contentId = testContentId,
                 userId = testUserId,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = testUserId,
@@ -258,7 +428,6 @@ class CommentServiceTest {
                 contentId = testContentId,
                 userId = otherUserId,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = otherUserId,

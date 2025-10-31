@@ -56,33 +56,42 @@ export const API_ENDPOINTS = {
     REFRESH: '/feed/refresh',
   },
 
-  // Like (백엔드 스펙: POST/DELETE 방식)
+  // Like (백엔드: LikeController)
   LIKE: {
-    CREATE: (contentId: string) => `/likes/${contentId}`,
-    DELETE: (contentId: string) => `/likes/${contentId}`,
-    CHECK: (contentId: string) => `/likes/${contentId}/check`,
-    COUNT: (contentId: string) => `/likes/${contentId}/count`,
+    CREATE: (contentId: string) => `/contents/${contentId}/like`,
+    DELETE: (contentId: string) => `/contents/${contentId}/like`,
+    STATUS: (contentId: string) => `/contents/${contentId}/like/status`,
+    COUNT: (contentId: string) => `/contents/${contentId}/likes`,
   },
 
-  // Comment
+  // Comment (백엔드: CommentController)
   COMMENT: {
-    CREATE: '/comments',
-    LIST: (contentId: string) => `/comments/${contentId}`,
+    CREATE: (contentId: string) => `/contents/${contentId}/comments`,
+    LIST: (contentId: string) => `/contents/${contentId}/comments`,
+    REPLIES: (commentId: string) => `/comments/${commentId}/replies`,
     DELETE: (commentId: string) => `/comments/${commentId}`,
   },
 
-  // Save (백엔드 스펙: POST/DELETE 방식)
-  SAVE: {
-    CREATE: (contentId: string) => `/saves/${contentId}`,
-    DELETE: (contentId: string) => `/saves/${contentId}`,
-    CHECK: (contentId: string) => `/saves/${contentId}/check`,
-    LIST: '/saves/me',
+  // Comment Like (백엔드: CommentLikeController)
+  COMMENT_LIKE: {
+    CREATE: (commentId: string) => `/comments/${commentId}/likes`,
+    DELETE: (commentId: string) => `/comments/${commentId}/likes`,
+    COUNT: (commentId: string) => `/comments/${commentId}/likes/count`,
+    STATUS: (commentId: string) => `/comments/${commentId}/likes/check`,
   },
 
-  // Share
+  // Save (백엔드: SaveController)
+  SAVE: {
+    CREATE: (contentId: string) => `/contents/${contentId}/save`,
+    DELETE: (contentId: string) => `/contents/${contentId}/save`,
+    STATUS: (contentId: string) => `/contents/${contentId}/save/status`,
+    LIST: '/users/me/saved-contents',
+  },
+
+  // Share (백엔드: ShareController)
   SHARE: {
-    CREATE: (contentId: string) => `/shares/${contentId}`,
-    GET_LINK: (contentId: string) => `/shares/${contentId}/link`,
+    CREATE: (contentId: string) => `/contents/${contentId}/share`,
+    GET_LINK: (contentId: string) => `/contents/${contentId}/share-link`,
   },
 
   // Analytics

@@ -5,6 +5,7 @@ import me.onetwo.growsnap.jooq.generated.tables.UserLikes.Companion.USER_LIKES
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -25,11 +26,12 @@ class UserLikeRepositoryImpl(
      *
      * ### 처리 흐름
      * 1. user_likes 테이블에 INSERT
-     * 2. created_at, created_by, updated_at, updated_by 자동 설정
+     * 2. created_at, created_by, updated_at, updated_by, deleted_at_unix(0) 자동 설정
      *
      * ### 비즈니스 규칙
-     * - UNIQUE 제약조건 (user_id, content_id)으로 중복 방지
-     * - 이미 좋아요가 있으면 DuplicateKeyException 발생
+     * - UNIQUE 제약조건 (user_id, content_id, deleted_at_unix)으로 중복 방지
+     * - deleted_at_unix = 0: 활성 상태
+     * - deleted_at_unix = Unix timestamp: 삭제된 상태
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
@@ -46,6 +48,7 @@ class UserLikeRepositoryImpl(
             .set(USER_LIKES.CREATED_BY, userId.toString())
             .set(USER_LIKES.UPDATED_AT, now)
             .set(USER_LIKES.UPDATED_BY, userId.toString())
+            .set(USER_LIKES.DELETED_AT_UNIX, 0L)
             .returning()
             .fetchOne()
             ?.let {
@@ -66,34 +69,37 @@ class UserLikeRepositoryImpl(
      * 좋아요 삭제 (Soft Delete)
      *
      * ### 처리 흐름
-     * 1. user_likes 테이블에서 deleted_at 업데이트
+     * 1. user_likes 테이블에서 deleted_at, deleted_at_unix 업데이트
      * 2. updated_at, updated_by 갱신
      *
      * ### 비즈니스 규칙
      * - 물리적 삭제 금지, 논리적 삭제만 허용
-     * - 이미 삭제된 데이터는 제외 (deleted_at IS NULL 조건)
+     * - deleted_at_unix를 현재 Unix timestamp로 설정 (유니크 제약조건 우회)
+     * - 이미 삭제된 데이터는 제외 (deleted_at_unix = 0 조건)
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
      */
     override fun delete(userId: UUID, contentId: UUID) {
         val now = LocalDateTime.now()
+        val nowUnix = now.toEpochSecond(ZoneOffset.UTC)
 
         dslContext
             .update(USER_LIKES)
             .set(USER_LIKES.DELETED_AT, now)
+            .set(USER_LIKES.DELETED_AT_UNIX, nowUnix)
             .set(USER_LIKES.UPDATED_AT, now)
             .set(USER_LIKES.UPDATED_BY, userId.toString())
             .where(USER_LIKES.USER_ID.eq(userId.toString()))
             .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
-            .and(USER_LIKES.DELETED_AT.isNull)
+            .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
             .execute()
     }
 
     /**
      * 좋아요 존재 여부 확인
      *
-     * deleted_at이 NULL인 레코드만 확인합니다.
+     * deleted_at_unix = 0인 레코드만 확인합니다.
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
@@ -105,14 +111,14 @@ class UserLikeRepositoryImpl(
             .from(USER_LIKES)
             .where(USER_LIKES.USER_ID.eq(userId.toString()))
             .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
-            .and(USER_LIKES.DELETED_AT.isNull)
+            .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
             .fetchOne(0, Int::class.java) ?: 0 > 0
     }
 
     /**
      * 사용자의 좋아요 조회
      *
-     * deleted_at이 NULL인 레코드만 조회합니다.
+     * deleted_at_unix = 0인 레코드만 조회합니다.
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
@@ -133,7 +139,7 @@ class UserLikeRepositoryImpl(
             .from(USER_LIKES)
             .where(USER_LIKES.USER_ID.eq(userId.toString()))
             .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
-            .and(USER_LIKES.DELETED_AT.isNull)
+            .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
             .fetchOne()
             ?.let {
                 UserLike(

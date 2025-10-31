@@ -12,54 +12,52 @@ Conventional Commits 스타일을 따르며, 명확한 변경 이력 추적을 �
 ### 기본 구조
 
 ```
-[Type] 간단한 설명
+<type>(<scope>): <subject>
 
-상세 설명 (선택사항)
+<body> (optional)
 
-Closes #이슈번호
+<footer> (optional)
 ```
 
 ### Type 분류
 
-| Type | 사용 시기 | 예시 |
-|------|----------|------|
-| **[Feat]** | 새로운 기능 추가 | `[Feat] Google OAuth 로그인 구현` |
-| **[Fix]** | 버그 수정 | `[Fix] 좋아요 중복 처리 문제 해결` |
-| **[Refactor]** | 코드 리팩토링 (기능 변경 없음) | `[Refactor] UserService 책임 분리` |
-| **[Docs]** | 문서 수정/추가 | `[Docs] API 명세서 업데이트` |
-| **[Test]** | 테스트 추가/수정 | `[Test] PostController 통합 테스트 추가` |
-| **[Chore]** | 빌드/설정 변경 | `[Chore] Gradle 의존성 업데이트` |
-| **[Perf]** | 성능 개선 | `[Perf] 게시글 조회 쿼리 최적화` |
-| **[Style]** | 코드 스타일 변경 (포맷팅 등) | `[Style] Ktlint 적용` |
+| Type | 설명 | 예시 |
+|------|------|------|
+| **feat** | 기능 추가 | `feat(auth): 사용자 인증 기능 추가` |
+| **fix** | 버그 수정 | `fix(like): 좋아요 중복 처리 문제 해결` |
+| **refactor** | 리팩토링 (기능 변경 없음) | `refactor(user): UserService 책임 분리` |
+| **docs** | 문서 수정/추가 | `docs(api): API 명세서 업데이트` |
+| **test** | 테스트 추가/수정 | `test(post): PostController 통합 테스트 추가` |
+| **chore** | 빌드/설정 변경 | `chore(deps): 의존성 업데이트` |
+| **perf** | 성능 개선 | `perf(post): 게시글 조회 쿼리 최적화` |
+| **style** | 코드 스타일 변경 (포맷팅 등) | `style: Prettier 적용` |
 
 ### 커밋 메시지 작성 규칙
 
-1. **한글 사용**: 제목과 본문 모두 한글로 작성
-2. **명령형 현재 시제**: "추가", "수정", "구현" (X: "추가했음", "수정됨")
-3. **간결한 제목**: 50자 이내로 요약
+1. **제목은 50자 이내, 본문은 72자 이내**
+2. **마침표 `.` 사용 금지**
+3. **명령형 현재 시제**: "추가", "수정", "구현"
 4. **본문 상세 설명** (선택):
    - 무엇을 왜 변경했는지 설명
    - 어떻게는 코드로 설명되므로 생략 가능
-5. **이슈 연결**: 관련 이슈가 있으면 하단에 `Closes #번호` 추가
+5. **이슈 연결**: `Closes #번호` 추가
 
 ### 커밋 예시
 
 ```
-[Feat] 사용자 프로필 조회 화면 구현
+feat(profile): 사용자 프로필 조회 화면 구현
 
-- ProfileScreen 컴포넌트 생성
-- 프로필 이미지, 닉네임, 자기소개 표시
-- 팔로워/팔로잉 수 집계 UI 추가
+ProfileScreen 컴포넌트 생성
+프로필 이미지, 닉네임, 자기소개 표시
 
 Closes #42
 ```
 
 ```
-[Fix] StyleSheet New Architecture 호환성 개선
+fix(stylesheet): New Architecture 호환성 개선
 
-React Native New Architecture에서 StyleSheet.create()가 모듈 로드 시점에
-실행되면 native bridge 준비 전이라 "runtime not ready" 에러가 발생하는 문제 해결.
-createStyleSheet() 유틸리티로 lazy evaluation 적용.
+React Native New Architecture에서 StyleSheet 초기화 에러 해결
+lazy evaluation 적용
 
 Fixes #58
 ```
@@ -87,7 +85,7 @@ Fixes #58
 ### 커밋 단위 원칙
 
 1. **하나의 논리적 변경 = 하나의 커밋**
-   - ✅ GOOD: `[Feat] 게시글 좋아요 기능 추가` (UI + 상태 관리 + API 연동)
+   - ✅ GOOD: `feat 게시글 좋아요 기능 추가` (UI + 상태 관리 + API 연동)
    - ❌ BAD: 여러 기능을 한 커밋에 섞음
 
 2. **빌드가 성공하고 앱이 정상 동작하는 단위로 커밋**
@@ -106,11 +104,11 @@ Fixes #58
 
 **✅ GOOD: 적절한 커밋 단위**
 ```
-Commit 1: [Feat] 댓글 작성 UI 구현
-Commit 2: [Feat] 댓글 수정/삭제 기능 구현
-Commit 3: [Feat] 댓글 API 연동
-Commit 4: [Test] 댓글 컴포넌트 단위 테스트 추가
-Commit 5: [Docs] 댓글 컴포넌트 사용법 문서 작성
+Commit 1: feat: 댓글 작성 UI 구현
+Commit 2: feat: 댓글 수정/삭제 기능 구현
+Commit 3: feat: 댓글 API 연동
+Commit 4: test: 댓글 컴포넌트 단위 테스트 추가
+Commit 5: docs: 댓글 컴포넌트 사용법 문서 작성
 ```
 
 **❌ BAD: 너무 작은 단위**
@@ -124,7 +122,7 @@ Commit 5: 에러 핸들링 추가  ← 각 단계를 분리하면 리뷰가 어�
 
 **❌ BAD: 너무 큰 단위**
 ```
-Commit 1: [Feat] 사용자 관리 시스템 전체 구현
+Commit 1: feat 사용자 관리 시스템 전체 구현
 - 로그인, 로그아웃, 프로필 조회, 프로필 수정, 팔로우...
 ← 한 커밋에 너무 많은 기능이 섞임
 ```

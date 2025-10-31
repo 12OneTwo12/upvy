@@ -1,64 +1,74 @@
 /**
  * 좋아요 API 클라이언트
  *
+ * 백엔드: me.onetwo.growsnap.domain.interaction.controller.LikeController
  * 백엔드 스펙: POST/DELETE 방식 (Toggle 아님)
  */
 
 import apiClient from './client';
 import { API_ENDPOINTS } from '@/constants/api';
+import type { LikeResponse, LikeCountResponse, LikeStatusResponse } from '@/types/interaction.types';
 
 /**
  * 좋아요 추가
  *
- * 백엔드: POST /api/v1/likes/{contentId}
- * Response: 201 Created
+ * 백엔드: POST /api/v1/contents/{contentId}/like
+ * Response: LikeResponse { contentId, likeCount, isLiked }
  *
  * @param contentId 콘텐츠 ID
+ * @returns 좋아요 응답
  */
-export const createLike = async (contentId: string): Promise<void> => {
-  await apiClient.post(API_ENDPOINTS.LIKE.CREATE(contentId));
+export const createLike = async (contentId: string): Promise<LikeResponse> => {
+  const response = await apiClient.post<LikeResponse>(
+    API_ENDPOINTS.LIKE.CREATE(contentId)
+  );
+  return response.data;
 };
 
 /**
  * 좋아요 취소
  *
- * 백엔드: DELETE /api/v1/likes/{contentId}
- * Response: 204 No Content
+ * 백엔드: DELETE /api/v1/contents/{contentId}/like
+ * Response: LikeResponse { contentId, likeCount, isLiked }
  *
  * @param contentId 콘텐츠 ID
+ * @returns 좋아요 응답
  */
-export const deleteLike = async (contentId: string): Promise<void> => {
-  await apiClient.delete(API_ENDPOINTS.LIKE.DELETE(contentId));
+export const deleteLike = async (contentId: string): Promise<LikeResponse> => {
+  const response = await apiClient.delete<LikeResponse>(
+    API_ENDPOINTS.LIKE.DELETE(contentId)
+  );
+  return response.data;
 };
 
 /**
- * 좋아요 상태 확인
+ * 좋아요 상태 조회
  *
- * 백엔드: GET /api/v1/likes/{contentId}/check
- * Response: { isLiked: boolean }
+ * 백엔드: GET /api/v1/contents/{contentId}/like/status
+ * Response: LikeStatusResponse { contentId, isLiked }
  *
  * @param contentId 콘텐츠 ID
  * @returns 좋아요 상태
  */
-export const checkLike = async (contentId: string): Promise<boolean> => {
-  const response = await apiClient.get<{ isLiked: boolean }>(
-    API_ENDPOINTS.LIKE.CHECK(contentId)
+export const getLikeStatus = async (contentId: string): Promise<LikeStatusResponse> => {
+  const response = await apiClient.get<LikeStatusResponse>(
+    API_ENDPOINTS.LIKE.STATUS(contentId)
   );
-  return response.data.isLiked;
+  return response.data;
 };
 
 /**
  * 좋아요 개수 조회
  *
- * 백엔드: GET /api/v1/likes/{contentId}/count
- * Response: { count: number }
+ * 백엔드: GET /api/v1/contents/{contentId}/likes
+ * Response: LikeCountResponse { contentId, likeCount }
  *
  * @param contentId 콘텐츠 ID
- * @returns 좋아요 개수
+ * @returns 좋아요 개수 응답
  */
-export const getLikeCount = async (contentId: string): Promise<number> => {
-  const response = await apiClient.get<{ count: number }>(
+export const getLikeCount = async (contentId: string): Promise<LikeCountResponse> => {
+  const response = await apiClient.get<LikeCountResponse>(
     API_ENDPOINTS.LIKE.COUNT(contentId)
   );
-  return response.data.count;
+  return response.data;
 };

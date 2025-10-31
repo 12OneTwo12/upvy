@@ -127,6 +127,7 @@ include::like/status-check.adoc[]
 
 include::comment/create.adoc[]
 include::comment/list.adoc[]
+include::comment/replies.adoc[]
 include::comment/delete.adoc[]
 
 [[comment-like-api]]

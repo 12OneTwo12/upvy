@@ -4,10 +4,12 @@ import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
+import me.onetwo.growsnap.domain.interaction.dto.CommentListResponse
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.dto.CommentResponse
 import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
+import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.growsnap.domain.interaction.repository.CommentRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import org.slf4j.LoggerFactory
@@ -29,6 +31,7 @@ import java.util.UUID
  *    - user_content_interactions 테이블 저장 (협업 필터링용)
  *
  * @property commentRepository 댓글 레포지토리
+ * @property commentLikeRepository 댓글 좋아요 레포지토리
  * @property analyticsService Analytics 서비스 (이벤트 발행)
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
  * @property userProfileRepository 사용자 프로필 레포지토리
@@ -36,6 +39,7 @@ import java.util.UUID
 @Service
 class CommentServiceImpl(
     private val commentRepository: CommentRepository,
+    private val commentLikeRepository: CommentLikeRepository,
     private val analyticsService: AnalyticsService,
     private val contentInteractionRepository: ContentInteractionRepository,
     private val userProfileRepository: UserProfileRepository
@@ -80,7 +84,6 @@ class CommentServiceImpl(
                             userId = userId,
                             parentCommentId = parentCommentId,
                             content = request.content,
-                            timestampSeconds = request.timestampSeconds
                         )
                     ) ?: throw IllegalStateException("Failed to create comment")
                 }
@@ -107,7 +110,6 @@ class CommentServiceImpl(
                         userNickname = nickname,
                         userProfileImageUrl = profileImageUrl,
                         content = savedComment.content,
-                        timestampSeconds = savedComment.timestampSeconds,
                         parentCommentId = savedComment.parentCommentId?.toString(),
                         createdAt = savedComment.createdAt.toString()
                     )
@@ -124,7 +126,127 @@ class CommentServiceImpl(
     }
 
     /**
-     * 콘텐츠의 댓글 목록 조회
+     * 콘텐츠의 최상위 댓글 목록 조회 (Cursor 기반 페이징)
+     *
+     * @param userId 현재 사용자 ID (좋아요 여부 확인용, null이면 isLiked = false)
+     * @param contentId 콘텐츠 ID
+     * @param cursor 커서 (댓글 ID, null이면 처음부터)
+     * @param limit 조회 개수
+     * @return 댓글 목록 응답 (페이징 정보 포함, likeCount와 isLiked 포함)
+     */
+    override fun getComments(userId: UUID?, contentId: UUID, cursor: String?, limit: Int): Mono<CommentListResponse> {
+        logger.debug("Getting comments with pagination: userId={}, contentId={}, cursor={}, limit={}", userId, contentId, cursor, limit)
+
+        val cursorUUID = cursor?.let { UUID.fromString(it) }
+
+        return Mono.fromCallable {
+            val comments = commentRepository.findTopLevelCommentsByContentId(contentId, cursorUUID, limit)
+            val actualComments = if (comments.size > limit) comments.take(limit) else comments
+            val hasNext = comments.size > limit
+            val nextCursor = if (hasNext) actualComments.lastOrNull()?.id?.toString() else null
+
+            val userIds = actualComments.map { it.userId }.toSet()
+            val userInfoMap = if (userIds.isNotEmpty()) {
+                userProfileRepository.findUserInfosByUserIds(userIds)
+            } else {
+                emptyMap()
+            }
+
+            // N+1 쿼리 문제 해결: 답글 수를 일괄 조회
+            val commentIds = actualComments.mapNotNull { it.id }
+            val replyCountMap = if (commentIds.isNotEmpty()) {
+                commentRepository.countRepliesByParentCommentIds(commentIds)
+            } else {
+                emptyMap()
+            }
+
+            // N+1 API 호출 문제 해결: 좋아요 수와 좋아요 여부를 일괄 조회
+            val likeCountMap = if (commentIds.isNotEmpty()) {
+                commentLikeRepository.countByCommentIds(commentIds)
+            } else {
+                emptyMap()
+            }
+
+            val likedCommentIds = if (userId != null && commentIds.isNotEmpty()) {
+                commentLikeRepository.findLikedCommentIds(userId, commentIds)
+            } else {
+                emptySet()
+            }
+
+            val responseList = actualComments.map { comment ->
+                val userInfo = userInfoMap[comment.userId] ?: Pair("Unknown", null)
+                val replyCount = replyCountMap[comment.id] ?: 0
+                val likeCount = likeCountMap[comment.id] ?: 0
+                val isLiked = comment.id in likedCommentIds
+
+                mapToCommentResponse(comment, userInfo, replyCount, likeCount, isLiked)
+            }
+
+            CommentListResponse(
+                comments = responseList,
+                hasNext = hasNext,
+                nextCursor = nextCursor
+            )
+        }
+    }
+
+    /**
+     * 대댓글 목록 조회 (Cursor 기반 페이징)
+     *
+     * @param parentCommentId 부모 댓글 ID
+     * @param cursor 커서 (댓글 ID, null이면 처음부터)
+     * @param limit 조회 개수
+     * @return 대댓글 목록 응답 (페이징 정보 포함)
+     */
+    override fun getReplies(userId: UUID?, parentCommentId: UUID, cursor: String?, limit: Int): Mono<CommentListResponse> {
+        logger.debug("Getting replies with pagination: userId={}, parentCommentId={}, cursor={}, limit={}", userId, parentCommentId, cursor, limit)
+
+        val cursorUUID = cursor?.let { UUID.fromString(it) }
+
+        return Mono.fromCallable {
+            val replies = commentRepository.findRepliesByParentCommentId(parentCommentId, cursorUUID, limit)
+            val actualReplies = if (replies.size > limit) replies.take(limit) else replies
+            val hasNext = replies.size > limit
+            val nextCursor = if (hasNext) actualReplies.lastOrNull()?.id?.toString() else null
+
+            val userIds = actualReplies.map { it.userId }.toSet()
+            val userInfoMap = if (userIds.isNotEmpty()) {
+                userProfileRepository.findUserInfosByUserIds(userIds)
+            } else {
+                emptyMap()
+            }
+
+            // N+1 API 호출 문제 해결: 좋아요 수와 좋아요 여부를 일괄 조회
+            val replyIds = actualReplies.mapNotNull { it.id }
+            val likeCountMap = if (replyIds.isNotEmpty()) {
+                commentLikeRepository.countByCommentIds(replyIds)
+            } else {
+                emptyMap()
+            }
+
+            val likedReplyIds = if (userId != null && replyIds.isNotEmpty()) {
+                commentLikeRepository.findLikedCommentIds(userId, replyIds)
+            } else {
+                emptySet()
+            }
+
+            val responseList = actualReplies.map { reply ->
+                val userInfo = userInfoMap[reply.userId] ?: Pair("Unknown", null)
+                val likeCount = likeCountMap[reply.id] ?: 0
+                val isLiked = reply.id in likedReplyIds
+                mapToCommentResponse(reply, userInfo, 0, likeCount, isLiked)
+            }
+
+            CommentListResponse(
+                comments = responseList,
+                hasNext = hasNext,
+                nextCursor = nextCursor
+            )
+        }
+    }
+
+    /**
+     * 콘텐츠의 댓글 목록 조회 (기존 방식, 하위 호환성)
      *
      * N+1 쿼리 문제를 방지하기 위해 모든 사용자 정보를 한 번에 조회합니다.
      *
@@ -137,7 +259,8 @@ class CommentServiceImpl(
      * @param contentId 콘텐츠 ID
      * @return 댓글 목록 (계층 구조)
      */
-    override fun getComments(contentId: UUID): Flux<CommentResponse> {
+    @Deprecated("Use getComments(contentId, cursor, limit) instead")
+    override fun getCommentsLegacy(contentId: UUID): Flux<CommentResponse> {
         logger.debug("Getting comments: contentId={}", contentId)
 
         return Mono.fromCallable { commentRepository.findByContentId(contentId) }
@@ -159,12 +282,9 @@ class CommentServiceImpl(
                     Flux.fromIterable(parentComments)
                         .map { parentComment ->
                             val userInfo = userInfoMap[parentComment.userId] ?: Pair("Unknown", null)
-                            val replies = repliesByParentId[parentComment.id!!]?.map { reply ->
-                                val replyUserInfo = userInfoMap[reply.userId] ?: Pair("Unknown", null)
-                                mapToCommentResponse(reply, replyUserInfo, emptyList())
-                            } ?: emptyList()
+                            val replyCount = repliesByParentId[parentComment.id!!]?.size ?: 0
 
-                            mapToCommentResponse(parentComment, userInfo, replies)
+                            mapToCommentResponse(parentComment, userInfo, replyCount)
                         }
                 }
             }
@@ -216,13 +336,15 @@ class CommentServiceImpl(
      *
      * @param comment 댓글 엔티티
      * @param userInfo 사용자 정보 (닉네임, 프로필 이미지 URL)
-     * @param replies 대댓글 목록
+     * @param replyCount 대댓글 개수
      * @return CommentResponse DTO
      */
     private fun mapToCommentResponse(
         comment: Comment,
         userInfo: Pair<String, String?>,
-        replies: List<CommentResponse>
+        replyCount: Int = 0,
+        likeCount: Int = 0,
+        isLiked: Boolean = false
     ): CommentResponse {
         return CommentResponse(
             id = comment.id!!.toString(),
@@ -231,10 +353,11 @@ class CommentServiceImpl(
             userNickname = userInfo.first,
             userProfileImageUrl = userInfo.second,
             content = comment.content,
-            timestampSeconds = comment.timestampSeconds,
             parentCommentId = comment.parentCommentId?.toString(),
             createdAt = comment.createdAt.toString(),
-            replies = replies
+            replyCount = replyCount,
+            likeCount = likeCount,
+            isLiked = isLiked
         )
     }
 
