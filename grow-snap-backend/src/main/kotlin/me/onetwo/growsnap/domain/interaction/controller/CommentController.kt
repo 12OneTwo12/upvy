@@ -5,6 +5,7 @@ import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.dto.CommentResponse
 import me.onetwo.growsnap.domain.interaction.service.CommentService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -20,31 +21,31 @@ import java.security.Principal
 import java.util.UUID
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping(ApiPaths.API_V1)
 class CommentController(
     private val commentService: CommentService
 ) {
 
-    @PostMapping("/videos/{videoId}/comments")
+    @PostMapping("/contents/{contentId}/comments")
     fun createComment(
         principal: Mono<Principal>,
-        @PathVariable videoId: String,
+        @PathVariable contentId: String,
         @Valid @RequestBody request: CommentRequest
     ): Mono<ResponseEntity<CommentResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentId = UUID.fromString(videoId)
-                commentService.createComment(userId, contentId, request)
+                val contentUUID = UUID.fromString(contentId)
+                commentService.createComment(userId, contentUUID, request)
             }
             .map { response -> ResponseEntity.status(HttpStatus.CREATED).body(response) }
     }
 
-    @GetMapping("/videos/{videoId}/comments")
-    fun getComments(@PathVariable videoId: String): Flux<CommentResponse> {
-        val contentId = UUID.fromString(videoId)
+    @GetMapping("/contents/{contentId}/comments")
+    fun getComments(@PathVariable contentId: String): Flux<CommentResponse> {
+        val contentUUID = UUID.fromString(contentId)
 
-        return commentService.getComments(contentId)
+        return commentService.getComments(contentUUID)
     }
 
     @DeleteMapping("/comments/{commentId}")

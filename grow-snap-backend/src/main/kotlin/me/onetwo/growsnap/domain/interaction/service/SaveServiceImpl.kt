@@ -6,12 +6,14 @@ import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionReposito
 import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.content.repository.ContentMetadataRepository
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
+import me.onetwo.growsnap.domain.interaction.dto.SaveStatusResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
 import me.onetwo.growsnap.domain.interaction.repository.UserSaveRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 import java.util.UUID
 
 /**
@@ -120,6 +122,35 @@ class SaveServiceImpl(
                         }
                     }
                 }
+            }
+    }
+
+    /**
+     * 저장 상태 조회
+     *
+     * 특정 콘텐츠에 대한 사용자의 저장 상태를 확인합니다.
+     *
+     * ### 처리 흐름
+     * 1. UserSaveRepository.exists()로 저장 여부 확인
+     * 2. SaveStatusResponse 반환
+     *
+     * @param userId 사용자 ID
+     * @param contentId 콘텐츠 ID
+     * @return 저장 상태 응답
+     */
+    override fun getSaveStatus(userId: UUID, contentId: UUID): Mono<SaveStatusResponse> {
+        logger.debug("Getting save status: userId={}, contentId={}", userId, contentId)
+
+        return Mono.fromCallable { userSaveRepository.exists(userId, contentId) }
+            .subscribeOn(Schedulers.boundedElastic())
+            .map { isSaved ->
+                SaveStatusResponse(
+                    contentId = contentId.toString(),
+                    isSaved = isSaved
+                )
+            }
+            .doOnSuccess { response ->
+                logger.debug("Save status retrieved: userId={}, contentId={}, isSaved={}", userId, contentId, response.isSaved)
             }
     }
 

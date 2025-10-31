@@ -7,6 +7,7 @@ import me.onetwo.growsnap.domain.auth.dto.LogoutRequest
 import me.onetwo.growsnap.domain.auth.dto.RefreshTokenRequest
 import me.onetwo.growsnap.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.growsnap.domain.auth.service.AuthService
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -53,7 +54,7 @@ class AuthControllerTest {
 
         // When & Then
         webTestClient.post()
-            .uri("/api/v1/auth/refresh")
+            .uri("${ApiPaths.API_V1_AUTH}/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
@@ -88,7 +89,7 @@ class AuthControllerTest {
 
         // When & Then
         webTestClient.post()
-            .uri("/api/v1/auth/refresh")
+            .uri("${ApiPaths.API_V1_AUTH}/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
@@ -107,7 +108,7 @@ class AuthControllerTest {
 
         // When & Then
         webTestClient.post()
-            .uri("/api/v1/auth/logout")
+            .uri("${ApiPaths.API_V1_AUTH}/logout")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
@@ -138,7 +139,7 @@ class AuthControllerTest {
 
         // When & Then
         webTestClient.post()
-            .uri("/api/v1/auth/logout")
+            .uri("${ApiPaths.API_V1_AUTH}/logout")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
@@ -153,7 +154,7 @@ class AuthControllerTest {
 
         // When & Then
         webTestClient.post()
-            .uri("/api/v1/auth/refresh")
+            .uri("${ApiPaths.API_V1_AUTH}/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(invalidRequest)
             .exchange()
@@ -168,7 +169,7 @@ class AuthControllerTest {
 
         // When & Then
         webTestClient.post()
-            .uri("/api/v1/auth/logout")
+            .uri("${ApiPaths.API_V1_AUTH}/logout")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(invalidRequest)
             .exchange()

@@ -3,7 +3,7 @@ package me.onetwo.growsnap.domain.user.controller
 import me.onetwo.growsnap.domain.user.dto.UserResponse
 import me.onetwo.growsnap.domain.user.service.UserService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
-import org.springframework.http.HttpStatus
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -20,7 +20,7 @@ import java.util.UUID
  * 사용자 조회, 회원 탈퇴 API를 제공합니다.
  */
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping(ApiPaths.API_V1_USERS)
 class UserController(
     private val userService: UserService
 ) {

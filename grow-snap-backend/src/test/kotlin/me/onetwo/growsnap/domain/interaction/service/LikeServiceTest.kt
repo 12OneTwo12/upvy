@@ -191,4 +191,49 @@ class LikeServiceTest {
                 .verifyComplete()
         }
     }
+
+    @Nested
+    @DisplayName("getLikeStatus - 좋아요 상태 조회")
+    inner class GetLikeStatus {
+
+        @Test
+        @DisplayName("좋아요 상태 조회 시, Repository의 exists 결과를 반환한다 (좋아요O)")
+        fun getLikeStatus_WhenLiked_ReturnsTrue() {
+            // Given: 사용자가 좋아요를 누른 상태
+            every { userLikeRepository.exists(testUserId, testContentId) } returns true
+
+            // When: 좋아요 상태 조회
+            val result = likeService.getLikeStatus(testUserId, testContentId)
+
+            // Then: isLiked = true 반환
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertEquals(testContentId.toString(), response.contentId)
+                    assertEquals(true, response.isLiked)
+                }
+                .verifyComplete()
+
+            verify(exactly = 1) { userLikeRepository.exists(testUserId, testContentId) }
+        }
+
+        @Test
+        @DisplayName("좋아요 상태 조회 시, Repository의 exists 결과를 반환한다 (좋아요X)")
+        fun getLikeStatus_WhenNotLiked_ReturnsFalse() {
+            // Given: 사용자가 좋아요를 누르지 않은 상태
+            every { userLikeRepository.exists(testUserId, testContentId) } returns false
+
+            // When: 좋아요 상태 조회
+            val result = likeService.getLikeStatus(testUserId, testContentId)
+
+            // Then: isLiked = false 반환
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertEquals(testContentId.toString(), response.contentId)
+                    assertEquals(false, response.isLiked)
+                }
+                .verifyComplete()
+
+            verify(exactly = 1) { userLikeRepository.exists(testUserId, testContentId) }
+        }
+    }
 }

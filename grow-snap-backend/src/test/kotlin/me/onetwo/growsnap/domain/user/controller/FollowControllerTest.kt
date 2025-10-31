@@ -15,6 +15,7 @@ import me.onetwo.growsnap.domain.user.exception.NotFollowingException
 import me.onetwo.growsnap.domain.user.model.Follow
 import me.onetwo.growsnap.domain.user.service.FollowService
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -63,7 +64,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .post()
-            .uri("/api/v1/follows/{followingId}", testFollowingId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", testFollowingId)
             .exchange()
             .expectStatus().isCreated
             .expectBody()
@@ -98,7 +99,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .post()
-            .uri("/api/v1/follows/{followingId}", testUserId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", testUserId)
             .exchange()
             .expectStatus().is4xxClientError
     }
@@ -115,7 +116,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .post()
-            .uri("/api/v1/follows/{followingId}", testFollowingId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", testFollowingId)
             .exchange()
             .expectStatus().is4xxClientError
     }
@@ -130,7 +131,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .delete()
-            .uri("/api/v1/follows/{followingId}", testFollowingId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", testFollowingId)
             .exchange()
             .expectStatus().isNoContent
             .expectBody()
@@ -158,7 +159,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .delete()
-            .uri("/api/v1/follows/{followingId}", testFollowingId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", testFollowingId)
             .exchange()
             .expectStatus().is4xxClientError
     }
@@ -173,7 +174,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .get()
-            .uri("/api/v1/follows/check/{followingId}", testFollowingId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/check/{followingId}", testFollowingId)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -206,7 +207,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .get()
-            .uri("/api/v1/follows/check/{followingId}", testFollowingId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/check/{followingId}", testFollowingId)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -223,7 +224,7 @@ class FollowControllerTest {
 
         // When & Then
         webTestClient.get()
-            .uri("/api/v1/follows/stats/{targetUserId}", targetUserId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/stats/{targetUserId}", targetUserId)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -257,7 +258,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .get()
-            .uri("/api/v1/follows/stats/me")
+            .uri("${ApiPaths.API_V1_FOLLOWS}/stats/me")
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -311,7 +312,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(UUID.randomUUID()))
             .get()
-            .uri("/api/v1/follows/followers/{userId}", targetUserId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/followers/{userId}", targetUserId)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -356,7 +357,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(UUID.randomUUID()))
             .get()
-            .uri("/api/v1/follows/followers/{userId}", targetUserId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/followers/{userId}", targetUserId)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -399,7 +400,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(UUID.randomUUID()))
             .get()
-            .uri("/api/v1/follows/following/{userId}", targetUserId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/following/{userId}", targetUserId)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -444,7 +445,7 @@ class FollowControllerTest {
         webTestClient
             .mutateWith(mockUser(UUID.randomUUID()))
             .get()
-            .uri("/api/v1/follows/following/{userId}", targetUserId)
+            .uri("${ApiPaths.API_V1_FOLLOWS}/following/{userId}", targetUserId)
             .exchange()
             .expectStatus().isOk
             .expectBody()

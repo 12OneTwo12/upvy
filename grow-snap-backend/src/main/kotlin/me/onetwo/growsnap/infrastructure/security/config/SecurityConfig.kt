@@ -4,6 +4,7 @@ import me.onetwo.growsnap.infrastructure.security.jwt.JwtAuthenticationConverter
 import me.onetwo.growsnap.infrastructure.security.oauth2.CustomReactiveOAuth2UserService
 import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthenticationFailureHandler
 import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.authentication.ReactiveAuthenticationManager
@@ -54,7 +55,7 @@ class SecurityConfig(
                     // 인증이 필요 없는 공개 API
                     .pathMatchers(*PublicApiPaths.AUTH_ENDPOINTS).permitAll()
                     // /me 엔드포인트는 명시적으로 인증 필요 (와일드카드 패턴보다 먼저 선언)
-                    .pathMatchers("/api/v1/*/me").authenticated()
+                    .pathMatchers("${ApiPaths.API_V1}/*/me").authenticated()
                     // 조회 전용 공개 API (GET 메서드만 허용)
                     .pathMatchers(PublicApiPaths.GetOnly.METHOD, *PublicApiPaths.GetOnly.PATHS).permitAll()
                     // 콘텐츠 개별 조회 (GET /api/v1/contents/{contentId})

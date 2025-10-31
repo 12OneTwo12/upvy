@@ -5,6 +5,7 @@ import me.onetwo.growsnap.domain.auth.dto.LogoutRequest
 import me.onetwo.growsnap.domain.auth.dto.RefreshTokenRequest
 import me.onetwo.growsnap.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.growsnap.domain.auth.service.AuthService
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -23,7 +24,7 @@ import reactor.core.publisher.Mono
  * @property authService 인증 서비스
  */
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping(ApiPaths.API_V1_AUTH)
 class AuthController(
     private val authService: AuthService
 ) {

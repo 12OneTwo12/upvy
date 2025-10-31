@@ -2,7 +2,9 @@ package me.onetwo.growsnap.domain.interaction.controller
 
 import me.onetwo.growsnap.domain.interaction.dto.LikeCountResponse
 import me.onetwo.growsnap.domain.interaction.dto.LikeResponse
+import me.onetwo.growsnap.domain.interaction.dto.LikeStatusResponse
 import me.onetwo.growsnap.domain.interaction.service.LikeService
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -23,7 +25,7 @@ import java.util.UUID
  * @property likeService 좋아요 서비스
  */
 @RestController
-@RequestMapping("/api/v1/videos")
+@RequestMapping(ApiPaths.API_V1)
 class LikeController(
     private val likeService: LikeService
 ) {
@@ -31,22 +33,22 @@ class LikeController(
     /**
      * 좋아요
      *
-     * POST /api/v1/videos/{videoId}/like
+     * POST /api/v1/contents/{contentId}/like
      *
      * @param principal 인증된 사용자 Principal
-     * @param videoId 비디오(콘텐츠) ID
+     * @param contentId 콘텐츠 ID
      * @return 좋아요 응답
      */
-    @PostMapping("/{videoId}/like")
-    fun likeVideo(
+    @PostMapping("/contents/{contentId}/like")
+    fun likeContent(
         principal: Mono<Principal>,
-        @PathVariable videoId: String
+        @PathVariable contentId: String
     ): Mono<ResponseEntity<LikeResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentId = UUID.fromString(videoId)
-                likeService.likeContent(userId, contentId)
+                val contentUUID = UUID.fromString(contentId)
+                likeService.likeContent(userId, contentUUID)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -54,22 +56,22 @@ class LikeController(
     /**
      * 좋아요 취소
      *
-     * DELETE /api/v1/videos/{videoId}/like
+     * DELETE /api/v1/contents/{contentId}/like
      *
      * @param principal 인증된 사용자 Principal
-     * @param videoId 비디오(콘텐츠) ID
+     * @param contentId 비디오(콘텐츠) ID
      * @return 좋아요 응답
      */
-    @DeleteMapping("/{videoId}/like")
-    fun unlikeVideo(
+    @DeleteMapping("/contents/{contentId}/like")
+    fun unlikeContent(
         principal: Mono<Principal>,
-        @PathVariable videoId: String
+        @PathVariable contentId: String
     ): Mono<ResponseEntity<LikeResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentId = UUID.fromString(videoId)
-                likeService.unlikeContent(userId, contentId)
+                val contentUUID = UUID.fromString(contentId)
+                likeService.unlikeContent(userId, contentUUID)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -77,18 +79,43 @@ class LikeController(
     /**
      * 좋아요 수 조회
      *
-     * GET /api/v1/videos/{videoId}/likes
+     * GET /api/v1/contents/{contentId}/likes
      *
      * @param videoId 비디오(콘텐츠) ID
      * @return 좋아요 수 응답
      */
-    @GetMapping("/{videoId}/likes")
+    @GetMapping("/contents/{contentId}/likes")
     fun getLikeCount(
-        @PathVariable videoId: String
+        @PathVariable contentId: String
     ): Mono<ResponseEntity<LikeCountResponse>> {
-        val contentId = UUID.fromString(videoId)
+        val contentUUID = UUID.fromString(contentId)
 
-        return likeService.getLikeCount(contentId)
+        return likeService.getLikeCount(contentUUID)
+            .map { response -> ResponseEntity.ok(response) }
+    }
+
+    /**
+     * 좋아요 상태 조회
+     *
+     * 특정 콘텐츠에 대한 사용자의 좋아요 상태를 확인합니다.
+     *
+     * GET /api/v1/contents/{contentId}/like/status
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param contentId 콘텐츠 ID
+     * @return 좋아요 상태 응답
+     */
+    @GetMapping("/contents/{contentId}/like/status")
+    fun getLikeStatus(
+        principal: Mono<Principal>,
+        @PathVariable contentId: String
+    ): Mono<ResponseEntity<LikeStatusResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                val contentUUID = UUID.fromString(contentId)
+                likeService.getLikeStatus(userId, contentUUID)
+            }
             .map { response -> ResponseEntity.ok(response) }
     }
 }

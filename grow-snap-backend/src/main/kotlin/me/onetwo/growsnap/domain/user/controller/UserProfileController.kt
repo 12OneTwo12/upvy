@@ -7,6 +7,7 @@ import me.onetwo.growsnap.domain.user.dto.UpdateProfileRequest
 import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.service.UserProfileService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
@@ -30,7 +31,7 @@ import java.util.UUID
  * **참고**: 프로필은 OAuth 회원가입 시 자동 생성됩니다.
  */
 @RestController
-@RequestMapping("/api/v1/profiles")
+@RequestMapping(ApiPaths.API_V1_PROFILES)
 class UserProfileController(
     private val userProfileService: UserProfileService
 ) {

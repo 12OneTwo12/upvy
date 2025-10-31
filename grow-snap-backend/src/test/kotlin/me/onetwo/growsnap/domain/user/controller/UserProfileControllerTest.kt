@@ -12,6 +12,7 @@ import me.onetwo.growsnap.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.growsnap.domain.user.model.UserProfile
 import me.onetwo.growsnap.domain.user.service.UserProfileService
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -67,7 +68,7 @@ class UserProfileControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .get()
-            .uri("/api/v1/profiles/me")
+            .uri("${ApiPaths.API_V1_PROFILES}/me")
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -102,7 +103,7 @@ class UserProfileControllerTest {
 
         // When & Then
         webTestClient.get()
-            .uri("/api/v1/profiles/{targetUserId}", targetUserId)
+            .uri("${ApiPaths.API_V1_PROFILES}/{targetUserId}", targetUserId)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -138,7 +139,7 @@ class UserProfileControllerTest {
 
         // When & Then
         webTestClient.get()
-            .uri("/api/v1/profiles/nickname/{nickname}", nickname)
+            .uri("${ApiPaths.API_V1_PROFILES}/nickname/{nickname}", nickname)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -175,7 +176,7 @@ class UserProfileControllerTest {
 
         // When & Then
         webTestClient.get()
-            .uri("/api/v1/profiles/{targetUserId}", nonExistentId)
+            .uri("${ApiPaths.API_V1_PROFILES}/{targetUserId}", nonExistentId)
             .exchange()
             .expectStatus().is4xxClientError
     }
@@ -197,7 +198,7 @@ class UserProfileControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .patch()
-            .uri("/api/v1/profiles")
+            .uri(ApiPaths.API_V1_PROFILES)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
@@ -239,7 +240,7 @@ class UserProfileControllerTest {
 
         // When & Then
         webTestClient.get()
-            .uri("/api/v1/profiles/check/nickname/{nickname}", nickname)
+            .uri("${ApiPaths.API_V1_PROFILES}/check/nickname/{nickname}", nickname)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -269,7 +270,7 @@ class UserProfileControllerTest {
 
         // When & Then
         webTestClient.get()
-            .uri("/api/v1/profiles/check/nickname/{nickname}", nickname)
+            .uri("${ApiPaths.API_V1_PROFILES}/check/nickname/{nickname}", nickname)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -296,7 +297,7 @@ class UserProfileControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .post()
-            .uri("/api/v1/profiles/image")
+            .uri("${ApiPaths.API_V1_PROFILES}/image")
             .contentType(MediaType.MULTIPART_FORM_DATA)
             .body(BodyInserters.fromMultipartData(multipartBodyBuilder.build()))
             .exchange()
@@ -338,7 +339,7 @@ class UserProfileControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .post()
-            .uri("/api/v1/profiles/image")
+            .uri("${ApiPaths.API_V1_PROFILES}/image")
             .contentType(MediaType.MULTIPART_FORM_DATA)
             .body(BodyInserters.fromMultipartData(multipartBodyBuilder.build()))
             .exchange()

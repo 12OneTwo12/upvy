@@ -10,10 +10,10 @@ import me.onetwo.growsnap.domain.feed.dto.FeedItemResponse
 import me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.growsnap.domain.feed.service.FeedCacheService
 import me.onetwo.growsnap.domain.feed.service.FeedService
-import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -70,7 +70,7 @@ class FeedControllerTest {
                 .mutateWith(mockUser(userId))
                 .get()
                 .uri { uriBuilder ->
-                    uriBuilder.path("/api/v1/feed")
+                    uriBuilder.path(ApiPaths.API_V1_FEED)
                         .queryParam("limit", 10)
                         .build()
                 }
@@ -114,6 +114,8 @@ class FeedControllerTest {
                             fieldWithPath("content[].interactions.saveCount").description("저장 수"),
                             fieldWithPath("content[].interactions.shareCount").description("공유 수"),
                             fieldWithPath("content[].interactions.viewCount").description("조회수"),
+                            fieldWithPath("content[].interactions.isLiked").description("현재 사용자의 좋아요 여부"),
+                            fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부"),
                             fieldWithPath("content[].subtitles[]").description("자막 정보 목록"),
                             fieldWithPath("nextCursor").description("다음 페이지 커서 (마지막 페이지인 경우 null)").optional(),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
@@ -143,7 +145,7 @@ class FeedControllerTest {
                 .mutateWith(mockUser(userId))
                 .get()
                 .uri { uriBuilder ->
-                    uriBuilder.path("/api/v1/feed")
+                    uriBuilder.path(ApiPaths.API_V1_FEED)
                         .queryParam("cursor", cursor)
                         .queryParam("limit", 10)
                         .build()
@@ -158,7 +160,7 @@ class FeedControllerTest {
         fun getMainFeed_WithoutAuth_ReturnsUnauthorized() {
             // When & Then: 인증 없이 API 호출
             webTestClient.get()
-                .uri("/api/v1/feed")
+                .uri(ApiPaths.API_V1_FEED)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isUnauthorized
@@ -188,7 +190,7 @@ class FeedControllerTest {
                 .mutateWith(mockUser(userId))
                 .get()
                 .uri { uriBuilder ->
-                    uriBuilder.path("/api/v1/feed/following")
+                    uriBuilder.path("${ApiPaths.API_V1_FEED}/following")
                         .queryParam("limit", 10)
                         .build()
                 }
@@ -232,6 +234,8 @@ class FeedControllerTest {
                             fieldWithPath("content[].interactions.saveCount").description("저장 수"),
                             fieldWithPath("content[].interactions.shareCount").description("공유 수"),
                             fieldWithPath("content[].interactions.viewCount").description("조회수"),
+                            fieldWithPath("content[].interactions.isLiked").description("현재 사용자의 좋아요 여부"),
+                            fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부"),
                             fieldWithPath("content[].subtitles[]").description("자막 정보 목록"),
                             fieldWithPath("nextCursor").description("다음 페이지 커서 (마지막 페이지인 경우 null)").optional(),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
@@ -246,7 +250,7 @@ class FeedControllerTest {
         fun getFollowingFeed_WithoutAuth_ReturnsUnauthorized() {
             // When & Then: 인증 없이 API 호출
             webTestClient.get()
-                .uri("/api/v1/feed/following")
+                .uri("${ApiPaths.API_V1_FEED}/following")
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isUnauthorized
@@ -268,7 +272,7 @@ class FeedControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/feed/refresh")
+                .uri("${ApiPaths.API_V1_FEED}/refresh")
                 .exchange()
                 .expectStatus().isNoContent
                 .expectBody()
@@ -285,7 +289,7 @@ class FeedControllerTest {
         fun refreshFeed_WithoutAuth_ReturnsUnauthorized() {
             // When & Then: 인증 없이 API 호출
             webTestClient.post()
-                .uri("/api/v1/feed/refresh")
+                .uri("${ApiPaths.API_V1_FEED}/refresh")
                 .exchange()
                 .expectStatus().isUnauthorized
         }
@@ -319,7 +323,9 @@ class FeedControllerTest {
                     commentCount = 50,
                     saveCount = 30,
                     shareCount = 20,
-                    viewCount = 1000
+                    viewCount = 1000,
+                    isLiked = false,
+                    isSaved = false
                 ),
                 subtitles = emptyList()
             )

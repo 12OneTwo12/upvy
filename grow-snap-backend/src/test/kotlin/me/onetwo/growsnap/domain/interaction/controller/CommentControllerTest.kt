@@ -10,6 +10,7 @@ import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.service.CommentService
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -42,7 +43,7 @@ class CommentControllerTest {
     private lateinit var commentService: CommentService
 
     @Nested
-    @DisplayName("POST /api/v1/videos/{videoId}/comments - 댓글 작성")
+    @DisplayName("POST /api/v1/videos/{contentId}/comments - 댓글 작성")
     inner class CreateComment {
 
         @Test
@@ -50,7 +51,7 @@ class CommentControllerTest {
         fun createComment_WithValidRequest_ReturnsCreatedComment() {
             // Given: 댓글 작성 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val request = CommentRequest(
                 content = "Test comment",
                 timestampSeconds = null,
@@ -59,7 +60,7 @@ class CommentControllerTest {
 
             val response = CommentResponse(
                 id = UUID.randomUUID().toString(),
-                contentId = videoId,
+                contentId = contentId,
                 userId = userId.toString(),
                 userNickname = "TestUser",
                 userProfileImageUrl = null,
@@ -70,13 +71,13 @@ class CommentControllerTest {
                 replies = emptyList()
             )
 
-            every { commentService.createComment(userId, UUID.fromString(videoId), request) } returns Mono.just(response)
+            every { commentService.createComment(userId, UUID.fromString(contentId), request) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/videos/{videoId}/comments", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/comments", contentId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -91,7 +92,7 @@ class CommentControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         requestFields(
                             fieldWithPath("content").description("댓글 내용"),
@@ -113,7 +114,7 @@ class CommentControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { commentService.createComment(userId, UUID.fromString(videoId), request) }
+            verify(exactly = 1) { commentService.createComment(userId, UUID.fromString(contentId), request) }
         }
 
         @Test
@@ -121,7 +122,7 @@ class CommentControllerTest {
         fun createComment_WithEmptyContent_ReturnsBadRequest() {
             // Given: 빈 내용
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val request = mapOf(
                 "content" to "",
                 "timestampSeconds" to null,
@@ -132,7 +133,7 @@ class CommentControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/videos/$videoId/comments")
+                .uri("${ApiPaths.API_V1}/contents/$contentId/comments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -146,7 +147,7 @@ class CommentControllerTest {
         fun createComment_WithParentId_CreatesReply() {
             // Given: 대댓글 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val parentCommentId = UUID.randomUUID().toString()
             val request = CommentRequest(
                 content = "Reply comment",
@@ -156,7 +157,7 @@ class CommentControllerTest {
 
             val response = CommentResponse(
                 id = UUID.randomUUID().toString(),
-                contentId = videoId,
+                contentId = contentId,
                 userId = userId.toString(),
                 userNickname = "TestUser",
                 userProfileImageUrl = null,
@@ -167,13 +168,13 @@ class CommentControllerTest {
                 replies = emptyList()
             )
 
-            every { commentService.createComment(userId, UUID.fromString(videoId), request) } returns Mono.just(response)
+            every { commentService.createComment(userId, UUID.fromString(contentId), request) } returns Mono.just(response)
 
             // When & Then: 대댓글 작성 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/videos/$videoId/comments")
+                .uri("${ApiPaths.API_V1}/contents/$contentId/comments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -181,12 +182,12 @@ class CommentControllerTest {
                 .expectBody()
                 .jsonPath("$.parentCommentId").isEqualTo(parentCommentId)
 
-            verify(exactly = 1) { commentService.createComment(userId, UUID.fromString(videoId), request) }
+            verify(exactly = 1) { commentService.createComment(userId, UUID.fromString(contentId), request) }
         }
     }
 
     @Nested
-    @DisplayName("GET /api/v1/videos/{videoId}/comments - 댓글 목록 조회")
+    @DisplayName("GET /api/v1/videos/{contentId}/comments - 댓글 목록 조회")
     inner class GetComments {
 
         @Test
@@ -194,12 +195,12 @@ class CommentControllerTest {
         fun getComments_ReturnsHierarchicalComments() {
             // Given: 부모 댓글과 대댓글
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val parentCommentId = UUID.randomUUID().toString()
 
             val reply = CommentResponse(
                 id = UUID.randomUUID().toString(),
-                contentId = videoId,
+                contentId = contentId,
                 userId = UUID.randomUUID().toString(),
                 userNickname = "User2",
                 userProfileImageUrl = null,
@@ -212,7 +213,7 @@ class CommentControllerTest {
 
             val parentComment = CommentResponse(
                 id = parentCommentId,
-                contentId = videoId,
+                contentId = contentId,
                 userId = UUID.randomUUID().toString(),
                 userNickname = "User1",
                 userProfileImageUrl = null,
@@ -223,13 +224,13 @@ class CommentControllerTest {
                 replies = listOf(reply)
             )
 
-            every { commentService.getComments(UUID.fromString(videoId)) } returns Flux.just(parentComment)
+            every { commentService.getComments(UUID.fromString(contentId)) } returns Flux.just(parentComment)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/videos/{videoId}/comments", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/comments", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -243,7 +244,7 @@ class CommentControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("[].id").description("댓글 ID"),
@@ -270,7 +271,7 @@ class CommentControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { commentService.getComments(UUID.fromString(videoId)) }
+            verify(exactly = 1) { commentService.getComments(UUID.fromString(contentId)) }
         }
 
         @Test
@@ -278,21 +279,21 @@ class CommentControllerTest {
         fun getComments_WithNoComments_ReturnsEmptyArray() {
             // Given: 댓글이 없는 콘텐츠
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
 
-            every { commentService.getComments(UUID.fromString(videoId)) } returns Flux.empty()
+            every { commentService.getComments(UUID.fromString(contentId)) } returns Flux.empty()
 
             // When & Then: 빈 배열 반환 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/videos/$videoId/comments")
+                .uri("${ApiPaths.API_V1}/contents/$contentId/comments")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
                 .json("[]")
 
-            verify(exactly = 1) { commentService.getComments(UUID.fromString(videoId)) }
+            verify(exactly = 1) { commentService.getComments(UUID.fromString(contentId)) }
         }
     }
 
@@ -313,7 +314,7 @@ class CommentControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .delete()
-                .uri("/api/v1/comments/{commentId}", commentId)
+                .uri("${ApiPaths.API_V1}/comments/{commentId}", commentId)
                 .exchange()
                 .expectStatus().isNoContent
                 .expectBody()
@@ -345,7 +346,7 @@ class CommentControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .delete()
-                .uri("/api/v1/comments/$commentId")
+                .uri("${ApiPaths.API_V1}/comments/$commentId")
                 .exchange()
                 .expectStatus().isNotFound
 
@@ -366,7 +367,7 @@ class CommentControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .delete()
-                .uri("/api/v1/comments/$commentId")
+                .uri("${ApiPaths.API_V1}/comments/$commentId")
                 .exchange()
                 .expectStatus().isForbidden
 

@@ -78,7 +78,7 @@ class FeedServiceImpl(
                 checkAndPrefetchNextBatch(userId, batchNumber, offset, cachedBatch.size)
 
                 // 상세 정보 조회
-                feedRepository.findByContentIds(contentIds)
+                feedRepository.findByContentIds(userId, contentIds)
                     .collectList()
                     .map { feedItems ->
                         CursorPageResponse.of(

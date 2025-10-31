@@ -1,8 +1,10 @@
 package me.onetwo.growsnap.domain.interaction.controller
 
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
+import me.onetwo.growsnap.domain.interaction.dto.SaveStatusResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
 import me.onetwo.growsnap.domain.interaction.service.SaveService
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -24,7 +26,7 @@ import java.util.UUID
  * @property saveService 저장 서비스
  */
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping(ApiPaths.API_V1)
 class SaveController(
     private val saveService: SaveService
 ) {
@@ -32,22 +34,22 @@ class SaveController(
     /**
      * 콘텐츠 저장
      *
-     * POST /api/v1/videos/{videoId}/save
+     * POST /api/v1/contents/{contentId}/save
      *
      * @param principal 인증된 사용자 Principal
-     * @param videoId 비디오(콘텐츠) ID
+     * @param contentId 비디오(콘텐츠) ID
      * @return 저장 응답
      */
-    @PostMapping("/videos/{videoId}/save")
-    fun saveVideo(
+    @PostMapping("/contents/{contentId}/save")
+    fun saveContent(
         principal: Mono<Principal>,
-        @PathVariable videoId: String
+        @PathVariable contentId: String
     ): Mono<ResponseEntity<SaveResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentId = UUID.fromString(videoId)
-                saveService.saveContent(userId, contentId)
+                val contentUUID = UUID.fromString(contentId)
+                saveService.saveContent(userId, contentUUID)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -55,22 +57,22 @@ class SaveController(
     /**
      * 콘텐츠 저장 취소
      *
-     * DELETE /api/v1/videos/{videoId}/save
+     * DELETE /api/v1/contents/{contentId}/save
      *
      * @param principal 인증된 사용자 Principal
-     * @param videoId 비디오(콘텐츠) ID
+     * @param contentId 비디오(콘텐츠) ID
      * @return 저장 취소 응답
      */
-    @DeleteMapping("/videos/{videoId}/save")
-    fun unsaveVideo(
+    @DeleteMapping("/contents/{contentId}/save")
+    fun unsaveContent(
         principal: Mono<Principal>,
-        @PathVariable videoId: String
+        @PathVariable contentId: String
     ): Mono<ResponseEntity<SaveResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentId = UUID.fromString(videoId)
-                saveService.unsaveContent(userId, contentId)
+                val contentUUID = UUID.fromString(contentId)
+                saveService.unsaveContent(userId, contentUUID)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -78,13 +80,13 @@ class SaveController(
     /**
      * 저장한 콘텐츠 목록 조회
      *
-     * GET /api/v1/users/me/saved-videos
+     * GET /api/v1/users/me/saved-contents
      *
      * @param principal 인증된 사용자 Principal
      * @return 저장한 콘텐츠 목록
      */
-    @GetMapping("/users/me/saved-videos")
-    fun getSavedVideos(
+    @GetMapping("/users/me/saved-contents")
+    fun getSavedContents(
         principal: Mono<Principal>
     ): Flux<SavedContentResponse> {
         return principal
@@ -92,5 +94,30 @@ class SaveController(
             .flatMapMany { userId ->
                 saveService.getSavedContents(userId)
             }
+    }
+
+    /**
+     * 저장 상태 조회
+     *
+     * 특정 콘텐츠에 대한 사용자의 저장 상태를 확인합니다.
+     *
+     * GET /api/v1/contents/{contentId}/save/status
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param contentId 비디오(콘텐츠) ID
+     * @return 저장 상태 응답
+     */
+    @GetMapping("/contents/{contentId}/save/status")
+    fun getSaveStatus(
+        principal: Mono<Principal>,
+        @PathVariable contentId: String
+    ): Mono<ResponseEntity<SaveStatusResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                val contentUUID = UUID.fromString(contentId)
+                saveService.getSaveStatus(userId, contentUUID)
+            }
+            .map { response -> ResponseEntity.ok(response) }
     }
 }
