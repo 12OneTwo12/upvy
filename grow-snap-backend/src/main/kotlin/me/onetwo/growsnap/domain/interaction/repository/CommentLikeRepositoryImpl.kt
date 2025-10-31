@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.interaction.repository
 import me.onetwo.growsnap.domain.interaction.model.CommentLike
 import me.onetwo.growsnap.jooq.generated.tables.UserCommentLikes.Companion.USER_COMMENT_LIKES
 import org.jooq.DSLContext
+import org.jooq.Record
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
 import java.util.UUID
@@ -48,18 +49,7 @@ class CommentLikeRepositoryImpl(
             .set(USER_COMMENT_LIKES.UPDATED_BY, userId.toString())
             .returning()
             .fetchOne()
-            ?.let {
-                CommentLike(
-                    id = it.getValue(USER_COMMENT_LIKES.ID),
-                    userId = UUID.fromString(it.getValue(USER_COMMENT_LIKES.USER_ID)),
-                    commentId = UUID.fromString(it.getValue(USER_COMMENT_LIKES.COMMENT_ID)),
-                    createdAt = it.getValue(USER_COMMENT_LIKES.CREATED_AT)!!,
-                    createdBy = it.getValue(USER_COMMENT_LIKES.CREATED_BY)?.let { UUID.fromString(it) },
-                    updatedAt = it.getValue(USER_COMMENT_LIKES.UPDATED_AT)!!,
-                    updatedBy = it.getValue(USER_COMMENT_LIKES.UPDATED_BY)?.let { UUID.fromString(it) },
-                    deletedAt = it.getValue(USER_COMMENT_LIKES.DELETED_AT)
-                )
-            }
+            ?.let { toCommentLike(it) }
     }
 
     /**
@@ -135,18 +125,7 @@ class CommentLikeRepositoryImpl(
             .and(USER_COMMENT_LIKES.COMMENT_ID.eq(commentId.toString()))
             .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
             .fetchOne()
-            ?.let {
-                CommentLike(
-                    id = it.getValue(USER_COMMENT_LIKES.ID),
-                    userId = UUID.fromString(it.getValue(USER_COMMENT_LIKES.USER_ID)),
-                    commentId = UUID.fromString(it.getValue(USER_COMMENT_LIKES.COMMENT_ID)),
-                    createdAt = it.getValue(USER_COMMENT_LIKES.CREATED_AT)!!,
-                    createdBy = it.getValue(USER_COMMENT_LIKES.CREATED_BY)?.let { UUID.fromString(it) },
-                    updatedAt = it.getValue(USER_COMMENT_LIKES.UPDATED_AT)!!,
-                    updatedBy = it.getValue(USER_COMMENT_LIKES.UPDATED_BY)?.let { UUID.fromString(it) },
-                    deletedAt = it.getValue(USER_COMMENT_LIKES.DELETED_AT)
-                )
-            }
+            ?.let { toCommentLike(it) }
     }
 
     /**
@@ -164,5 +143,24 @@ class CommentLikeRepositoryImpl(
             .where(USER_COMMENT_LIKES.COMMENT_ID.eq(commentId.toString()))
             .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
             .fetchOne(0, Int::class.java) ?: 0
+    }
+
+    /**
+     * JOOQ Record를 CommentLike 엔티티로 변환
+     *
+     * @param record JOOQ Record
+     * @return CommentLike 엔티티
+     */
+    private fun toCommentLike(record: Record): CommentLike {
+        return CommentLike(
+            id = record.getValue(USER_COMMENT_LIKES.ID),
+            userId = UUID.fromString(record.getValue(USER_COMMENT_LIKES.USER_ID)),
+            commentId = UUID.fromString(record.getValue(USER_COMMENT_LIKES.COMMENT_ID)),
+            createdAt = record.getValue(USER_COMMENT_LIKES.CREATED_AT)!!,
+            createdBy = record.getValue(USER_COMMENT_LIKES.CREATED_BY)?.let { UUID.fromString(it) },
+            updatedAt = record.getValue(USER_COMMENT_LIKES.UPDATED_AT)!!,
+            updatedBy = record.getValue(USER_COMMENT_LIKES.UPDATED_BY)?.let { UUID.fromString(it) },
+            deletedAt = record.getValue(USER_COMMENT_LIKES.DELETED_AT)
+        )
     }
 }
