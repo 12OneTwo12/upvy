@@ -4,13 +4,14 @@
  * 비디오 플레이어 + 오버레이를 결합한 완전한 피드 아이템
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, Dimensions, Animated, PanResponder, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
 import { PhotoGallery } from './PhotoGallery';
 import { FeedOverlay } from './FeedOverlay';
+import { LikeAnimation } from './LikeAnimation';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -52,6 +53,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
 
@@ -63,6 +65,20 @@ export const FeedItem: React.FC<FeedItemProps> = ({
     }
     return false;
   };
+
+  // 좋아요 핸들러 (하트 애니메이션 포함)
+  const handleLike = useCallback(() => {
+    // 좋아요가 안 되어있을 때만 하트 애니메이션 표시
+    if (!item.interactions.isLiked) {
+      setShowLikeAnimation(true);
+    }
+    onLike?.();
+  }, [item.interactions.isLiked, onLike]);
+
+  // 애니메이션 완료 핸들러
+  const handleAnimationComplete = useCallback(() => {
+    setShowLikeAnimation(false);
+  }, []);
 
   // 진행률 업데이트 받기
   const handleProgressUpdate = (prog: number, dur: number, dragging: boolean) => {
@@ -143,9 +159,8 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           shouldPreload={shouldPreload}
           hasBeenLoaded={hasBeenLoaded}
           isDragging={isDragging}
-          isLiked={item.interactions.isLiked}
           onVideoLoaded={onVideoLoaded}
-          onDoubleTap={onLike}
+          onDoubleTap={handleLike}
           onTap={handleContentTap}
           onProgressUpdate={handleProgressUpdate}
         />
@@ -154,8 +169,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           photoUrls={item.photoUrls}
           width={SCREEN_WIDTH}
           height={SCREEN_HEIGHT}
-          isLiked={item.interactions.isLiked}
-          onDoubleTap={onLike}
+          onDoubleTap={handleLike}
           onTap={handleContentTap}
         />
       ) : null}
@@ -206,6 +220,25 @@ export const FeedItem: React.FC<FeedItemProps> = ({
               }}
             />
           </Animated.View>
+        </View>
+      )}
+
+      {/* 좋아요 애니메이션 - 모든 오버레이 위에 표시 */}
+      {showLikeAnimation && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        >
+          <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
         </View>
       )}
     </View>

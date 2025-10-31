@@ -13,7 +13,6 @@ import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { LikeAnimation } from './LikeAnimation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const NAVIGATION_BAR_HEIGHT = 60;
@@ -25,7 +24,6 @@ interface VideoPlayerProps {
   shouldPreload?: boolean;
   hasBeenLoaded?: boolean;
   isDragging?: boolean;
-  isLiked?: boolean; // 현재 좋아요 상태
   onVideoLoaded?: () => void;
   onDoubleTap?: () => void;
   onTap?: () => boolean;
@@ -44,7 +42,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     shouldPreload = false,
     hasBeenLoaded = false,
     isDragging: externalIsDragging = false,
-    isLiked = false,
     onVideoLoaded,
     onDoubleTap,
     onTap,
@@ -54,7 +51,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [showPlayIcon, setShowPlayIcon] = useState<'play' | 'pause' | null>(null);
-  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const lastTap = useRef<number>(0);
@@ -188,18 +184,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   // 더블탭: 좋아요
   const handleDoubleTap = () => {
     if (!onDoubleTap) return;
-
-    // 하트 애니메이션 표시 (좋아요가 안 되어있을 때만)
-    if (!isLiked) {
-      setShowLikeAnimation(true);
-    }
-
     onDoubleTap();
-  };
-
-  // 애니메이션 완료 핸들러
-  const handleAnimationComplete = () => {
-    setShowLikeAnimation(false);
   };
 
   // Seek 함수를 ref로 노출
@@ -327,23 +312,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
         </View>
       </TouchableWithoutFeedback>
-
-      {/* 좋아요 애니메이션 - 절대 위치로 화면 중앙에 표시 */}
-      {showLikeAnimation && (
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          justifyContent: 'center',
-          alignItems: 'center',
-          pointerEvents: 'none',
-          zIndex: 2000,
-        }}>
-          <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
-        </View>
-      )}
     </View>
   );
 });

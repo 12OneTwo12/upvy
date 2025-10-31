@@ -18,7 +18,6 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { LikeAnimation } from './LikeAnimation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -26,7 +25,6 @@ interface PhotoGalleryProps {
   photoUrls: string[];
   width?: number;
   height?: number;
-  isLiked?: boolean; // 현재 좋아요 상태
   onDoubleTap?: () => void;
   onTap?: () => boolean; // 탭 이벤트, true 반환 시 이벤트 처리됨
 }
@@ -35,12 +33,10 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   photoUrls,
   width = SCREEN_WIDTH,
   height = SCREEN_HEIGHT,
-  isLiked = false,
   onDoubleTap,
   onTap,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const lastTap = useRef<number>(0);
 
@@ -60,10 +56,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
     const DOUBLE_TAP_DELAY = 300;
 
     if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-      // 더블탭: 좋아요가 안 되어있을 때만 하트 애니메이션 표시
-      if (!isLiked) {
-        setShowLikeAnimation(true);
-      }
+      // 더블탭
       onDoubleTap?.();
       lastTap.current = 0;
     } else {
@@ -75,12 +68,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
         }
       }, DOUBLE_TAP_DELAY);
     }
-  }, [isLiked, onDoubleTap, onTap]);
-
-  // 애니메이션 완료 핸들러
-  const handleAnimationComplete = useCallback(() => {
-    setShowLikeAnimation(false);
-  }, []);
+  }, [onDoubleTap, onTap]);
 
   return (
     <View style={[styles.container, { width, height }]}>
@@ -122,9 +110,6 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
           ))}
         </View>
       )}
-
-      {/* 좋아요 애니메이션 */}
-      <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
     </View>
   );
 };
