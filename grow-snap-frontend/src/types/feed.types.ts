@@ -80,6 +80,7 @@ export interface FeedItem {
   contentId: string;
   contentType: ContentType;
   url: string;
+  photoUrls: string[] | null; // PHOTO 타입인 경우 사진 URL 목록
   thumbnailUrl: string;
   duration: number | null;
   width: number;

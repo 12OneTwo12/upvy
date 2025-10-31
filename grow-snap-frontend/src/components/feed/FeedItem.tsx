@@ -9,6 +9,7 @@ import { View, Dimensions, Animated, PanResponder, Platform } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
+import { PhotoGallery } from './PhotoGallery';
 import { FeedOverlay } from './FeedOverlay';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
@@ -54,13 +55,8 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
 
-  // 비디오만 표시 (사진은 나중에 구현)
-  if (item.contentType !== 'VIDEO') {
-    return null;
-  }
-
-  // 영상 탭 시 더보기 닫기
-  const handleVideoTap = () => {
+  // 컨텐츠 탭 시 더보기 닫기
+  const handleContentTap = () => {
     if (isExpanded) {
       setIsExpanded(false);
       return true;
@@ -138,19 +134,27 @@ export const FeedItem: React.FC<FeedItemProps> = ({
 
   return (
     <View style={{ height: SCREEN_HEIGHT }} className="relative">
-      {/* 비디오 플레이어 */}
-      <VideoPlayer
-        ref={videoPlayerRef}
-        uri={item.url}
-        isFocused={isFocused}
-        shouldPreload={shouldPreload}
-        hasBeenLoaded={hasBeenLoaded}
-        isDragging={isDragging}
-        onVideoLoaded={onVideoLoaded}
-        onDoubleTap={onLike}
-        onTap={handleVideoTap}
-        onProgressUpdate={handleProgressUpdate}
-      />
+      {/* 콘텐츠 렌더링 - VIDEO 또는 PHOTO */}
+      {item.contentType === 'VIDEO' ? (
+        <VideoPlayer
+          ref={videoPlayerRef}
+          uri={item.url}
+          isFocused={isFocused}
+          shouldPreload={shouldPreload}
+          hasBeenLoaded={hasBeenLoaded}
+          isDragging={isDragging}
+          onVideoLoaded={onVideoLoaded}
+          onDoubleTap={onLike}
+          onTap={handleContentTap}
+          onProgressUpdate={handleProgressUpdate}
+        />
+      ) : item.contentType === 'PHOTO' && item.photoUrls && item.photoUrls.length > 0 ? (
+        <PhotoGallery
+          photoUrls={item.photoUrls}
+          width={SCREEN_WIDTH}
+          height={SCREEN_HEIGHT}
+        />
+      ) : null}
 
       {/* 정보 오버레이 */}
       <FeedOverlay
