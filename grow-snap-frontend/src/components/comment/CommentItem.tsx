@@ -8,15 +8,15 @@
  * - 답글은 왼쪽 라인 + 들여쓰기
  */
 
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { theme } from '@/theme';
 import { useAuthStore } from '@/stores/authStore';
+import { getReplies } from '@/api/comment.api';
+import { getCommentLikeCount, getCommentLikeStatus } from '@/api/commentLike.api';
 import type { CommentResponse } from '@/types/interaction.types';
-
-// 답글 초기 표시 개수
-const INITIAL_REPLY_COUNT = 3;
 
 /**
  * 상대 시간 계산 함수
@@ -45,6 +45,7 @@ interface CommentItemProps {
   likeCount?: number; // 좋아요 개수
   isLiked?: boolean; // 좋아요 상태
   commentLikes?: Record<string, { count: number; isLiked: boolean }>; // 답글의 좋아요 데이터
+  contentId: string; // 콘텐츠 ID (답글 로드용)
 }
 
 export const CommentItem: React.FC<CommentItemProps> = ({
@@ -56,22 +57,123 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   likeCount = 0,
   isLiked = false,
   commentLikes,
+  contentId,
 }) => {
   const currentUser = useAuthStore((state) => state.user);
   const isOwnComment = currentUser && currentUser.id === comment.userId;
 
-  // 답글 더보기 상태
-  const [showAllReplies, setShowAllReplies] = useState(false);
+  // 답글 표시 여부
+  const [showReplies, setShowReplies] = useState(false);
 
-  // 표시할 답글 목록
-  const repliesToShow = comment.replies && comment.replies.length > INITIAL_REPLY_COUNT && !showAllReplies
-    ? comment.replies.slice(0, INITIAL_REPLY_COUNT)
-    : comment.replies;
+  // 답글 페이징 커서
+  const [repliesCursor, setRepliesCursor] = useState<string | null>(null);
 
-  // 숨겨진 답글 개수
-  const hiddenRepliesCount = comment.replies && comment.replies.length > INITIAL_REPLY_COUNT && !showAllReplies
-    ? comment.replies.length - INITIAL_REPLY_COUNT
-    : 0;
+  // 로드된 답글 목록
+  const [loadedReplies, setLoadedReplies] = useState<CommentResponse[]>([]);
+
+  // 답글 좋아요 데이터
+  const [repliesLikes, setRepliesLikes] = useState<Record<string, { count: number; isLiked: boolean }>>({});
+
+  // 로딩 중 상태 (중복 호출 방지)
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // 답글 로드 쿼리 (3개씩)
+  const {
+    data: repliesData,
+    isLoading: isLoadingReplies,
+    refetch: refetchReplies,
+  } = useQuery({
+    queryKey: ['replies', comment.id],
+    queryFn: () => getReplies(comment.id, repliesCursor, 3),
+    enabled: false, // 수동으로만 실행
+  });
+
+
+  // 답글 로드 핸들러
+  const handleLoadReplies = useCallback(async () => {
+    if (!showReplies) {
+      setShowReplies(true);
+      const result = await refetchReplies();
+
+      if (result.data) {
+        const newReplies = result.data.comments;
+        setLoadedReplies(newReplies);
+        setRepliesCursor(result.data.nextCursor);
+
+        // 새 답글들의 좋아요 정보 로드
+        const likesData: Record<string, { count: number; isLiked: boolean }> = {};
+        await Promise.all(
+          newReplies.map(async (reply) => {
+            try {
+              const [countRes, statusRes] = await Promise.all([
+                getCommentLikeCount(reply.id),
+                getCommentLikeStatus(reply.id),
+              ]);
+              likesData[reply.id] = {
+                count: countRes.likeCount,
+                isLiked: statusRes.isLiked,
+              };
+            } catch (error) {
+              likesData[reply.id] = { count: 0, isLiked: false };
+            }
+          })
+        );
+        setRepliesLikes(likesData);
+      }
+    } else {
+      // 답글 숨기기
+      setShowReplies(false);
+    }
+  }, [showReplies, comment.id, repliesCursor, refetchReplies]);
+
+  // 더 많은 답글 로드
+  const handleLoadMoreReplies = useCallback(async () => {
+    // 이미 로딩 중이면 중복 호출 방지
+    if (isLoadingMore || isLoadingReplies) return;
+
+    setIsLoadingMore(true);
+    try {
+      const result = await refetchReplies();
+
+      if (result.data) {
+        const newReplies = result.data.comments;
+
+        // 중복 제거: 기존 loadedReplies의 ID와 겹치지 않는 것만 추가
+        setLoadedReplies((prev) => {
+          const existingIds = new Set(prev.map(r => r.id));
+          const uniqueNewReplies = newReplies.filter(r => !existingIds.has(r.id));
+          return [...prev, ...uniqueNewReplies];
+        });
+
+        setRepliesCursor(result.data.nextCursor);
+
+        // 새 답글들의 좋아요 정보 로드 (중복되지 않은 것만)
+        const likesData: Record<string, { count: number; isLiked: boolean }> = { ...repliesLikes };
+        await Promise.all(
+          newReplies.map(async (reply) => {
+            // 이미 로드된 좋아요 정보는 스킵
+            if (likesData[reply.id]) return;
+
+            try {
+              const [countRes, statusRes] = await Promise.all([
+                getCommentLikeCount(reply.id),
+                getCommentLikeStatus(reply.id),
+              ]);
+              likesData[reply.id] = {
+                count: countRes.likeCount,
+                isLiked: statusRes.isLiked,
+              };
+            } catch (error) {
+              likesData[reply.id] = { count: 0, isLiked: false };
+            }
+          })
+        );
+        setRepliesLikes(likesData);
+      }
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, isLoadingReplies, repliesCursor, refetchReplies, repliesLikes]);
 
   return (
     <View style={styles.container}>
@@ -107,10 +209,14 @@ export const CommentItem: React.FC<CommentItemProps> = ({
           <View style={styles.actionsRow}>
             <Text style={styles.timeText}>{getRelativeTime(comment.createdAt)}</Text>
 
-            {!isReply && comment.replies && comment.replies.length > 0 && (
+            {!isReply && comment.replyCount > 0 && (
               <>
                 <Text style={styles.actionDivider}>·</Text>
-                <Text style={styles.actionText}>답글 {comment.replies.length}개</Text>
+                <TouchableOpacity onPress={handleLoadReplies}>
+                  <Text style={styles.actionButton}>
+                    {showReplies ? '답글 숨기기' : `답글 ${comment.replyCount}개`}
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
 
@@ -132,6 +238,13 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               </>
             )}
           </View>
+
+          {/* 댓글 아래 작은 답글 더보기 버튼 */}
+          {!isReply && !showReplies && comment.replyCount > 0 && (
+            <TouchableOpacity onPress={handleLoadReplies} style={styles.viewRepliesButton}>
+              <Text style={styles.viewRepliesText}>답글 더보기</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* 좋아요 버튼 + 개수 */}
@@ -152,33 +265,45 @@ export const CommentItem: React.FC<CommentItemProps> = ({
         </View>
       </View>
 
-      {/* 답글 렌더링 (재귀) */}
-      {repliesToShow && repliesToShow.length > 0 && (
+      {/* 답글 렌더링 */}
+      {!isReply && showReplies && (
         <View style={styles.repliesContainer}>
-          {repliesToShow.map((reply) => (
-            <CommentItem
-              key={reply.id}
-              comment={reply}
-              onLike={onLike}
-              onReply={onReply}
-              onDelete={onDelete}
-              isReply={true}
-              likeCount={commentLikes?.[reply.id]?.count || 0}
-              isLiked={commentLikes?.[reply.id]?.isLiked || false}
-              commentLikes={commentLikes}
-            />
-          ))}
+          {isLoadingReplies && (!loadedReplies || loadedReplies.length === 0) ? (
+            <View style={styles.repliesLoadingContainer}>
+              <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+            </View>
+          ) : (
+            <>
+              {loadedReplies && loadedReplies.map((reply) => (
+                <CommentItem
+                  key={reply.id}
+                  comment={reply}
+                  onLike={onLike}
+                  onReply={onReply}
+                  onDelete={onDelete}
+                  isReply={true}
+                  likeCount={repliesLikes?.[reply.id]?.count ?? 0}
+                  isLiked={repliesLikes?.[reply.id]?.isLiked ?? false}
+                  commentLikes={repliesLikes}
+                  contentId={contentId}
+                />
+              ))}
 
-          {/* 더보기 버튼 */}
-          {hiddenRepliesCount > 0 && (
-            <TouchableOpacity
-              style={styles.showMoreButton}
-              onPress={() => setShowAllReplies(true)}
-            >
-              <Text style={styles.showMoreText}>
-                답글 {hiddenRepliesCount}개 더보기
-              </Text>
-            </TouchableOpacity>
+              {/* 더 많은 답글 로드 버튼 */}
+              {repliesData?.hasNext && (
+                <TouchableOpacity
+                  style={styles.showMoreButton}
+                  onPress={handleLoadMoreReplies}
+                  disabled={isLoadingReplies || isLoadingMore}
+                >
+                  {(isLoadingReplies || isLoadingMore) ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+                  ) : (
+                    <Text style={styles.showMoreText}>답글 더보기</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       )}
@@ -274,14 +399,29 @@ const styles = StyleSheet.create({
   repliesContainer: {
     // 답글 컨테이너는 스타일 없음 (재귀적으로 CommentItem 렌더링)
   },
+  repliesLoadingContainer: {
+    paddingVertical: theme.spacing[4],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   showMoreButton: {
-    paddingVertical: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
     paddingHorizontal: theme.spacing[4] + 32 + theme.spacing[3], // 답글 들여쓰기와 동일
     marginTop: theme.spacing[1],
+    marginBottom: theme.spacing[2],
   },
   showMoreText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  viewRepliesButton: {
+    paddingTop: theme.spacing[2],
+    paddingBottom: theme.spacing[1],
+  },
+  viewRepliesText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    fontWeight: theme.typography.fontWeight.medium,
   },
 });
