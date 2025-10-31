@@ -256,6 +256,26 @@ CREATE INDEX idx_user_save_deleted_at ON user_saves(deleted_at);
 CREATE INDEX idx_user_save_composite ON user_saves(user_id, content_id);
 CREATE INDEX idx_user_save_created_at ON user_saves(created_at);
 
+-- User Comment Likes Table (댓글별 좋아요 상태)
+CREATE TABLE IF NOT EXISTS user_comment_likes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    comment_id CHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by CHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by CHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_comment_like UNIQUE (user_id, comment_id)
+);
+
+CREATE INDEX idx_user_comment_like_user_id ON user_comment_likes(user_id);
+CREATE INDEX idx_user_comment_like_comment_id ON user_comment_likes(comment_id);
+CREATE INDEX idx_user_comment_like_deleted_at ON user_comment_likes(deleted_at);
+CREATE INDEX idx_user_comment_like_composite ON user_comment_likes(user_id, comment_id);
+
 -- Reports Table (신고)
 CREATE TABLE IF NOT EXISTS reports (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

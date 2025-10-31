@@ -1,0 +1,166 @@
+package me.onetwo.growsnap.domain.interaction.service
+
+import me.onetwo.growsnap.domain.interaction.dto.CommentLikeCountResponse
+import me.onetwo.growsnap.domain.interaction.dto.CommentLikeResponse
+import me.onetwo.growsnap.domain.interaction.dto.CommentLikeStatusResponse
+import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
+import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
+import java.util.UUID
+
+/**
+ * 댓글 좋아요 서비스 구현체
+ *
+ * 댓글 좋아요 비즈니스 로직을 처리합니다.
+ *
+ * ### 처리 흐름
+ * 1. 댓글 좋아요 상태 변경 (user_comment_likes 테이블)
+ * 2. 댓글 좋아요 수 카운트 (Repository에서 집계)
+ *
+ * @property commentLikeRepository 댓글 좋아요 레포지토리
+ */
+@Service
+class CommentLikeServiceImpl(
+    private val commentLikeRepository: CommentLikeRepository
+) : CommentLikeService {
+
+    /**
+     * 댓글 좋아요
+     *
+     * ### 처리 흐름
+     * 1. user_comment_likes 테이블에 레코드 생성
+     * 2. 댓글 좋아요 수 조회 및 응답 반환
+     *
+     * ### 비즈니스 규칙
+     * - 이미 좋아요가 있으면 중복 생성 안 함 (idempotent)
+     *
+     * @param userId 사용자 ID
+     * @param commentId 댓글 ID
+     * @return 댓글 좋아요 응답
+     */
+    override fun likeComment(userId: UUID, commentId: UUID): Mono<CommentLikeResponse> {
+        logger.debug("Liking comment: userId={}, commentId={}", userId, commentId)
+
+        return Mono.fromCallable { commentLikeRepository.exists(userId, commentId) }
+            .flatMap { exists ->
+                if (exists) {
+                    logger.debug("Comment already liked: userId={}, commentId={}", userId, commentId)
+                    getLikeResponse(commentId, true)
+                } else {
+                    Mono.fromCallable { commentLikeRepository.save(userId, commentId) }
+                        .then(getLikeResponse(commentId, true))
+                }
+            }
+            .doOnSuccess { logger.debug("Comment liked successfully: userId={}, commentId={}", userId, commentId) }
+            .doOnError { error ->
+                logger.error("Failed to like comment: userId={}, commentId={}", userId, commentId, error)
+            }
+    }
+
+    /**
+     * 댓글 좋아요 취소
+     *
+     * ### 처리 흐름
+     * 1. user_comment_likes 테이블에서 레코드 삭제 (Soft Delete)
+     * 2. 댓글 좋아요 수 조회 및 응답 반환
+     *
+     * ### 비즈니스 규칙
+     * - 좋아요가 없으면 아무 작업 안 함 (idempotent)
+     *
+     * @param userId 사용자 ID
+     * @param commentId 댓글 ID
+     * @return 댓글 좋아요 응답
+     */
+    override fun unlikeComment(userId: UUID, commentId: UUID): Mono<CommentLikeResponse> {
+        logger.debug("Unliking comment: userId={}, commentId={}", userId, commentId)
+
+        return Mono.fromCallable { commentLikeRepository.exists(userId, commentId) }
+            .flatMap { exists ->
+                if (!exists) {
+                    logger.debug("Comment not liked: userId={}, commentId={}", userId, commentId)
+                    getLikeResponse(commentId, false)
+                } else {
+                    Mono.fromCallable { commentLikeRepository.delete(userId, commentId) }
+                        .then(getLikeResponse(commentId, false))
+                }
+            }
+            .doOnSuccess { logger.debug("Comment unliked successfully: userId={}, commentId={}", userId, commentId) }
+            .doOnError { error ->
+                logger.error("Failed to unlike comment: userId={}, commentId={}", userId, commentId, error)
+            }
+    }
+
+    /**
+     * 댓글 좋아요 수 조회
+     *
+     * @param commentId 댓글 ID
+     * @return 댓글 좋아요 수 응답
+     */
+    override fun getLikeCount(commentId: UUID): Mono<CommentLikeCountResponse> {
+        logger.debug("Getting like count: commentId={}", commentId)
+
+        return Mono.fromCallable { commentLikeRepository.countByCommentId(commentId) }
+            .map { likeCount ->
+                CommentLikeCountResponse(
+                    commentId = commentId.toString(),
+                    likeCount = likeCount
+                )
+            }
+            .doOnSuccess { response ->
+                logger.debug("Like count retrieved: commentId={}, count={}", commentId, response.likeCount)
+            }
+    }
+
+    /**
+     * 댓글 좋아요 상태 조회
+     *
+     * 특정 댓글에 대한 사용자의 좋아요 상태를 확인합니다.
+     *
+     * ### 처리 흐름
+     * 1. CommentLikeRepository.exists()로 좋아요 여부 확인
+     * 2. CommentLikeStatusResponse 반환
+     *
+     * @param userId 사용자 ID
+     * @param commentId 댓글 ID
+     * @return 댓글 좋아요 상태 응답
+     */
+    override fun getLikeStatus(userId: UUID, commentId: UUID): Mono<CommentLikeStatusResponse> {
+        logger.debug("Getting like status: userId={}, commentId={}", userId, commentId)
+
+        return Mono.fromCallable { commentLikeRepository.exists(userId, commentId) }
+            .subscribeOn(Schedulers.boundedElastic())
+            .map { isLiked ->
+                CommentLikeStatusResponse(
+                    commentId = commentId.toString(),
+                    isLiked = isLiked
+                )
+            }
+            .doOnSuccess { response ->
+                logger.debug("Like status retrieved: userId={}, commentId={}, isLiked={}", userId, commentId, response.isLiked)
+            }
+    }
+
+    /**
+     * 댓글 좋아요 응답 생성
+     *
+     * @param commentId 댓글 ID
+     * @param isLiked 좋아요 여부
+     * @return 댓글 좋아요 응답
+     */
+    private fun getLikeResponse(commentId: UUID, isLiked: Boolean): Mono<CommentLikeResponse> {
+        return Mono.fromCallable { commentLikeRepository.countByCommentId(commentId) }
+            .map { likeCount ->
+                CommentLikeResponse(
+                    commentId = commentId.toString(),
+                    likeCount = likeCount,
+                    isLiked = isLiked
+                )
+            }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(CommentLikeServiceImpl::class.java)
+    }
+}
