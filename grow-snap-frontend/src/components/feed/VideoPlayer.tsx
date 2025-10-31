@@ -191,7 +191,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
     // 하트 애니메이션 표시 (좋아요가 안 되어있을 때만)
     if (!isLiked) {
+      console.log('[VideoPlayer] Double tap - showing heart animation');
       setShowLikeAnimation(true);
+    } else {
+      console.log('[VideoPlayer] Double tap - already liked, skipping animation');
     }
 
     onDoubleTap();
@@ -258,10 +261,12 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     lastTap.current = now;
   };
 
+  console.log('[VideoPlayer] Rendering - showLikeAnimation:', showLikeAnimation, 'isLiked:', isLiked);
+
   return (
-    <View style={{ height: videoContainerHeight, backgroundColor: '#000000', position: 'relative', justifyContent: 'center', alignItems: 'center', paddingTop: tabBarHeight }}>
+    <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, backgroundColor: '#000000', position: 'relative' }}>
       <TouchableWithoutFeedback onPress={handleTap}>
-        <View style={{ height: videoContainerHeight, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center', paddingTop: tabBarHeight }}>
           {/* Video는 항상 렌더링 - 언마운트 절대 금지 */}
           {!isLoadingSkeleton && (
             <Video
@@ -326,8 +331,22 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
         </View>
       </TouchableWithoutFeedback>
 
-      {/* 좋아요 애니메이션 */}
-      <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
+      {/* 좋아요 애니메이션 - 절대 위치로 화면 중앙에 표시 */}
+      {showLikeAnimation && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+          pointerEvents: 'none',
+          zIndex: 2000,
+        }}>
+          <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
+        </View>
+      )}
     </View>
   );
 });
