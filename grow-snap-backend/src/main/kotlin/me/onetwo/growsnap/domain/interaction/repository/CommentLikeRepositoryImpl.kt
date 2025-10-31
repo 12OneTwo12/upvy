@@ -68,10 +68,12 @@ class CommentLikeRepositoryImpl(
      */
     override fun delete(userId: UUID, commentId: UUID) {
         val now = LocalDateTime.now()
+        val unixTimestamp = now.toEpochSecond(java.time.ZoneOffset.UTC)
 
         dslContext
             .update(USER_COMMENT_LIKES)
             .set(USER_COMMENT_LIKES.DELETED_AT, now)
+            .set(USER_COMMENT_LIKES.DELETED_AT_UNIX, unixTimestamp)
             .set(USER_COMMENT_LIKES.UPDATED_AT, now)
             .set(USER_COMMENT_LIKES.UPDATED_BY, userId.toString())
             .where(USER_COMMENT_LIKES.USER_ID.eq(userId.toString()))
