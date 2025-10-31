@@ -73,7 +73,6 @@ class CommentRepositoryTest {
                 contentId = testContentId,
                 userId = testUser.id!!,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null
             )
 
@@ -89,26 +88,6 @@ class CommentRepositoryTest {
         }
 
         @Test
-        @DisplayName("타임스탬프 댓글을 생성하면, timestampSeconds가 저장된다")
-        fun save_WithTimestamp_SavesTimestamp() {
-            // Given: 타임스탬프 댓글
-            val comment = Comment(
-                contentId = testContentId,
-                userId = testUser.id!!,
-                content = "Comment at 30 seconds",
-                timestampSeconds = 30,
-                parentCommentId = null
-            )
-
-            // When: 저장
-            val saved = commentRepository.save(comment)
-
-            // Then: 타임스탬프 확인
-            assertNotNull(saved)
-            assertEquals(30, saved!!.timestampSeconds)
-        }
-
-        @Test
         @DisplayName("대댓글을 생성하면, parentCommentId가 저장된다")
         fun save_WithParent_SavesParentCommentId() {
             // Given: 부모 댓글 생성
@@ -117,7 +96,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Parent comment",
-                    timestampSeconds = null,
                     parentCommentId = null
                 )
             )
@@ -127,7 +105,6 @@ class CommentRepositoryTest {
                 contentId = testContentId,
                 userId = testUser.id!!,
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentComment!!.id
             )
 
@@ -153,7 +130,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Test comment",
-                    timestampSeconds = null,
                     parentCommentId = null
                 )
             )
@@ -194,7 +170,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "First comment",
-                    timestampSeconds = null,
                     parentCommentId = null
                 )
             )
@@ -206,7 +181,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Second comment",
-                    timestampSeconds = null,
                     parentCommentId = null
                 )
             )
@@ -218,7 +192,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Third comment",
-                    timestampSeconds = null,
                     parentCommentId = null
                 )
             )
@@ -243,7 +216,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Comment to be deleted",
-                    timestampSeconds = null,
                     parentCommentId = null
                 )
             )
@@ -272,7 +244,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Parent comment",
-                    timestampSeconds = null,
                     parentCommentId = null
                 )
             )
@@ -283,7 +254,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Reply 1",
-                    timestampSeconds = null,
                     parentCommentId = parentComment!!.id
                 )
             )
@@ -293,7 +263,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Reply 2",
-                    timestampSeconds = null,
                     parentCommentId = parentComment.id
                 )
             )
@@ -320,7 +289,6 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Comment to delete",
-                    timestampSeconds = null,
                     parentCommentId = null
                 )
             )

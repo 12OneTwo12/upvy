@@ -198,7 +198,6 @@ CREATE TABLE IF NOT EXISTS comments (
     user_id CHAR(36) NOT NULL,
     parent_comment_id CHAR(36) NULL,  -- 답글인 경우 부모 댓글 ID, NULL이면 최상위 댓글
     content TEXT NOT NULL,
-    timestamp_seconds INT NULL,  -- 타임스탬프 댓글 (초 단위), NULL이면 일반 댓글
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by CHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

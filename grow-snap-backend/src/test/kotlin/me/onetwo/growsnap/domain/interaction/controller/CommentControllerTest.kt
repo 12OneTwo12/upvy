@@ -54,7 +54,6 @@ class CommentControllerTest {
             val contentId = UUID.randomUUID().toString()
             val request = CommentRequest(
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null
             )
 
@@ -65,7 +64,6 @@ class CommentControllerTest {
                 userNickname = "TestUser",
                 userProfileImageUrl = null,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = "2025-10-23T17:30:00",
                 replies = emptyList()
@@ -96,7 +94,6 @@ class CommentControllerTest {
                         ),
                         requestFields(
                             fieldWithPath("content").description("댓글 내용"),
-                            fieldWithPath("timestampSeconds").description("타임스탬프 (초)").optional(),
                             fieldWithPath("parentCommentId").description("부모 댓글 ID (대댓글인 경우)").optional()
                         ),
                         responseFields(
@@ -106,7 +103,6 @@ class CommentControllerTest {
                             fieldWithPath("userNickname").description("작성자 닉네임"),
                             fieldWithPath("userProfileImageUrl").description("작성자 프로필 이미지 URL").optional(),
                             fieldWithPath("content").description("댓글 내용"),
-                            fieldWithPath("timestampSeconds").description("타임스탬프 (초)").optional(),
                             fieldWithPath("parentCommentId").description("부모 댓글 ID").optional(),
                             fieldWithPath("createdAt").description("작성 시각"),
                             fieldWithPath("replies[]").description("대댓글 목록")
@@ -125,7 +121,6 @@ class CommentControllerTest {
             val contentId = UUID.randomUUID().toString()
             val request = mapOf(
                 "content" to "",
-                "timestampSeconds" to null,
                 "parentCommentId" to null
             )
 
@@ -151,7 +146,6 @@ class CommentControllerTest {
             val parentCommentId = UUID.randomUUID().toString()
             val request = CommentRequest(
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentCommentId
             )
 
@@ -162,7 +156,6 @@ class CommentControllerTest {
                 userNickname = "TestUser",
                 userProfileImageUrl = null,
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentCommentId,
                 createdAt = "2025-10-23T17:30:00",
                 replies = emptyList()
@@ -205,7 +198,6 @@ class CommentControllerTest {
                 userNickname = "User2",
                 userProfileImageUrl = null,
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentCommentId,
                 createdAt = "2025-10-23T17:31:00",
                 replies = emptyList()
@@ -218,7 +210,6 @@ class CommentControllerTest {
                 userNickname = "User1",
                 userProfileImageUrl = null,
                 content = "Parent comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = "2025-10-23T17:30:00",
                 replies = listOf(reply)
@@ -253,7 +244,6 @@ class CommentControllerTest {
                             fieldWithPath("[].userNickname").description("작성자 닉네임"),
                             fieldWithPath("[].userProfileImageUrl").description("작성자 프로필 이미지 URL").optional(),
                             fieldWithPath("[].content").description("댓글 내용"),
-                            fieldWithPath("[].timestampSeconds").description("타임스탬프 (초)").optional(),
                             fieldWithPath("[].parentCommentId").description("부모 댓글 ID").optional(),
                             fieldWithPath("[].createdAt").description("작성 시각"),
                             fieldWithPath("[].replies[]").description("대댓글 목록"),
@@ -263,7 +253,6 @@ class CommentControllerTest {
                             fieldWithPath("[].replies[].userNickname").description("작성자 닉네임"),
                             fieldWithPath("[].replies[].userProfileImageUrl").description("작성자 프로필 이미지 URL").optional(),
                             fieldWithPath("[].replies[].content").description("댓글 내용"),
-                            fieldWithPath("[].replies[].timestampSeconds").description("타임스탬프 (초)").optional(),
                             fieldWithPath("[].replies[].parentCommentId").description("부모 댓글 ID").optional(),
                             fieldWithPath("[].replies[].createdAt").description("작성 시각"),
                             fieldWithPath("[].replies[].replies[]").description("대대댓글 목록")

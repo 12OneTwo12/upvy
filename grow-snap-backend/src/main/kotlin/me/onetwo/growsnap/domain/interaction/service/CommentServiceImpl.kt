@@ -80,7 +80,6 @@ class CommentServiceImpl(
                             userId = userId,
                             parentCommentId = parentCommentId,
                             content = request.content,
-                            timestampSeconds = request.timestampSeconds
                         )
                     ) ?: throw IllegalStateException("Failed to create comment")
                 }
@@ -107,7 +106,6 @@ class CommentServiceImpl(
                         userNickname = nickname,
                         userProfileImageUrl = profileImageUrl,
                         content = savedComment.content,
-                        timestampSeconds = savedComment.timestampSeconds,
                         parentCommentId = savedComment.parentCommentId?.toString(),
                         createdAt = savedComment.createdAt.toString()
                     )
@@ -231,7 +229,6 @@ class CommentServiceImpl(
             userNickname = userInfo.first,
             userProfileImageUrl = userInfo.second,
             content = comment.content,
-            timestampSeconds = comment.timestampSeconds,
             parentCommentId = comment.parentCommentId?.toString(),
             createdAt = comment.createdAt.toString(),
             replies = replies

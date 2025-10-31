@@ -32,7 +32,6 @@ class CommentRepositoryImpl(
             .set(COMMENTS.USER_ID, comment.userId.toString())
             .set(COMMENTS.PARENT_COMMENT_ID, comment.parentCommentId?.toString())
             .set(COMMENTS.CONTENT, comment.content)
-            .set(COMMENTS.TIMESTAMP_SECONDS, comment.timestampSeconds)
             .set(COMMENTS.CREATED_AT, now)
             .set(COMMENTS.CREATED_BY, comment.userId.toString())
             .set(COMMENTS.UPDATED_AT, now)
@@ -46,7 +45,6 @@ class CommentRepositoryImpl(
                 COMMENTS.USER_ID,
                 COMMENTS.PARENT_COMMENT_ID,
                 COMMENTS.CONTENT,
-                COMMENTS.TIMESTAMP_SECONDS,
                 COMMENTS.CREATED_AT,
                 COMMENTS.CREATED_BY,
                 COMMENTS.UPDATED_AT,
@@ -67,7 +65,6 @@ class CommentRepositoryImpl(
                 COMMENTS.USER_ID,
                 COMMENTS.PARENT_COMMENT_ID,
                 COMMENTS.CONTENT,
-                COMMENTS.TIMESTAMP_SECONDS,
                 COMMENTS.CREATED_AT,
                 COMMENTS.CREATED_BY,
                 COMMENTS.UPDATED_AT,
@@ -89,7 +86,6 @@ class CommentRepositoryImpl(
                 COMMENTS.USER_ID,
                 COMMENTS.PARENT_COMMENT_ID,
                 COMMENTS.CONTENT,
-                COMMENTS.TIMESTAMP_SECONDS,
                 COMMENTS.CREATED_AT,
                 COMMENTS.CREATED_BY,
                 COMMENTS.UPDATED_AT,
@@ -112,7 +108,6 @@ class CommentRepositoryImpl(
                 COMMENTS.USER_ID,
                 COMMENTS.PARENT_COMMENT_ID,
                 COMMENTS.CONTENT,
-                COMMENTS.TIMESTAMP_SECONDS,
                 COMMENTS.CREATED_AT,
                 COMMENTS.CREATED_BY,
                 COMMENTS.UPDATED_AT,
@@ -153,7 +148,6 @@ class CommentRepositoryImpl(
             userId = UUID.fromString(record.getValue(COMMENTS.USER_ID)),
             parentCommentId = record.getValue(COMMENTS.PARENT_COMMENT_ID)?.let { UUID.fromString(it) },
             content = record.getValue(COMMENTS.CONTENT)!!,
-            timestampSeconds = record.getValue(COMMENTS.TIMESTAMP_SECONDS),
             createdAt = record.getValue(COMMENTS.CREATED_AT)!!,
             createdBy = record.getValue(COMMENTS.CREATED_BY)?.let { UUID.fromString(it) },
             updatedAt = record.getValue(COMMENTS.UPDATED_AT)!!,

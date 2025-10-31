@@ -62,7 +62,6 @@ class CommentServiceTest {
             // Given
             val request = CommentRequest(
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null
             )
 
@@ -71,7 +70,6 @@ class CommentServiceTest {
                 contentId = testContentId,
                 userId = testUserId,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = testUserId,
@@ -119,7 +117,6 @@ class CommentServiceTest {
             val parentCommentId = UUID.randomUUID()
             val request = CommentRequest(
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = parentCommentId.toString()
             )
 
@@ -150,7 +147,6 @@ class CommentServiceTest {
                 contentId = testContentId,
                 userId = testUserId,
                 content = "Parent comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = testUserId,
@@ -164,7 +160,6 @@ class CommentServiceTest {
                 contentId = testContentId,
                 userId = testUserId,
                 content = "Reply comment",
-                timestampSeconds = null,
                 parentCommentId = testCommentId,
                 createdAt = LocalDateTime.now(),
                 createdBy = testUserId,
@@ -208,7 +203,6 @@ class CommentServiceTest {
                 contentId = testContentId,
                 userId = testUserId,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = testUserId,
@@ -258,7 +252,6 @@ class CommentServiceTest {
                 contentId = testContentId,
                 userId = otherUserId,
                 content = "Test comment",
-                timestampSeconds = null,
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
                 createdBy = otherUserId,
