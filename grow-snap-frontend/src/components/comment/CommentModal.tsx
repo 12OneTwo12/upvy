@@ -29,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { theme } from '@/theme';
 import { getComments, getReplies, createComment as createCommentApi, deleteComment as deleteCommentApi } from '@/api/comment.api';
-import { createCommentLike, deleteCommentLike, getCommentLikeCount, getCommentLikeStatus } from '@/api/commentLike.api';
+import { createCommentLike, deleteCommentLike } from '@/api/commentLike.api';
 import { CommentItem } from './CommentItem';
 import { CommentInput } from './CommentInput';
 import { useAuthStore } from '@/stores/authStore';
@@ -192,29 +192,16 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 
         if (commentsToLoad.length === 0) return;
 
+        // 백엔드에서 제공하는 likeCount, isLiked 사용 (N+1 API 호출 제거)
         const likesData: Record<string, { count: number; isLiked: boolean }> = {};
-
-        // 새 댓글의 좋아요 정보만 조회
-        await Promise.all(
-          commentsToLoad.map(async (comment) => {
-            try {
-              const [countRes, statusRes] = await Promise.all([
-                getCommentLikeCount(comment.id),
-                getCommentLikeStatus(comment.id),
-              ]);
-              likesData[comment.id] = {
-                count: countRes.likeCount,
-                isLiked: statusRes.isLiked,
-              };
-              // 로드 완료 표시
-              loadedCommentIdsRef.current.add(comment.id);
-            } catch (error) {
-              // 에러 발생 시 기본값
-              likesData[comment.id] = { count: 0, isLiked: false };
-              loadedCommentIdsRef.current.add(comment.id);
-            }
-          })
-        );
+        commentsToLoad.forEach((comment) => {
+          likesData[comment.id] = {
+            count: comment.likeCount,
+            isLiked: comment.isLiked,
+          };
+          // 로드 완료 표시
+          loadedCommentIdsRef.current.add(comment.id);
+        });
 
         // 기존 상태와 병합 (Optimistic Update 유지)
         setCommentLikes((prev) => ({ ...prev, ...likesData }));

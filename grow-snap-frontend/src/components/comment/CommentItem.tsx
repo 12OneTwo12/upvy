@@ -15,7 +15,6 @@ import { useQuery } from '@tanstack/react-query';
 import { theme } from '@/theme';
 import { useAuthStore } from '@/stores/authStore';
 import { getReplies } from '@/api/comment.api';
-import { getCommentLikeCount, getCommentLikeStatus } from '@/api/commentLike.api';
 import type { CommentResponse } from '@/types/interaction.types';
 
 /**
@@ -109,24 +108,14 @@ export const CommentItem: React.FC<CommentItemProps> = ({
         setLoadedReplies(newReplies);
         setRepliesCursor(result.data.nextCursor);
 
-        // 새 답글들의 좋아요 정보 로드
+        // 백엔드에서 제공하는 likeCount, isLiked 사용 (N+1 API 호출 제거)
         const likesData: Record<string, { count: number; isLiked: boolean }> = {};
-        await Promise.all(
-          newReplies.map(async (reply) => {
-            try {
-              const [countRes, statusRes] = await Promise.all([
-                getCommentLikeCount(reply.id),
-                getCommentLikeStatus(reply.id),
-              ]);
-              likesData[reply.id] = {
-                count: countRes.likeCount,
-                isLiked: statusRes.isLiked,
-              };
-            } catch (error) {
-              likesData[reply.id] = { count: 0, isLiked: false };
-            }
-          })
-        );
+        newReplies.forEach((reply) => {
+          likesData[reply.id] = {
+            count: reply.likeCount,
+            isLiked: reply.isLiked,
+          };
+        });
         setRepliesLikes(likesData);
       }
     } else {
@@ -156,27 +145,17 @@ export const CommentItem: React.FC<CommentItemProps> = ({
 
         setRepliesCursor(result.data.nextCursor);
 
-        // 새 답글들의 좋아요 정보 로드 (중복되지 않은 것만)
+        // 백엔드에서 제공하는 likeCount, isLiked 사용 (N+1 API 호출 제거)
         const likesData: Record<string, { count: number; isLiked: boolean }> = { ...repliesLikes };
-        await Promise.all(
-          newReplies.map(async (reply) => {
-            // 이미 로드된 좋아요 정보는 스킵
-            if (likesData[reply.id]) return;
-
-            try {
-              const [countRes, statusRes] = await Promise.all([
-                getCommentLikeCount(reply.id),
-                getCommentLikeStatus(reply.id),
-              ]);
-              likesData[reply.id] = {
-                count: countRes.likeCount,
-                isLiked: statusRes.isLiked,
-              };
-            } catch (error) {
-              likesData[reply.id] = { count: 0, isLiked: false };
-            }
-          })
-        );
+        newReplies.forEach((reply) => {
+          // 이미 로드된 좋아요 정보는 스킵
+          if (!likesData[reply.id]) {
+            likesData[reply.id] = {
+              count: reply.likeCount,
+              isLiked: reply.isLiked,
+            };
+          }
+        });
         setRepliesLikes(likesData);
       }
     } finally {

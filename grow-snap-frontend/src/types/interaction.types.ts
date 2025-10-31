@@ -106,6 +106,8 @@ export interface CommentResponse {
   parentCommentId: string | null;
   createdAt: string;
   replyCount: number;
+  likeCount: number;
+  isLiked: boolean;
 }
 
 /**
