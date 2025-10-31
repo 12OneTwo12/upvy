@@ -5,6 +5,7 @@ import me.onetwo.growsnap.domain.analytics.dto.ViewEventRequest
 import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -26,7 +27,7 @@ import java.util.UUID
  * @property analyticsService Analytics 서비스
  */
 @RestController
-@RequestMapping("/api/v1/analytics")
+@RequestMapping(ApiPaths.API_V1_ANALYTICS)
 class AnalyticsController(
     private val analyticsService: AnalyticsService
 ) {

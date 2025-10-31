@@ -7,6 +7,7 @@ import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.analytics.dto.ViewEventRequest
 import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -68,7 +69,7 @@ class AnalyticsControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/analytics/views")
+                .uri("${ApiPaths.API_V1_ANALYTICS}/views")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -107,7 +108,7 @@ class AnalyticsControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/analytics/views")
+                .uri("${ApiPaths.API_V1_ANALYTICS}/views")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -132,7 +133,7 @@ class AnalyticsControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/analytics/views")
+                .uri("${ApiPaths.API_V1_ANALYTICS}/views")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -160,7 +161,7 @@ class AnalyticsControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/analytics/views")
+                .uri("${ApiPaths.API_V1_ANALYTICS}/views")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -188,7 +189,7 @@ class AnalyticsControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/analytics/views")
+                .uri("${ApiPaths.API_V1_ANALYTICS}/views")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()

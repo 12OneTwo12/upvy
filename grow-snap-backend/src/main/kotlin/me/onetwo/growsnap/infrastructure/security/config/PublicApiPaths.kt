@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.infrastructure.security.config
 
 import org.springframework.http.HttpMethod
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 
 /**
  * 공개 API 경로 관리
@@ -16,7 +17,7 @@ object PublicApiPaths {
      * OAuth2 로그인, 인증 API 등 모든 HTTP 메서드 허용
      */
     val AUTH_ENDPOINTS = arrayOf(
-        "/api/v1/auth/**",
+        "${ApiPaths.API_V1_AUTH}/**",
         "/oauth2/**",
         "/login/**",
         "/error"
@@ -40,15 +41,15 @@ object PublicApiPaths {
          */
         val PATHS = arrayOf(
             // 사용자 조회
-            "/api/v1/users/*",
+            "${ApiPaths.API_V1_USERS}/*",
 
             // 프로필 조회
-            "/api/v1/profiles/*",                   // UUID로 조회
-            "/api/v1/profiles/nickname/*",          // 닉네임으로 조회
-            "/api/v1/profiles/check/nickname/*",    // 닉네임 중복 확인
+            "${ApiPaths.API_V1_PROFILES}/*",                   // UUID로 조회
+            "${ApiPaths.API_V1_PROFILES}/nickname/*",          // 닉네임으로 조회
+            "${ApiPaths.API_V1_PROFILES}/check/nickname/*",    // 닉네임 중복 확인
 
             // 팔로우 통계
-            "/api/v1/follows/stats/*"
+            "${ApiPaths.API_V1_FOLLOWS}/stats/*"
 
             // 콘텐츠 개별 조회 (GET /api/v1/contents/{contentId})
             // 주의: SecurityConfig에서 /me를 먼저 authenticated()로 선언하여
@@ -61,7 +62,7 @@ object PublicApiPaths {
          * `/api/v1/contents/me`를 제외하고 개별 콘텐츠 조회만 허용
          */
         val CONTENT_PATHS = arrayOf(
-            "/api/v1/contents/*"  // GET /api/v1/contents/{contentId}
+            "${ApiPaths.API_V1_CONTENTS}/*"  // GET ${ApiPaths.API_V1}/contents/{contentId}
         )
     }
 }

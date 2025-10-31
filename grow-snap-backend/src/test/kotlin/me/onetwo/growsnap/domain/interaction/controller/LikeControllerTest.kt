@@ -10,6 +10,7 @@ import me.onetwo.growsnap.domain.interaction.dto.LikeStatusResponse
 import me.onetwo.growsnap.domain.interaction.service.LikeService
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -40,7 +41,7 @@ class LikeControllerTest {
     private lateinit var likeService: LikeService
 
     @Nested
-    @DisplayName("POST /api/v1/videos/{videoId}/like - 좋아요")
+    @DisplayName("POST /api/v1/videos/{contentId}/like - 좋아요")
     inner class LikeVideo {
 
         @Test
@@ -48,24 +49,24 @@ class LikeControllerTest {
         fun likeVideo_WithValidRequest_ReturnsLikeResponse() {
             // Given: 좋아요 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = LikeResponse(
-                contentId = videoId,
+                contentId = contentId,
                 likeCount = 10,
                 isLiked = true
             )
 
-            every { likeService.likeContent(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { likeService.likeContent(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/videos/{videoId}/like", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/like", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.isLiked").isEqualTo(true)
                 .jsonPath("$.likeCount").isEqualTo(10)
                 .consumeWith(
@@ -74,7 +75,7 @@ class LikeControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -84,12 +85,12 @@ class LikeControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { likeService.likeContent(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { likeService.likeContent(userId, UUID.fromString(contentId)) }
         }
     }
 
     @Nested
-    @DisplayName("DELETE /api/v1/videos/{videoId}/like - 좋아요 취소")
+    @DisplayName("DELETE /api/v1/videos/{contentId}/like - 좋아요 취소")
     inner class UnlikeVideo {
 
         @Test
@@ -97,24 +98,24 @@ class LikeControllerTest {
         fun unlikeVideo_WithValidRequest_ReturnsLikeResponse() {
             // Given: 좋아요 취소 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = LikeResponse(
-                contentId = videoId,
+                contentId = contentId,
                 likeCount = 9,
                 isLiked = false
             )
 
-            every { likeService.unlikeContent(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { likeService.unlikeContent(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .delete()
-                .uri("/api/v1/videos/{videoId}/like", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/like", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.isLiked").isEqualTo(false)
                 .jsonPath("$.likeCount").isEqualTo(9)
                 .consumeWith(
@@ -123,7 +124,7 @@ class LikeControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -133,12 +134,12 @@ class LikeControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { likeService.unlikeContent(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { likeService.unlikeContent(userId, UUID.fromString(contentId)) }
         }
     }
 
     @Nested
-    @DisplayName("GET /api/v1/videos/{videoId}/likes - 좋아요 수 조회")
+    @DisplayName("GET /api/v1/videos/{contentId}/likes - 좋아요 수 조회")
     inner class GetLikeCount {
 
         @Test
@@ -146,23 +147,23 @@ class LikeControllerTest {
         fun getLikeCount_WithValidRequest_ReturnsLikeCount() {
             // Given: 좋아요 수 조회 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = LikeCountResponse(
-                contentId = videoId,
+                contentId = contentId,
                 likeCount = 15
             )
 
-            every { likeService.getLikeCount(UUID.fromString(videoId)) } returns Mono.just(response)
+            every { likeService.getLikeCount(UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/videos/{videoId}/likes", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/likes", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.likeCount").isEqualTo(15)
                 .consumeWith(
                     document(
@@ -170,7 +171,7 @@ class LikeControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -179,12 +180,12 @@ class LikeControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { likeService.getLikeCount(UUID.fromString(videoId)) }
+            verify(exactly = 1) { likeService.getLikeCount(UUID.fromString(contentId)) }
         }
     }
 
     @Nested
-    @DisplayName("GET /api/v1/videos/{videoId}/like/status - 좋아요 상태 조회")
+    @DisplayName("GET /api/v1/videos/{contentId}/like/status - 좋아요 상태 조회")
     inner class GetLikeStatus {
 
         @Test
@@ -192,23 +193,23 @@ class LikeControllerTest {
         fun getLikeStatus_WhenUserLiked_ReturnsTrue() {
             // Given: 사용자가 좋아요를 누른 상태
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = LikeStatusResponse(
-                contentId = videoId,
+                contentId = contentId,
                 isLiked = true
             )
 
-            every { likeService.getLikeStatus(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { likeService.getLikeStatus(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/videos/{videoId}/like/status", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/like/status", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.isLiked").isEqualTo(true)
                 .consumeWith(
                     document(
@@ -216,7 +217,7 @@ class LikeControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -225,7 +226,7 @@ class LikeControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { likeService.getLikeStatus(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { likeService.getLikeStatus(userId, UUID.fromString(contentId)) }
         }
 
         @Test
@@ -233,26 +234,26 @@ class LikeControllerTest {
         fun getLikeStatus_WhenUserNotLiked_ReturnsFalse() {
             // Given: 사용자가 좋아요를 누르지 않은 상태
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = LikeStatusResponse(
-                contentId = videoId,
+                contentId = contentId,
                 isLiked = false
             )
 
-            every { likeService.getLikeStatus(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { likeService.getLikeStatus(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/videos/{videoId}/like/status", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/like/status", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.isLiked").isEqualTo(false)
 
-            verify(exactly = 1) { likeService.getLikeStatus(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { likeService.getLikeStatus(userId, UUID.fromString(contentId)) }
         }
     }
 }

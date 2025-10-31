@@ -10,6 +10,7 @@ import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
 import me.onetwo.growsnap.domain.interaction.service.SaveService
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -41,7 +42,7 @@ class SaveControllerTest {
     private lateinit var saveService: SaveService
 
     @Nested
-    @DisplayName("POST /api/v1/videos/{videoId}/save - 콘텐츠 저장")
+    @DisplayName("POST /api/v1/videos/{contentId}/save - 콘텐츠 저장")
     inner class SaveVideo {
 
         @Test
@@ -49,24 +50,24 @@ class SaveControllerTest {
         fun saveVideo_WithValidRequest_ReturnsSaveResponse() {
             // Given: 저장 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = SaveResponse(
-                contentId = videoId,
+                contentId = contentId,
                 saveCount = 5,
                 isSaved = true
             )
 
-            every { saveService.saveContent(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { saveService.saveContent(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/videos/{videoId}/save", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/save", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.isSaved").isEqualTo(true)
                 .jsonPath("$.saveCount").isEqualTo(5)
                 .consumeWith(
@@ -75,7 +76,7 @@ class SaveControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -85,12 +86,12 @@ class SaveControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { saveService.saveContent(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { saveService.saveContent(userId, UUID.fromString(contentId)) }
         }
     }
 
     @Nested
-    @DisplayName("DELETE /api/v1/videos/{videoId}/save - 콘텐츠 저장 취소")
+    @DisplayName("DELETE /api/v1/videos/{contentId}/save - 콘텐츠 저장 취소")
     inner class UnsaveVideo {
 
         @Test
@@ -98,24 +99,24 @@ class SaveControllerTest {
         fun unsaveVideo_WithValidRequest_ReturnsSaveResponse() {
             // Given: 저장 취소 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = SaveResponse(
-                contentId = videoId,
+                contentId = contentId,
                 saveCount = 4,
                 isSaved = false
             )
 
-            every { saveService.unsaveContent(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { saveService.unsaveContent(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .delete()
-                .uri("/api/v1/videos/{videoId}/save", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/save", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.isSaved").isEqualTo(false)
                 .jsonPath("$.saveCount").isEqualTo(4)
                 .consumeWith(
@@ -124,7 +125,7 @@ class SaveControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -134,7 +135,7 @@ class SaveControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { saveService.unsaveContent(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { saveService.unsaveContent(userId, UUID.fromString(contentId)) }
         }
     }
 
@@ -166,7 +167,7 @@ class SaveControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/users/me/saved-videos")
+                .uri("${ApiPaths.API_V1_USERS}/me/saved-contents")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -203,7 +204,7 @@ class SaveControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/users/me/saved-videos")
+                .uri("${ApiPaths.API_V1_USERS}/me/saved-contents")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -214,7 +215,7 @@ class SaveControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/v1/videos/{videoId}/save/status - 저장 상태 조회")
+    @DisplayName("GET /api/v1/videos/{contentId}/save/status - 저장 상태 조회")
     inner class GetSaveStatus {
 
         @Test
@@ -222,23 +223,23 @@ class SaveControllerTest {
         fun getSaveStatus_WhenUserSaved_ReturnsTrue() {
             // Given: 사용자가 콘텐츠를 저장한 상태
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = SaveStatusResponse(
-                contentId = videoId,
+                contentId = contentId,
                 isSaved = true
             )
 
-            every { saveService.getSaveStatus(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { saveService.getSaveStatus(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/videos/{videoId}/save/status", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/save/status", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.isSaved").isEqualTo(true)
                 .consumeWith(
                     document(
@@ -246,7 +247,7 @@ class SaveControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -255,7 +256,7 @@ class SaveControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { saveService.getSaveStatus(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { saveService.getSaveStatus(userId, UUID.fromString(contentId)) }
         }
 
         @Test
@@ -263,26 +264,26 @@ class SaveControllerTest {
         fun getSaveStatus_WhenUserNotSaved_ReturnsFalse() {
             // Given: 사용자가 콘텐츠를 저장하지 않은 상태
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = SaveStatusResponse(
-                contentId = videoId,
+                contentId = contentId,
                 isSaved = false
             )
 
-            every { saveService.getSaveStatus(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { saveService.getSaveStatus(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/videos/{videoId}/save/status", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/save/status", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.isSaved").isEqualTo(false)
 
-            verify(exactly = 1) { saveService.getSaveStatus(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { saveService.getSaveStatus(userId, UUID.fromString(contentId)) }
         }
     }
 }

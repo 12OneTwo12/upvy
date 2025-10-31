@@ -6,6 +6,7 @@ import me.onetwo.growsnap.domain.user.dto.FollowStatsResponse
 import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.service.FollowService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -24,7 +25,7 @@ import java.util.UUID
  * 팔로우, 언팔로우, 팔로우 관계 확인 등의 API를 제공합니다.
  */
 @RestController
-@RequestMapping("/api/v1/follows")
+@RequestMapping(ApiPaths.API_V1_FOLLOWS)
 class FollowController(
     private val followService: FollowService
 ) {

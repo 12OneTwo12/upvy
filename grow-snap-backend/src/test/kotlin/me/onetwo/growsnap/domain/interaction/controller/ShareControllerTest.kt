@@ -9,6 +9,7 @@ import me.onetwo.growsnap.domain.interaction.dto.ShareResponse
 import me.onetwo.growsnap.domain.interaction.service.ShareService
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -39,7 +40,7 @@ class ShareControllerTest {
     private lateinit var shareService: ShareService
 
     @Nested
-    @DisplayName("POST /api/v1/videos/{videoId}/share - 콘텐츠 공유")
+    @DisplayName("POST /api/v1/videos/{contentId}/share - 콘텐츠 공유")
     inner class ShareVideo {
 
         @Test
@@ -47,23 +48,23 @@ class ShareControllerTest {
         fun shareVideo_WithValidRequest_ReturnsShareResponse() {
             // Given: 공유 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = ShareResponse(
-                contentId = videoId,
+                contentId = contentId,
                 shareCount = 5
             )
 
-            every { shareService.shareContent(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+            every { shareService.shareContent(userId, UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/videos/{videoId}/share", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/share", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.contentId").isEqualTo(contentId)
                 .jsonPath("$.shareCount").isEqualTo(5)
                 .consumeWith(
                     document(
@@ -71,7 +72,7 @@ class ShareControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -80,12 +81,12 @@ class ShareControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { shareService.shareContent(userId, UUID.fromString(videoId)) }
+            verify(exactly = 1) { shareService.shareContent(userId, UUID.fromString(contentId)) }
         }
     }
 
     @Nested
-    @DisplayName("GET /api/v1/videos/{videoId}/share-link - 공유 링크 조회")
+    @DisplayName("GET /api/v1/videos/{contentId}/share-link - 공유 링크 조회")
     inner class GetShareLink {
 
         @Test
@@ -93,31 +94,31 @@ class ShareControllerTest {
         fun getShareLink_WithValidRequest_ReturnsShareLink() {
             // Given: 공유 링크 조회 요청
             val userId = UUID.randomUUID()
-            val videoId = UUID.randomUUID().toString()
+            val contentId = UUID.randomUUID().toString()
             val response = ShareLinkResponse(
-                contentId = videoId,
-                shareUrl = "https://growsnap.com/share/$videoId"
+                contentId = contentId,
+                shareUrl = "https://growsnap.com/share/$contentId"
             )
 
-            every { shareService.getShareLink(UUID.fromString(videoId)) } returns Mono.just(response)
+            every { shareService.getShareLink(UUID.fromString(contentId)) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/videos/{videoId}/share-link", videoId)
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/share-link", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.contentId").isEqualTo(videoId)
-                .jsonPath("$.shareUrl").isEqualTo("https://growsnap.com/share/$videoId")
+                .jsonPath("$.contentId").isEqualTo(contentId)
+                .jsonPath("$.shareUrl").isEqualTo("https://growsnap.com/share/$contentId")
                 .consumeWith(
                     document(
                         "share-link-get",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         pathParameters(
-                            parameterWithName("videoId").description("비디오 ID")
+                            parameterWithName("contentId").description("콘텐츠 ID")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("콘텐츠 ID"),
@@ -126,7 +127,7 @@ class ShareControllerTest {
                     )
                 )
 
-            verify(exactly = 1) { shareService.getShareLink(UUID.fromString(videoId)) }
+            verify(exactly = 1) { shareService.getShareLink(UUID.fromString(contentId)) }
         }
     }
 }

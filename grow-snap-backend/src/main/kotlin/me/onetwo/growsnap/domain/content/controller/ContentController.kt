@@ -8,6 +8,7 @@ import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlResponse
 import me.onetwo.growsnap.domain.content.service.ContentService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -30,7 +31,7 @@ import java.util.UUID
  * @property contentService 콘텐츠 서비스
  */
 @RestController
-@RequestMapping("/api/v1/contents")
+@RequestMapping(ApiPaths.API_V1_CONTENTS)
 class ContentController(
     private val contentService: ContentService
 ) {

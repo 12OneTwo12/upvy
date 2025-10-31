@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.feed.controller
 import me.onetwo.growsnap.domain.feed.dto.FeedResponse
 import me.onetwo.growsnap.domain.feed.service.FeedCacheService
 import me.onetwo.growsnap.domain.feed.service.FeedService
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
@@ -10,7 +11,6 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 import java.security.Principal
-import java.util.UUID
 
 /**
  * 피드 컨트롤러
@@ -22,7 +22,7 @@ import java.util.UUID
  * @property feedCacheService 피드 캐시 서비스
  */
 @RestController
-@RequestMapping("/api/v1/feed")
+@RequestMapping(ApiPaths.API_V1_FEED)
 class FeedController(
     private val feedService: FeedService,
     private val feedCacheService: FeedCacheService

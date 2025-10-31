@@ -12,6 +12,7 @@ import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.service.ContentService
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -75,7 +76,7 @@ class ContentControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/contents/upload-url")
+                .uri("${ApiPaths.API_V1_CONTENTS}/upload-url")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -153,7 +154,7 @@ class ContentControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
-                .uri("/api/v1/contents")
+                .uri("${ApiPaths.API_V1_CONTENTS}")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -236,7 +237,7 @@ class ContentControllerTest {
             // When & Then: API 호출 및 검증
             webTestClient
                 .get()
-                .uri("/api/v1/contents/{contentId}", contentId)
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", contentId)
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -282,7 +283,7 @@ class ContentControllerTest {
             // When & Then: API 호출 및 검증
             webTestClient
                 .get()
-                .uri("/api/v1/contents/$contentId")
+                .uri("${ApiPaths.API_V1_CONTENTS}/$contentId")
                 .exchange()
                 .expectStatus().isNotFound
         }

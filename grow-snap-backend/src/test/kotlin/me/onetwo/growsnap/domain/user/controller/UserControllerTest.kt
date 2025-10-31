@@ -12,6 +12,7 @@ import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.service.UserService
 import me.onetwo.growsnap.util.mockUser
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -60,7 +61,7 @@ class UserControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .get()
-            .uri("/api/v1/users/me")
+            .uri("${ApiPaths.API_V1_USERS}/me")
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -96,7 +97,7 @@ class UserControllerTest {
 
         // When & Then
         webTestClient.get()
-            .uri("/api/v1/users/{targetUserId}", targetUserId)
+            .uri("${ApiPaths.API_V1_USERS}/{targetUserId}", targetUserId)
             .exchange()
             .expectStatus().isOk
             .expectBody()
@@ -131,7 +132,7 @@ class UserControllerTest {
 
         // When & Then
         webTestClient.get()
-            .uri("/api/v1/users/{targetUserId}", nonExistentId)
+            .uri("${ApiPaths.API_V1_USERS}/{targetUserId}", nonExistentId)
             .exchange()
             .expectStatus().is4xxClientError
     }
@@ -146,7 +147,7 @@ class UserControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .delete()
-            .uri("/api/v1/users/me")
+            .uri("${ApiPaths.API_V1_USERS}/me")
             .exchange()
             .expectStatus().isNoContent
             .expectBody()
