@@ -54,4 +54,21 @@ interface CommentLikeRepository {
      * @return 좋아요 수
      */
     fun countByCommentId(commentId: UUID): Int
+
+    /**
+     * 여러 댓글의 좋아요 수 일괄 조회 (N+1 문제 해결)
+     *
+     * @param commentIds 댓글 ID 목록
+     * @return 댓글 ID를 키로, 좋아요 수를 값으로 하는 Map
+     */
+    fun countByCommentIds(commentIds: List<UUID>): Map<UUID, Int>
+
+    /**
+     * 사용자가 좋아요한 댓글 ID 목록 조회 (N+1 문제 해결)
+     *
+     * @param userId 사용자 ID
+     * @param commentIds 댓글 ID 목록
+     * @return 사용자가 좋아요한 댓글 ID 집합
+     */
+    fun findLikedCommentIds(userId: UUID, commentIds: List<UUID>): Set<UUID>
 }

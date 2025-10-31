@@ -25,22 +25,24 @@ interface CommentService {
     /**
      * 콘텐츠의 댓글 목록 조회 (Cursor 기반 페이징)
      *
+     * @param userId 현재 사용자 ID (좋아요 여부 확인용, null이면 isLiked = false)
      * @param contentId 콘텐츠 ID
      * @param cursor 커서 (댓글 ID, null이면 처음부터)
      * @param limit 조회 개수 (기본값 20)
-     * @return 댓글 목록 응답 (페이징 정보 포함)
+     * @return 댓글 목록 응답 (페이징 정보 포함, likeCount와 isLiked 포함)
      */
-    fun getComments(contentId: UUID, cursor: String?, limit: Int = 20): Mono<CommentListResponse>
+    fun getComments(userId: UUID?, contentId: UUID, cursor: String?, limit: Int = 20): Mono<CommentListResponse>
 
     /**
      * 대댓글 목록 조회 (Cursor 기반 페이징)
      *
+     * @param userId 현재 사용자 ID (좋아요 여부 확인용, null이면 isLiked = false)
      * @param parentCommentId 부모 댓글 ID
      * @param cursor 커서 (댓글 ID, null이면 처음부터)
      * @param limit 조회 개수 (기본값 20)
-     * @return 대댓글 목록 응답 (페이징 정보 포함)
+     * @return 대댓글 목록 응답 (페이징 정보 포함, likeCount와 isLiked 포함)
      */
-    fun getReplies(parentCommentId: UUID, cursor: String?, limit: Int = 20): Mono<CommentListResponse>
+    fun getReplies(userId: UUID?, parentCommentId: UUID, cursor: String?, limit: Int = 20): Mono<CommentListResponse>
 
     /**
      * 콘텐츠의 댓글 목록 조회 (기존 방식, 하위 호환성)

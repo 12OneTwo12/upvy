@@ -12,6 +12,8 @@ package me.onetwo.growsnap.domain.interaction.dto
  * @property parentCommentId 부모 댓글 ID (null이면 최상위 댓글)
  * @property createdAt 작성 시각
  * @property replyCount 대댓글 개수 (0이면 대댓글 없음)
+ * @property likeCount 좋아요 개수
+ * @property isLiked 현재 사용자의 좋아요 여부
  */
 data class CommentResponse(
     val id: String,
@@ -22,5 +24,7 @@ data class CommentResponse(
     val content: String,
     val parentCommentId: String?,
     val createdAt: String,
-    val replyCount: Int = 0
+    val replyCount: Int = 0,
+    val likeCount: Int = 0,
+    val isLiked: Boolean = false
 )

@@ -44,20 +44,34 @@ class CommentController(
 
     @GetMapping("/contents/{contentId}/comments")
     fun getComments(
+        principal: Mono<Principal>?,
         @PathVariable contentId: UUID,
         @RequestParam(required = false) cursor: String?,
         @RequestParam(defaultValue = "20") limit: Int
     ): Mono<CommentListResponse> {
-        return commentService.getComments(contentId, cursor, limit)
+        return if (principal != null) {
+            principal.toUserId().flatMap { userId ->
+                commentService.getComments(userId, contentId, cursor, limit)
+            }
+        } else {
+            commentService.getComments(null, contentId, cursor, limit)
+        }
     }
 
     @GetMapping("/comments/{commentId}/replies")
     fun getReplies(
+        principal: Mono<Principal>?,
         @PathVariable commentId: UUID,
         @RequestParam(required = false) cursor: String?,
         @RequestParam(defaultValue = "20") limit: Int
     ): Mono<CommentListResponse> {
-        return commentService.getReplies(commentId, cursor, limit)
+        return if (principal != null) {
+            principal.toUserId().flatMap { userId ->
+                commentService.getReplies(userId, commentId, cursor, limit)
+            }
+        } else {
+            commentService.getReplies(null, commentId, cursor, limit)
+        }
     }
 
     @DeleteMapping("/comments/{commentId}")
