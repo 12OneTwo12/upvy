@@ -67,7 +67,7 @@ class FeedServiceImplTest {
             every { feedCacheService.getRecommendationBatch(userId, 0) } returns
                 Mono.just(cachedBatch)
             every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
-            every { feedRepository.findByContentIds(any()) } returns
+            every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
             // When: 메인 피드 조회
@@ -84,7 +84,7 @@ class FeedServiceImplTest {
 
             // Then: 캐시에서 조회했는지 확인
             verify(exactly = 1) { feedCacheService.getRecommendationBatch(userId, 0) }
-            verify(exactly = 1) { feedRepository.findByContentIds(any()) }
+            verify(exactly = 1) { feedRepository.findByContentIds(any(), any()) }
             verify(exactly = 0) { recommendationService.getRecommendedContentIds(any(), any(), any()) }
         }
 
@@ -110,7 +110,7 @@ class FeedServiceImplTest {
             every { feedCacheService.saveRecommendationBatch(userId, 0, recommendedIds) } returns
                 Mono.just(true)
             every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(0L)
-            every { feedRepository.findByContentIds(any()) } returns
+            every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
             // When: 메인 피드 조회
@@ -146,7 +146,7 @@ class FeedServiceImplTest {
             every { feedCacheService.getRecommendationBatch(userId, 1) } returns
                 Mono.just(cachedBatch)
             every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
-            every { feedRepository.findByContentIds(any()) } returns
+            every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
             // When: cursor = 250으로 조회
@@ -174,7 +174,7 @@ class FeedServiceImplTest {
             every { feedCacheService.getRecommendationBatch(userId, 0) } returns
                 Mono.just(cachedBatch)
             every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
-            every { feedRepository.findByContentIds(expectedContentIds) } returns
+            every { feedRepository.findByContentIds(userId, expectedContentIds) } returns
                 Flux.fromIterable(feedItems)
 
             // When: offset 10에서 조회
@@ -187,7 +187,7 @@ class FeedServiceImplTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 1) { feedRepository.findByContentIds(expectedContentIds) }
+            verify(exactly = 1) { feedRepository.findByContentIds(userId, expectedContentIds) }
         }
     }
 
@@ -273,7 +273,9 @@ class FeedServiceImplTest {
                 commentCount = 50,
                 saveCount = 30,
                 shareCount = 20,
-                viewCount = 1000
+                viewCount = 1000,
+                isLiked = false,
+                isSaved = false
             ),
             subtitles = emptyList()
         )

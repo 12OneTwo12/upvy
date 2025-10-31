@@ -155,6 +155,7 @@ class LikeServiceImpl(
         logger.debug("Getting like status: userId={}, contentId={}", userId, contentId)
 
         return Mono.fromCallable { userLikeRepository.exists(userId, contentId) }
+            .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
             .map { isLiked ->
                 LikeStatusResponse(
                     contentId = contentId.toString(),

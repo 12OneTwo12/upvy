@@ -104,10 +104,11 @@ interface FeedRepository {
      * 추천 알고리즘에서 받은 콘텐츠 ID 목록으로 상세 정보를 조회합니다.
      * ID 목록의 순서를 유지하여 반환합니다.
      *
+     * @param userId 사용자 ID (좋아요/저장 상태 조회용)
      * @param contentIds 콘텐츠 ID 목록 (순서 유지)
      * @return 피드 아이템 목록 (입력 순서 유지)
      */
-    fun findByContentIds(contentIds: List<UUID>): Flux<FeedItemResponse>
+    fun findByContentIds(userId: UUID, contentIds: List<UUID>): Flux<FeedItemResponse>
 
     /**
      * 콘텐츠 ID 목록의 카테고리 조회 (사용자 선호도 분석용)

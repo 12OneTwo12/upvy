@@ -447,7 +447,7 @@ class FeedRepositoryImpl(
      * @param contentIds 콘텐츠 ID 목록 (순서 유지)
      * @return 피드 아이템 목록 (입력 순서 유지)
      */
-    override fun findByContentIds(contentIds: List<UUID>): Flux<FeedItemResponse> {
+    override fun findByContentIds(userId: UUID, contentIds: List<UUID>): Flux<FeedItemResponse> {
         if (contentIds.isEmpty()) {
             return Flux.empty()
         }
@@ -479,13 +479,26 @@ class FeedRepositoryImpl(
                     USERS.ID,
                     USER_PROFILES.NICKNAME,
                     USER_PROFILES.PROFILE_IMAGE_URL,
-                    USER_PROFILES.FOLLOWER_COUNT
+                    USER_PROFILES.FOLLOWER_COUNT,
+                    // 사용자별 좋아요/저장 상태
+                    DSL.field(USER_LIKES.ID.isNotNull).`as`("IS_LIKED"),
+                    DSL.field(USER_SAVES.ID.isNotNull).`as`("IS_SAVED")
                 )
                 .from(CONTENTS)
                 .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
                 .join(CONTENT_INTERACTIONS).on(CONTENT_INTERACTIONS.CONTENT_ID.eq(CONTENTS.ID))
                 .join(USERS).on(USERS.ID.eq(CONTENTS.CREATOR_ID))
                 .join(USER_PROFILES).on(USER_PROFILES.USER_ID.eq(USERS.ID))
+                .leftJoin(USER_LIKES).on(
+                    USER_LIKES.CONTENT_ID.eq(CONTENTS.ID)
+                        .and(USER_LIKES.USER_ID.eq(userId.toString()))
+                        .and(USER_LIKES.DELETED_AT.isNull)
+                )
+                .leftJoin(USER_SAVES).on(
+                    USER_SAVES.CONTENT_ID.eq(CONTENTS.ID)
+                        .and(USER_SAVES.USER_ID.eq(userId.toString()))
+                        .and(USER_SAVES.DELETED_AT.isNull)
+                )
                 .where(CONTENTS.ID.`in`(contentIds.map { it.toString() }))
                 .and(CONTENTS.STATUS.eq("PUBLISHED"))
                 .and(CONTENTS.DELETED_AT.isNull)

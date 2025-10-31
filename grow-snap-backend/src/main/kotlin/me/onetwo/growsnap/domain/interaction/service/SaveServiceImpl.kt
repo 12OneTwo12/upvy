@@ -141,6 +141,7 @@ class SaveServiceImpl(
         logger.debug("Getting save status: userId={}, contentId={}", userId, contentId)
 
         return Mono.fromCallable { userSaveRepository.exists(userId, contentId) }
+            .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
             .map { isSaved ->
                 SaveStatusResponse(
                     contentId = contentId.toString(),
