@@ -248,7 +248,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   return (
     <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, backgroundColor: '#000000', position: 'relative' }}>
       <TouchableWithoutFeedback onPress={handleTap}>
-        <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center', paddingTop: tabBarHeight }}>
+        <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center' }}>
           {/* Video는 항상 렌더링 - 언마운트 절대 금지 */}
           {!isLoadingSkeleton && (
             <Video
