@@ -8,12 +8,15 @@
  * - 답글은 왼쪽 라인 + 들여쓰기
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/theme';
 import { useAuthStore } from '@/stores/authStore';
 import type { CommentResponse } from '@/types/interaction.types';
+
+// 답글 초기 표시 개수
+const INITIAL_REPLY_COUNT = 3;
 
 /**
  * 상대 시간 계산 함수
@@ -56,6 +59,19 @@ export const CommentItem: React.FC<CommentItemProps> = ({
 }) => {
   const currentUser = useAuthStore((state) => state.user);
   const isOwnComment = currentUser && currentUser.id === comment.userId;
+
+  // 답글 더보기 상태
+  const [showAllReplies, setShowAllReplies] = useState(false);
+
+  // 표시할 답글 목록
+  const repliesToShow = comment.replies && comment.replies.length > INITIAL_REPLY_COUNT && !showAllReplies
+    ? comment.replies.slice(0, INITIAL_REPLY_COUNT)
+    : comment.replies;
+
+  // 숨겨진 답글 개수
+  const hiddenRepliesCount = comment.replies && comment.replies.length > INITIAL_REPLY_COUNT && !showAllReplies
+    ? comment.replies.length - INITIAL_REPLY_COUNT
+    : 0;
 
   return (
     <View style={styles.container}>
@@ -137,9 +153,9 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       </View>
 
       {/* 답글 렌더링 (재귀) */}
-      {comment.replies && comment.replies.length > 0 && (
+      {repliesToShow && repliesToShow.length > 0 && (
         <View style={styles.repliesContainer}>
-          {comment.replies.map((reply) => (
+          {repliesToShow.map((reply) => (
             <CommentItem
               key={reply.id}
               comment={reply}
@@ -152,6 +168,18 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               commentLikes={commentLikes}
             />
           ))}
+
+          {/* 더보기 버튼 */}
+          {hiddenRepliesCount > 0 && (
+            <TouchableOpacity
+              style={styles.showMoreButton}
+              onPress={() => setShowAllReplies(true)}
+            >
+              <Text style={styles.showMoreText}>
+                답글 {hiddenRepliesCount}개 더보기
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -245,5 +273,15 @@ const styles = StyleSheet.create({
   },
   repliesContainer: {
     // 답글 컨테이너는 스타일 없음 (재귀적으로 CommentItem 렌더링)
+  },
+  showMoreButton: {
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[4] + 32 + theme.spacing[3], // 답글 들여쓰기와 동일
+    marginTop: theme.spacing[1],
+  },
+  showMoreText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
 });

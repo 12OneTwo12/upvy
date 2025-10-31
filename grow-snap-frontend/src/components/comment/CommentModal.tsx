@@ -57,6 +57,9 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
+  // FlatList ref (스크롤 제어용)
+  const flatListRef = useRef<FlatList>(null);
+
   // 댓글 목록 조회
   const {
     data: comments = [],
@@ -148,11 +151,22 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     mutationFn: async ({ content, parentCommentId }: { content: string; parentCommentId?: string }) => {
       return await createCommentApi(contentId, { content, parentCommentId });
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      const isReply = !!variables.parentCommentId;
+
       // 댓글 목록 refetch
       queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
+      // 피드 목록도 refetch (댓글 개수 업데이트)
+      queryClient.invalidateQueries({ queryKey: ['contents'] });
       // 답글 모드 초기화
       setReplyTo(null);
+
+      // 새 최상위 댓글인 경우에만 스크롤 (대댓글은 스크롤 안 함)
+      if (!isReply) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 300);
+      }
     },
   });
 
@@ -161,6 +175,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     mutationFn: (commentId: string) => deleteCommentApi(commentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
+      // 피드 목록도 refetch (댓글 개수 업데이트)
+      queryClient.invalidateQueries({ queryKey: ['contents'] });
     },
   });
 
@@ -328,6 +344,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
             </View>
           ) : (
             <FlatList
+              ref={flatListRef}
               data={comments}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
