@@ -25,9 +25,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { theme } from '@/theme';
-import { getComments, createComment as createCommentApi, deleteComment as deleteCommentApi } from '@/api/comment.api';
+import { getComments, getReplies, createComment as createCommentApi, deleteComment as deleteCommentApi } from '@/api/comment.api';
 import { createCommentLike, deleteCommentLike, getCommentLikeCount, getCommentLikeStatus } from '@/api/commentLike.api';
 import { CommentItem } from './CommentItem';
 import { CommentInput } from './CommentInput';
@@ -60,16 +60,26 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   // FlatList ref (스크롤 제어용)
   const flatListRef = useRef<FlatList>(null);
 
-  // 댓글 목록 조회
+  // 댓글 목록 조회 (무한 스크롤, 10개씩)
   const {
-    data: comments = [],
+    data,
     isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     refetch,
-  } = useQuery({
+  } = useInfiniteQuery({
     queryKey: ['comments', contentId],
-    queryFn: () => getComments(contentId),
+    queryFn: ({ pageParam }) => getComments(contentId, pageParam, 10),
+    getNextPageParam: (lastPage) => {
+      return lastPage.hasNext ? lastPage.nextCursor : undefined;
+    },
+    initialPageParam: undefined as string | undefined,
     enabled: visible, // 모달이 열릴 때만 데이터 fetch
   });
+
+  // 모든 페이지의 댓글을 하나의 배열로 합침
+  const comments = data?.pages?.flatMap((page) => page.comments) ?? [];
 
   // 모달 열기/닫기 애니메이션
   useEffect(() => {
@@ -78,51 +88,61 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 250,
+          duration: 350,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
           duration: 550,
-          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      // 모달 닫기
+      // 모달 닫기 시 데이터 초기화
+      setReplyTo(null);
+      setCommentLikes({});
+      loadedCommentIdsRef.current.clear();
+
+      // 댓글 쿼리 캐시 제거 (다음에 열 때 새로 로드)
+      queryClient.removeQueries({ queryKey: ['comments', contentId] });
+
+      // 애니메이션
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 0,
-          duration: 200,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
-          duration: 350,
+          duration: 400,
           easing: Easing.in(Easing.ease),
           useNativeDriver: true,
         }),
       ]).start();
     }
-  }, [visible, backdropOpacity, slideAnim]);
+  }, [visible, backdropOpacity, slideAnim, contentId, queryClient]);
 
-  // 댓글이 로드되면 각 댓글의 좋아요 개수/상태 조회
+  // 로드된 댓글 ID 추적 (무한 루프 방지)
+  const loadedCommentIdsRef = useRef<Set<string>>(new Set());
+
+  // 댓글이 로드되면 각 댓글의 좋아요 개수/상태 조회 (새 댓글만)
   useEffect(() => {
     if (comments.length > 0 && visible) {
       const loadCommentLikes = async () => {
+        // 아직 로드하지 않은 새 댓글만 필터링 (Optimistic Update 보존)
+        const newComments = comments.filter(
+          (comment) => !loadedCommentIdsRef.current.has(comment.id)
+        );
+
+        if (newComments.length === 0) return;
+
         const likesData: Record<string, { count: number; isLiked: boolean }> = {};
 
-        // 모든 댓글 (답글 포함)의 좋아요 정보 조회
-        const allComments: CommentResponse[] = [];
-        comments.forEach((comment) => {
-          allComments.push(comment);
-          if (comment.replies) {
-            allComments.push(...comment.replies);
-          }
-        });
-
+        // 새 댓글의 좋아요 정보만 조회
         await Promise.all(
-          allComments.map(async (comment) => {
+          newComments.map(async (comment) => {
             try {
               const [countRes, statusRes] = await Promise.all([
                 getCommentLikeCount(comment.id),
@@ -132,14 +152,18 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                 count: countRes.likeCount,
                 isLiked: statusRes.isLiked,
               };
+              // 로드 완료 표시
+              loadedCommentIdsRef.current.add(comment.id);
             } catch (error) {
               // 에러 발생 시 기본값
               likesData[comment.id] = { count: 0, isLiked: false };
+              loadedCommentIdsRef.current.add(comment.id);
             }
           })
         );
 
-        setCommentLikes(likesData);
+        // 기존 상태와 병합 (Optimistic Update 유지)
+        setCommentLikes((prev) => ({ ...prev, ...likesData }));
       };
 
       loadCommentLikes();
@@ -158,6 +182,12 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
       // 피드 목록도 refetch (댓글 개수 업데이트)
       queryClient.invalidateQueries({ queryKey: ['feed'] });
+
+      // 대댓글인 경우 해당 댓글의 답글 목록도 refetch (화면에 즉시 표시)
+      if (isReply && variables.parentCommentId) {
+        queryClient.invalidateQueries({ queryKey: ['replies', variables.parentCommentId] });
+      }
+
       // 답글 모드 초기화
       setReplyTo(null);
 
@@ -180,7 +210,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     },
   });
 
-  // 댓글 좋아요 mutation (Optimistic update)
+  // 댓글 좋아요 mutation (FeedScreen과 동일한 Optimistic update)
   const likeCommentMutation = useMutation({
     mutationFn: async ({ commentId, isLiked }: { commentId: string; isLiked: boolean }) => {
       if (isLiked) {
@@ -190,17 +220,25 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       }
     },
     onMutate: async ({ commentId, isLiked }) => {
+      // 진행 중인 refetch 취소 (중요!)
+      await queryClient.cancelQueries({ queryKey: ['commentLikes', commentId] });
+
+      // 이전 상태 저장 (rollback용)
+      const previousLikes = { ...commentLikes };
+
       // Optimistic update: 즉시 UI 업데이트
       setCommentLikes((prev) => ({
         ...prev,
         [commentId]: {
-          count: isLiked ? (prev[commentId]?.count || 1) - 1 : (prev[commentId]?.count || 0) + 1,
+          count: isLiked ? Math.max(0, (prev[commentId]?.count || 1) - 1) : (prev[commentId]?.count || 0) + 1,
           isLiked: !isLiked,
         },
       }));
+
+      return { previousLikes };
     },
     onSuccess: (response, { commentId }) => {
-      // 백엔드 응답으로 정확한 값 업데이트
+      // 백엔드 응답으로 최종 동기화 (실제 DB 상태)
       setCommentLikes((prev) => ({
         ...prev,
         [commentId]: {
@@ -209,15 +247,11 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         },
       }));
     },
-    onError: (error, { commentId, isLiked }) => {
-      // 에러 발생 시 rollback
-      setCommentLikes((prev) => ({
-        ...prev,
-        [commentId]: {
-          count: isLiked ? (prev[commentId]?.count || 0) + 1 : (prev[commentId]?.count || 1) - 1,
-          isLiked: isLiked,
-        },
-      }));
+    onError: (error, variables, context) => {
+      // 에러 발생 시 전체 상태를 이전으로 rollback
+      if (context?.previousLikes) {
+        setCommentLikes(context.previousLikes);
+      }
     },
   });
 
@@ -274,18 +308,16 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 
   // 모달 닫기 핸들러
   const handleClose = useCallback(() => {
-    setReplyTo(null);
     onClose();
   }, [onClose]);
 
-  // 댓글 개수 계산 (답글 포함)
-  const getTotalCommentCount = (comments: CommentResponse[]): number => {
-    return comments.reduce((total, comment) => {
-      return total + 1 + (comment.replies?.length || 0);
-    }, 0);
-  };
 
-  const totalCommentCount = getTotalCommentCount(comments);
+  // 무한 스크롤: 스크롤 끝에 도달하면 다음 페이지 로드
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
     <Modal
@@ -322,7 +354,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         >
           {/* 헤더 */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>댓글 {totalCommentCount}개</Text>
+            <Text style={styles.headerTitle}>댓글</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Ionicons name="close" size={28} color={theme.colors.text.primary} />
             </TouchableOpacity>
@@ -356,11 +388,24 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                   likeCount={commentLikes[item.id]?.count || 0}
                   isLiked={commentLikes[item.id]?.isLiked || false}
                   commentLikes={commentLikes}
+                  contentId={contentId}
                 />
               )}
               showsVerticalScrollIndicator={true}
-              contentContainerStyle={styles.listContentContainer}
+              contentContainerStyle={{ paddingBottom: theme.spacing[4] }}
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.3}
+              maintainVisibleContentPosition={{
+                minIndexForVisible: 0,
+              }}
             />
+          )}
+
+          {/* 무한 스크롤 로딩 인디케이터 (모달 하단 고정) */}
+          {isFetchingNextPage && (
+            <View style={styles.bottomLoader}>
+              <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+            </View>
           )}
 
           {/* 댓글 입력 */}
@@ -434,5 +479,13 @@ const styles = StyleSheet.create({
   },
   listContentContainer: {
     flexGrow: 1,
+  },
+  bottomLoader: {
+    paddingVertical: theme.spacing[3],
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.background.primary,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
   },
 });
