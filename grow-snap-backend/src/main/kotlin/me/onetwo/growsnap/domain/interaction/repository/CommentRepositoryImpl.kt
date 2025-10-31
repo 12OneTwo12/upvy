@@ -139,12 +139,32 @@ class CommentRepositoryImpl(
             COMMENTS.DELETED_AT.isNull
         )
 
-        // Cursor가 있으면 해당 댓글 제외
+        // Cursor 기반 페이징: 커서 댓글의 인기 점수와 생성일을 기준으로 필터링
+        var havingCondition: org.jooq.Condition? = null
         if (cursor != null) {
-            whereConditions.add(COMMENTS.ID.ne(cursor.toString()))
+            val cursorComment = findById(cursor)
+            if (cursorComment != null) {
+                // 커서 댓글의 인기 점수 계산
+                val cursorLikeCount = dslContext
+                    .selectCount()
+                    .from(USER_COMMENT_LIKES)
+                    .where(USER_COMMENT_LIKES.COMMENT_ID.eq(cursor.toString()))
+                    .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
+                    .fetchOne(0, Int::class.java) ?: 0
+
+                val cursorReplyCount = countRepliesByParentCommentId(cursor)
+                val cursorPopularityScore = cursorLikeCount + cursorReplyCount
+
+                // (인기 점수 < 커서 점수) OR (인기 점수 = 커서 점수 AND 생성일 > 커서 생성일)
+                havingCondition = popularityScore.lt(cursorPopularityScore)
+                    .or(
+                        popularityScore.eq(cursorPopularityScore)
+                            .and(COMMENTS.CREATED_AT.gt(cursorComment.createdAt))
+                    )
+            }
         }
 
-        return dslContext
+        val query = dslContext
             .select(
                 COMMENTS.ID,
                 COMMENTS.CONTENT_ID,
@@ -177,6 +197,13 @@ class CommentRepositoryImpl(
                 COMMENTS.UPDATED_BY,
                 COMMENTS.DELETED_AT
             )
+
+        // HAVING 조건 추가
+        if (havingCondition != null) {
+            query.having(havingCondition)
+        }
+
+        return query
             .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc())
             .limit(limit + 1) // hasNext 확인을 위해 +1 조회
             .fetch()

@@ -359,7 +359,6 @@ class CommentRepositoryTest {
         }
 
         @Test
-        @Disabled("인기순 정렬에서 cursor 기반 페이징은 복잡한 구현 필요 - 추후 개선 예정")
         @DisplayName("cursor를 지정하면, 해당 위치 이후부터 조회된다")
         fun findTopLevelComments_WithCursor_ReturnsAfterCursor() {
             // Given: 5개의 최상위 댓글 생성
