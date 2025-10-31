@@ -43,13 +43,12 @@ class SaveController(
     @PostMapping("/contents/{contentId}/save")
     fun saveContent(
         principal: Mono<Principal>,
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<SaveResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentUUID = UUID.fromString(contentId)
-                saveService.saveContent(userId, contentUUID)
+                saveService.saveContent(userId, contentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -66,13 +65,12 @@ class SaveController(
     @DeleteMapping("/contents/{contentId}/save")
     fun unsaveContent(
         principal: Mono<Principal>,
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<SaveResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentUUID = UUID.fromString(contentId)
-                saveService.unsaveContent(userId, contentUUID)
+                saveService.unsaveContent(userId, contentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -110,13 +108,12 @@ class SaveController(
     @GetMapping("/contents/{contentId}/save/status")
     fun getSaveStatus(
         principal: Mono<Principal>,
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<SaveStatusResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentUUID = UUID.fromString(contentId)
-                saveService.getSaveStatus(userId, contentUUID)
+                saveService.getSaveStatus(userId, contentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }

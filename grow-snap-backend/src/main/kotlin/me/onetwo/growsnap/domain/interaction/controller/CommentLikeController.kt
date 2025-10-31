@@ -42,13 +42,12 @@ class CommentLikeController(
     @PostMapping("/comments/{commentId}/likes")
     fun likeComment(
         principal: Mono<Principal>,
-        @PathVariable commentId: String
+        @PathVariable commentId: UUID
     ): Mono<ResponseEntity<CommentLikeResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val commentUUID = UUID.fromString(commentId)
-                commentLikeService.likeComment(userId, commentUUID)
+                commentLikeService.likeComment(userId, commentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -65,13 +64,12 @@ class CommentLikeController(
     @DeleteMapping("/comments/{commentId}/likes")
     fun unlikeComment(
         principal: Mono<Principal>,
-        @PathVariable commentId: String
+        @PathVariable commentId: UUID
     ): Mono<ResponseEntity<CommentLikeResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val commentUUID = UUID.fromString(commentId)
-                commentLikeService.unlikeComment(userId, commentUUID)
+                commentLikeService.unlikeComment(userId, commentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -86,11 +84,9 @@ class CommentLikeController(
      */
     @GetMapping("/comments/{commentId}/likes/count")
     fun getLikeCount(
-        @PathVariable commentId: String
+        @PathVariable commentId: UUID
     ): Mono<ResponseEntity<CommentLikeCountResponse>> {
-        val commentUUID = UUID.fromString(commentId)
-
-        return commentLikeService.getLikeCount(commentUUID)
+        return commentLikeService.getLikeCount(commentId)
             .map { response -> ResponseEntity.ok(response) }
     }
 
@@ -108,13 +104,12 @@ class CommentLikeController(
     @GetMapping("/comments/{commentId}/likes/check")
     fun getLikeStatus(
         principal: Mono<Principal>,
-        @PathVariable commentId: String
+        @PathVariable commentId: UUID
     ): Mono<ResponseEntity<CommentLikeStatusResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val commentUUID = UUID.fromString(commentId)
-                commentLikeService.getLikeStatus(userId, commentUUID)
+                commentLikeService.getLikeStatus(userId, commentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }

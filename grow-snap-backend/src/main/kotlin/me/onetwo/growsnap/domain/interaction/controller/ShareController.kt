@@ -40,13 +40,12 @@ class ShareController(
     @PostMapping("/contents/{contentId}/share")
     fun shareVideo(
         principal: Mono<Principal>,
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<ShareResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
-                val contentUUID = UUID.fromString(contentId)
-                shareService.shareContent(userId, contentUUID)
+                shareService.shareContent(userId, contentId)
             }
             .map { response -> ResponseEntity.ok(response) }
     }
@@ -61,11 +60,9 @@ class ShareController(
      */
     @GetMapping("/contents/{contentId}/share-link")
     fun getShareLink(
-        @PathVariable contentId: String
+        @PathVariable contentId: UUID
     ): Mono<ResponseEntity<ShareLinkResponse>> {
-        val contentUUID = UUID.fromString(contentId)
-
-        return shareService.getShareLink(contentUUID)
+        return shareService.getShareLink(contentId)
             .map { response -> ResponseEntity.ok(response) }
     }
 }

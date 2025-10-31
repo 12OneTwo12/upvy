@@ -157,7 +157,6 @@ class CommentLikeControllerTest {
 
             // When & Then: API 호출 및 검증
             webTestClient
-                .mutateWith(mockUser(userId))
                 .get()
                 .uri("${ApiPaths.API_V1}/comments/{commentId}/likes/count", commentId)
                 .exchange()

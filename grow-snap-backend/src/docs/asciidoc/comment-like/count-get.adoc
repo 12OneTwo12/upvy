@@ -23,5 +23,4 @@ curl -X GET http://localhost:8080/api/v1/comments/{commentId}/likes/count \
 
 ==== Notes
 
-* 인증된 사용자만 조회할 수 있습니다
 * 삭제된 좋아요는 카운트에서 제외됩니다 (Soft Delete)
