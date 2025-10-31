@@ -21,39 +21,41 @@ export const LikeAnimation: React.FC<LikeAnimationProps> = ({ show, onComplete }
 
   useEffect(() => {
     if (show) {
-      // 애니메이션 시작
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
+      // 애니메이션 시퀀스: 페이드인 → 대기 → 페이드아웃
+      Animated.sequence([
+        // 1. 페이드인 + 스케일업
+        Animated.parallel([
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]),
+        // 2. 대기
+        Animated.delay(300),
+        // 3. 페이드아웃 + 약간 더 스케일업
+        Animated.parallel([
+          Animated.timing(scaleAnim, {
+            toValue: 1.2,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]),
       ]).start(() => {
-        // 애니메이션 완료 후 페이드아웃
-        setTimeout(() => {
-          Animated.parallel([
-            Animated.timing(scaleAnim, {
-              toValue: 1.2,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            // 애니메이션 리셋
-            scaleAnim.setValue(0);
-            opacityAnim.setValue(0);
-            onComplete?.();
-          });
-        }, 300);
+        // 애니메이션 리셋
+        scaleAnim.setValue(0);
+        opacityAnim.setValue(0);
+        onComplete?.();
       });
     }
   }, [show, scaleAnim, opacityAnim, onComplete]);

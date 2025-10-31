@@ -208,6 +208,101 @@ class ContentServiceImplTest {
         }
 
         @Test
+        @DisplayName("PHOTO 타입 콘텐츠 생성 시, 사진 목록을 저장하고 응답에 포함한다")
+        fun createContent_WithPhotoType_SavesPhotosAndReturnsWithPhotoUrls() {
+            // Given: PHOTO 타입 콘텐츠 데이터
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+            val s3Key = "contents/PHOTO/$userId/$contentId/test_123456.jpg"
+            val photoUrls = listOf(
+                "https://s3.amazonaws.com/photo1.jpg",
+                "https://s3.amazonaws.com/photo2.jpg",
+                "https://s3.amazonaws.com/photo3.jpg"
+            )
+
+            val request = ContentCreateRequest(
+                contentId = contentId.toString(),
+                title = "Test Photo Gallery",
+                description = "Test Description",
+                category = Category.NATURE,
+                tags = listOf("test", "photo"),
+                language = "ko",
+                thumbnailUrl = "https://s3.amazonaws.com/thumbnail.jpg",
+                duration = null,
+                width = 1080,
+                height = 1080,
+                photoUrls = photoUrls
+            )
+
+            val uploadSession = UploadSession(
+                contentId = contentId.toString(),
+                userId = userId.toString(),
+                s3Key = s3Key,
+                contentType = ContentType.PHOTO,
+                fileName = "test.jpg",
+                fileSize = 500000L
+            )
+
+            val savedContent = Content(
+                id = contentId,
+                creatorId = userId,
+                contentType = ContentType.PHOTO,
+                url = "https://test-bucket.s3.ap-northeast-2.amazonaws.com/$s3Key",
+                thumbnailUrl = request.thumbnailUrl,
+                duration = null,
+                width = request.width,
+                height = request.height,
+                status = ContentStatus.PUBLISHED,
+                createdAt = LocalDateTime.now(),
+                createdBy = userId,
+                updatedAt = LocalDateTime.now(),
+                updatedBy = userId
+            )
+
+            val savedMetadata = ContentMetadata(
+                id = 1L,
+                contentId = contentId,
+                title = request.title,
+                description = request.description,
+                category = request.category,
+                tags = request.tags,
+                language = request.language,
+                createdAt = LocalDateTime.now(),
+                createdBy = userId,
+                updatedAt = LocalDateTime.now(),
+                updatedBy = userId
+            )
+
+            // Mock 설정
+            every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
+            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
+            every { contentRepository.save(any()) } returns savedContent
+            every { contentRepository.saveMetadata(any()) } returns savedMetadata
+            every { contentPhotoRepository.save(any()) } returns true
+            every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
+
+            // When: 메서드 실행
+            val result = contentService.createContent(userId, request)
+
+            // Then: 결과 검증
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response.id).isEqualTo(contentId.toString())
+                    assertThat(response.title).isEqualTo(request.title)
+                    assertThat(response.contentType).isEqualTo(ContentType.PHOTO)
+                    assertThat(response.photoUrls).isNotNull
+                    assertThat(response.photoUrls).hasSize(3)
+                    assertThat(response.photoUrls).containsExactlyElementsOf(photoUrls)
+                }
+                .verifyComplete()
+
+            // 각 사진이 저장되었는지 확인 (3개의 photoUrls)
+            verify(exactly = 3) { contentPhotoRepository.save(any()) }
+            verify(exactly = 1) { contentRepository.save(any()) }
+            verify(exactly = 1) { contentRepository.saveMetadata(any()) }
+        }
+
+        @Test
         @DisplayName("업로드 세션이 존재하지 않으면, UploadSessionNotFoundException이 발생한다")
         fun createContent_WhenUploadSessionNotFound_ThrowsUploadSessionNotFoundException() {
             // Given: 만료되거나 존재하지 않는 업로드 토큰

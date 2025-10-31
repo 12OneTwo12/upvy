@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.content.repository
 import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import org.jooq.DSLContext
+import org.jooq.exception.DataAccessException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import java.util.UUID
@@ -43,7 +44,7 @@ class ContentPhotoRepository(
 
             logger.debug("Content photo saved: contentId=${photo.contentId}, order=${photo.displayOrder}")
             true
-        } catch (e: Exception) {
+        } catch (e: DataAccessException) {
             logger.error("Failed to save content photo: contentId=${photo.contentId}", e)
             false
         }
@@ -75,21 +76,7 @@ class ContentPhotoRepository(
             .and(CONTENT_PHOTOS.DELETED_AT.isNull)
             .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc())
             .fetch()
-            .map { record ->
-                ContentPhoto(
-                    id = record.getValue(CONTENT_PHOTOS.ID),
-                    contentId = UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)),
-                    photoUrl = record.getValue(CONTENT_PHOTOS.PHOTO_URL)!!,
-                    displayOrder = record.getValue(CONTENT_PHOTOS.DISPLAY_ORDER)!!,
-                    width = record.getValue(CONTENT_PHOTOS.WIDTH)!!,
-                    height = record.getValue(CONTENT_PHOTOS.HEIGHT)!!,
-                    createdAt = record.getValue(CONTENT_PHOTOS.CREATED_AT)!!,
-                    createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY),
-                    updatedAt = record.getValue(CONTENT_PHOTOS.UPDATED_AT)!!,
-                    updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY),
-                    deletedAt = record.getValue(CONTENT_PHOTOS.DELETED_AT)
-                )
-            }
+            .map { mapRecordToContentPhoto(it) }
     }
 
     /**
@@ -141,21 +128,29 @@ class ContentPhotoRepository(
             .fetch()
             .groupBy { record -> UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)) }
             .mapValues { (_, records) ->
-                records.map { record ->
-                    ContentPhoto(
-                        id = record.getValue(CONTENT_PHOTOS.ID),
-                        contentId = UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)),
-                        photoUrl = record.getValue(CONTENT_PHOTOS.PHOTO_URL)!!,
-                        displayOrder = record.getValue(CONTENT_PHOTOS.DISPLAY_ORDER)!!,
-                        width = record.getValue(CONTENT_PHOTOS.WIDTH)!!,
-                        height = record.getValue(CONTENT_PHOTOS.HEIGHT)!!,
-                        createdAt = record.getValue(CONTENT_PHOTOS.CREATED_AT)!!,
-                        createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY),
-                        updatedAt = record.getValue(CONTENT_PHOTOS.UPDATED_AT)!!,
-                        updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY),
-                        deletedAt = record.getValue(CONTENT_PHOTOS.DELETED_AT)
-                    )
-                }
+                records.map { mapRecordToContentPhoto(it) }
             }
+    }
+
+    /**
+     * JOOQ Record를 ContentPhoto 엔티티로 변환합니다.
+     *
+     * @param record JOOQ Record
+     * @return ContentPhoto 엔티티
+     */
+    private fun mapRecordToContentPhoto(record: org.jooq.Record): ContentPhoto {
+        return ContentPhoto(
+            id = record.getValue(CONTENT_PHOTOS.ID),
+            contentId = UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)),
+            photoUrl = record.getValue(CONTENT_PHOTOS.PHOTO_URL)!!,
+            displayOrder = record.getValue(CONTENT_PHOTOS.DISPLAY_ORDER)!!,
+            width = record.getValue(CONTENT_PHOTOS.WIDTH)!!,
+            height = record.getValue(CONTENT_PHOTOS.HEIGHT)!!,
+            createdAt = record.getValue(CONTENT_PHOTOS.CREATED_AT)!!,
+            createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY),
+            updatedAt = record.getValue(CONTENT_PHOTOS.UPDATED_AT)!!,
+            updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY),
+            deletedAt = record.getValue(CONTENT_PHOTOS.DELETED_AT)
+        )
     }
 }

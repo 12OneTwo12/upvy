@@ -135,7 +135,7 @@ class ContentServiceImpl(
             )
 
             val savedContent = contentRepository.save(content)
-                ?: throw IllegalStateException("Failed to save content")
+                ?: error("Failed to save content")
 
             // ContentMetadata 생성 및 저장
             val metadata = ContentMetadata(
@@ -152,7 +152,7 @@ class ContentServiceImpl(
             )
 
             val savedMetadata = contentRepository.saveMetadata(metadata)
-                ?: throw IllegalStateException("Failed to save content metadata")
+                ?: error("Failed to save content metadata")
 
             // 6. PHOTO 타입인 경우 사진 목록 저장
             if (savedContent.contentType == ContentType.PHOTO && !request.photoUrls.isNullOrEmpty()) {
@@ -169,9 +169,7 @@ class ContentServiceImpl(
                         updatedBy = userId.toString()
                     )
                     val saved = contentPhotoRepository.save(photo)
-                    if (!saved) {
-                        throw IllegalStateException("Failed to save content photo")
-                    }
+                    check(saved) { "Failed to save content photo" }
                 }
                 logger.info("Content photos saved: contentId=$contentId, count=${request.photoUrls.size}")
             }
@@ -182,10 +180,9 @@ class ContentServiceImpl(
 
             Pair(savedContent, savedMetadata)
         }.map { (content, metadata) ->
-            // PHOTO 타입인 경우 사진 목록 조회
+            // PHOTO 타입인 경우 사진 목록 (이미 저장된 request.photoUrls 사용)
             val photoUrls = if (content.contentType == ContentType.PHOTO) {
-                contentPhotoRepository.findByContentId(content.id!!)
-                    .map { it.photoUrl }
+                request.photoUrls
             } else {
                 null
             }
@@ -371,7 +368,7 @@ class ContentServiceImpl(
                 creatorId = content.creatorId.toString(),
                 contentType = content.contentType,
                 url = content.url,
-                photoUrls = null,  // TODO: Implement photoUrls loading
+                photoUrls = null,  // PHOTO 타입 콘텐츠 수정 기능은 향후 구현 예정
                 thumbnailUrl = content.thumbnailUrl,
                 duration = content.duration,
                 width = content.width,

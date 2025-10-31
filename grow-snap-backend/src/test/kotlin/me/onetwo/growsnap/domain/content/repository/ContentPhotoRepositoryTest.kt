@@ -333,7 +333,7 @@ class ContentPhotoRepositoryTest {
 
             // When: 일괄 조회
             val contentIds = listOf(content1, content2)
-            val photosMap = findByContentIds(contentIds)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
 
             // Then: Map으로 그룹화
             assertThat(photosMap).hasSize(2)
@@ -360,7 +360,7 @@ class ContentPhotoRepositoryTest {
 
             // When: 일괄 조회
             val contentIds = listOf(content1, content2)
-            val photosMap = findByContentIds(contentIds)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
 
             // Then: 사진이 있는 콘텐츠만 Map에 포함
             assertThat(photosMap).hasSize(1)
@@ -372,6 +372,7 @@ class ContentPhotoRepositoryTest {
     /**
      * 콘텐츠 삽입 헬퍼 메서드
      */
+    @Suppress("UnusedParameter")
     private fun insertContent(
         contentId: UUID,
         creatorId: UUID,
