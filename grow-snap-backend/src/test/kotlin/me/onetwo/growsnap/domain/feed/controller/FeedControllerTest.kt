@@ -114,6 +114,8 @@ class FeedControllerTest {
                             fieldWithPath("content[].interactions.saveCount").description("저장 수"),
                             fieldWithPath("content[].interactions.shareCount").description("공유 수"),
                             fieldWithPath("content[].interactions.viewCount").description("조회수"),
+                            fieldWithPath("content[].interactions.isLiked").description("현재 사용자의 좋아요 여부"),
+                            fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부"),
                             fieldWithPath("content[].subtitles[]").description("자막 정보 목록"),
                             fieldWithPath("nextCursor").description("다음 페이지 커서 (마지막 페이지인 경우 null)").optional(),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
@@ -232,6 +234,8 @@ class FeedControllerTest {
                             fieldWithPath("content[].interactions.saveCount").description("저장 수"),
                             fieldWithPath("content[].interactions.shareCount").description("공유 수"),
                             fieldWithPath("content[].interactions.viewCount").description("조회수"),
+                            fieldWithPath("content[].interactions.isLiked").description("현재 사용자의 좋아요 여부"),
+                            fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부"),
                             fieldWithPath("content[].subtitles[]").description("자막 정보 목록"),
                             fieldWithPath("nextCursor").description("다음 페이지 커서 (마지막 페이지인 경우 null)").optional(),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
@@ -319,7 +323,9 @@ class FeedControllerTest {
                     commentCount = 50,
                     saveCount = 30,
                     shareCount = 20,
-                    viewCount = 1000
+                    viewCount = 1000,
+                    isLiked = false,
+                    isSaved = false
                 ),
                 subtitles = emptyList()
             )

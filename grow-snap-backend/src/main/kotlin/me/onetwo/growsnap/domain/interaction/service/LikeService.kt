@@ -2,6 +2,7 @@ package me.onetwo.growsnap.domain.interaction.service
 
 import me.onetwo.growsnap.domain.interaction.dto.LikeCountResponse
 import me.onetwo.growsnap.domain.interaction.dto.LikeResponse
+import me.onetwo.growsnap.domain.interaction.dto.LikeStatusResponse
 import reactor.core.publisher.Mono
 import java.util.UUID
 
@@ -37,4 +38,15 @@ interface LikeService {
      * @return 좋아요 수 응답
      */
     fun getLikeCount(contentId: UUID): Mono<LikeCountResponse>
+
+    /**
+     * 좋아요 상태 조회
+     *
+     * 특정 콘텐츠에 대한 사용자의 좋아요 상태를 확인합니다.
+     *
+     * @param userId 사용자 ID
+     * @param contentId 콘텐츠 ID
+     * @return 좋아요 상태 응답
+     */
+    fun getLikeStatus(userId: UUID, contentId: UUID): Mono<LikeStatusResponse>
 }

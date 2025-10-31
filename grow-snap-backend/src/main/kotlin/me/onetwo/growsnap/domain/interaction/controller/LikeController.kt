@@ -2,6 +2,7 @@ package me.onetwo.growsnap.domain.interaction.controller
 
 import me.onetwo.growsnap.domain.interaction.dto.LikeCountResponse
 import me.onetwo.growsnap.domain.interaction.dto.LikeResponse
+import me.onetwo.growsnap.domain.interaction.dto.LikeStatusResponse
 import me.onetwo.growsnap.domain.interaction.service.LikeService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.ResponseEntity
@@ -89,6 +90,31 @@ class LikeController(
         val contentId = UUID.fromString(videoId)
 
         return likeService.getLikeCount(contentId)
+            .map { response -> ResponseEntity.ok(response) }
+    }
+
+    /**
+     * 좋아요 상태 조회
+     *
+     * 특정 콘텐츠에 대한 사용자의 좋아요 상태를 확인합니다.
+     *
+     * GET /api/v1/videos/{videoId}/like/status
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param videoId 비디오(콘텐츠) ID
+     * @return 좋아요 상태 응답
+     */
+    @GetMapping("/{videoId}/like/status")
+    fun getLikeStatus(
+        principal: Mono<Principal>,
+        @PathVariable videoId: String
+    ): Mono<ResponseEntity<LikeStatusResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                val contentId = UUID.fromString(videoId)
+                likeService.getLikeStatus(userId, contentId)
+            }
             .map { response -> ResponseEntity.ok(response) }
     }
 }

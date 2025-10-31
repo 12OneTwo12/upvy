@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.interaction.controller
 
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
+import me.onetwo.growsnap.domain.interaction.dto.SaveStatusResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
 import me.onetwo.growsnap.domain.interaction.service.SaveService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
@@ -92,5 +93,30 @@ class SaveController(
             .flatMapMany { userId ->
                 saveService.getSavedContents(userId)
             }
+    }
+
+    /**
+     * 저장 상태 조회
+     *
+     * 특정 콘텐츠에 대한 사용자의 저장 상태를 확인합니다.
+     *
+     * GET /api/v1/videos/{videoId}/save/status
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param videoId 비디오(콘텐츠) ID
+     * @return 저장 상태 응답
+     */
+    @GetMapping("/videos/{videoId}/save/status")
+    fun getSaveStatus(
+        principal: Mono<Principal>,
+        @PathVariable videoId: String
+    ): Mono<ResponseEntity<SaveStatusResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                val contentId = UUID.fromString(videoId)
+                saveService.getSaveStatus(userId, contentId)
+            }
+            .map { response -> ResponseEntity.ok(response) }
     }
 }

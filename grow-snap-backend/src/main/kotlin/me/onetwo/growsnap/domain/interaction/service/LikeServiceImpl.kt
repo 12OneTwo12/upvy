@@ -6,6 +6,7 @@ import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionReposito
 import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.interaction.dto.LikeCountResponse
 import me.onetwo.growsnap.domain.interaction.dto.LikeResponse
+import me.onetwo.growsnap.domain.interaction.dto.LikeStatusResponse
 import me.onetwo.growsnap.domain.interaction.repository.UserLikeRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -134,6 +135,34 @@ class LikeServiceImpl(
             }
             .doOnSuccess { response ->
                 logger.debug("Like count retrieved: contentId={}, count={}", contentId, response.likeCount)
+            }
+    }
+
+    /**
+     * 좋아요 상태 조회
+     *
+     * 특정 콘텐츠에 대한 사용자의 좋아요 상태를 확인합니다.
+     *
+     * ### 처리 흐름
+     * 1. UserLikeRepository.exists()로 좋아요 여부 확인
+     * 2. LikeStatusResponse 반환
+     *
+     * @param userId 사용자 ID
+     * @param contentId 콘텐츠 ID
+     * @return 좋아요 상태 응답
+     */
+    override fun getLikeStatus(userId: UUID, contentId: UUID): Mono<LikeStatusResponse> {
+        logger.debug("Getting like status: userId={}, contentId={}", userId, contentId)
+
+        return Mono.fromCallable { userLikeRepository.exists(userId, contentId) }
+            .map { isLiked ->
+                LikeStatusResponse(
+                    contentId = contentId.toString(),
+                    isLiked = isLiked
+                )
+            }
+            .doOnSuccess { response ->
+                logger.debug("Like status retrieved: userId={}, contentId={}, isLiked={}", userId, contentId, response.isLiked)
             }
     }
 

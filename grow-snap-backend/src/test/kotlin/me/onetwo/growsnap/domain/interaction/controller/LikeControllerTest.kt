@@ -6,6 +6,7 @@ import io.mockk.verify
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.interaction.dto.LikeCountResponse
 import me.onetwo.growsnap.domain.interaction.dto.LikeResponse
+import me.onetwo.growsnap.domain.interaction.dto.LikeStatusResponse
 import me.onetwo.growsnap.domain.interaction.service.LikeService
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
 import me.onetwo.growsnap.util.mockUser
@@ -179,6 +180,79 @@ class LikeControllerTest {
                 )
 
             verify(exactly = 1) { likeService.getLikeCount(UUID.fromString(videoId)) }
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/videos/{videoId}/like/status - 좋아요 상태 조회")
+    inner class GetLikeStatus {
+
+        @Test
+        @DisplayName("좋아요 상태 조회 시, 사용자가 좋아요를 누른 경우 true를 반환한다")
+        fun getLikeStatus_WhenUserLiked_ReturnsTrue() {
+            // Given: 사용자가 좋아요를 누른 상태
+            val userId = UUID.randomUUID()
+            val videoId = UUID.randomUUID().toString()
+            val response = LikeStatusResponse(
+                contentId = videoId,
+                isLiked = true
+            )
+
+            every { likeService.getLikeStatus(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("/api/v1/videos/{videoId}/like/status", videoId)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.isLiked").isEqualTo(true)
+                .consumeWith(
+                    document(
+                        "like-status-check",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        pathParameters(
+                            parameterWithName("videoId").description("비디오 ID")
+                        ),
+                        responseFields(
+                            fieldWithPath("contentId").description("콘텐츠 ID"),
+                            fieldWithPath("isLiked").description("좋아요 여부 (true: 좋아요, false: 좋아요 안 함)")
+                        )
+                    )
+                )
+
+            verify(exactly = 1) { likeService.getLikeStatus(userId, UUID.fromString(videoId)) }
+        }
+
+        @Test
+        @DisplayName("좋아요 상태 조회 시, 사용자가 좋아요를 누르지 않은 경우 false를 반환한다")
+        fun getLikeStatus_WhenUserNotLiked_ReturnsFalse() {
+            // Given: 사용자가 좋아요를 누르지 않은 상태
+            val userId = UUID.randomUUID()
+            val videoId = UUID.randomUUID().toString()
+            val response = LikeStatusResponse(
+                contentId = videoId,
+                isLiked = false
+            )
+
+            every { likeService.getLikeStatus(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("/api/v1/videos/{videoId}/like/status", videoId)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.isLiked").isEqualTo(false)
+
+            verify(exactly = 1) { likeService.getLikeStatus(userId, UUID.fromString(videoId)) }
         }
     }
 }

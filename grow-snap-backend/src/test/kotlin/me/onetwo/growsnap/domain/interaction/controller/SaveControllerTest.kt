@@ -5,6 +5,7 @@ import io.mockk.every
 import io.mockk.verify
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
+import me.onetwo.growsnap.domain.interaction.dto.SaveStatusResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
 import me.onetwo.growsnap.domain.interaction.service.SaveService
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
@@ -209,6 +210,79 @@ class SaveControllerTest {
                 .json("[]")
 
             verify(exactly = 1) { saveService.getSavedContents(userId) }
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/videos/{videoId}/save/status - 저장 상태 조회")
+    inner class GetSaveStatus {
+
+        @Test
+        @DisplayName("저장 상태 조회 시, 사용자가 저장한 경우 true를 반환한다")
+        fun getSaveStatus_WhenUserSaved_ReturnsTrue() {
+            // Given: 사용자가 콘텐츠를 저장한 상태
+            val userId = UUID.randomUUID()
+            val videoId = UUID.randomUUID().toString()
+            val response = SaveStatusResponse(
+                contentId = videoId,
+                isSaved = true
+            )
+
+            every { saveService.getSaveStatus(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("/api/v1/videos/{videoId}/save/status", videoId)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.isSaved").isEqualTo(true)
+                .consumeWith(
+                    document(
+                        "save-status-check",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        pathParameters(
+                            parameterWithName("videoId").description("비디오 ID")
+                        ),
+                        responseFields(
+                            fieldWithPath("contentId").description("콘텐츠 ID"),
+                            fieldWithPath("isSaved").description("저장 여부 (true: 저장, false: 저장 안 함)")
+                        )
+                    )
+                )
+
+            verify(exactly = 1) { saveService.getSaveStatus(userId, UUID.fromString(videoId)) }
+        }
+
+        @Test
+        @DisplayName("저장 상태 조회 시, 사용자가 저장하지 않은 경우 false를 반환한다")
+        fun getSaveStatus_WhenUserNotSaved_ReturnsFalse() {
+            // Given: 사용자가 콘텐츠를 저장하지 않은 상태
+            val userId = UUID.randomUUID()
+            val videoId = UUID.randomUUID().toString()
+            val response = SaveStatusResponse(
+                contentId = videoId,
+                isSaved = false
+            )
+
+            every { saveService.getSaveStatus(userId, UUID.fromString(videoId)) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("/api/v1/videos/{videoId}/save/status", videoId)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.contentId").isEqualTo(videoId)
+                .jsonPath("$.isSaved").isEqualTo(false)
+
+            verify(exactly = 1) { saveService.getSaveStatus(userId, UUID.fromString(videoId)) }
         }
     }
 }

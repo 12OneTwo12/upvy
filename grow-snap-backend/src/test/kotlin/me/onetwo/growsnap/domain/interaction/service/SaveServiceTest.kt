@@ -247,4 +247,49 @@ class SaveServiceTest {
                 .verifyComplete()
         }
     }
+
+    @Nested
+    @DisplayName("getSaveStatus - 저장 상태 조회")
+    inner class GetSaveStatus {
+
+        @Test
+        @DisplayName("저장 상태 조회 시, Repository의 exists 결과를 반환한다 (저장O)")
+        fun getSaveStatus_WhenSaved_ReturnsTrue() {
+            // Given: 사용자가 콘텐츠를 저장한 상태
+            every { userSaveRepository.exists(testUserId, testContentId) } returns true
+
+            // When: 저장 상태 조회
+            val result = saveService.getSaveStatus(testUserId, testContentId)
+
+            // Then: isSaved = true 반환
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertEquals(testContentId.toString(), response.contentId)
+                    assertEquals(true, response.isSaved)
+                }
+                .verifyComplete()
+
+            verify(exactly = 1) { userSaveRepository.exists(testUserId, testContentId) }
+        }
+
+        @Test
+        @DisplayName("저장 상태 조회 시, Repository의 exists 결과를 반환한다 (저장X)")
+        fun getSaveStatus_WhenNotSaved_ReturnsFalse() {
+            // Given: 사용자가 콘텐츠를 저장하지 않은 상태
+            every { userSaveRepository.exists(testUserId, testContentId) } returns false
+
+            // When: 저장 상태 조회
+            val result = saveService.getSaveStatus(testUserId, testContentId)
+
+            // Then: isSaved = false 반환
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertEquals(testContentId.toString(), response.contentId)
+                    assertEquals(false, response.isSaved)
+                }
+                .verifyComplete()
+
+            verify(exactly = 1) { userSaveRepository.exists(testUserId, testContentId) }
+        }
+    }
 }
