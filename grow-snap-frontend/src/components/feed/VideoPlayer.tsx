@@ -13,6 +13,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { LikeAnimation } from './LikeAnimation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const NAVIGATION_BAR_HEIGHT = 60;
@@ -51,10 +52,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
   const [showPlayIcon, setShowPlayIcon] = useState<'play' | 'pause' | null>(null);
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const lastTap = useRef<number>(0);
-  const heartScale = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -186,23 +187,15 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const handleDoubleTap = () => {
     if (!onDoubleTap) return;
 
-    // 하트 애니메이션
-    heartScale.setValue(0);
-    Animated.spring(heartScale, {
-      toValue: 1,
-      friction: 3,
-      useNativeDriver: true,
-    }).start(() => {
-      setTimeout(() => {
-        Animated.timing(heartScale, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }, 500);
-    });
+    // 하트 애니메이션 표시
+    setShowLikeAnimation(true);
 
     onDoubleTap();
+  };
+
+  // 애니메이션 완료 핸들러
+  const handleAnimationComplete = () => {
+    setShowLikeAnimation(false);
   };
 
   // Seek 함수를 ref로 노출
@@ -326,16 +319,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
             </View>
           )}
 
-          {/* 더블탭 하트 애니메이션 */}
-          <Animated.View
-            className="absolute inset-0 items-center justify-center pointer-events-none"
-            style={{
-              transform: [{ scale: heartScale }],
-              opacity: heartScale,
-            }}
-          >
-            <Ionicons name="heart" size={120} color="white" />
-          </Animated.View>
+          {/* 좋아요 애니메이션 */}
+          <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
 
         </View>
       </TouchableWithoutFeedback>

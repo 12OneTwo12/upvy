@@ -18,6 +18,7 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { LikeAnimation } from './LikeAnimation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -37,6 +38,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   onTap,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const lastTap = useRef<number>(0);
 
@@ -57,6 +59,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
 
     if (now - lastTap.current < DOUBLE_TAP_DELAY) {
       // 더블탭
+      setShowLikeAnimation(true);
       onDoubleTap?.();
       lastTap.current = 0;
     } else {
@@ -70,33 +73,36 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
     }
   }, [onDoubleTap, onTap]);
 
+  // 애니메이션 완료 핸들러
+  const handleAnimationComplete = useCallback(() => {
+    setShowLikeAnimation(false);
+  }, []);
+
   return (
     <View style={[styles.container, { width, height }]}>
       {/* 사진 스크롤뷰 */}
-      <TouchableWithoutFeedback onPress={handlePress}>
-        <View style={{ width, height }}>
-          <ScrollView
-            ref={scrollViewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollViewContent}
-          >
-            {photoUrls.map((photoUrl, index) => (
-              <View key={`${photoUrl}-${index}`} style={[styles.photoContainer, { width, height }]}>
-                <Image
-                  source={{ uri: photoUrl }}
-                  style={styles.photo}
-                  resizeMode="contain"
-                />
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      </TouchableWithoutFeedback>
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+      >
+        {photoUrls.map((photoUrl, index) => (
+          <TouchableWithoutFeedback key={`${photoUrl}-${index}`} onPress={handlePress}>
+            <View style={[styles.photoContainer, { width, height }]}>
+              <Image
+                source={{ uri: photoUrl }}
+                style={styles.photo}
+                resizeMode="contain"
+              />
+            </View>
+          </TouchableWithoutFeedback>
+        ))}
+      </ScrollView>
 
       {/* 인디케이터 (사진이 2장 이상일 때만 표시) */}
       {photoUrls.length > 1 && (
@@ -112,6 +118,9 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
           ))}
         </View>
       )}
+
+      {/* 좋아요 애니메이션 */}
+      <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
     </View>
   );
 };
