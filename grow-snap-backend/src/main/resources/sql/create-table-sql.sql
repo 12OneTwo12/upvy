@@ -224,9 +224,10 @@ CREATE TABLE IF NOT EXISTS user_likes (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by CHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
+    deleted_at_unix BIGINT NOT NULL DEFAULT 0 COMMENT '0=active, unix_timestamp=deleted',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
-    CONSTRAINT unique_user_like UNIQUE (user_id, content_id)
+    CONSTRAINT unique_user_like UNIQUE (user_id, content_id, deleted_at_unix)
 );
 
 CREATE INDEX idx_user_like_user_id ON user_likes(user_id);
@@ -244,9 +245,10 @@ CREATE TABLE IF NOT EXISTS user_saves (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by CHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
+    deleted_at_unix BIGINT NOT NULL DEFAULT 0 COMMENT '0=active, unix_timestamp=deleted',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
-    CONSTRAINT unique_user_save UNIQUE (user_id, content_id)
+    CONSTRAINT unique_user_save UNIQUE (user_id, content_id, deleted_at_unix)
 );
 
 CREATE INDEX idx_user_save_user_id ON user_saves(user_id);
@@ -265,9 +267,10 @@ CREATE TABLE IF NOT EXISTS user_comment_likes (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by CHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
+    deleted_at_unix BIGINT NOT NULL DEFAULT 0 COMMENT '0=active, unix_timestamp=deleted',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
-    CONSTRAINT unique_user_comment_like UNIQUE (user_id, comment_id)
+    CONSTRAINT unique_user_comment_like UNIQUE (user_id, comment_id, deleted_at_unix)
 );
 
 CREATE INDEX idx_user_comment_like_comment_id ON user_comment_likes(comment_id);

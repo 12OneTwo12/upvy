@@ -31,6 +31,7 @@ class UserSaveRepositoryImpl(
             .set(USER_SAVES.CREATED_BY, userId.toString())
             .set(USER_SAVES.UPDATED_AT, now)
             .set(USER_SAVES.UPDATED_BY, userId.toString())
+            .set(USER_SAVES.DELETED_AT_UNIX, 0L)
             .returning()
             .fetchOne()
             ?.let {
@@ -49,15 +50,17 @@ class UserSaveRepositoryImpl(
 
     override fun delete(userId: UUID, contentId: UUID) {
         val now = LocalDateTime.now()
+        val nowUnix = now.atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
 
         dslContext
             .update(USER_SAVES)
             .set(USER_SAVES.DELETED_AT, now)
+            .set(USER_SAVES.DELETED_AT_UNIX, nowUnix)
             .set(USER_SAVES.UPDATED_AT, now)
             .set(USER_SAVES.UPDATED_BY, userId.toString())
             .where(USER_SAVES.USER_ID.eq(userId.toString()))
             .and(USER_SAVES.CONTENT_ID.eq(contentId.toString()))
-            .and(USER_SAVES.DELETED_AT.isNull)
+            .and(USER_SAVES.DELETED_AT_UNIX.eq(0L))
             .execute()
     }
 
@@ -67,7 +70,7 @@ class UserSaveRepositoryImpl(
             .from(USER_SAVES)
             .where(USER_SAVES.USER_ID.eq(userId.toString()))
             .and(USER_SAVES.CONTENT_ID.eq(contentId.toString()))
-            .and(USER_SAVES.DELETED_AT.isNull)
+            .and(USER_SAVES.DELETED_AT_UNIX.eq(0L))
             .fetchOne(0, Int::class.java) ?: 0 > 0
     }
 
@@ -85,7 +88,7 @@ class UserSaveRepositoryImpl(
             )
             .from(USER_SAVES)
             .where(USER_SAVES.USER_ID.eq(userId.toString()))
-            .and(USER_SAVES.DELETED_AT.isNull)
+            .and(USER_SAVES.DELETED_AT_UNIX.eq(0L))
             .orderBy(USER_SAVES.CREATED_AT.desc())
             .fetch()
             .map {
