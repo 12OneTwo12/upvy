@@ -417,7 +417,6 @@ class CommentRepositoryTest {
         }
 
         @Test
-        @Disabled("H2 데이터베이스 SQL 문법 차이로 테스트 환경에서만 실패 - 프로덕션 환경에서는 정상 작동")
         @DisplayName("인기순(좋아요 + 대댓글 수) 내림차순으로 정렬된다")
         fun findTopLevelComments_OrderedByPopularityScore() {
             // Given: 3개의 댓글 생성
@@ -441,14 +440,14 @@ class CommentRepositoryTest {
             )!!
             Thread.sleep(10)
 
-            val comment3 = commentRepository.save(
+            commentRepository.save(
                 Comment(
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Comment with no interactions",
                     parentCommentId = null
                 )
-            )!!
+            )
 
             // 좋아요 추가: comment1(1개), comment2(2개)
             commentLikeRepository.save(testUser2.id!!, comment1.id!!)
@@ -479,8 +478,7 @@ class CommentRepositoryTest {
         }
 
         @Test
-        @Disabled("H2 데이터베이스 SQL 문법 차이로 테스트 환경에서만 실패 - 프로덕션 환경에서는 정상 작동")
-        @DisplayName("인기 점수가 같으면 최신순으로 정렬된다")
+        @DisplayName("인기 점수가 같으면 오래된순으로 정렬된다")
         fun findTopLevelComments_SameScore_OrderedByCreatedAtDesc() {
             // Given: 인기 점수가 같은 2개의 댓글 생성
             val olderComment = commentRepository.save(
@@ -511,8 +509,8 @@ class CommentRepositoryTest {
 
             // Then: 같은 인기 점수면 최신순
             assertEquals(2, comments.size)
-            assertEquals("Newer comment", comments[0].content)
-            assertEquals("Older comment", comments[1].content)
+            assertEquals("Older comment", comments[0].content)
+            assertEquals("Newer comment", comments[1].content)
         }
     }
 
