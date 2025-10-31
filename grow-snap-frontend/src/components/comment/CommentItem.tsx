@@ -41,11 +41,13 @@ interface CommentItemProps {
   onLike: (commentId: string, isLiked: boolean) => void;
   onReply: (commentId: string, nickname: string) => void;
   onDelete: (commentId: string) => void;
+  onClearNewReplies?: (commentId: string) => void; // 새 답글 초기화
   isReply?: boolean; // 답글인 경우 true
   likeCount?: number; // 좋아요 개수
   isLiked?: boolean; // 좋아요 상태
   commentLikes?: Record<string, { count: number; isLiked: boolean }>; // 답글의 좋아요 데이터
   contentId: string; // 콘텐츠 ID (답글 로드용)
+  newReplies?: CommentResponse[]; // 새로 작성된 답글 (Optimistic Update)
 }
 
 export const CommentItem: React.FC<CommentItemProps> = ({
@@ -53,11 +55,13 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   onLike,
   onReply,
   onDelete,
+  onClearNewReplies,
   isReply = false,
   likeCount = 0,
   isLiked = false,
   commentLikes,
   contentId,
+  newReplies = [],
 }) => {
   const currentUser = useAuthStore((state) => state.user);
   const isOwnComment = currentUser && currentUser.id === comment.userId;
@@ -92,6 +96,11 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   // 답글 로드 핸들러
   const handleLoadReplies = useCallback(async () => {
     if (!showReplies) {
+      // 새 답글 초기화 (중복 방지)
+      if (onClearNewReplies) {
+        onClearNewReplies(comment.id);
+      }
+
       setShowReplies(true);
       const result = await refetchReplies();
 
@@ -124,7 +133,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       // 답글 숨기기
       setShowReplies(false);
     }
-  }, [showReplies, comment.id, repliesCursor, refetchReplies]);
+  }, [showReplies, comment.id, repliesCursor, refetchReplies, onClearNewReplies]);
 
   // 더 많은 답글 로드
   const handleLoadMoreReplies = useCallback(async () => {
@@ -265,7 +274,27 @@ export const CommentItem: React.FC<CommentItemProps> = ({
         </View>
       </View>
 
-      {/* 답글 렌더링 */}
+      {/* 새로 작성된 답글만 표시 (showReplies와 무관) */}
+      {!isReply && newReplies.length > 0 && (
+        <View style={styles.repliesContainer}>
+          {newReplies.map((reply) => (
+            <CommentItem
+              key={`new-${reply.id}`}
+              comment={reply}
+              onLike={onLike}
+              onReply={onReply}
+              onDelete={onDelete}
+              isReply={true}
+              likeCount={0}
+              isLiked={false}
+              commentLikes={repliesLikes}
+              contentId={contentId}
+            />
+          ))}
+        </View>
+      )}
+
+      {/* 답글 렌더링 (기존 답글 - 펼쳤을 때만) */}
       {!isReply && showReplies && (
         <View style={styles.repliesContainer}>
           {isLoadingReplies && (!loadedReplies || loadedReplies.length === 0) ? (
@@ -274,6 +303,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             </View>
           ) : (
             <>
+              {/* 로드된 답글 표시 */}
               {loadedReplies && loadedReplies.map((reply) => (
                 <CommentItem
                   key={reply.id}

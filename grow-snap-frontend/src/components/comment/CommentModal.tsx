@@ -53,6 +53,9 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   // 댓글별 좋아요 개수/상태 저장
   const [commentLikes, setCommentLikes] = useState<Record<string, { count: number; isLiked: boolean }>>({});
 
+  // 새로 작성된 답글 저장 (Optimistic Update용)
+  const [newReplies, setNewReplies] = useState<Record<string, CommentResponse[]>>({});
+
   // 애니메이션
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -102,6 +105,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       // 모달 닫기 시 데이터 초기화
       setReplyTo(null);
       setCommentLikes({});
+      setNewReplies({});
       loadedCommentIdsRef.current.clear();
 
       // 댓글 쿼리 캐시 제거 (다음에 열 때 새로 로드)
@@ -175,18 +179,27 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     mutationFn: async ({ content, parentCommentId }: { content: string; parentCommentId?: string }) => {
       return await createCommentApi(contentId, { content, parentCommentId });
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (newComment, variables) => {
       const isReply = !!variables.parentCommentId;
+
+      if (isReply && variables.parentCommentId) {
+        // 대댓글인 경우: 화면에 즉시 추가 (Optimistic Update)
+        setNewReplies((prev) => ({
+          ...prev,
+          [variables.parentCommentId!]: [
+            ...(prev[variables.parentCommentId!] || []),
+            newComment,
+          ],
+        }));
+
+        // 백엔드 데이터와 동기화를 위해 답글 쿼리 invalidate
+        queryClient.invalidateQueries({ queryKey: ['replies', variables.parentCommentId] });
+      }
 
       // 댓글 목록 refetch
       queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
       // 피드 목록도 refetch (댓글 개수 업데이트)
       queryClient.invalidateQueries({ queryKey: ['feed'] });
-
-      // 대댓글인 경우 해당 댓글의 답글 목록도 refetch (화면에 즉시 표시)
-      if (isReply && variables.parentCommentId) {
-        queryClient.invalidateQueries({ queryKey: ['replies', variables.parentCommentId] });
-      }
 
       // 답글 모드 초기화
       setReplyTo(null);
@@ -281,6 +294,15 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     setReplyTo(null);
   }, []);
 
+  // 특정 댓글의 새 답글 초기화 (답글 더보기 클릭 시)
+  const handleClearNewReplies = useCallback((commentId: string) => {
+    setNewReplies((prev) => {
+      const updated = { ...prev };
+      delete updated[commentId];
+      return updated;
+    });
+  }, []);
+
   // 댓글 삭제 핸들러 (확인 Alert 포함)
   const handleDeleteComment = useCallback(
     (commentId: string) => {
@@ -368,10 +390,10 @@ export const CommentModal: React.FC<CommentModalProps> = ({
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary[500]} />
             </View>
-          ) : comments.length === 0 ? (
+          ) : !data || comments.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubble-outline" size={48} color={theme.colors.text.tertiary} />
-              <Text style={styles.emptyText}>아직 댓글이 없습니다.</Text>
+              <Text style={styles.emptyEmoji}>🌱</Text>
+              <Text style={styles.emptyText}>아직 댓글이 없습니다</Text>
               <Text style={styles.emptySubtext}>첫 번째 댓글을 남겨보세요!</Text>
             </View>
           ) : (
@@ -385,10 +407,12 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                   onLike={handleLikeComment}
                   onReply={handleReply}
                   onDelete={handleDeleteComment}
+                  onClearNewReplies={handleClearNewReplies}
                   likeCount={commentLikes[item.id]?.count || 0}
                   isLiked={commentLikes[item.id]?.isLiked || false}
                   commentLikes={commentLikes}
                   contentId={contentId}
+                  newReplies={newReplies[item.id] || []}
                 />
               )}
               showsVerticalScrollIndicator={true}
@@ -466,11 +490,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing[20],
   },
+  emptyEmoji: {
+    fontSize: 64,
+    marginBottom: theme.spacing[2],
+  },
   emptyText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.secondary,
-    marginTop: theme.spacing[4],
+    marginTop: theme.spacing[2],
   },
   emptySubtext: {
     fontSize: theme.typography.fontSize.sm,
