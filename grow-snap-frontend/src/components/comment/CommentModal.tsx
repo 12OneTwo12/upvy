@@ -21,6 +21,7 @@ import {
   Dimensions,
   Animated,
   Alert,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -74,14 +75,14 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 200,
+          duration: 250,
           useNativeDriver: true,
         }),
-        Animated.spring(slideAnim, {
+        Animated.timing(slideAnim, {
           toValue: 0,
+          duration: 550,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
           useNativeDriver: true,
-          damping: 25,
-          stiffness: 120,
         }),
       ]).start();
     } else {
@@ -94,7 +95,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         }),
         Animated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
-          duration: 250,
+          duration: 350,
+          easing: Easing.in(Easing.ease),
           useNativeDriver: true,
         }),
       ]).start();
@@ -336,6 +338,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                   onDelete={handleDeleteComment}
                   likeCount={commentLikes[item.id]?.count || 0}
                   isLiked={commentLikes[item.id]?.isLiked || false}
+                  commentLikes={commentLikes}
                 />
               )}
               showsVerticalScrollIndicator={true}

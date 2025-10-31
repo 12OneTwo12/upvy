@@ -39,8 +39,9 @@ interface CommentItemProps {
   onReply: (commentId: string, nickname: string) => void;
   onDelete: (commentId: string) => void;
   isReply?: boolean; // 답글인 경우 true
-  likeCount?: number; // 좋아요 개수 (별도 API로 조회 가능)
+  likeCount?: number; // 좋아요 개수
   isLiked?: boolean; // 좋아요 상태
+  commentLikes?: Record<string, { count: number; isLiked: boolean }>; // 답글의 좋아요 데이터
 }
 
 export const CommentItem: React.FC<CommentItemProps> = ({
@@ -51,6 +52,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   isReply = false,
   likeCount = 0,
   isLiked = false,
+  commentLikes,
 }) => {
   const currentUser = useAuthStore((state) => state.user);
   const isOwnComment = currentUser && currentUser.id === comment.userId;
@@ -85,14 +87,14 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             <Text style={styles.content}>{comment.content}</Text>
           </View>
 
-          {/* 액션 버튼: 시간, 좋아요 개수, 답글 버튼 */}
+          {/* 액션 버튼: 시간, 답글 개수, 답글 달기, 삭제 */}
           <View style={styles.actionsRow}>
             <Text style={styles.timeText}>{getRelativeTime(comment.createdAt)}</Text>
 
-            {likeCount > 0 && (
+            {!isReply && comment.replies && comment.replies.length > 0 && (
               <>
                 <Text style={styles.actionDivider}>·</Text>
-                <Text style={styles.actionText}>좋아요 {likeCount}개</Text>
+                <Text style={styles.actionText}>답글 {comment.replies.length}개</Text>
               </>
             )}
 
@@ -116,17 +118,22 @@ export const CommentItem: React.FC<CommentItemProps> = ({
           </View>
         </View>
 
-        {/* 좋아요 버튼 */}
-        <TouchableOpacity
-          onPress={() => onLike(comment.id, isLiked)}
-          style={styles.likeButton}
-        >
-          <Ionicons
-            name={isLiked ? 'heart' : 'heart-outline'}
-            size={14}
-            color={isLiked ? theme.colors.error : theme.colors.text.tertiary}
-          />
-        </TouchableOpacity>
+        {/* 좋아요 버튼 + 개수 */}
+        <View style={styles.likeContainer}>
+          <TouchableOpacity
+            onPress={() => onLike(comment.id, isLiked)}
+            style={styles.likeButton}
+          >
+            <Ionicons
+              name={isLiked ? 'heart' : 'heart-outline'}
+              size={14}
+              color={isLiked ? theme.colors.error : theme.colors.text.tertiary}
+            />
+          </TouchableOpacity>
+          {likeCount > 0 && (
+            <Text style={styles.likeCountText}>{likeCount}</Text>
+          )}
+        </View>
       </View>
 
       {/* 답글 렌더링 (재귀) */}
@@ -140,7 +147,9 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               onReply={onReply}
               onDelete={onDelete}
               isReply={true}
-              // TODO: 답글의 좋아요 개수/상태는 별도 API로 조회 필요
+              likeCount={commentLikes?.[reply.id]?.count || 0}
+              isLiked={commentLikes?.[reply.id]?.isLiked || false}
+              commentLikes={commentLikes}
             />
           ))}
         </View>
@@ -221,9 +230,18 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     fontWeight: theme.typography.fontWeight.medium,
   },
+  likeContainer: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginLeft: theme.spacing[2],
+  },
   likeButton: {
     padding: theme.spacing[1],
-    marginLeft: theme.spacing[2],
+  },
+  likeCountText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    marginTop: 2,
   },
   repliesContainer: {
     // 답글 컨테이너는 스타일 없음 (재귀적으로 CommentItem 렌더링)
