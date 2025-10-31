@@ -25,6 +25,7 @@ interface VideoPlayerProps {
   shouldPreload?: boolean;
   hasBeenLoaded?: boolean;
   isDragging?: boolean;
+  isLiked?: boolean; // 현재 좋아요 상태
   onVideoLoaded?: () => void;
   onDoubleTap?: () => void;
   onTap?: () => boolean;
@@ -43,6 +44,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     shouldPreload = false,
     hasBeenLoaded = false,
     isDragging: externalIsDragging = false,
+    isLiked = false,
     onVideoLoaded,
     onDoubleTap,
     onTap,
@@ -187,8 +189,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const handleDoubleTap = () => {
     if (!onDoubleTap) return;
 
-    // 하트 애니메이션 표시
-    setShowLikeAnimation(true);
+    // 하트 애니메이션 표시 (좋아요가 안 되어있을 때만)
+    if (!isLiked) {
+      setShowLikeAnimation(true);
+    }
 
     onDoubleTap();
   };
@@ -319,11 +323,11 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
             </View>
           )}
 
-          {/* 좋아요 애니메이션 */}
-          <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
-
         </View>
       </TouchableWithoutFeedback>
+
+      {/* 좋아요 애니메이션 */}
+      <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
     </View>
   );
 });

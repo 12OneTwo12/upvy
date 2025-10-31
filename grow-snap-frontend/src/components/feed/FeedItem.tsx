@@ -143,6 +143,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           shouldPreload={shouldPreload}
           hasBeenLoaded={hasBeenLoaded}
           isDragging={isDragging}
+          isLiked={item.interactions.isLiked}
           onVideoLoaded={onVideoLoaded}
           onDoubleTap={onLike}
           onTap={handleContentTap}
@@ -153,6 +154,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           photoUrls={item.photoUrls}
           width={SCREEN_WIDTH}
           height={SCREEN_HEIGHT}
+          isLiked={item.interactions.isLiked}
           onDoubleTap={onLike}
           onTap={handleContentTap}
         />
