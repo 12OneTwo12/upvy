@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 import java.util.UUID
 
 /**
@@ -141,7 +142,7 @@ class SaveServiceImpl(
         logger.debug("Getting save status: userId={}, contentId={}", userId, contentId)
 
         return Mono.fromCallable { userSaveRepository.exists(userId, contentId) }
-            .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+            .subscribeOn(Schedulers.boundedElastic())
             .map { isSaved ->
                 SaveStatusResponse(
                     contentId = contentId.toString(),

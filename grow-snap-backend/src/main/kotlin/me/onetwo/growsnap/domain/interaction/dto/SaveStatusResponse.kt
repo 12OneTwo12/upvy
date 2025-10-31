@@ -1,7 +1,5 @@
 package me.onetwo.growsnap.domain.interaction.dto
 
-import java.util.UUID
-
 /**
  * 저장 상태 응답 DTO
  *
