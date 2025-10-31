@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS users (
     provider_id VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     CONSTRAINT unique_provider_user UNIQUE (provider, provider_id)
 );
@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     follower_count INT DEFAULT 0,
     following_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -44,9 +44,9 @@ CREATE TABLE IF NOT EXISTS follows (
     follower_id CHAR(36) NOT NULL,
     following_id CHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -69,9 +69,9 @@ CREATE TABLE IF NOT EXISTS contents (
     height INT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING, PUBLISHED, DELETED
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -91,9 +91,9 @@ CREATE TABLE IF NOT EXISTS content_photos (
     width INT NOT NULL,
     height INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
 );
@@ -113,9 +113,9 @@ CREATE TABLE IF NOT EXISTS content_metadata (
     difficulty_level VARCHAR(20),  -- BEGINNER, INTERMEDIATE, ADVANCED
     language VARCHAR(10) NOT NULL DEFAULT 'ko',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
 );
@@ -134,9 +134,9 @@ CREATE TABLE IF NOT EXISTS content_interactions (
     share_count INT DEFAULT 0,
     view_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
 );
@@ -153,9 +153,9 @@ CREATE TABLE IF NOT EXISTS content_subtitles (
     language VARCHAR(10) NOT NULL,
     subtitle_url VARCHAR(500) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
     CONSTRAINT unique_content_language UNIQUE (content_id, language)
@@ -174,9 +174,9 @@ CREATE TABLE IF NOT EXISTS user_view_history (
     watched_duration INT DEFAULT 0,  -- 시청한 시간 (초)
     completion_rate INT DEFAULT 0,  -- 0-100
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
@@ -196,9 +196,9 @@ CREATE TABLE IF NOT EXISTS user_content_interactions (
     content_id CHAR(36) NOT NULL,
     interaction_type VARCHAR(20) NOT NULL,  -- LIKE, SAVE, SHARE
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
@@ -219,9 +219,9 @@ CREATE TABLE IF NOT EXISTS comments (
     parent_comment_id CHAR(36) NULL,  -- 답글인 경우 부모 댓글 ID, NULL이면 최상위 댓글
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -240,9 +240,9 @@ CREATE TABLE IF NOT EXISTS user_likes (
     user_id CHAR(36) NOT NULL,
     content_id CHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     deleted_at_unix BIGINT NOT NULL DEFAULT 0 COMMENT '0=active, unix_timestamp=deleted',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -261,9 +261,9 @@ CREATE TABLE IF NOT EXISTS user_saves (
     user_id CHAR(36) NOT NULL,
     content_id CHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     deleted_at_unix BIGINT NOT NULL DEFAULT 0 COMMENT '0=active, unix_timestamp=deleted',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -283,9 +283,9 @@ CREATE TABLE IF NOT EXISTS user_comment_likes (
     user_id CHAR(36) NOT NULL,
     comment_id CHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     deleted_at_unix BIGINT NOT NULL DEFAULT 0 COMMENT '0=active, unix_timestamp=deleted',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -307,9 +307,9 @@ CREATE TABLE IF NOT EXISTS reports (
     description TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING, APPROVED, REJECTED
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by CHAR(36) NULL,
+    created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    updated_by CHAR(36) NULL,
+    updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
 );

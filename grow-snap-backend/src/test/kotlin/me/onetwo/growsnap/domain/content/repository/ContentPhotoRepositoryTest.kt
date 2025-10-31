@@ -71,9 +71,9 @@ class ContentPhotoRepositoryTest {
                 width = 1080,
                 height = 1080,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUser.id!!,
+                createdBy = testUser.id!!.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUser.id!!
+                updatedBy = testUser.id!!.toString()
             )
 
             // When: 저장
@@ -104,9 +104,9 @@ class ContentPhotoRepositoryTest {
                 width = 1080,
                 height = 1080,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUser.id!!,
+                createdBy = testUser.id!!.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUser.id!!
+                updatedBy = testUser.id!!.toString()
             )
             val photo2 = ContentPhoto(
                 contentId = testContentId,
@@ -115,9 +115,9 @@ class ContentPhotoRepositoryTest {
                 width = 1080,
                 height = 1080,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUser.id!!,
+                createdBy = testUser.id!!.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUser.id!!
+                updatedBy = testUser.id!!.toString()
             )
             val photo3 = ContentPhoto(
                 contentId = testContentId,
@@ -126,9 +126,9 @@ class ContentPhotoRepositoryTest {
                 width = 1080,
                 height = 1080,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUser.id!!,
+                createdBy = testUser.id!!.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUser.id!!
+                updatedBy = testUser.id!!.toString()
             )
 
             // When: 저장
@@ -161,9 +161,9 @@ class ContentPhotoRepositoryTest {
                 width = 1080,
                 height = 1080,
                 createdAt = now,
-                createdBy = testUser.id!!,
+                createdBy = testUser.id!!.toString(),
                 updatedAt = now,
-                updatedBy = testUser.id!!
+                updatedBy = testUser.id!!.toString()
             )
 
             // When: 저장
@@ -261,7 +261,7 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo3.jpg", 2)
 
             // When: 삭제
-            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!)
+            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
 
             // Then: 3개 삭제됨
             assertThat(deletedCount).isEqualTo(3)
@@ -290,7 +290,7 @@ class ContentPhotoRepositoryTest {
             insertContent(emptyContentId, testUser.id!!, "Empty Content")
 
             // When: 삭제
-            val deletedCount = contentPhotoRepository.deleteByContentId(emptyContentId, testUser.id!!)
+            val deletedCount = contentPhotoRepository.deleteByContentId(emptyContentId, testUser.id!!.toString())
 
             // Then: 0 반환
             assertThat(deletedCount).isEqualTo(0)
@@ -303,10 +303,10 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo1.jpg", 0)
             insertPhoto(testContentId, testUser.id!!, "photo2.jpg", 1)
             insertPhoto(testContentId, testUser.id!!, "photo3.jpg", 2)
-            contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!)
+            contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
 
             // When: 다시 삭제 시도
-            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!)
+            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
 
             // Then: 0 반환 (이미 삭제되었으므로)
             assertThat(deletedCount).isEqualTo(0)
@@ -453,9 +453,9 @@ class ContentPhotoRepositoryTest {
                         width = record.getValue(CONTENT_PHOTOS.WIDTH)!!,
                         height = record.getValue(CONTENT_PHOTOS.HEIGHT)!!,
                         createdAt = record.getValue(CONTENT_PHOTOS.CREATED_AT)!!,
-                        createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY)?.let { UUID.fromString(it) },
+                        createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY),
                         updatedAt = record.getValue(CONTENT_PHOTOS.UPDATED_AT)!!,
-                        updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY)?.let { UUID.fromString(it) },
+                        updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY),
                         deletedAt = record.getValue(CONTENT_PHOTOS.DELETED_AT)
                     )
                 }

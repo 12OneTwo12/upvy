@@ -36,9 +36,9 @@ class ContentPhotoRepository(
                 .set(CONTENT_PHOTOS.WIDTH, photo.width)
                 .set(CONTENT_PHOTOS.HEIGHT, photo.height)
                 .set(CONTENT_PHOTOS.CREATED_AT, photo.createdAt)
-                .set(CONTENT_PHOTOS.CREATED_BY, photo.createdBy?.toString())
+                .set(CONTENT_PHOTOS.CREATED_BY, photo.createdBy)
                 .set(CONTENT_PHOTOS.UPDATED_AT, photo.updatedAt)
-                .set(CONTENT_PHOTOS.UPDATED_BY, photo.updatedBy?.toString())
+                .set(CONTENT_PHOTOS.UPDATED_BY, photo.updatedBy)
                 .execute()
 
             logger.debug("Content photo saved: contentId=${photo.contentId}, order=${photo.displayOrder}")
@@ -84,9 +84,9 @@ class ContentPhotoRepository(
                     width = record.getValue(CONTENT_PHOTOS.WIDTH)!!,
                     height = record.getValue(CONTENT_PHOTOS.HEIGHT)!!,
                     createdAt = record.getValue(CONTENT_PHOTOS.CREATED_AT)!!,
-                    createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY),
                     updatedAt = record.getValue(CONTENT_PHOTOS.UPDATED_AT)!!,
-                    updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY),
                     deletedAt = record.getValue(CONTENT_PHOTOS.DELETED_AT)
                 )
             }
@@ -99,11 +99,11 @@ class ContentPhotoRepository(
      * @param deletedBy 삭제한 사용자 ID
      * @return 삭제된 행 수
      */
-    fun deleteByContentId(contentId: UUID, deletedBy: UUID): Int {
+    fun deleteByContentId(contentId: UUID, deletedBy: String): Int {
         return dslContext
             .update(CONTENT_PHOTOS)
             .set(CONTENT_PHOTOS.DELETED_AT, java.time.LocalDateTime.now())
-            .set(CONTENT_PHOTOS.UPDATED_BY, deletedBy.toString())
+            .set(CONTENT_PHOTOS.UPDATED_BY, deletedBy)
             .where(CONTENT_PHOTOS.CONTENT_ID.eq(contentId.toString()))
             .and(CONTENT_PHOTOS.DELETED_AT.isNull)
             .execute()
@@ -150,9 +150,9 @@ class ContentPhotoRepository(
                         width = record.getValue(CONTENT_PHOTOS.WIDTH)!!,
                         height = record.getValue(CONTENT_PHOTOS.HEIGHT)!!,
                         createdAt = record.getValue(CONTENT_PHOTOS.CREATED_AT)!!,
-                        createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY)?.let { UUID.fromString(it) },
+                        createdBy = record.getValue(CONTENT_PHOTOS.CREATED_BY),
                         updatedAt = record.getValue(CONTENT_PHOTOS.UPDATED_AT)!!,
-                        updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY)?.let { UUID.fromString(it) },
+                        updatedBy = record.getValue(CONTENT_PHOTOS.UPDATED_BY),
                         deletedAt = record.getValue(CONTENT_PHOTOS.DELETED_AT)
                     )
                 }

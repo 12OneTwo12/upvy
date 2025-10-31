@@ -164,9 +164,9 @@ class ContentServiceImpl(
                         width = request.width,  // 대표 사진 크기 사용
                         height = request.height,
                         createdAt = now,
-                        createdBy = userId,
+                        createdBy = userId.toString(),
                         updatedAt = now,
-                        updatedBy = userId
+                        updatedBy = userId.toString()
                     )
                     val saved = contentPhotoRepository.save(photo)
                     if (!saved) {
