@@ -157,7 +157,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       // 댓글 목록 refetch
       queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
       // 피드 목록도 refetch (댓글 개수 업데이트)
-      queryClient.invalidateQueries({ queryKey: ['contents'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
       // 답글 모드 초기화
       setReplyTo(null);
 
@@ -176,7 +176,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
       // 피드 목록도 refetch (댓글 개수 업데이트)
-      queryClient.invalidateQueries({ queryKey: ['contents'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
     },
   });
 
