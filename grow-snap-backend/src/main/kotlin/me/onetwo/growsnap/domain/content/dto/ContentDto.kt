@@ -118,6 +118,7 @@ data class ContentCreateRequest(
  * @property category 카테고리
  * @property tags 태그 목록
  * @property language 언어 코드
+ * @property photoUrls 사진 URL 목록 (PHOTO 타입 콘텐츠만 사용, null이면 사진 목록 변경 안 함)
  */
 data class ContentUpdateRequest(
     @field:Size(max = 200, message = "제목은 200자 이하여야 합니다")
@@ -131,7 +132,10 @@ data class ContentUpdateRequest(
     val tags: List<String>? = null,
 
     @field:Size(min = 2, max = 10, message = "언어 코드는 2-10자여야 합니다")
-    val language: String? = null
+    val language: String? = null,
+
+    @field:Size(min = 1, max = 10, message = "사진은 1-10장까지 업로드 가능합니다")
+    val photoUrls: List<String>? = null
 )
 
 /**

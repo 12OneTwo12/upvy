@@ -357,18 +357,49 @@ class ContentServiceImpl(
             )
 
             val success = contentRepository.updateMetadata(updatedMetadata)
-            if (!success) {
-                throw IllegalStateException("Failed to update content metadata")
+            check(success) { "Failed to update content metadata" }
+
+            // PHOTO 타입 콘텐츠의 사진 목록 수정
+            if (content.contentType == ContentType.PHOTO && request.photoUrls != null) {
+                // 기존 사진 삭제 (Soft Delete)
+                contentPhotoRepository.deleteByContentId(contentId, userId.toString())
+                logger.info("Deleted existing photos: contentId=$contentId")
+
+                // 새 사진 저장
+                request.photoUrls.forEachIndexed { index, photoUrl ->
+                    val photo = me.onetwo.growsnap.domain.content.model.ContentPhoto(
+                        contentId = contentId,
+                        photoUrl = photoUrl,
+                        displayOrder = index,
+                        width = content.width,
+                        height = content.height,
+                        createdAt = LocalDateTime.now(),
+                        createdBy = userId.toString(),
+                        updatedAt = LocalDateTime.now(),
+                        updatedBy = userId.toString()
+                    )
+                    val saved = contentPhotoRepository.save(photo)
+                    check(saved) { "Failed to save content photo during update" }
+                }
+                logger.info("Updated photos: contentId=$contentId, count=${request.photoUrls.size}")
             }
 
-            Pair(content, updatedMetadata)
-        }.map { (content, metadata) ->
+            Triple(content, updatedMetadata, request.photoUrls)
+        }.map { (content, metadata, updatedPhotoUrls) ->
+            // PHOTO 타입인 경우 사진 목록 조회 (수정되었으면 수정된 것, 아니면 기존 것)
+            val photoUrls = if (content.contentType == ContentType.PHOTO) {
+                updatedPhotoUrls ?: contentPhotoRepository.findByContentId(content.id!!)
+                    .map { it.photoUrl }
+            } else {
+                null
+            }
+
             ContentResponse(
                 id = content.id.toString(),
                 creatorId = content.creatorId.toString(),
                 contentType = content.contentType,
                 url = content.url,
-                photoUrls = null,  // PHOTO 타입 콘텐츠 수정 기능은 향후 구현 예정
+                photoUrls = photoUrls,
                 thumbnailUrl = content.thumbnailUrl,
                 duration = content.duration,
                 width = content.width,

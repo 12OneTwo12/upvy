@@ -293,4 +293,108 @@ class ContentControllerTest {
                 .expectStatus().isNotFound
         }
     }
+
+    @Nested
+    @DisplayName("PATCH /api/v1/contents/{contentId} - 콘텐츠 수정")
+    inner class UpdateContent {
+
+        @Test
+        @DisplayName("PHOTO 타입 콘텐츠의 사진 목록 수정 시, 200과 수정된 콘텐츠를 반환한다")
+        fun updateContent_WithPhotoUrls_Returns200AndUpdatedContent() {
+            // Given: 수정 요청 데이터
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+
+            val request = me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest(
+                title = "Updated Title",
+                description = "Updated Description",
+                category = Category.HEALTH,
+                photoUrls = listOf(
+                    "https://s3.amazonaws.com/new1.jpg",
+                    "https://s3.amazonaws.com/new2.jpg"
+                )
+            )
+
+            val response = ContentResponse(
+                id = contentId.toString(),
+                creatorId = userId.toString(),
+                contentType = ContentType.PHOTO,
+                url = "https://s3.amazonaws.com/photo.jpg",
+                photoUrls = listOf(
+                    "https://s3.amazonaws.com/new1.jpg",
+                    "https://s3.amazonaws.com/new2.jpg"
+                ),
+                thumbnailUrl = "https://s3.amazonaws.com/thumb.jpg",
+                duration = null,
+                width = 1080,
+                height = 1080,
+                status = ContentStatus.PUBLISHED,
+                title = "Updated Title",
+                description = "Updated Description",
+                category = Category.HEALTH,
+                tags = listOf("health", "photo"),
+                language = "ko",
+                createdAt = LocalDateTime.now().minusDays(1),
+                updatedAt = LocalDateTime.now()
+            )
+
+            every { contentService.updateContent(userId, contentId, request) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .patch()
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", contentId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.id").isEqualTo(contentId.toString())
+                .jsonPath("$.title").isEqualTo("Updated Title")
+                .jsonPath("$.description").isEqualTo("Updated Description")
+                .jsonPath("$.contentType").isEqualTo("PHOTO")
+                .jsonPath("$.photoUrls").isArray
+                .jsonPath("$.photoUrls.length()").isEqualTo(2)
+                .jsonPath("$.photoUrls[0]").isEqualTo("https://s3.amazonaws.com/new1.jpg")
+                .jsonPath("$.photoUrls[1]").isEqualTo("https://s3.amazonaws.com/new2.jpg")
+                .consumeWith(
+                    document(
+                        "contents/update-photo-content",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        pathParameters(
+                            parameterWithName("contentId").description("수정할 콘텐츠 ID")
+                        ),
+                        requestFields(
+                            fieldWithPath("title").description("콘텐츠 제목 (선택, 200자 이하)").optional(),
+                            fieldWithPath("description").description("콘텐츠 설명 (선택, 2000자 이하)").optional(),
+                            fieldWithPath("category").description("카테고리 (선택)").optional(),
+                            fieldWithPath("tags").description("태그 목록 (선택)").optional(),
+                            fieldWithPath("language").description("언어 코드 (선택, 2-10자)").optional(),
+                            fieldWithPath("photoUrls").description("사진 URL 목록 (선택, PHOTO 타입만, 1-10장)").optional()
+                        ),
+                        responseFields(
+                            fieldWithPath("id").description("콘텐츠 ID"),
+                            fieldWithPath("creatorId").description("크리에이터 ID"),
+                            fieldWithPath("contentType").description("콘텐츠 타입 (VIDEO, PHOTO)"),
+                            fieldWithPath("url").description("콘텐츠 URL"),
+                            fieldWithPath("photoUrls").description("사진 URL 목록 (PHOTO 타입만)").optional(),
+                            fieldWithPath("thumbnailUrl").description("썸네일 URL").optional(),
+                            fieldWithPath("duration").description("재생 시간 (초, VIDEO만)").optional(),
+                            fieldWithPath("width").description("가로 크기 (픽셀)"),
+                            fieldWithPath("height").description("세로 크기 (픽셀)"),
+                            fieldWithPath("status").description("콘텐츠 상태 (DRAFT, PUBLISHED 등)"),
+                            fieldWithPath("title").description("제목"),
+                            fieldWithPath("description").description("설명").optional(),
+                            fieldWithPath("category").description("카테고리"),
+                            fieldWithPath("tags").description("태그 목록"),
+                            fieldWithPath("language").description("언어 코드"),
+                            fieldWithPath("createdAt").description("생성일시"),
+                            fieldWithPath("updatedAt").description("수정일시")
+                        )
+                    )
+                )
+        }
+    }
 }
