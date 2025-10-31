@@ -7,11 +7,12 @@ import java.util.UUID
  * 콘텐츠 엔티티
  *
  * 플랫폼의 핵심 콘텐츠(비디오/사진)를 나타냅니다.
+ * PHOTO 타입의 경우 여러 사진은 ContentPhoto 테이블에서 별도 관리합니다.
  *
  * @property id 콘텐츠 고유 식별자
  * @property creatorId 콘텐츠 제작자 ID
  * @property contentType 콘텐츠 타입 (VIDEO, PHOTO)
- * @property url 콘텐츠 파일 URL (S3)
+ * @property url 콘텐츠 파일 URL (S3) - VIDEO: 비디오 URL, PHOTO: 대표 사진 URL
  * @property thumbnailUrl 썸네일 이미지 URL
  * @property duration 비디오 길이 (초 단위, 사진인 경우 null)
  * @property width 콘텐츠 가로 크기 (픽셀)

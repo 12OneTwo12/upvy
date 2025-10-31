@@ -101,6 +101,16 @@ include::follow/stats-get-me.adoc[]
 include::follow/followers-list.adoc[]
 include::follow/following-list.adoc[]
 
+[[content-api]]
+== Content API
+
+콘텐츠 생성, 조회, 수정, 삭제 API
+
+include::content/create.adoc[]
+include::content/get.adoc[]
+include::content/update.adoc[]
+include::content/delete.adoc[]
+
 [[feed-api]]
 == Feed API
 

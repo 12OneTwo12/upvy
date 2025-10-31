@@ -36,7 +36,8 @@ import java.util.UUID
 @Repository
 class FeedRepositoryImpl(
     private val dslContext: DSLContext,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
 ) : FeedRepository {
 
     /**
@@ -136,8 +137,12 @@ class FeedRepositoryImpl(
             // 자막 배치 조회 (N+1 문제 방지)
             val subtitlesMap = findSubtitlesByContentIds(contentIds)
 
+            // 사진 배치 조회 (N+1 문제 방지)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+                .mapValues { (_, photos) -> photos.map { it.photoUrl } }
+
             // 레코드를 FeedItemResponse로 변환
-            records.map { record -> mapRecordToFeedItem(record, subtitlesMap) }
+            records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
         }
             .flatMapMany { Flux.fromIterable(it) }
     }
@@ -234,8 +239,12 @@ class FeedRepositoryImpl(
             // 자막 배치 조회 (N+1 문제 방지)
             val subtitlesMap = findSubtitlesByContentIds(contentIds)
 
+            // 사진 배치 조회 (N+1 문제 방지)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+                .mapValues { (_, photos) -> photos.map { it.photoUrl } }
+
             // 레코드를 FeedItemResponse로 변환
-            records.map { record -> mapRecordToFeedItem(record, subtitlesMap) }
+            records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
         }
             .flatMapMany { Flux.fromIterable(it) }
     }
@@ -269,11 +278,13 @@ class FeedRepositoryImpl(
      *
      * @param record JOOQ 레코드
      * @param subtitlesMap 콘텐츠 ID를 키로 하는 자막 정보 맵
+     * @param photosMap 콘텐츠 ID를 키로 하는 사진 URL 목록 맵
      * @return FeedItemResponse
      */
     private fun mapRecordToFeedItem(
         record: org.jooq.Record,
-        subtitlesMap: Map<UUID, List<SubtitleInfoResponse>>
+        subtitlesMap: Map<UUID, List<SubtitleInfoResponse>>,
+        photosMap: Map<UUID, List<String>>
     ): FeedItemResponse {
         val contentId = UUID.fromString(record.get(CONTENTS.ID))
 
@@ -291,10 +302,14 @@ class FeedRepositoryImpl(
         // 자막은 미리 조회한 맵에서 가져오기
         val subtitles = subtitlesMap[contentId] ?: emptyList()
 
+        // 사진 URL 목록은 미리 조회한 맵에서 가져오기
+        val photoUrls = photosMap[contentId]
+
         return FeedItemResponse(
             contentId = contentId,
             contentType = ContentType.valueOf(record.get(CONTENTS.CONTENT_TYPE)!!),
             url = record.get(CONTENTS.URL)!!,
+            photoUrls = photoUrls,
             thumbnailUrl = record.get(CONTENTS.THUMBNAIL_URL)!!,
             duration = record.get(CONTENTS.DURATION),
             width = record.get(CONTENTS.WIDTH)!!,
@@ -510,9 +525,13 @@ class FeedRepositoryImpl(
             // 자막 배치 조회 (N+1 문제 방지)
             val subtitlesMap = findSubtitlesByContentIds(contentIds)
 
+            // 사진 배치 조회 (N+1 문제 방지)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+                .mapValues { (_, photos) -> photos.map { it.photoUrl } }
+
             // 레코드를 FeedItemResponse로 변환
             val feedItemsMap = records
-                .map { record -> mapRecordToFeedItem(record, subtitlesMap) }
+                .map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
                 .associateBy { it.contentId }
 
             // 입력된 ID 순서대로 정렬하여 반환

@@ -1,0 +1,30 @@
+[[content-get]]
+=== 콘텐츠 조회
+
+콘텐츠 상세 정보를 조회합니다.
+
+==== Request
+
+include::{snippets}/content-get/http-request.adoc[]
+include::{snippets}/content-get/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/content-get/http-response.adoc[]
+include::{snippets}/content-get/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/contents/{contentId} \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 인증 없이도 조회 가능합니다 (공개 콘텐츠)
+* 존재하지 않는 콘텐츠 조회 시 404 Not Found 반환
+* 삭제된 콘텐츠는 조회되지 않습니다
+* PHOTO 타입 콘텐츠는 `photoUrls` 필드에 사진 목록이 포함됩니다
+* VIDEO 타입 콘텐츠는 `duration` 필드에 재생 시간이 포함됩니다

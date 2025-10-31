@@ -10,7 +10,9 @@ import me.onetwo.growsnap.domain.content.exception.UploadSessionNotFoundExceptio
 import me.onetwo.growsnap.domain.content.exception.UploadSessionUnauthorizedException
 import me.onetwo.growsnap.domain.content.model.Content
 import me.onetwo.growsnap.domain.content.model.ContentMetadata
+import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
+import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -33,6 +35,7 @@ import java.util.UUID
 class ContentServiceImpl(
     private val contentUploadService: ContentUploadService,
     private val contentRepository: ContentRepository,
+    private val contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository,
     private val uploadSessionRepository: me.onetwo.growsnap.domain.content.repository.UploadSessionRepository,
     private val s3Client: software.amazon.awssdk.services.s3.S3Client,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
@@ -132,7 +135,7 @@ class ContentServiceImpl(
             )
 
             val savedContent = contentRepository.save(content)
-                ?: throw IllegalStateException("Failed to save content")
+                ?: error("Failed to save content")
 
             // ContentMetadata 생성 및 저장
             val metadata = ContentMetadata(
@@ -149,19 +152,47 @@ class ContentServiceImpl(
             )
 
             val savedMetadata = contentRepository.saveMetadata(metadata)
-                ?: throw IllegalStateException("Failed to save content metadata")
+                ?: error("Failed to save content metadata")
 
-            // 6. Redis에서 업로드 세션 삭제 (1회성 토큰)
+            // 6. PHOTO 타입인 경우 사진 목록 저장
+            if (savedContent.contentType == ContentType.PHOTO && !request.photoUrls.isNullOrEmpty()) {
+                request.photoUrls.forEachIndexed { index, photoUrl ->
+                    val photo = ContentPhoto(
+                        contentId = contentId,
+                        photoUrl = photoUrl,
+                        displayOrder = index,
+                        width = request.width,  // 대표 사진 크기 사용
+                        height = request.height,
+                        createdAt = now,
+                        createdBy = userId.toString(),
+                        updatedAt = now,
+                        updatedBy = userId.toString()
+                    )
+                    val saved = contentPhotoRepository.save(photo)
+                    check(saved) { "Failed to save content photo" }
+                }
+                logger.info("Content photos saved: contentId=$contentId, count=${request.photoUrls.size}")
+            }
+
+            // 7. Redis에서 업로드 세션 삭제 (1회성 토큰)
             uploadSessionRepository.deleteById(request.contentId)
             logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
 
             Pair(savedContent, savedMetadata)
         }.map { (content, metadata) ->
+            // PHOTO 타입인 경우 사진 목록 (이미 저장된 request.photoUrls 사용)
+            val photoUrls = if (content.contentType == ContentType.PHOTO) {
+                request.photoUrls
+            } else {
+                null
+            }
+
             ContentResponse(
                 id = content.id.toString(),
                 creatorId = content.creatorId.toString(),
                 contentType = content.contentType,
                 url = content.url,
+                photoUrls = photoUrls,
                 thumbnailUrl = content.thumbnailUrl,
                 duration = content.duration,
                 width = content.width,
@@ -200,11 +231,20 @@ class ContentServiceImpl(
 
             Pair(content, metadata)
         }.map { (content, metadata) ->
+            // PHOTO 타입인 경우 사진 목록 조회
+            val photoUrls = if (content.contentType == ContentType.PHOTO) {
+                contentPhotoRepository.findByContentId(content.id!!)
+                    .map { it.photoUrl }
+            } else {
+                null
+            }
+
             ContentResponse(
                 id = content.id.toString(),
                 creatorId = content.creatorId.toString(),
                 contentType = content.contentType,
                 url = content.url,
+                photoUrls = photoUrls,
                 thumbnailUrl = content.thumbnailUrl,
                 duration = content.duration,
                 width = content.width,
@@ -231,14 +271,35 @@ class ContentServiceImpl(
         logger.info("Getting contents by creator: creatorId=$creatorId")
 
         return Mono.fromCallable {
-            contentRepository.findWithMetadataByCreatorId(creatorId)
-        }.flatMapMany { contentWithMetadataList ->
+            val contentWithMetadataList = contentRepository.findWithMetadataByCreatorId(creatorId)
+
+            // N+1 방지: PHOTO 타입 콘텐츠의 사진 목록을 일괄 조회
+            val photoContentIds = contentWithMetadataList
+                .filter { it.first.contentType == ContentType.PHOTO }
+                .mapNotNull { it.first.id }
+
+            val photoUrlsMap = if (photoContentIds.isNotEmpty()) {
+                contentPhotoRepository.findByContentIds(photoContentIds)
+                    .mapValues { (_, photos) -> photos.map { it.photoUrl } }
+            } else {
+                emptyMap()
+            }
+
+            Pair(contentWithMetadataList, photoUrlsMap)
+        }.flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
             Flux.fromIterable(contentWithMetadataList).map { (content, metadata) ->
+                val photoUrls = if (content.contentType == ContentType.PHOTO) {
+                    photoUrlsMap[content.id]
+                } else {
+                    null
+                }
+
                 ContentResponse(
                     id = content.id.toString(),
                     creatorId = content.creatorId.toString(),
                     contentType = content.contentType,
                     url = content.url,
+                    photoUrls = photoUrls,
                     thumbnailUrl = content.thumbnailUrl,
                     duration = content.duration,
                     width = content.width,
@@ -296,17 +357,49 @@ class ContentServiceImpl(
             )
 
             val success = contentRepository.updateMetadata(updatedMetadata)
-            if (!success) {
-                throw IllegalStateException("Failed to update content metadata")
+            check(success) { "Failed to update content metadata" }
+
+            // PHOTO 타입 콘텐츠의 사진 목록 수정
+            if (content.contentType == ContentType.PHOTO && request.photoUrls != null) {
+                // 기존 사진 삭제 (Soft Delete)
+                contentPhotoRepository.deleteByContentId(contentId, userId.toString())
+                logger.info("Deleted existing photos: contentId=$contentId")
+
+                // 새 사진 저장
+                request.photoUrls.forEachIndexed { index, photoUrl ->
+                    val photo = me.onetwo.growsnap.domain.content.model.ContentPhoto(
+                        contentId = contentId,
+                        photoUrl = photoUrl,
+                        displayOrder = index,
+                        width = content.width,
+                        height = content.height,
+                        createdAt = LocalDateTime.now(),
+                        createdBy = userId.toString(),
+                        updatedAt = LocalDateTime.now(),
+                        updatedBy = userId.toString()
+                    )
+                    val saved = contentPhotoRepository.save(photo)
+                    check(saved) { "Failed to save content photo during update" }
+                }
+                logger.info("Updated photos: contentId=$contentId, count=${request.photoUrls.size}")
             }
 
-            Pair(content, updatedMetadata)
-        }.map { (content, metadata) ->
+            Triple(content, updatedMetadata, request.photoUrls)
+        }.map { (content, metadata, updatedPhotoUrls) ->
+            // PHOTO 타입인 경우 사진 목록 조회 (수정되었으면 수정된 것, 아니면 기존 것)
+            val photoUrls = if (content.contentType == ContentType.PHOTO) {
+                updatedPhotoUrls ?: contentPhotoRepository.findByContentId(content.id!!)
+                    .map { it.photoUrl }
+            } else {
+                null
+            }
+
             ContentResponse(
                 id = content.id.toString(),
                 creatorId = content.creatorId.toString(),
                 contentType = content.contentType,
                 url = content.url,
+                photoUrls = photoUrls,
                 thumbnailUrl = content.thumbnailUrl,
                 duration = content.duration,
                 width = content.width,

@@ -4,12 +4,14 @@
  * 비디오 플레이어 + 오버레이를 결합한 완전한 피드 아이템
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, Dimensions, Animated, PanResponder, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
+import { PhotoGallery } from './PhotoGallery';
 import { FeedOverlay } from './FeedOverlay';
+import { LikeAnimation } from './LikeAnimation';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -51,22 +53,32 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
 
-  // 비디오만 표시 (사진은 나중에 구현)
-  if (item.contentType !== 'VIDEO') {
-    return null;
-  }
-
-  // 영상 탭 시 더보기 닫기
-  const handleVideoTap = () => {
+  // 컨텐츠 탭 시 더보기 닫기
+  const handleContentTap = () => {
     if (isExpanded) {
       setIsExpanded(false);
       return true;
     }
     return false;
   };
+
+  // 좋아요 핸들러 (하트 애니메이션 포함)
+  const handleLike = useCallback(() => {
+    // 좋아요가 안 되어있을 때만 하트 애니메이션 표시
+    if (!item.interactions.isLiked) {
+      setShowLikeAnimation(true);
+    }
+    onLike?.();
+  }, [item.interactions.isLiked, onLike]);
+
+  // 애니메이션 완료 핸들러
+  const handleAnimationComplete = useCallback(() => {
+    setShowLikeAnimation(false);
+  }, []);
 
   // 진행률 업데이트 받기
   const handleProgressUpdate = (prog: number, dur: number, dragging: boolean) => {
@@ -138,19 +150,29 @@ export const FeedItem: React.FC<FeedItemProps> = ({
 
   return (
     <View style={{ height: SCREEN_HEIGHT }} className="relative">
-      {/* 비디오 플레이어 */}
-      <VideoPlayer
-        ref={videoPlayerRef}
-        uri={item.url}
-        isFocused={isFocused}
-        shouldPreload={shouldPreload}
-        hasBeenLoaded={hasBeenLoaded}
-        isDragging={isDragging}
-        onVideoLoaded={onVideoLoaded}
-        onDoubleTap={onLike}
-        onTap={handleVideoTap}
-        onProgressUpdate={handleProgressUpdate}
-      />
+      {/* 콘텐츠 렌더링 - VIDEO 또는 PHOTO */}
+      {item.contentType === 'VIDEO' ? (
+        <VideoPlayer
+          ref={videoPlayerRef}
+          uri={item.url}
+          isFocused={isFocused}
+          shouldPreload={shouldPreload}
+          hasBeenLoaded={hasBeenLoaded}
+          isDragging={isDragging}
+          onVideoLoaded={onVideoLoaded}
+          onDoubleTap={handleLike}
+          onTap={handleContentTap}
+          onProgressUpdate={handleProgressUpdate}
+        />
+      ) : item.contentType === 'PHOTO' && item.photoUrls && item.photoUrls.length > 0 ? (
+        <PhotoGallery
+          photoUrls={item.photoUrls}
+          width={SCREEN_WIDTH}
+          height={SCREEN_HEIGHT}
+          onDoubleTap={handleLike}
+          onTap={handleContentTap}
+        />
+      ) : null}
 
       {/* 정보 오버레이 */}
       <FeedOverlay
@@ -198,6 +220,25 @@ export const FeedItem: React.FC<FeedItemProps> = ({
               }}
             />
           </Animated.View>
+        </View>
+      )}
+
+      {/* 좋아요 애니메이션 - 모든 오버레이 위에 표시 */}
+      {showLikeAnimation && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        >
+          <LikeAnimation show={showLikeAnimation} onComplete={handleAnimationComplete} />
         </View>
       )}
     </View>

@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -137,7 +138,7 @@ class ContentController(
      *         403 Forbidden - 권한 없음
      *         404 Not Found - 콘텐츠가 존재하지 않음
      */
-    @PutMapping("/{contentId}")
+    @PatchMapping("/{contentId}")
     fun updateContent(
         principal: Mono<Principal>,
         @PathVariable contentId: UUID,

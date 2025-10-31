@@ -6,6 +6,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
+import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.exception.FileNotUploadedException
 import me.onetwo.growsnap.domain.content.exception.UploadSessionNotFoundException
@@ -44,6 +45,9 @@ class ContentServiceImplTest {
     private lateinit var contentRepository: ContentRepository
 
     @MockK
+    private lateinit var contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
+
+    @MockK
     private lateinit var uploadSessionRepository: UploadSessionRepository
 
     @MockK
@@ -56,6 +60,7 @@ class ContentServiceImplTest {
         contentService = ContentServiceImpl(
             contentUploadService = contentUploadService,
             contentRepository = contentRepository,
+            contentPhotoRepository = contentPhotoRepository,
             uploadSessionRepository = uploadSessionRepository,
             s3Client = s3Client,
             bucketName = "test-bucket",
@@ -201,6 +206,101 @@ class ContentServiceImplTest {
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
             verify(exactly = 1) { uploadSessionRepository.deleteById(contentId.toString()) }
+        }
+
+        @Test
+        @DisplayName("PHOTO 타입 콘텐츠 생성 시, 사진 목록을 저장하고 응답에 포함한다")
+        fun createContent_WithPhotoType_SavesPhotosAndReturnsWithPhotoUrls() {
+            // Given: PHOTO 타입 콘텐츠 데이터
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+            val s3Key = "contents/PHOTO/$userId/$contentId/test_123456.jpg"
+            val photoUrls = listOf(
+                "https://s3.amazonaws.com/photo1.jpg",
+                "https://s3.amazonaws.com/photo2.jpg",
+                "https://s3.amazonaws.com/photo3.jpg"
+            )
+
+            val request = ContentCreateRequest(
+                contentId = contentId.toString(),
+                title = "Test Photo Gallery",
+                description = "Test Description",
+                category = Category.HEALTH,
+                tags = listOf("test", "photo"),
+                language = "ko",
+                thumbnailUrl = "https://s3.amazonaws.com/thumbnail.jpg",
+                duration = null,
+                width = 1080,
+                height = 1080,
+                photoUrls = photoUrls
+            )
+
+            val uploadSession = UploadSession(
+                contentId = contentId.toString(),
+                userId = userId.toString(),
+                s3Key = s3Key,
+                contentType = ContentType.PHOTO,
+                fileName = "test.jpg",
+                fileSize = 500000L
+            )
+
+            val savedContent = Content(
+                id = contentId,
+                creatorId = userId,
+                contentType = ContentType.PHOTO,
+                url = "https://test-bucket.s3.ap-northeast-2.amazonaws.com/$s3Key",
+                thumbnailUrl = request.thumbnailUrl,
+                duration = null,
+                width = request.width,
+                height = request.height,
+                status = ContentStatus.PUBLISHED,
+                createdAt = LocalDateTime.now(),
+                createdBy = userId,
+                updatedAt = LocalDateTime.now(),
+                updatedBy = userId
+            )
+
+            val savedMetadata = ContentMetadata(
+                id = 1L,
+                contentId = contentId,
+                title = request.title,
+                description = request.description,
+                category = request.category,
+                tags = request.tags,
+                language = request.language,
+                createdAt = LocalDateTime.now(),
+                createdBy = userId,
+                updatedAt = LocalDateTime.now(),
+                updatedBy = userId
+            )
+
+            // Mock 설정
+            every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
+            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
+            every { contentRepository.save(any()) } returns savedContent
+            every { contentRepository.saveMetadata(any()) } returns savedMetadata
+            every { contentPhotoRepository.save(any()) } returns true
+            every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
+
+            // When: 메서드 실행
+            val result = contentService.createContent(userId, request)
+
+            // Then: 결과 검증
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response.id).isEqualTo(contentId.toString())
+                    assertThat(response.title).isEqualTo(request.title)
+                    assertThat(response.contentType).isEqualTo(ContentType.PHOTO)
+                    assertThat(response.photoUrls).isNotNull
+                    assertThat(response.photoUrls).hasSize(3)
+                    assertThat(response.photoUrls).containsExactlyElementsOf(photoUrls)
+                }
+                .verifyComplete()
+
+            // 각 사진이 저장되었는지 확인 (3개의 photoUrls)
+            verify(exactly = 3) { contentPhotoRepository.save(any()) }
+            verify(exactly = 1) { contentRepository.save(any()) }
+            verify(exactly = 1) { contentRepository.saveMetadata(any()) }
         }
 
         @Test
@@ -400,6 +500,187 @@ class ContentServiceImplTest {
 
             verify(exactly = 1) { contentRepository.findById(contentId) }
             verify(exactly = 1) { contentRepository.findMetadataByContentId(contentId) }
+        }
+    }
+
+    @Nested
+    @DisplayName("updateContent - 콘텐츠 수정")
+    inner class UpdateContent {
+
+        @Test
+        @DisplayName("PHOTO 타입 콘텐츠의 사진 목록 수정 시, 기존 사진을 삭제하고 새 사진을 저장한다")
+        fun updateContent_WithPhotoUrls_DeletesOldAndSavesNewPhotos() {
+            // Given: PHOTO 타입 콘텐츠 및 수정 요청
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+
+            val existingContent = Content(
+                id = contentId,
+                creatorId = userId,
+                contentType = ContentType.PHOTO,
+                url = "https://s3.amazonaws.com/old.jpg",
+                thumbnailUrl = "https://s3.amazonaws.com/thumb.jpg",
+                duration = null,
+                width = 1080,
+                height = 1080,
+                status = ContentStatus.PUBLISHED,
+                createdAt = LocalDateTime.now().minusDays(1),
+                createdBy = userId,
+                updatedAt = LocalDateTime.now().minusDays(1),
+                updatedBy = userId
+            )
+
+            val existingMetadata = ContentMetadata(
+                id = 1L,
+                contentId = contentId,
+                title = "Old Title",
+                description = "Old Description",
+                category = Category.HEALTH,
+                tags = listOf("old"),
+                language = "ko",
+                createdAt = LocalDateTime.now().minusDays(1),
+                createdBy = userId,
+                updatedAt = LocalDateTime.now().minusDays(1),
+                updatedBy = userId
+            )
+
+            val newPhotoUrls = listOf(
+                "https://s3.amazonaws.com/new1.jpg",
+                "https://s3.amazonaws.com/new2.jpg"
+            )
+
+            val request = ContentUpdateRequest(
+                title = "New Title",
+                description = "New Description",
+                photoUrls = newPhotoUrls
+            )
+
+            // Mock 설정
+            every { contentRepository.findById(contentId) } returns existingContent
+            every { contentRepository.findMetadataByContentId(contentId) } returns existingMetadata
+            every { contentRepository.updateMetadata(any()) } returns true
+            every { contentPhotoRepository.deleteByContentId(contentId, userId.toString()) } returns 3 // 기존 3개 삭제
+            every { contentPhotoRepository.save(any()) } returns true
+
+            // When: 메서드 실행
+            val result = contentService.updateContent(userId, contentId, request)
+
+            // Then: 결과 검증
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response.id).isEqualTo(contentId.toString())
+                    assertThat(response.title).isEqualTo("New Title")
+                    assertThat(response.description).isEqualTo("New Description")
+                    assertThat(response.contentType).isEqualTo(ContentType.PHOTO)
+                    assertThat(response.photoUrls).isNotNull
+                    assertThat(response.photoUrls).hasSize(2)
+                    assertThat(response.photoUrls).containsExactlyElementsOf(newPhotoUrls)
+                }
+                .verifyComplete()
+
+            // 기존 사진 삭제 확인
+            verify(exactly = 1) { contentPhotoRepository.deleteByContentId(contentId, userId.toString()) }
+            // 새 사진 저장 확인 (2개)
+            verify(exactly = 2) { contentPhotoRepository.save(any()) }
+            verify(exactly = 1) { contentRepository.updateMetadata(any()) }
+        }
+
+        @Test
+        @DisplayName("메타데이터만 수정 시, 사진 목록은 변경하지 않는다")
+        fun updateContent_WithoutPhotoUrls_OnlyUpdatesMetadata() {
+            // Given: PHOTO 타입 콘텐츠이지만 photoUrls는 null
+            val userId = UUID.randomUUID()
+            val contentId = UUID.randomUUID()
+
+            val existingContent = Content(
+                id = contentId,
+                creatorId = userId,
+                contentType = ContentType.PHOTO,
+                url = "https://s3.amazonaws.com/photo.jpg",
+                thumbnailUrl = "https://s3.amazonaws.com/thumb.jpg",
+                duration = null,
+                width = 1080,
+                height = 1080,
+                status = ContentStatus.PUBLISHED,
+                createdAt = LocalDateTime.now().minusDays(1),
+                createdBy = userId,
+                updatedAt = LocalDateTime.now().minusDays(1),
+                updatedBy = userId
+            )
+
+            val existingMetadata = ContentMetadata(
+                id = 1L,
+                contentId = contentId,
+                title = "Old Title",
+                description = "Old Description",
+                category = Category.HEALTH,
+                tags = listOf("old"),
+                language = "ko",
+                createdAt = LocalDateTime.now().minusDays(1),
+                createdBy = userId,
+                updatedAt = LocalDateTime.now().minusDays(1),
+                updatedBy = userId
+            )
+
+            val existingPhotoUrls = listOf(
+                "https://s3.amazonaws.com/existing1.jpg",
+                "https://s3.amazonaws.com/existing2.jpg"
+            )
+
+            val request = ContentUpdateRequest(
+                title = "New Title",
+                photoUrls = null // 사진 목록은 수정하지 않음
+            )
+
+            // Mock 설정
+            every { contentRepository.findById(contentId) } returns existingContent
+            every { contentRepository.findMetadataByContentId(contentId) } returns existingMetadata
+            every { contentRepository.updateMetadata(any()) } returns true
+            every { contentPhotoRepository.findByContentId(contentId) } returns listOf(
+                me.onetwo.growsnap.domain.content.model.ContentPhoto(
+                    contentId = contentId,
+                    photoUrl = existingPhotoUrls[0],
+                    displayOrder = 0,
+                    width = 1080,
+                    height = 1080,
+                    createdAt = LocalDateTime.now(),
+                    createdBy = userId.toString(),
+                    updatedAt = LocalDateTime.now(),
+                    updatedBy = userId.toString()
+                ),
+                me.onetwo.growsnap.domain.content.model.ContentPhoto(
+                    contentId = contentId,
+                    photoUrl = existingPhotoUrls[1],
+                    displayOrder = 1,
+                    width = 1080,
+                    height = 1080,
+                    createdAt = LocalDateTime.now(),
+                    createdBy = userId.toString(),
+                    updatedAt = LocalDateTime.now(),
+                    updatedBy = userId.toString()
+                )
+            )
+
+            // When: 메서드 실행
+            val result = contentService.updateContent(userId, contentId, request)
+
+            // Then: 결과 검증
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response.id).isEqualTo(contentId.toString())
+                    assertThat(response.title).isEqualTo("New Title")
+                    assertThat(response.photoUrls).isNotNull
+                    assertThat(response.photoUrls).hasSize(2)
+                    assertThat(response.photoUrls).containsExactlyElementsOf(existingPhotoUrls)
+                }
+                .verifyComplete()
+
+            // 사진 삭제/저장이 호출되지 않았는지 확인
+            verify(exactly = 0) { contentPhotoRepository.deleteByContentId(any(), any()) }
+            verify(exactly = 0) { contentPhotoRepository.save(any()) }
+            // 기존 사진 조회만 수행
+            verify(exactly = 1) { contentPhotoRepository.findByContentId(contentId) }
+            verify(exactly = 1) { contentRepository.updateMetadata(any()) }
         }
     }
 }

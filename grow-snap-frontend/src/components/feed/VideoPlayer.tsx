@@ -54,7 +54,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const lastTap = useRef<number>(0);
-  const heartScale = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -185,23 +184,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   // 더블탭: 좋아요
   const handleDoubleTap = () => {
     if (!onDoubleTap) return;
-
-    // 하트 애니메이션
-    heartScale.setValue(0);
-    Animated.spring(heartScale, {
-      toValue: 1,
-      friction: 3,
-      useNativeDriver: true,
-    }).start(() => {
-      setTimeout(() => {
-        Animated.timing(heartScale, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }, 500);
-    });
-
     onDoubleTap();
   };
 
@@ -243,11 +225,15 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
 
-    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+    if (lastTap.current && now - lastTap.current < DOUBLE_TAP_DELAY) {
+      // 더블탭
+      lastTap.current = 0; // 리셋
       handleDoubleTap();
     } else {
+      // 싱글탭 대기
+      lastTap.current = now;
       setTimeout(() => {
-        if (Date.now() - lastTap.current >= DOUBLE_TAP_DELAY) {
+        if (lastTap.current === now) {
           // 싱글탭: 더보기 닫기 또는 일시정지/재생
           const handled = onTap?.();
           // 더보기가 닫혔으면 비디오 탭 무시
@@ -257,14 +243,12 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
         }
       }, DOUBLE_TAP_DELAY);
     }
-
-    lastTap.current = now;
   };
 
   return (
-    <View style={{ height: videoContainerHeight, backgroundColor: '#000000', position: 'relative', justifyContent: 'center', alignItems: 'center', paddingTop: tabBarHeight }}>
+    <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, backgroundColor: '#000000', position: 'relative' }}>
       <TouchableWithoutFeedback onPress={handleTap}>
-        <View style={{ height: videoContainerHeight, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center', marginTop: -tabBarHeight / 2 }}>
           {/* Video는 항상 렌더링 - 언마운트 절대 금지 */}
           {!isLoadingSkeleton && (
             <Video
@@ -325,17 +309,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               </View>
             </View>
           )}
-
-          {/* 더블탭 하트 애니메이션 */}
-          <Animated.View
-            className="absolute inset-0 items-center justify-center pointer-events-none"
-            style={{
-              transform: [{ scale: heartScale }],
-              opacity: heartScale,
-            }}
-          >
-            <Ionicons name="heart" size={120} color="white" />
-          </Animated.View>
 
         </View>
       </TouchableWithoutFeedback>

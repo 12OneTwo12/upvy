@@ -95,6 +95,7 @@ class FeedControllerTest {
                             fieldWithPath("content[].contentId").description("콘텐츠 ID"),
                             fieldWithPath("content[].contentType").description("콘텐츠 타입 (VIDEO, PHOTO)"),
                             fieldWithPath("content[].url").description("콘텐츠 URL"),
+                            fieldWithPath("content[].photoUrls").description("사진 URL 목록 (PHOTO 타입인 경우)").optional(),
                             fieldWithPath("content[].thumbnailUrl").description("썸네일 이미지 URL"),
                             fieldWithPath("content[].duration").description("비디오 길이 (초, 사진인 경우 null)").optional(),
                             fieldWithPath("content[].width").description("콘텐츠 가로 크기 (픽셀)"),
@@ -165,6 +166,53 @@ class FeedControllerTest {
                 .exchange()
                 .expectStatus().isUnauthorized
         }
+
+        @Test
+        @DisplayName("PHOTO 타입 콘텐츠 조회 시, photoUrls가 응답에 포함된다")
+        fun getMainFeed_WithPhotoContent_ReturnsPhotoUrls() {
+            // Given: PHOTO 타입 콘텐츠 포함
+            val userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+            val feedItems = listOf(
+                createMockPhotoFeedItem(
+                    UUID.randomUUID(),
+                    listOf(
+                        "https://example.com/photo1.jpg",
+                        "https://example.com/photo2.jpg",
+                        "https://example.com/photo3.jpg"
+                    )
+                ),
+                createMockFeedItems(1)[0] // VIDEO 타입
+            )
+            val response = CursorPageResponse.of(
+                content = feedItems,
+                limit = 10,
+                getCursor = { it.contentId.toString() }
+            )
+
+            every { feedService.getMainFeed(userId, any()) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri { uriBuilder ->
+                    uriBuilder.path(ApiPaths.API_V1_FEED)
+                        .queryParam("limit", 10)
+                        .build()
+                }
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content[0].contentType").isEqualTo("PHOTO")
+                .jsonPath("$.content[0].photoUrls").isArray
+                .jsonPath("$.content[0].photoUrls.length()").isEqualTo(3)
+                .jsonPath("$.content[0].photoUrls[0]").isEqualTo("https://example.com/photo1.jpg")
+                .jsonPath("$.content[0].photoUrls[1]").isEqualTo("https://example.com/photo2.jpg")
+                .jsonPath("$.content[0].photoUrls[2]").isEqualTo("https://example.com/photo3.jpg")
+                .jsonPath("$.content[1].contentType").isEqualTo("VIDEO")
+                .jsonPath("$.content[1].photoUrls").doesNotExist()
+        }
     }
 
     @Nested
@@ -215,6 +263,7 @@ class FeedControllerTest {
                             fieldWithPath("content[].contentId").description("콘텐츠 ID"),
                             fieldWithPath("content[].contentType").description("콘텐츠 타입 (VIDEO, PHOTO)"),
                             fieldWithPath("content[].url").description("콘텐츠 URL"),
+                            fieldWithPath("content[].photoUrls").description("사진 URL 목록 (PHOTO 타입인 경우)").optional(),
                             fieldWithPath("content[].thumbnailUrl").description("썸네일 이미지 URL"),
                             fieldWithPath("content[].duration").description("비디오 길이 (초, 사진인 경우 null)").optional(),
                             fieldWithPath("content[].width").description("콘텐츠 가로 크기 (픽셀)"),
@@ -254,6 +303,48 @@ class FeedControllerTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isUnauthorized
+        }
+
+        @Test
+        @DisplayName("PHOTO 타입 콘텐츠 조회 시, photoUrls가 응답에 포함된다")
+        fun getFollowingFeed_WithPhotoContent_ReturnsPhotoUrls() {
+            // Given: PHOTO 타입 포함
+            val userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+            val feedItems = listOf(
+                createMockPhotoFeedItem(
+                    UUID.randomUUID(),
+                    listOf(
+                        "https://example.com/following-photo1.jpg",
+                        "https://example.com/following-photo2.jpg"
+                    )
+                )
+            )
+            val response = CursorPageResponse.of(
+                content = feedItems,
+                limit = 10,
+                getCursor = { it.contentId.toString() }
+            )
+
+            every { feedService.getFollowingFeed(userId, any()) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri { uriBuilder ->
+                    uriBuilder.path("${ApiPaths.API_V1_FEED}/following")
+                        .queryParam("limit", 10)
+                        .build()
+                }
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content[0].contentType").isEqualTo("PHOTO")
+                .jsonPath("$.content[0].photoUrls").isArray
+                .jsonPath("$.content[0].photoUrls.length()").isEqualTo(2)
+                .jsonPath("$.content[0].photoUrls[0]").isEqualTo("https://example.com/following-photo1.jpg")
+                .jsonPath("$.content[0].photoUrls[1]").isEqualTo("https://example.com/following-photo2.jpg")
         }
     }
 
@@ -296,7 +387,7 @@ class FeedControllerTest {
     }
 
     /**
-     * 테스트용 피드 아이템 목록 생성
+     * 테스트용 피드 아이템 목록 생성 (VIDEO 타입)
      */
     private fun createMockFeedItems(count: Int): List<FeedItemResponse> {
         return (1..count).map {
@@ -304,6 +395,7 @@ class FeedControllerTest {
                 contentId = UUID.randomUUID(),
                 contentType = ContentType.VIDEO,
                 url = "https://example.com/video$it.mp4",
+                photoUrls = null,
                 thumbnailUrl = "https://example.com/thumbnail$it.jpg",
                 duration = 60,
                 width = 1920,
@@ -330,5 +422,41 @@ class FeedControllerTest {
                 subtitles = emptyList()
             )
         }
+    }
+
+    /**
+     * 테스트용 PHOTO 피드 아이템 생성
+     */
+    private fun createMockPhotoFeedItem(contentId: UUID, photoUrls: List<String>): FeedItemResponse {
+        return FeedItemResponse(
+            contentId = contentId,
+            contentType = ContentType.PHOTO,
+            url = photoUrls.firstOrNull() ?: "https://example.com/photo.jpg",
+            photoUrls = photoUrls,
+            thumbnailUrl = "https://example.com/photo-thumbnail.jpg",
+            duration = null, // PHOTO는 duration 없음
+            width = 1080,
+            height = 1080,
+            title = "Test Photo Content",
+            description = "Test Photo Description",
+            category = Category.ART,
+            tags = listOf("test", "photo"),
+            creator = CreatorInfoResponse(
+                userId = UUID.randomUUID(),
+                nickname = "Photo Creator",
+                profileImageUrl = "https://example.com/photo-profile.jpg",
+                followerCount = 1500
+            ),
+            interactions = InteractionInfoResponse(
+                likeCount = 200,
+                commentCount = 100,
+                saveCount = 50,
+                shareCount = 30,
+                viewCount = 2000,
+                isLiked = false,
+                isSaved = false
+            ),
+            subtitles = emptyList()
+        )
     }
 }
