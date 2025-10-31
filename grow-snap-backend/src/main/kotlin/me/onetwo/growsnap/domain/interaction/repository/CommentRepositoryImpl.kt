@@ -122,6 +122,82 @@ class CommentRepositoryImpl(
             .map { recordToComment(it) }
     }
 
+    override fun findTopLevelCommentsByContentId(contentId: UUID, cursor: UUID?, limit: Int): List<Comment> {
+        val query = dslContext
+            .select(
+                COMMENTS.ID,
+                COMMENTS.CONTENT_ID,
+                COMMENTS.USER_ID,
+                COMMENTS.PARENT_COMMENT_ID,
+                COMMENTS.CONTENT,
+                COMMENTS.CREATED_AT,
+                COMMENTS.CREATED_BY,
+                COMMENTS.UPDATED_AT,
+                COMMENTS.UPDATED_BY,
+                COMMENTS.DELETED_AT
+            )
+            .from(COMMENTS)
+            .where(COMMENTS.CONTENT_ID.eq(contentId.toString()))
+            .and(COMMENTS.PARENT_COMMENT_ID.isNull)
+            .and(COMMENTS.DELETED_AT.isNull)
+
+        // Cursor가 있으면 해당 댓글 이후의 데이터만 조회
+        if (cursor != null) {
+            val cursorComment = findById(cursor)
+            if (cursorComment != null) {
+                query.and(COMMENTS.CREATED_AT.gt(cursorComment.createdAt))
+            }
+        }
+
+        return query
+            .orderBy(COMMENTS.CREATED_AT.asc())
+            .limit(limit + 1) // hasNext 확인을 위해 +1 조회
+            .fetch()
+            .map { recordToComment(it) }
+    }
+
+    override fun findRepliesByParentCommentId(parentCommentId: UUID, cursor: UUID?, limit: Int): List<Comment> {
+        val query = dslContext
+            .select(
+                COMMENTS.ID,
+                COMMENTS.CONTENT_ID,
+                COMMENTS.USER_ID,
+                COMMENTS.PARENT_COMMENT_ID,
+                COMMENTS.CONTENT,
+                COMMENTS.CREATED_AT,
+                COMMENTS.CREATED_BY,
+                COMMENTS.UPDATED_AT,
+                COMMENTS.UPDATED_BY,
+                COMMENTS.DELETED_AT
+            )
+            .from(COMMENTS)
+            .where(COMMENTS.PARENT_COMMENT_ID.eq(parentCommentId.toString()))
+            .and(COMMENTS.DELETED_AT.isNull)
+
+        // Cursor가 있으면 해당 댓글 이후의 데이터만 조회
+        if (cursor != null) {
+            val cursorComment = findById(cursor)
+            if (cursorComment != null) {
+                query.and(COMMENTS.CREATED_AT.gt(cursorComment.createdAt))
+            }
+        }
+
+        return query
+            .orderBy(COMMENTS.CREATED_AT.asc())
+            .limit(limit + 1) // hasNext 확인을 위해 +1 조회
+            .fetch()
+            .map { recordToComment(it) }
+    }
+
+    override fun countRepliesByParentCommentId(parentCommentId: UUID): Int {
+        return dslContext
+            .selectCount()
+            .from(COMMENTS)
+            .where(COMMENTS.PARENT_COMMENT_ID.eq(parentCommentId.toString()))
+            .and(COMMENTS.DELETED_AT.isNull)
+            .fetchOne(0, Int::class.java) ?: 0
+    }
+
     override fun delete(commentId: UUID, userId: UUID) {
         val now = LocalDateTime.now()
 

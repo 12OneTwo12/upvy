@@ -302,6 +302,276 @@ class CommentRepositoryTest {
         }
     }
 
+    @Nested
+    @DisplayName("findTopLevelCommentsByContentId - 최상위 댓글 페이징 조회")
+    inner class FindTopLevelCommentsByContentId {
+
+        @Test
+        @DisplayName("cursor 없이 조회하면, 처음부터 limit만큼 반환된다")
+        fun findTopLevelComments_NoCursor_ReturnsFirstPage() {
+            // Given: 5개의 최상위 댓글 생성
+            repeat(5) { index ->
+                commentRepository.save(
+                    Comment(
+                        contentId = testContentId,
+                        userId = testUser.id!!,
+                        content = "Comment $index",
+                        parentCommentId = null
+                    )
+                )
+                Thread.sleep(10) // 생성 시간 차이를 위해 대기
+            }
+
+            // When: limit 3으로 조회
+            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 3)
+
+            // Then: 4개 반환 (limit + 1 for hasNext check)
+            assertEquals(4, comments.size)
+            assertEquals("Comment 0", comments[0].content)
+            assertEquals("Comment 1", comments[1].content)
+            assertEquals("Comment 2", comments[2].content)
+        }
+
+        @Test
+        @DisplayName("cursor를 지정하면, 해당 위치 이후부터 조회된다")
+        fun findTopLevelComments_WithCursor_ReturnsAfterCursor() {
+            // Given: 5개의 최상위 댓글 생성
+            val savedComments = mutableListOf<Comment>()
+            repeat(5) { index ->
+                val saved = commentRepository.save(
+                    Comment(
+                        contentId = testContentId,
+                        userId = testUser.id!!,
+                        content = "Comment $index",
+                        parentCommentId = null
+                    )
+                )
+                savedComments.add(saved!!)
+                Thread.sleep(10)
+            }
+
+            // When: 두 번째 댓글을 cursor로 설정하고 조회
+            val cursor = savedComments[1].id!!
+            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, cursor, 3)
+
+            // Then: 세 번째 댓글부터 조회됨
+            assertEquals(3, comments.size)
+            assertEquals("Comment 2", comments[0].content)
+            assertEquals("Comment 3", comments[1].content)
+            assertEquals("Comment 4", comments[2].content)
+        }
+
+        @Test
+        @DisplayName("대댓글은 제외하고 최상위 댓글만 조회된다")
+        fun findTopLevelComments_ExcludesReplies() {
+            // Given: 최상위 댓글과 대댓글 생성
+            val parentComment = commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Parent comment",
+                    parentCommentId = null
+                )
+            )
+
+            // 대댓글 생성
+            commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Reply comment",
+                    parentCommentId = parentComment!!.id
+                )
+            )
+
+            // When: 최상위 댓글 조회
+            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 10)
+
+            // Then: 최상위 댓글만 조회됨
+            assertEquals(1, comments.size)
+            assertEquals("Parent comment", comments[0].content)
+        }
+    }
+
+    @Nested
+    @DisplayName("findRepliesByParentCommentId - 대댓글 페이징 조회")
+    inner class FindRepliesByParentCommentId {
+
+        @Test
+        @DisplayName("cursor 없이 조회하면, 처음부터 limit만큼 반환된다")
+        fun findReplies_NoCursor_ReturnsFirstPage() {
+            // Given: 부모 댓글 생성
+            val parentComment = commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Parent comment",
+                    parentCommentId = null
+                )
+            )
+
+            // 5개의 대댓글 생성
+            repeat(5) { index ->
+                commentRepository.save(
+                    Comment(
+                        contentId = testContentId,
+                        userId = testUser.id!!,
+                        content = "Reply $index",
+                        parentCommentId = parentComment!!.id
+                    )
+                )
+                Thread.sleep(10)
+            }
+
+            // When: limit 3으로 조회
+            val replies = commentRepository.findRepliesByParentCommentId(parentComment!!.id!!, null, 3)
+
+            // Then: 4개 반환 (limit + 1 for hasNext check)
+            assertEquals(4, replies.size)
+            assertEquals("Reply 0", replies[0].content)
+            assertEquals("Reply 1", replies[1].content)
+            assertEquals("Reply 2", replies[2].content)
+        }
+
+        @Test
+        @DisplayName("cursor를 지정하면, 해당 위치 이후부터 조회된다")
+        fun findReplies_WithCursor_ReturnsAfterCursor() {
+            // Given: 부모 댓글 생성
+            val parentComment = commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Parent comment",
+                    parentCommentId = null
+                )
+            )
+
+            // 5개의 대댓글 생성
+            val savedReplies = mutableListOf<Comment>()
+            repeat(5) { index ->
+                val saved = commentRepository.save(
+                    Comment(
+                        contentId = testContentId,
+                        userId = testUser.id!!,
+                        content = "Reply $index",
+                        parentCommentId = parentComment!!.id
+                    )
+                )
+                savedReplies.add(saved!!)
+                Thread.sleep(10)
+            }
+
+            // When: 두 번째 대댓글을 cursor로 설정하고 조회
+            val cursor = savedReplies[1].id!!
+            val replies = commentRepository.findRepliesByParentCommentId(parentComment!!.id!!, cursor, 3)
+
+            // Then: 세 번째 대댓글부터 조회됨
+            assertEquals(3, replies.size)
+            assertEquals("Reply 2", replies[0].content)
+            assertEquals("Reply 3", replies[1].content)
+            assertEquals("Reply 4", replies[2].content)
+        }
+    }
+
+    @Nested
+    @DisplayName("countRepliesByParentCommentId - 대댓글 개수 조회")
+    inner class CountRepliesByParentCommentId {
+
+        @Test
+        @DisplayName("대댓글이 없으면, 0을 반환한다")
+        fun countReplies_NoReplies_ReturnsZero() {
+            // Given: 부모 댓글만 생성
+            val parentComment = commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Parent comment",
+                    parentCommentId = null
+                )
+            )
+
+            // When: 대댓글 개수 조회
+            val count = commentRepository.countRepliesByParentCommentId(parentComment!!.id!!)
+
+            // Then: 0 반환
+            assertEquals(0, count)
+        }
+
+        @Test
+        @DisplayName("대댓글이 있으면, 정확한 개수를 반환한다")
+        fun countReplies_WithReplies_ReturnsCorrectCount() {
+            // Given: 부모 댓글 생성
+            val parentComment = commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Parent comment",
+                    parentCommentId = null
+                )
+            )
+
+            // 3개의 대댓글 생성
+            repeat(3) { index ->
+                commentRepository.save(
+                    Comment(
+                        contentId = testContentId,
+                        userId = testUser.id!!,
+                        content = "Reply $index",
+                        parentCommentId = parentComment!!.id
+                    )
+                )
+            }
+
+            // When: 대댓글 개수 조회
+            val count = commentRepository.countRepliesByParentCommentId(parentComment!!.id!!)
+
+            // Then: 3 반환
+            assertEquals(3, count)
+        }
+
+        @Test
+        @DisplayName("삭제된 대댓글은 카운트에서 제외된다")
+        fun countReplies_ExcludesDeletedReplies() {
+            // Given: 부모 댓글 생성
+            val parentComment = commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Parent comment",
+                    parentCommentId = null
+                )
+            )
+
+            // 2개의 대댓글 생성
+            val reply1 = commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Reply 1",
+                    parentCommentId = parentComment!!.id
+                )
+            )
+
+            commentRepository.save(
+                Comment(
+                    contentId = testContentId,
+                    userId = testUser.id!!,
+                    content = "Reply 2",
+                    parentCommentId = parentComment.id
+                )
+            )
+
+            // 첫 번째 대댓글 삭제
+            commentRepository.delete(reply1!!.id!!, testUser.id!!)
+
+            // When: 대댓글 개수 조회
+            val count = commentRepository.countRepliesByParentCommentId(parentComment.id!!)
+
+            // Then: 1 반환 (삭제된 것 제외)
+            assertEquals(1, count)
+        }
+    }
+
     /**
      * 콘텐츠 삽입 헬퍼 메서드
      */

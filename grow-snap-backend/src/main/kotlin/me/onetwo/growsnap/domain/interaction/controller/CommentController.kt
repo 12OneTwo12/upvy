@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.interaction.controller
 
 import jakarta.validation.Valid
+import me.onetwo.growsnap.domain.interaction.dto.CommentListResponse
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.dto.CommentResponse
 import me.onetwo.growsnap.domain.interaction.service.CommentService
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -41,9 +43,21 @@ class CommentController(
     }
 
     @GetMapping("/contents/{contentId}/comments")
-    fun getComments(@PathVariable contentId: UUID): Flux<CommentResponse> {
+    fun getComments(
+        @PathVariable contentId: UUID,
+        @RequestParam(required = false) cursor: String?,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): Mono<CommentListResponse> {
+        return commentService.getComments(contentId, cursor, limit)
+    }
 
-        return commentService.getComments(contentId)
+    @GetMapping("/comments/{commentId}/replies")
+    fun getReplies(
+        @PathVariable commentId: UUID,
+        @RequestParam(required = false) cursor: String?,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): Mono<CommentListResponse> {
+        return commentService.getReplies(commentId, cursor, limit)
     }
 
     @DeleteMapping("/comments/{commentId}")

@@ -44,6 +44,34 @@ interface CommentRepository {
     fun findByParentCommentId(parentCommentId: UUID): List<Comment>
 
     /**
+     * 콘텐츠의 최상위 댓글 조회 (Cursor 기반 페이징)
+     *
+     * @param contentId 콘텐츠 ID
+     * @param cursor 커서 (댓글 ID, null이면 처음부터)
+     * @param limit 조회 개수
+     * @return 댓글 목록
+     */
+    fun findTopLevelCommentsByContentId(contentId: UUID, cursor: UUID?, limit: Int): List<Comment>
+
+    /**
+     * 대댓글 조회 (Cursor 기반 페이징)
+     *
+     * @param parentCommentId 부모 댓글 ID
+     * @param cursor 커서 (댓글 ID, null이면 처음부터)
+     * @param limit 조회 개수
+     * @return 대댓글 목록
+     */
+    fun findRepliesByParentCommentId(parentCommentId: UUID, cursor: UUID?, limit: Int): List<Comment>
+
+    /**
+     * 댓글의 대댓글 개수 조회
+     *
+     * @param parentCommentId 부모 댓글 ID
+     * @return 대댓글 개수
+     */
+    fun countRepliesByParentCommentId(parentCommentId: UUID): Int
+
+    /**
      * 댓글 삭제 (Soft Delete)
      *
      * @param commentId 댓글 ID

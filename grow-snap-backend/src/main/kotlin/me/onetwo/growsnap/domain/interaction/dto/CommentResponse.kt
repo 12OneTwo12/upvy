@@ -9,9 +9,9 @@ package me.onetwo.growsnap.domain.interaction.dto
  * @property userNickname 작성자 닉네임
  * @property userProfileImageUrl 작성자 프로필 이미지 URL
  * @property content 댓글 내용
- * @property parentCommentId 부모 댓글 ID
+ * @property parentCommentId 부모 댓글 ID (null이면 최상위 댓글)
  * @property createdAt 작성 시각
- * @property replies 대댓글 목록
+ * @property replyCount 대댓글 개수 (0이면 대댓글 없음)
  */
 data class CommentResponse(
     val id: String,
@@ -22,5 +22,5 @@ data class CommentResponse(
     val content: String,
     val parentCommentId: String?,
     val createdAt: String,
-    val replies: List<CommentResponse> = emptyList()
+    val replyCount: Int = 0
 )
