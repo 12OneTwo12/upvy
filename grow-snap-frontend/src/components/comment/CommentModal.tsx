@@ -9,7 +9,7 @@
  * - 답글 기능
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Modal,
@@ -19,13 +19,15 @@ import {
   StyleSheet,
   ActivityIndicator,
   Dimensions,
+  Animated,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { theme } from '@/theme';
 import { getComments, createComment as createCommentApi, deleteComment as deleteCommentApi } from '@/api/comment.api';
-import { createCommentLike, deleteCommentLike } from '@/api/commentLike.api';
+import { createCommentLike, deleteCommentLike, getCommentLikeCount, getCommentLikeStatus } from '@/api/commentLike.api';
 import { CommentItem } from './CommentItem';
 import { CommentInput } from './CommentInput';
 import type { CommentResponse } from '@/types/interaction.types';
@@ -47,6 +49,13 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   const queryClient = useQueryClient();
   const [replyTo, setReplyTo] = useState<{ commentId: string; nickname: string } | null>(null);
 
+  // 댓글별 좋아요 개수/상태 저장
+  const [commentLikes, setCommentLikes] = useState<Record<string, { count: number; isLiked: boolean }>>({});
+
+  // 애니메이션
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
   // 댓글 목록 조회
   const {
     data: comments = [],
@@ -57,6 +66,80 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     queryFn: () => getComments(contentId),
     enabled: visible, // 모달이 열릴 때만 데이터 fetch
   });
+
+  // 모달 열기/닫기 애니메이션
+  useEffect(() => {
+    if (visible) {
+      // 모달 열기
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 25,
+          stiffness: 120,
+        }),
+      ]).start();
+    } else {
+      // 모달 닫기
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible, backdropOpacity, slideAnim]);
+
+  // 댓글이 로드되면 각 댓글의 좋아요 개수/상태 조회
+  useEffect(() => {
+    if (comments.length > 0 && visible) {
+      const loadCommentLikes = async () => {
+        const likesData: Record<string, { count: number; isLiked: boolean }> = {};
+
+        // 모든 댓글 (답글 포함)의 좋아요 정보 조회
+        const allComments: CommentResponse[] = [];
+        comments.forEach((comment) => {
+          allComments.push(comment);
+          if (comment.replies) {
+            allComments.push(...comment.replies);
+          }
+        });
+
+        await Promise.all(
+          allComments.map(async (comment) => {
+            try {
+              const [countRes, statusRes] = await Promise.all([
+                getCommentLikeCount(comment.id),
+                getCommentLikeStatus(comment.id),
+              ]);
+              likesData[comment.id] = {
+                count: countRes.likeCount,
+                isLiked: statusRes.isLiked,
+              };
+            } catch (error) {
+              // 에러 발생 시 기본값
+              likesData[comment.id] = { count: 0, isLiked: false };
+            }
+          })
+        );
+
+        setCommentLikes(likesData);
+      };
+
+      loadCommentLikes();
+    }
+  }, [comments, visible]);
 
   // 댓글 작성 mutation
   const createCommentMutation = useMutation({
@@ -88,9 +171,35 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         return await createCommentLike(commentId);
       }
     },
-    // TODO: Optimistic update 구현 (현재는 단순 refetch)
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
+    onMutate: async ({ commentId, isLiked }) => {
+      // Optimistic update: 즉시 UI 업데이트
+      setCommentLikes((prev) => ({
+        ...prev,
+        [commentId]: {
+          count: isLiked ? (prev[commentId]?.count || 1) - 1 : (prev[commentId]?.count || 0) + 1,
+          isLiked: !isLiked,
+        },
+      }));
+    },
+    onSuccess: (response, { commentId }) => {
+      // 백엔드 응답으로 정확한 값 업데이트
+      setCommentLikes((prev) => ({
+        ...prev,
+        [commentId]: {
+          count: response.likeCount,
+          isLiked: response.isLiked,
+        },
+      }));
+    },
+    onError: (error, { commentId, isLiked }) => {
+      // 에러 발생 시 rollback
+      setCommentLikes((prev) => ({
+        ...prev,
+        [commentId]: {
+          count: isLiked ? (prev[commentId]?.count || 0) + 1 : (prev[commentId]?.count || 1) - 1,
+          isLiked: isLiked,
+        },
+      }));
     },
   });
 
@@ -120,10 +229,27 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     setReplyTo(null);
   }, []);
 
-  // 댓글 삭제 핸들러
+  // 댓글 삭제 핸들러 (확인 Alert 포함)
   const handleDeleteComment = useCallback(
     (commentId: string) => {
-      deleteCommentMutation.mutate(commentId);
+      Alert.alert(
+        '댓글 삭제',
+        '정말로 이 댓글을 삭제하시겠습니까?',
+        [
+          {
+            text: '취소',
+            style: 'cancel',
+          },
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: () => {
+              deleteCommentMutation.mutate(commentId);
+            },
+          },
+        ],
+        { cancelable: true }
+      );
     },
     [deleteCommentMutation]
   );
@@ -146,18 +272,36 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="none"
       transparent={true}
       onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={handleClose}
-        />
+        {/* 애니메이션 배경 (Fade) */}
+        <Animated.View
+          style={[
+            styles.backdrop,
+            {
+              opacity: backdropOpacity,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={handleClose}
+          />
+        </Animated.View>
 
-        <View style={[styles.modalContent, { paddingTop: insets.top || theme.spacing[4] }]}>
+        {/* 애니메이션 모달 콘텐츠 (Slide) */}
+        <Animated.View
+          style={[
+            styles.modalContent,
+            {
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
           {/* 헤더 */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>댓글 {totalCommentCount}개</Text>
@@ -190,9 +334,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                   onLike={handleLikeComment}
                   onReply={handleReply}
                   onDelete={handleDeleteComment}
-                  // TODO: 댓글 좋아요 개수/상태는 별도 API로 조회 필요
-                  likeCount={0}
-                  isLiked={false}
+                  likeCount={commentLikes[item.id]?.count || 0}
+                  isLiked={commentLikes[item.id]?.isLiked || false}
                 />
               )}
               showsVerticalScrollIndicator={true}
@@ -206,7 +349,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
             replyTo={replyTo}
             onCancelReply={handleCancelReply}
           />
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -215,11 +358,11 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   backdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     backgroundColor: theme.colors.background.primary,
