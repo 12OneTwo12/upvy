@@ -138,7 +138,7 @@ Commit 1: feat 사용자 관리 시스템 전체 구현
 ```
 
 예시:
-- `feat Google OAuth 로그인 구현`
+- `[Feat] Google OAuth 로그인 구현`
 - `[Fix] StyleSheet New Architecture 호환성 개선`
 
 ### PR 본문 템플릿
