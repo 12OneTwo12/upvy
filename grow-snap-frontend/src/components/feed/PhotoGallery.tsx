@@ -1,9 +1,10 @@
 /**
  * 사진 갤러리 컴포넌트
  *
- * 인스타그램 스타일의 사진 갤러리
+ * 인스타그램 릴스 스타일의 사진 갤러리
  * - 여러 장의 사진을 좌우 스와이프로 탐색
- * - 하단에 인디케이터 표시 (현재 사진 위치)
+ * - 하단 중앙에 인디케이터 표시 (현재 사진 위치)
+ * - 더블탭으로 좋아요
  */
 
 import React, { useState, useRef, useCallback } from 'react';
@@ -15,6 +16,7 @@ import {
   NativeSynchedScrollEvent,
   NativeScrollEvent,
   StyleSheet,
+  TouchableWithoutFeedback,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -23,15 +25,20 @@ interface PhotoGalleryProps {
   photoUrls: string[];
   width?: number;
   height?: number;
+  onDoubleTap?: () => void;
+  onTap?: () => boolean; // 탭 이벤트, true 반환 시 이벤트 처리됨
 }
 
 export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   photoUrls,
   width = SCREEN_WIDTH,
   height = SCREEN_HEIGHT,
+  onDoubleTap,
+  onTap,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const lastTap = useRef<number>(0);
 
   // 스크롤 이벤트 처리
   const handleScroll = useCallback(
@@ -43,27 +50,53 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
     [width]
   );
 
+  // 더블탭 핸들러
+  const handlePress = useCallback(() => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+
+    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+      // 더블탭
+      onDoubleTap?.();
+      lastTap.current = 0;
+    } else {
+      // 싱글탭
+      lastTap.current = now;
+      setTimeout(() => {
+        if (lastTap.current === now) {
+          onTap?.();
+        }
+      }, DOUBLE_TAP_DELAY);
+    }
+  }, [onDoubleTap, onTap]);
+
   return (
     <View style={[styles.container, { width, height }]}>
       {/* 사진 스크롤뷰 */}
-      <ScrollView
-        ref={scrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        style={styles.scrollView}
-      >
-        {photoUrls.map((photoUrl, index) => (
-          <Image
-            key={`${photoUrl}-${index}`}
-            source={{ uri: photoUrl }}
-            style={[styles.photo, { width, height }]}
-            resizeMode="cover"
-          />
-        ))}
-      </ScrollView>
+      <TouchableWithoutFeedback onPress={handlePress}>
+        <View style={{ width, height }}>
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
+          >
+            {photoUrls.map((photoUrl, index) => (
+              <View key={`${photoUrl}-${index}`} style={[styles.photoContainer, { width, height }]}>
+                <Image
+                  source={{ uri: photoUrl }}
+                  style={styles.photo}
+                  resizeMode="contain"
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
 
       {/* 인디케이터 (사진이 2장 이상일 때만 표시) */}
       {photoUrls.length > 1 && (
@@ -91,27 +124,37 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  photo: {
+  scrollViewContent: {
+    alignItems: 'center',
+  },
+  photoContainer: {
     backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
   },
   indicatorContainer: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    bottom: 80,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 16,
   },
   indicator: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   indicatorActive: {
     backgroundColor: '#FFFFFF',
+    width: 7,
+    height: 7,
   },
 });

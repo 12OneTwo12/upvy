@@ -153,6 +153,8 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           photoUrls={item.photoUrls}
           width={SCREEN_WIDTH}
           height={SCREEN_HEIGHT}
+          onDoubleTap={onLike}
+          onTap={handleContentTap}
         />
       ) : null}
 
