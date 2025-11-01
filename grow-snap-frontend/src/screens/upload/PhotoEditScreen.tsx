@@ -105,7 +105,7 @@ const ASPECT_RATIOS: AspectRatioOption[] = [
   { label: '원본', value: 'original', icon: 'expand-outline' },
   { label: '1:1', value: '1:1', icon: 'square-outline' },
   { label: '4:5', value: '4:5', icon: 'crop' },
-  { label: '16:9', value: '16:9', icon: 'rectangle-outline' },
+  { label: '16:9', value: '16:9', icon: 'tablet-landscape-outline' },
 ];
 
 export default function PhotoEditScreen({ navigation, route }: Props) {
@@ -158,9 +158,14 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
         // 1. MediaLibrary로 실제 파일 URI 얻기 (ph:// -> file://)
         const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
         let fileUri = assetInfo.localUri || assetInfo.uri;
+        const originalFileName = asset.filename;
+        const extension = originalFileName.split('.').pop()?.toLowerCase();
 
-        // 2. aspectRatio에 따라 이미지 크롭 (original이 아닌 경우)
+        let actualMimeType: string;
+
+        // 2. aspectRatio에 따라 이미지 처리
         if (aspectRatio !== 'original') {
+          // Crop이 필요한 경우 → 항상 JPEG로 변환
           // 2-1. 먼저 1080px로 리사이즈
           const resizedImage = await ImageManipulator.manipulateAsync(
             fileUri,
@@ -183,17 +188,39 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
           );
 
           fileUri = croppedImage.uri;
+          actualMimeType = 'image/jpeg';
+        } else {
+          // Original 비율 → 원본 포맷 유지 (HEIC/HEIF만 JPEG로 변환)
+          if (extension === 'heic' || extension === 'heif') {
+            const convertedImage = await ImageManipulator.manipulateAsync(
+              fileUri,
+              [],
+              { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            fileUri = convertedImage.uri;
+            actualMimeType = 'image/jpeg';
+          } else if (extension === 'png') {
+            actualMimeType = 'image/png';
+          } else {
+            actualMimeType = 'image/jpeg';
+          }
         }
 
-        // 3. blob을 먼저 가져와서 실제 파일 크기 확인
+        // 3. blob 가져오기
         const response = await fetch(fileUri);
-        const blob = await response.blob();
+        let blob = await response.blob();
 
-        // 3. Presigned URL 요청 - 실제 파일 크기 사용
+        // blob.type이 정확하지 않을 수 있으므로 명시적으로 설정
+        if (blob.type !== actualMimeType) {
+          blob = new Blob([blob], { type: actualMimeType });
+        }
+
+        // 4. Presigned URL 요청 - 실제 MIME 타입을 명시적으로 전달
         const uploadUrlResponse = await generateUploadUrl({
           contentType: 'PHOTO',
-          fileName: asset.filename,
+          fileName: originalFileName,
           fileSize: blob.size,
+          mimeType: actualMimeType,
         });
 
         // 첫 번째 사진의 contentId를 저장 (PHOTO 타입은 여러 사진이지만 하나의 contentId 사용)

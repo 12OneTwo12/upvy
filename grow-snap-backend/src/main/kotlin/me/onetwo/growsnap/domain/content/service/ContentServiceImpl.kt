@@ -62,13 +62,14 @@ class ContentServiceImpl(
         userId: UUID,
         request: ContentUploadUrlRequest
     ): Mono<ContentUploadUrlResponse> {
-        logger.info("Generating upload URL for user: $userId, contentType: ${request.contentType}")
+        logger.info("Generating upload URL for user: $userId, contentType: ${request.contentType}, mimeType: ${request.mimeType}")
 
         return contentUploadService.generateUploadUrl(
             userId = userId,
             contentType = request.contentType,
             fileName = request.fileName,
-            fileSize = request.fileSize
+            fileSize = request.fileSize,
+            mimeType = request.mimeType
         ).map { presignedUrlInfo ->
             ContentUploadUrlResponse(
                 contentId = presignedUrlInfo.contentId.toString(),

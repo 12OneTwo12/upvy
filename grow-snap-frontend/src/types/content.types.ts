@@ -122,6 +122,7 @@ export interface ContentUploadUrlRequest {
   contentType: ContentType;
   fileName: string;
   fileSize: number;
+  mimeType?: string;
 }
 
 /**

@@ -93,7 +93,8 @@ class ContentControllerTest {
                         requestFields(
                             fieldWithPath("contentType").description("콘텐츠 타입 (VIDEO, PHOTO)"),
                             fieldWithPath("fileName").description("파일 이름"),
-                            fieldWithPath("fileSize").description("파일 크기 (bytes)")
+                            fieldWithPath("fileSize").description("파일 크기 (bytes)"),
+                            fieldWithPath("mimeType").optional().description("MIME 타입 (제공되지 않으면 fileName에서 추론)")
                         ),
                         responseFields(
                             fieldWithPath("contentId").description("생성된 콘텐츠 ID (upload token)"),

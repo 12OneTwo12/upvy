@@ -1,7 +1,7 @@
 package me.onetwo.growsnap.domain.feed.repository
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.feed.dto.CreatorInfoResponse
@@ -288,12 +288,15 @@ class FeedRepositoryImpl(
     ): FeedItemResponse {
         val contentId = UUID.fromString(record.get(CONTENTS.ID))
 
-        // 태그 파싱
-        val tagsJson = record.get(CONTENT_METADATA.TAGS)
-        val tags = if (tagsJson != null) {
-            // JOOQ의 JSON.data()는 이미 파싱된 데이터를 반환
-            @Suppress("UNCHECKED_CAST")
-            objectMapper.readValue(tagsJson.data(), List::class.java) as List<String>
+        // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
+        val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
+        val tags = if (tagsString != null && tagsString.isNotBlank()) {
+            try {
+                objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
+            } catch (e: Exception) {
+                // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
+                emptyList()
+            }
         } else {
             emptyList()
         }

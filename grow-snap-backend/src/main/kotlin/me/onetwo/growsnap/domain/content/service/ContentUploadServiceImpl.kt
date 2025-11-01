@@ -56,6 +56,7 @@ class ContentUploadServiceImpl(
      * @param contentType 콘텐츠 타입 (VIDEO, PHOTO)
      * @param fileName 파일 이름
      * @param fileSize 파일 크기 (바이트)
+     * @param mimeType MIME 타입 (제공되지 않으면 fileName에서 추론)
      * @return Presigned URL 정보를 담은 Mono
      * @throws IllegalArgumentException 파일 유효성 검증 실패 시
      */
@@ -63,21 +64,24 @@ class ContentUploadServiceImpl(
         userId: UUID,
         contentType: ContentType,
         fileName: String,
-        fileSize: Long
+        fileSize: Long,
+        mimeType: String?
     ): Mono<PresignedUrlInfo> {
         return Mono.fromCallable {
-            logger.info("Generating presigned URL for user: $userId, contentType: $contentType, fileName: $fileName")
+            logger.info("Generating presigned URL for user: $userId, contentType: $contentType, fileName: $fileName, mimeType: $mimeType")
 
-            // 1. 파일 유효성 검증
-            validateFile(contentType, fileName, fileSize)
+            // 1. MIME 타입 결정 (명시적으로 제공된 값 우선, 없으면 fileName에서 추론)
+            val actualMimeType = mimeType ?: getMimeType(fileName, contentType)
 
-            // 2. Content ID 및 S3 object key 생성
+            // 2. 파일 유효성 검증
+            validateFile(contentType, actualMimeType, fileSize)
+
+            // 3. Content ID 및 S3 object key 생성
             val contentId = UUID.randomUUID()
             val key = generateS3Key(userId, contentId, contentType, fileName)
 
-            // 3. Presigned URL 생성
-            val mimeType = getMimeType(fileName, contentType)
-            val presignedUrl = createPresignedUrl(key, mimeType, fileSize)
+            // 4. Presigned URL 생성
+            val presignedUrl = createPresignedUrl(key, actualMimeType, fileSize)
 
             logger.info("Presigned URL generated successfully: contentId=$contentId, key=$key")
 
@@ -110,11 +114,11 @@ class ContentUploadServiceImpl(
      * 파일 유효성을 검증합니다.
      *
      * @param contentType 콘텐츠 타입
-     * @param fileName 파일 이름
+     * @param mimeType MIME 타입
      * @param fileSize 파일 크기 (바이트)
      * @throws IllegalArgumentException 유효성 검증 실패 시
      */
-    private fun validateFile(contentType: ContentType, fileName: String, fileSize: Long) {
+    private fun validateFile(contentType: ContentType, mimeType: String, fileSize: Long) {
         // 파일 크기 검증
         val maxSize = when (contentType) {
             ContentType.VIDEO -> MAX_VIDEO_SIZE
@@ -127,8 +131,7 @@ class ContentUploadServiceImpl(
             )
         }
 
-        // 파일 확장자 검증
-        val mimeType = getMimeType(fileName, contentType)
+        // MIME 타입 검증
         val allowedTypes = when (contentType) {
             ContentType.VIDEO -> ALLOWED_VIDEO_TYPES
             ContentType.PHOTO -> ALLOWED_PHOTO_TYPES

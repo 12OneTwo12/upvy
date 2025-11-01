@@ -26,6 +26,7 @@ interface ContentUploadService {
      * @param contentType 콘텐츠 타입 (VIDEO, PHOTO)
      * @param fileName 파일 이름
      * @param fileSize 파일 크기 (바이트)
+     * @param mimeType MIME 타입 (제공되지 않으면 fileName에서 추론)
      * @return Presigned URL 정보를 담은 Mono
      * @throws IllegalArgumentException 파일 유효성 검증 실패 시
      */
@@ -33,7 +34,8 @@ interface ContentUploadService {
         userId: UUID,
         contentType: ContentType,
         fileName: String,
-        fileSize: Long
+        fileSize: Long,
+        mimeType: String? = null
     ): Mono<PresignedUrlInfo>
 }
 
