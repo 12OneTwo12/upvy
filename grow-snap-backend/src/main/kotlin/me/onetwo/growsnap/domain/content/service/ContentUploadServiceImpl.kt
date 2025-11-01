@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
@@ -205,6 +206,7 @@ class ContentUploadServiceImpl(
             .key(key)
             .contentType(contentType)
             .contentLength(contentLength)
+            .acl(ObjectCannedACL.PUBLIC_READ)  // 퍼블릭 읽기 권한
             .build()
 
         val presignRequest = PutObjectPresignRequest.builder()

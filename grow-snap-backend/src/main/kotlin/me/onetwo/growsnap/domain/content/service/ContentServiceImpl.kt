@@ -5,6 +5,7 @@ import me.onetwo.growsnap.domain.content.dto.ContentResponse
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlResponse
+import me.onetwo.growsnap.domain.content.event.ContentCreatedEvent
 import me.onetwo.growsnap.domain.content.exception.FileNotUploadedException
 import me.onetwo.growsnap.domain.content.exception.UploadSessionNotFoundException
 import me.onetwo.growsnap.domain.content.exception.UploadSessionUnauthorizedException
@@ -16,6 +17,7 @@ import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
@@ -38,6 +40,7 @@ class ContentServiceImpl(
     private val contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository,
     private val uploadSessionRepository: me.onetwo.growsnap.domain.content.repository.UploadSessionRepository,
     private val s3Client: software.amazon.awssdk.services.s3.S3Client,
+    private val eventPublisher: ApplicationEventPublisher,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -177,6 +180,10 @@ class ContentServiceImpl(
             // 7. Redis에서 업로드 세션 삭제 (1회성 토큰)
             uploadSessionRepository.deleteById(request.contentId)
             logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
+
+            // 8. ContentCreatedEvent 발행 (ContentInteraction 초기화용)
+            eventPublisher.publishEvent(ContentCreatedEvent(contentId, userId))
+            logger.info("ContentCreatedEvent published: contentId=$contentId")
 
             Pair(savedContent, savedMetadata)
         }.map { (content, metadata) ->

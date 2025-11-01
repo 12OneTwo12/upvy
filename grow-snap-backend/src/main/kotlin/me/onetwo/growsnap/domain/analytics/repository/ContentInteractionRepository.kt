@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.analytics.repository
 
+import me.onetwo.growsnap.domain.content.model.ContentInteraction
 import reactor.core.publisher.Mono
 import java.util.UUID
 
@@ -10,6 +11,16 @@ import java.util.UUID
  * 인터랙션 카운터 (view, like, save, share, comment)를 관리합니다.
  */
 interface ContentInteractionRepository {
+
+    /**
+     * 콘텐츠 인터랙션 생성
+     *
+     * 새로운 콘텐츠에 대한 인터랙션 레코드를 초기화합니다.
+     *
+     * @param contentInteraction 생성할 콘텐츠 인터랙션
+     * @return 생성 완료 신호
+     */
+    fun create(contentInteraction: ContentInteraction): Mono<Void>
 
     /**
      * 조회수 증가
