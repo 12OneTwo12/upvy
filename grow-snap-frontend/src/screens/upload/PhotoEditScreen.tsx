@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { theme } from '@/theme';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -35,6 +36,64 @@ const PREVIEW_HEIGHT = SCREEN_HEIGHT * 0.6;
 const THUMBNAIL_SIZE = 60;
 
 type AspectRatio = '1:1' | '4:5' | '16:9' | 'original';
+
+/**
+ * aspectRatio에 맞는 크롭 영역 계산
+ *
+ * @param width 원본 이미지 너비
+ * @param height 원본 이미지 높이
+ * @param ratio 선택된 비율
+ * @returns crop 영역 { originX, originY, width, height }
+ */
+function calculateCropArea(
+  width: number,
+  height: number,
+  ratio: AspectRatio
+): { originX: number; originY: number; width: number; height: number } {
+  let targetRatio: number;
+
+  switch (ratio) {
+    case '1:1':
+      targetRatio = 1;
+      break;
+    case '4:5':
+      targetRatio = 4 / 5;
+      break;
+    case '16:9':
+      targetRatio = 16 / 9;
+      break;
+    default:
+      return { originX: 0, originY: 0, width, height };
+  }
+
+  const currentRatio = width / height;
+
+  let cropWidth: number;
+  let cropHeight: number;
+  let originX: number;
+  let originY: number;
+
+  if (currentRatio > targetRatio) {
+    // 이미지가 더 넓음 → 좌우를 자름
+    cropHeight = height;
+    cropWidth = height * targetRatio;
+    originX = (width - cropWidth) / 2;
+    originY = 0;
+  } else {
+    // 이미지가 더 높음 → 상하를 자름
+    cropWidth = width;
+    cropHeight = width / targetRatio;
+    originX = 0;
+    originY = (height - cropHeight) / 2;
+  }
+
+  return {
+    originX: Math.round(originX),
+    originY: Math.round(originY),
+    width: Math.round(cropWidth),
+    height: Math.round(cropHeight),
+  };
+}
 
 interface AspectRatioOption {
   label: string;
@@ -98,9 +157,35 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
 
         // 1. MediaLibrary로 실제 파일 URI 얻기 (ph:// -> file://)
         const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-        const fileUri = assetInfo.localUri || assetInfo.uri;
+        let fileUri = assetInfo.localUri || assetInfo.uri;
 
-        // 2. blob을 먼저 가져와서 실제 파일 크기 확인
+        // 2. aspectRatio에 따라 이미지 크롭 (original이 아닌 경우)
+        if (aspectRatio !== 'original') {
+          // 2-1. 먼저 1080px로 리사이즈
+          const resizedImage = await ImageManipulator.manipulateAsync(
+            fileUri,
+            [{ resize: { width: 1080 } }],
+            { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+          );
+
+          // 2-2. 리사이즈된 이미지 크기로 크롭 영역 계산
+          const cropArea = calculateCropArea(
+            resizedImage.width,
+            resizedImage.height,
+            aspectRatio
+          );
+
+          // 2-3. 크롭 적용
+          const croppedImage = await ImageManipulator.manipulateAsync(
+            resizedImage.uri,
+            [{ crop: cropArea }],
+            { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+          );
+
+          fileUri = croppedImage.uri;
+        }
+
+        // 3. blob을 먼저 가져와서 실제 파일 크기 확인
         const response = await fetch(fileUri);
         const blob = await response.blob();
 
