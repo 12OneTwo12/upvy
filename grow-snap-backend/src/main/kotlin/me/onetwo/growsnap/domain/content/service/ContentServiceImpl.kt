@@ -181,12 +181,8 @@ class ContentServiceImpl(
             uploadSessionRepository.deleteById(request.contentId)
             logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
 
-            // 8. ContentCreatedEvent 발행 (ContentInteraction 초기화용)
-            eventPublisher.publishEvent(ContentCreatedEvent(contentId, userId))
-            logger.info("ContentCreatedEvent published: contentId=$contentId")
-
-            Pair(savedContent, savedMetadata)
-        }.map { (content, metadata) ->
+            Triple(savedContent, savedMetadata, contentId)
+        }.map { (content, metadata, contentId) ->
             // PHOTO 타입인 경우 사진 목록 (이미 저장된 request.photoUrls 사용)
             val photoUrls = if (content.contentType == ContentType.PHOTO) {
                 request.photoUrls
@@ -194,7 +190,7 @@ class ContentServiceImpl(
                 null
             }
 
-            ContentResponse(
+            val response = ContentResponse(
                 id = content.id.toString(),
                 creatorId = content.creatorId.toString(),
                 contentType = content.contentType,
@@ -213,8 +209,16 @@ class ContentServiceImpl(
                 createdAt = content.createdAt,
                 updatedAt = content.updatedAt
             )
-        }.doOnSuccess {
-            logger.info("Content created successfully: contentId=${it.id}")
+
+            Pair(response, contentId)
+        }.doOnSuccess { (response, contentId) ->
+            logger.info("Content created successfully: contentId=${response.id}")
+
+            // ContentCreatedEvent 발행 - 전체 작업이 성공한 후에만 발행
+            eventPublisher.publishEvent(ContentCreatedEvent(contentId, userId))
+            logger.info("ContentCreatedEvent published: contentId=$contentId")
+        }.map { (response, _) ->
+            response
         }.doOnError { error ->
             logger.error("Failed to create content: userId=$userId, contentId=${request.contentId}", error)
         }

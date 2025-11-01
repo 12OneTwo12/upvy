@@ -62,7 +62,7 @@ class ArchitectureTest {
 
         .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
         .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service", "Event", "Infrastructure")
-        .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service", "Event")
+        .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
         .whereLayer("DTO").mayOnlyBeAccessedByLayers("Controller", "Service", "Repository", "Event", "DTO")
         .whereLayer("Model").mayOnlyBeAccessedByLayers("Controller", "Service", "Repository", "DTO", "Infrastructure")
 
