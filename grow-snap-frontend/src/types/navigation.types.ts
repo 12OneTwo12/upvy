@@ -28,3 +28,32 @@ export type MainTabParamList = {
   Upload: undefined;
   Profile: undefined;
 };
+
+/**
+ * Upload Stack Navigator Params
+ */
+export type UploadStackParamList = {
+  UploadMain: undefined;
+  VideoEdit: {
+    uri: string;
+    type: 'video';
+    fileName: string;
+    fileSize?: number;
+  };
+  PhotoEdit: {
+    uris: string[];
+    type: 'photo';
+  };
+  ContentMetadata: {
+    contentId: string;
+    contentType: 'VIDEO' | 'PHOTO';
+    mediaInfo: {
+      uri: string | string[];
+      thumbnailUrl: string;
+      duration?: number;
+      width: number;
+      height: number;
+    };
+  };
+  ContentManagement: undefined;
+};

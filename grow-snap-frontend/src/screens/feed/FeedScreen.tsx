@@ -281,6 +281,7 @@ export default function FeedScreen() {
     contentId: 'loading',
     contentType: 'VIDEO',
     url: '',
+    photoUrls: null,
     thumbnailUrl: '',
     duration: 0,
     width: 1080,
