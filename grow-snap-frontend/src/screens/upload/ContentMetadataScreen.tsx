@@ -20,6 +20,8 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/theme';
 import type { UploadStackParamList } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -134,22 +136,24 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.headerButton}>뒤로</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <Ionicons name="arrow-back" size={28} color={theme.colors.text.primary} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>새 게시물</Text>
 
-        <TouchableOpacity onPress={handlePublish} disabled={isPublishing}>
+        <TouchableOpacity
+          onPress={handlePublish}
+          disabled={isPublishing}
+          style={styles.headerButton}
+        >
           {isPublishing ? (
             <ActivityIndicator size="small" color={theme.colors.primary[500]} />
           ) : (
-            <Text style={[styles.headerButton, styles.publishButton]}>
-              게시
-            </Text>
+            <Text style={styles.publishButtonText}>게시</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -350,7 +354,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -369,12 +373,14 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border.light,
   },
   headerButton: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.primary,
+    padding: theme.spacing[1],
+    minWidth: 60,
   },
-  publishButton: {
-    color: theme.colors.primary[500],
+  publishButtonText: {
+    fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.primary[500],
+    textAlign: 'right',
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.lg,
