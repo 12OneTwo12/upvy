@@ -70,7 +70,10 @@ export const uploadFileToS3 = async (
     });
 
     xhr.open('PUT', uploadUrl);
+    // Presigned URL 서명 검증을 위해 백엔드와 동일한 헤더 설정
     xhr.setRequestHeader('Content-Type', file.type);
+    xhr.setRequestHeader('Content-Length', file.size.toString());
+    xhr.setRequestHeader('x-amz-acl', 'public-read');
     xhr.send(file);
   });
 };
