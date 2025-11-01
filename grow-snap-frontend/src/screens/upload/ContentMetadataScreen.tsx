@@ -118,10 +118,9 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           {
             text: '확인',
             onPress: () => {
-              // 프로필 화면으로 이동
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'UploadMain' }],
+              // 메인 탭의 프로필 화면으로 이동
+              navigation.getParent()?.getParent()?.navigate('Main', {
+                screen: 'Profile',
               });
             },
           },
