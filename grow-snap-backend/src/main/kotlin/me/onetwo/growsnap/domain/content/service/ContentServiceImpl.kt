@@ -1,7 +1,9 @@
 package me.onetwo.growsnap.domain.content.service
 
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
+import me.onetwo.growsnap.domain.content.dto.ContentCreationResult
 import me.onetwo.growsnap.domain.content.dto.ContentResponse
+import me.onetwo.growsnap.domain.content.dto.ContentResponseWithMetadata
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlResponse
@@ -181,44 +183,51 @@ class ContentServiceImpl(
             uploadSessionRepository.deleteById(request.contentId)
             logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
 
-            Triple(savedContent, savedMetadata, contentId)
-        }.map { (content, metadata, contentId) ->
+            ContentCreationResult(
+                content = savedContent,
+                metadata = savedMetadata,
+                contentId = contentId
+            )
+        }.map { result ->
             // PHOTO 타입인 경우 사진 목록 (이미 저장된 request.photoUrls 사용)
-            val photoUrls = if (content.contentType == ContentType.PHOTO) {
+            val photoUrls = if (result.content.contentType == ContentType.PHOTO) {
                 request.photoUrls
             } else {
                 null
             }
 
             val response = ContentResponse(
-                id = content.id.toString(),
-                creatorId = content.creatorId.toString(),
-                contentType = content.contentType,
-                url = content.url,
+                id = result.content.id.toString(),
+                creatorId = result.content.creatorId.toString(),
+                contentType = result.content.contentType,
+                url = result.content.url,
                 photoUrls = photoUrls,
-                thumbnailUrl = content.thumbnailUrl,
-                duration = content.duration,
-                width = content.width,
-                height = content.height,
-                status = content.status,
-                title = metadata.title,
-                description = metadata.description,
-                category = metadata.category,
-                tags = metadata.tags,
-                language = metadata.language,
-                createdAt = content.createdAt,
-                updatedAt = content.updatedAt
+                thumbnailUrl = result.content.thumbnailUrl,
+                duration = result.content.duration,
+                width = result.content.width,
+                height = result.content.height,
+                status = result.content.status,
+                title = result.metadata.title,
+                description = result.metadata.description,
+                category = result.metadata.category,
+                tags = result.metadata.tags,
+                language = result.metadata.language,
+                createdAt = result.content.createdAt,
+                updatedAt = result.content.updatedAt
             )
 
-            Pair(response, contentId)
-        }.doOnSuccess { (response, contentId) ->
-            logger.info("Content created successfully: contentId=${response.id}")
+            ContentResponseWithMetadata(
+                response = response,
+                contentId = result.contentId
+            )
+        }.doOnSuccess { result ->
+            logger.info("Content created successfully: contentId=${result.response.id}")
 
             // ContentCreatedEvent 발행 - 전체 작업이 성공한 후에만 발행
-            eventPublisher.publishEvent(ContentCreatedEvent(contentId, userId))
-            logger.info("ContentCreatedEvent published: contentId=$contentId")
-        }.map { (response, _) ->
-            response
+            eventPublisher.publishEvent(ContentCreatedEvent(result.contentId, userId))
+            logger.info("ContentCreatedEvent published: contentId=${result.contentId}")
+        }.map { result ->
+            result.response
         }.doOnError { error ->
             logger.error("Failed to create content: userId=$userId, contentId=${request.contentId}", error)
         }
