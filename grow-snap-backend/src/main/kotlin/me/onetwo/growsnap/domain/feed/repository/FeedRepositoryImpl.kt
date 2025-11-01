@@ -291,10 +291,9 @@ class FeedRepositoryImpl(
         // 태그 파싱
         val tagsJson = record.get(CONTENT_METADATA.TAGS)
         val tags = if (tagsJson != null) {
-            // tagsJson.data()가 문자열을 반환하므로, 먼저 String으로 읽고 다시 JSON으로 파싱
-            val jsonString = objectMapper.readValue(tagsJson.data(), String::class.java)
+            // JOOQ의 JSON.data()는 이미 파싱된 데이터를 반환
             @Suppress("UNCHECKED_CAST")
-            objectMapper.readValue(jsonString, List::class.java) as List<String>
+            objectMapper.readValue(tagsJson.data(), List::class.java) as List<String>
         } else {
             emptyList()
         }
