@@ -657,7 +657,7 @@ class ContentServiceImplTest {
                     createdAt = LocalDateTime.now(),
                     createdBy = userId.toString(),
                     updatedAt = LocalDateTime.now(),
-                    updatedBy = userId.toString().toString()
+                    updatedBy = userId.toString()
                 ),
                 me.onetwo.growsnap.domain.content.model.ContentPhoto(
                     contentId = contentId,
@@ -668,7 +668,7 @@ class ContentServiceImplTest {
                     createdAt = LocalDateTime.now(),
                     createdBy = userId.toString(),
                     updatedAt = LocalDateTime.now(),
-                    updatedBy = userId.toString().toString()
+                    updatedBy = userId.toString()
                 )
             )
 
