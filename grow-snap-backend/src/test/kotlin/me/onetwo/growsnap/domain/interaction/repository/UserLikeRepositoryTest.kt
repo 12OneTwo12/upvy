@@ -79,8 +79,8 @@ class UserLikeRepositoryTest {
             // Then: 생성된 좋아요 검증
             assertEquals(testUserId, userLike.userId)
             assertEquals(testContentId, userLike.contentId)
-            assertEquals(testUserId, userLike.createdBy)
-            assertEquals(testUserId, userLike.updatedBy)
+            assertEquals(testUserId.toString(), userLike.createdBy)
+            assertEquals(testUserId.toString(), userLike.updatedBy)
         }
 
         @Test

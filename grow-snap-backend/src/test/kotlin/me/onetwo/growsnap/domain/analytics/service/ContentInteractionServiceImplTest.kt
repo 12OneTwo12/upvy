@@ -13,7 +13,6 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
 import java.util.UUID
 
 /**
@@ -45,19 +44,16 @@ class ContentInteractionServiceImplTest {
         } returns Mono.empty()
 
         // When: createContentInteraction 호출
-        val result = contentInteractionService.createContentInteraction(contentId, creatorId)
+        contentInteractionService.createContentInteraction(contentId, creatorId)
 
         // Then: repository.create가 호출되었는지 확인
-        StepVerifier.create(result)
-            .verifyComplete()
-
         verify(exactly = 1) { contentInteractionRepository.create(any()) }
 
         // 생성된 ContentInteraction 검증
         val capturedInteraction = contentInteractionSlot.captured
         assertEquals(contentId, capturedInteraction.contentId)
-        assertEquals(creatorId, capturedInteraction.createdBy)
-        assertEquals(creatorId, capturedInteraction.updatedBy)
+        assertEquals(creatorId.toString(), capturedInteraction.createdBy)
+        assertEquals(creatorId.toString(), capturedInteraction.updatedBy)
         assertEquals(0, capturedInteraction.likeCount)
         assertEquals(0, capturedInteraction.commentCount)
         assertEquals(0, capturedInteraction.saveCount)
@@ -79,7 +75,7 @@ class ContentInteractionServiceImplTest {
         } returns Mono.empty()
 
         // When
-        contentInteractionService.createContentInteraction(contentId, creatorId).block()
+        contentInteractionService.createContentInteraction(contentId, creatorId)
 
         // Then: 모든 카운터가 0인지 확인
         val capturedInteraction = contentInteractionSlot.captured

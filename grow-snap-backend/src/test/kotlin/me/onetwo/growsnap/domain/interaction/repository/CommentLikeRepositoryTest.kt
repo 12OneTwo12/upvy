@@ -96,8 +96,8 @@ class CommentLikeRepositoryTest {
             // Then: 생성된 댓글 좋아요 검증
             assertEquals(testUserId, commentLike.userId)
             assertEquals(testCommentId, commentLike.commentId)
-            assertEquals(testUserId, commentLike.createdBy)
-            assertEquals(testUserId, commentLike.updatedBy)
+            assertEquals(testUserId.toString(), commentLike.createdBy)
+            assertEquals(testUserId.toString(), commentLike.updatedBy)
         }
 
         @Test

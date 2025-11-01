@@ -48,9 +48,9 @@ class CommentLikeServiceTest {
                 userId = testUserId,
                 commentId = testCommentId,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString()
             )
 
             every { commentLikeRepository.save(testUserId, testCommentId) } returns commentLike

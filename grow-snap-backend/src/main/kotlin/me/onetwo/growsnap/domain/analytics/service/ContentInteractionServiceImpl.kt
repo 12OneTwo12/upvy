@@ -4,7 +4,6 @@ import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionReposito
 import me.onetwo.growsnap.domain.content.model.ContentInteraction
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import reactor.core.publisher.Mono
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -30,9 +29,8 @@ class ContentInteractionServiceImpl(
      *
      * @param contentId 콘텐츠 ID
      * @param creatorId 생성자 ID
-     * @return 생성 완료 신호
      */
-    override fun createContentInteraction(contentId: UUID, creatorId: UUID): Mono<Void> {
+    override fun createContentInteraction(contentId: UUID, creatorId: UUID) {
         logger.info("Creating ContentInteraction: contentId=$contentId, creatorId=$creatorId")
 
         val contentInteraction = ContentInteraction(
@@ -48,12 +46,13 @@ class ContentInteractionServiceImpl(
             updatedBy = creatorId.toString()
         )
 
-        return contentInteractionRepository.create(contentInteraction)
+        contentInteractionRepository.create(contentInteraction)
             .doOnSuccess {
                 logger.info("ContentInteraction created successfully: contentId=$contentId")
             }
             .doOnError { error ->
                 logger.error("Failed to create ContentInteraction: contentId=$contentId", error)
             }
+            .subscribe()
     }
 }

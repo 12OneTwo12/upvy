@@ -77,9 +77,9 @@ class CommentServiceTest {
                 content = "Test comment",
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString().toString()
             )
 
             val userInfoMap = mapOf(
@@ -154,9 +154,9 @@ class CommentServiceTest {
                 content = "Comment 1",
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString().toString()
             )
 
             val comment2Id = UUID.randomUUID()
@@ -167,9 +167,9 @@ class CommentServiceTest {
                 content = "Comment 2",
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString().toString()
             )
 
             val userInfoMap = mapOf(
@@ -187,9 +187,9 @@ class CommentServiceTest {
                     content = "Comment 3",
                     parentCommentId = null,
                     createdAt = LocalDateTime.now(),
-                    createdBy = testUserId,
+                    createdBy = testUserId.toString(),
                     updatedAt = LocalDateTime.now(),
-                    updatedBy = testUserId
+                    updatedBy = testUserId.toString().toString().toString()
                 )
             )
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
@@ -221,9 +221,9 @@ class CommentServiceTest {
                 content = "Parent comment",
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString().toString()
             )
 
             val userInfoMap = mapOf(
@@ -270,9 +270,9 @@ class CommentServiceTest {
                 content = "Reply 1",
                 parentCommentId = parentCommentId,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString().toString()
             )
 
             val reply2 = Comment(
@@ -282,9 +282,9 @@ class CommentServiceTest {
                 content = "Reply 2",
                 parentCommentId = parentCommentId,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString().toString()
             )
 
             val userInfoMap = mapOf(
@@ -301,9 +301,9 @@ class CommentServiceTest {
                     content = "Reply 3",
                     parentCommentId = parentCommentId,
                     createdAt = LocalDateTime.now(),
-                    createdBy = testUserId,
+                    createdBy = testUserId.toString(),
                     updatedAt = LocalDateTime.now(),
-                    updatedBy = testUserId
+                    updatedBy = testUserId.toString().toString().toString()
                 )
             )
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
@@ -337,9 +337,9 @@ class CommentServiceTest {
                 content = "Last reply",
                 parentCommentId = parentCommentId,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString().toString()
             )
 
             val userInfoMap = mapOf(
@@ -381,9 +381,9 @@ class CommentServiceTest {
                 content = "Test comment",
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString().toString()
             )
 
             every { commentRepository.findById(testCommentId) } returns comment
@@ -430,9 +430,9 @@ class CommentServiceTest {
                 content = "Test comment",
                 parentCommentId = null,
                 createdAt = LocalDateTime.now(),
-                createdBy = otherUserId,
+                createdBy = otherUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = otherUserId
+                updatedBy = otherUserId.toString()
             )
 
             every { commentRepository.findById(testCommentId) } returns comment

@@ -102,9 +102,9 @@ class ContentInteractionRepositoryTest {
                 shareCount = 0,
                 viewCount = 0,
                 createdAt = now,
-                createdBy = testUser.id,
+                createdBy = testUser.id.toString(),
                 updatedAt = now,
-                updatedBy = testUser.id
+                updatedBy = testUser.id.toString()
             )
 
             // When: ContentInteraction 생성

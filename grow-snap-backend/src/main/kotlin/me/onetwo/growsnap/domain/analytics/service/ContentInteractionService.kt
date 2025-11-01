@@ -1,7 +1,5 @@
 package me.onetwo.growsnap.domain.analytics.service
 
-import me.onetwo.growsnap.domain.content.model.ContentInteraction
-import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
@@ -18,7 +16,6 @@ interface ContentInteractionService {
      *
      * @param contentId 콘텐츠 ID
      * @param creatorId 생성자 ID
-     * @return 생성 완료 신호
      */
-    fun createContentInteraction(contentId: UUID, creatorId: UUID): Mono<Void>
+    fun createContentInteraction(contentId: UUID, creatorId: UUID)
 }

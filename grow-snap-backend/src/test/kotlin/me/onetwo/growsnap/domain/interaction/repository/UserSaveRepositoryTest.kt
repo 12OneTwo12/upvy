@@ -79,8 +79,8 @@ class UserSaveRepositoryTest {
             // Then: 생성된 저장 검증
             assertEquals(testUserId, userSave.userId)
             assertEquals(testContentId, userSave.contentId)
-            assertEquals(testUserId, userSave.createdBy)
-            assertEquals(testUserId, userSave.updatedBy)
+            assertEquals(testUserId.toString(), userSave.createdBy)
+            assertEquals(testUserId.toString(), userSave.updatedBy)
         }
 
         @Test

@@ -75,9 +75,9 @@ class ContentRepositoryTest {
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUser.id!!,
+                createdBy = testUser.id.toString()!!,
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUser.id!!
+                updatedBy = testUser.id.toString()!!
             )
 
             // When: 저장
@@ -113,9 +113,9 @@ class ContentRepositoryTest {
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
                 createdAt = now,
-                createdBy = testUser.id!!,
+                createdBy = testUser.id.toString()!!,
                 updatedAt = now,
-                updatedBy = testUser.id!!
+                updatedBy = testUser.id.toString()!!
             )
 
             // When: 저장
@@ -123,9 +123,9 @@ class ContentRepositoryTest {
 
             // Then: Audit Trail 확인
             assertThat(saved!!.createdAt).isNotNull
-            assertThat(saved.createdBy).isEqualTo(testUser.id)
+            assertThat(saved.createdBy).isEqualTo(testUser.id.toString())
             assertThat(saved.updatedAt).isNotNull
-            assertThat(saved.updatedBy).isEqualTo(testUser.id)
+            assertThat(saved.updatedBy).isEqualTo(testUser.id.toString())
         }
     }
 
@@ -197,9 +197,9 @@ class ContentRepositoryTest {
                 tags = listOf("test", "video"),
                 language = "ko",
                 createdAt = LocalDateTime.now(),
-                createdBy = testUser.id!!,
+                createdBy = testUser.id.toString()!!,
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUser.id!!
+                updatedBy = testUser.id.toString()!!
             )
 
             // When: 저장
