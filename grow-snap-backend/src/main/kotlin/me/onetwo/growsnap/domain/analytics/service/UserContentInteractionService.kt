@@ -13,6 +13,8 @@ interface UserContentInteractionService {
     /**
      * 사용자 인터랙션을 저장합니다.
      *
+     * Fire-and-forget 방식으로 비동기 저장합니다.
+     *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
      * @param interactionType 인터랙션 타입

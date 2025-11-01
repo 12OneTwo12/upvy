@@ -1,15 +1,16 @@
 package me.onetwo.growsnap.domain.interaction.service
 
-import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
-import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.interaction.dto.LikeCountResponse
 import me.onetwo.growsnap.domain.interaction.dto.LikeResponse
 import me.onetwo.growsnap.domain.interaction.dto.LikeStatusResponse
+import me.onetwo.growsnap.domain.interaction.event.LikeCreatedEvent
+import me.onetwo.growsnap.domain.interaction.event.LikeDeletedEvent
 import me.onetwo.growsnap.domain.interaction.repository.UserLikeRepository
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import java.util.UUID
@@ -19,33 +20,40 @@ import java.util.UUID
  *
  * 콘텐츠 좋아요 비즈니스 로직을 처리합니다.
  *
- * ### 처리 흐름
+ * ### 처리 흐름 (이벤트 기반)
  * 1. 좋아요 상태 변경 (user_likes 테이블)
- * 2. AnalyticsService를 통한 이벤트 발행
- *    - 카운터 증가 (content_interactions 테이블)
- *    - Spring Event 발행 (UserInteractionEvent)
- *    - user_content_interactions 테이블 저장 (협업 필터링용)
+ * 2. Spring Event 발행 (LikeCreatedEvent / LikeDeletedEvent)
+ * 3. 응답 반환 (사용자는 즉시 성공 확인)
+ * 4. [비동기] InteractionEventListener가 처리:
+ *    - content_interactions의 like_count 증가/감소
+ *    - user_content_interactions 저장 (협업 필터링용)
+ *
+ * ### 장점
+ * - 카운트 증가 실패해도 사용자 경험에 영향 없음
+ * - 빠른 응답 시간
+ * - 높은 가용성
  *
  * @property userLikeRepository 사용자 좋아요 레포지토리
- * @property analyticsService Analytics 서비스 (이벤트 발행)
+ * @property applicationEventPublisher Spring 이벤트 발행자
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
  */
 @Service
 class LikeServiceImpl(
     private val userLikeRepository: UserLikeRepository,
-    private val analyticsService: AnalyticsService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
     private val contentInteractionRepository: ContentInteractionRepository
 ) : LikeService {
 
     /**
      * 좋아요
      *
-     * ### 처리 흐름
+     * ### 처리 흐름 (이벤트 기반)
      * 1. user_likes 테이블에 레코드 생성
-     * 2. AnalyticsService.trackInteractionEvent(LIKE) 호출
+     * 2. LikeCreatedEvent 발행
+     * 3. 응답 반환 (사용자는 즉시 성공 확인)
+     * 4. [비동기] InteractionEventListener가 처리:
      *    - content_interactions의 like_count 증가
-     *    - UserInteractionEvent 발행
-     *    - UserInteractionEventListener가 user_content_interactions 저장 (협업 필터링용)
+     *    - user_content_interactions 저장 (협업 필터링용)
      *
      * ### 비즈니스 규칙
      * - 이미 좋아요가 있으면 중복 생성 안 함 (idempotent)
@@ -54,6 +62,7 @@ class LikeServiceImpl(
      * @param contentId 콘텐츠 ID
      * @return 좋아요 응답
      */
+    @Transactional
     override fun likeContent(userId: UUID, contentId: UUID): Mono<LikeResponse> {
         logger.debug("Liking content: userId={}, contentId={}", userId, contentId)
 
@@ -64,15 +73,12 @@ class LikeServiceImpl(
                     getLikeResponse(contentId, true)
                 } else {
                     Mono.fromCallable { userLikeRepository.save(userId, contentId) }
-                        .then(
-                            analyticsService.trackInteractionEvent(
-                                userId,
-                                InteractionEventRequest(
-                                    contentId = contentId,
-                                    interactionType = InteractionType.LIKE
-                                )
+                        .doOnSuccess {
+                            logger.debug("Publishing LikeCreatedEvent: userId={}, contentId={}", userId, contentId)
+                            applicationEventPublisher.publishEvent(
+                                LikeCreatedEvent(userId, contentId)
                             )
-                        )
+                        }
                         .then(getLikeResponse(contentId, true))
                 }
             }
@@ -85,10 +91,13 @@ class LikeServiceImpl(
     /**
      * 좋아요 취소
      *
-     * ### 처리 흐름
+     * ### 처리 흐름 (이벤트 기반)
      * 1. user_likes 테이블에서 레코드 삭제 (Soft Delete)
-     * 2. content_interactions의 like_count 감소
-     * 3. user_content_interactions는 삭제하지 않음 (협업 필터링 데이터 보존)
+     * 2. LikeDeletedEvent 발행
+     * 3. 응답 반환 (사용자는 즉시 성공 확인)
+     * 4. [비동기] InteractionEventListener가 처리:
+     *    - content_interactions의 like_count 감소
+     *    - user_content_interactions는 삭제하지 않음 (협업 필터링 데이터 보존)
      *
      * ### 비즈니스 규칙
      * - 좋아요가 없으면 아무 작업 안 함 (idempotent)
@@ -98,6 +107,7 @@ class LikeServiceImpl(
      * @param contentId 콘텐츠 ID
      * @return 좋아요 응답
      */
+    @Transactional
     override fun unlikeContent(userId: UUID, contentId: UUID): Mono<LikeResponse> {
         logger.debug("Unliking content: userId={}, contentId={}", userId, contentId)
 
@@ -108,7 +118,12 @@ class LikeServiceImpl(
                     getLikeResponse(contentId, false)
                 } else {
                     Mono.fromCallable { userLikeRepository.delete(userId, contentId) }
-                        .then(contentInteractionRepository.decrementLikeCount(contentId))
+                        .doOnSuccess {
+                            logger.debug("Publishing LikeDeletedEvent: userId={}, contentId={}", userId, contentId)
+                            applicationEventPublisher.publishEvent(
+                                LikeDeletedEvent(userId, contentId)
+                            )
+                        }
                         .then(getLikeResponse(contentId, false))
                 }
             }
@@ -124,6 +139,7 @@ class LikeServiceImpl(
      * @param contentId 콘텐츠 ID
      * @return 좋아요 수 응답
      */
+    @Transactional(readOnly = true)
     override fun getLikeCount(contentId: UUID): Mono<LikeCountResponse> {
         logger.debug("Getting like count: contentId={}", contentId)
 
@@ -152,6 +168,7 @@ class LikeServiceImpl(
      * @param contentId 콘텐츠 ID
      * @return 좋아요 상태 응답
      */
+    @Transactional(readOnly = true)
     override fun getLikeStatus(userId: UUID, contentId: UUID): Mono<LikeStatusResponse> {
         logger.debug("Getting like status: userId={}, contentId={}", userId, contentId)
 

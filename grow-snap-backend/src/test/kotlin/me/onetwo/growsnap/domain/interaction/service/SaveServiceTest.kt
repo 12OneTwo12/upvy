@@ -4,12 +4,12 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.justRun
 import io.mockk.verify
-import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
-import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.content.repository.ContentMetadataRepository
+import me.onetwo.growsnap.domain.interaction.event.SaveCreatedEvent
+import me.onetwo.growsnap.domain.interaction.event.SaveDeletedEvent
 import me.onetwo.growsnap.domain.interaction.model.UserSave
 import me.onetwo.growsnap.domain.interaction.repository.UserSaveRepository
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.LocalDateTime
@@ -35,7 +36,7 @@ class SaveServiceTest {
     private lateinit var userSaveRepository: UserSaveRepository
 
     @MockK
-    private lateinit var analyticsService: AnalyticsService
+    private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
     @MockK
     private lateinit var contentInteractionRepository: ContentInteractionRepository
@@ -54,7 +55,7 @@ class SaveServiceTest {
     inner class SaveContent {
 
         @Test
-        @DisplayName("새로운 저장을 생성하면, Repository에 저장하고 Analytics 이벤트를 발행한다")
+        @DisplayName("새로운 저장을 생성하면, Repository에 저장하고 SaveCreatedEvent를 발행한다")
         fun saveContent_New_Success() {
             // Given
             val userSave = UserSave(
@@ -69,7 +70,7 @@ class SaveServiceTest {
 
             every { userSaveRepository.exists(testUserId, testContentId) } returns false
             every { userSaveRepository.save(testUserId, testContentId) } returns userSave
-            every { analyticsService.trackInteractionEvent(any(), any()) } returns Mono.empty()
+            justRun { applicationEventPublisher.publishEvent(any<SaveCreatedEvent>()) }
             every { contentInteractionRepository.getSaveCount(testContentId) } returns Mono.just(1)
 
             // When
@@ -86,12 +87,8 @@ class SaveServiceTest {
 
             verify(exactly = 1) { userSaveRepository.save(testUserId, testContentId) }
             verify(exactly = 1) {
-                analyticsService.trackInteractionEvent(
-                    testUserId,
-                    InteractionEventRequest(
-                        contentId = testContentId,
-                        interactionType = InteractionType.SAVE
-                    )
+                applicationEventPublisher.publishEvent(
+                    SaveCreatedEvent(testUserId, testContentId)
                 )
             }
         }
@@ -116,7 +113,7 @@ class SaveServiceTest {
                 .verifyComplete()
 
             verify(exactly = 0) { userSaveRepository.save(any(), any()) }
-            verify(exactly = 0) { analyticsService.trackInteractionEvent(any(), any()) }
+            verify(exactly = 0) { applicationEventPublisher.publishEvent(any<SaveCreatedEvent>()) }
         }
     }
 
@@ -125,12 +122,12 @@ class SaveServiceTest {
     inner class UnsaveContent {
 
         @Test
-        @DisplayName("저장을 취소하면, Repository에서 삭제하고 카운트를 감소시킨다")
+        @DisplayName("저장을 취소하면, Repository에서 삭제하고 SaveDeletedEvent를 발행한다")
         fun unsaveContent_Success() {
             // Given
             every { userSaveRepository.exists(testUserId, testContentId) } returns true
             every { userSaveRepository.delete(testUserId, testContentId) } returns Unit
-            every { contentInteractionRepository.decrementSaveCount(testContentId) } returns Mono.empty()
+            justRun { applicationEventPublisher.publishEvent(any<SaveDeletedEvent>()) }
             every { contentInteractionRepository.getSaveCount(testContentId) } returns Mono.just(0)
 
             // When
@@ -146,7 +143,11 @@ class SaveServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { userSaveRepository.delete(testUserId, testContentId) }
-            verify(exactly = 1) { contentInteractionRepository.decrementSaveCount(testContentId) }
+            verify(exactly = 1) {
+                applicationEventPublisher.publishEvent(
+                    SaveDeletedEvent(testUserId, testContentId)
+                )
+            }
         }
 
         @Test
@@ -169,7 +170,7 @@ class SaveServiceTest {
                 .verifyComplete()
 
             verify(exactly = 0) { userSaveRepository.delete(any(), any()) }
-            verify(exactly = 0) { contentInteractionRepository.decrementSaveCount(any()) }
+            verify(exactly = 0) { applicationEventPublisher.publishEvent(any<SaveDeletedEvent>()) }
         }
     }
 

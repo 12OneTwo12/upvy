@@ -8,6 +8,7 @@ import me.onetwo.growsnap.domain.interaction.dto.ShareLinkResponse
 import me.onetwo.growsnap.domain.interaction.dto.ShareResponse
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 import java.util.UUID
 
@@ -45,6 +46,7 @@ class ShareServiceImpl(
      * @param contentId 콘텐츠 ID
      * @return 공유 응답
      */
+    @Transactional
     override fun shareContent(userId: UUID, contentId: UUID): Mono<ShareResponse> {
         logger.debug("Sharing content: userId={}, contentId={}", userId, contentId)
 
@@ -79,6 +81,7 @@ class ShareServiceImpl(
             }
     }
 
+    @Transactional(readOnly = true)
     override fun getShareLink(contentId: UUID): Mono<ShareLinkResponse> {
         logger.debug("Getting share link: contentId={}", contentId)
 

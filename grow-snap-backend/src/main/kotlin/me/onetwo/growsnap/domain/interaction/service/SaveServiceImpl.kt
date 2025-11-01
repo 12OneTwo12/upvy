@@ -1,16 +1,17 @@
 package me.onetwo.growsnap.domain.interaction.service
 
-import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
-import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.content.repository.ContentMetadataRepository
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
 import me.onetwo.growsnap.domain.interaction.dto.SaveStatusResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
+import me.onetwo.growsnap.domain.interaction.event.SaveCreatedEvent
+import me.onetwo.growsnap.domain.interaction.event.SaveDeletedEvent
 import me.onetwo.growsnap.domain.interaction.repository.UserSaveRepository
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
@@ -21,26 +22,33 @@ import java.util.UUID
  *
  * 콘텐츠 저장 비즈니스 로직을 처리합니다.
  *
- * ### 처리 흐름
+ * ### 처리 흐름 (이벤트 기반)
  * 1. 저장 상태 변경 (user_saves 테이블)
- * 2. AnalyticsService를 통한 이벤트 발행
- *    - 카운터 증가 (content_interactions 테이블)
- *    - Spring Event 발행 (UserInteractionEvent)
- *    - user_content_interactions 테이블 저장 (협업 필터링용)
+ * 2. Spring Event 발행 (SaveCreatedEvent / SaveDeletedEvent)
+ * 3. 응답 반환 (사용자는 즉시 성공 확인)
+ * 4. [비동기] InteractionEventListener가 처리:
+ *    - content_interactions의 save_count 증가/감소
+ *    - user_content_interactions 저장 (협업 필터링용)
+ *
+ * ### 장점
+ * - 카운트 증가 실패해도 사용자 경험에 영향 없음
+ * - 빠른 응답 시간
+ * - 높은 가용성
  *
  * @property userSaveRepository 사용자 저장 레포지토리
- * @property analyticsService Analytics 서비스 (이벤트 발행)
+ * @property applicationEventPublisher Spring 이벤트 발행자
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
  * @property contentMetadataRepository 콘텐츠 메타데이터 레포지토리
  */
 @Service
 class SaveServiceImpl(
     private val userSaveRepository: UserSaveRepository,
-    private val analyticsService: AnalyticsService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
     private val contentInteractionRepository: ContentInteractionRepository,
     private val contentMetadataRepository: ContentMetadataRepository
 ) : SaveService {
 
+    @Transactional
     override fun saveContent(userId: UUID, contentId: UUID): Mono<SaveResponse> {
         logger.debug("Saving content: userId={}, contentId={}", userId, contentId)
 
@@ -51,21 +59,19 @@ class SaveServiceImpl(
                     getSaveResponse(contentId, true)
                 } else {
                     Mono.fromCallable { userSaveRepository.save(userId, contentId) }
-                        .then(
-                            analyticsService.trackInteractionEvent(
-                                userId,
-                                InteractionEventRequest(
-                                    contentId = contentId,
-                                    interactionType = InteractionType.SAVE
-                                )
+                        .doOnSuccess {
+                            logger.debug("Publishing SaveCreatedEvent: userId={}, contentId={}", userId, contentId)
+                            applicationEventPublisher.publishEvent(
+                                SaveCreatedEvent(userId, contentId)
                             )
-                        )
+                        }
                         .then(getSaveResponse(contentId, true))
                 }
             }
             .doOnSuccess { logger.debug("Content saved successfully: userId={}, contentId={}", userId, contentId) }
     }
 
+    @Transactional
     override fun unsaveContent(userId: UUID, contentId: UUID): Mono<SaveResponse> {
         logger.debug("Unsaving content: userId={}, contentId={}", userId, contentId)
 
@@ -76,7 +82,12 @@ class SaveServiceImpl(
                     getSaveResponse(contentId, false)
                 } else {
                     Mono.fromCallable { userSaveRepository.delete(userId, contentId) }
-                        .then(contentInteractionRepository.decrementSaveCount(contentId))
+                        .doOnSuccess {
+                            logger.debug("Publishing SaveDeletedEvent: userId={}, contentId={}", userId, contentId)
+                            applicationEventPublisher.publishEvent(
+                                SaveDeletedEvent(userId, contentId)
+                            )
+                        }
                         .then(getSaveResponse(contentId, false))
                 }
             }
@@ -97,6 +108,7 @@ class SaveServiceImpl(
      * @param userId 사용자 ID
      * @return 저장된 콘텐츠 목록
      */
+    @Transactional(readOnly = true)
     override fun getSavedContents(userId: UUID): Flux<SavedContentResponse> {
         logger.debug("Getting saved contents: userId={}", userId)
 
@@ -138,6 +150,7 @@ class SaveServiceImpl(
      * @param contentId 콘텐츠 ID
      * @return 저장 상태 응답
      */
+    @Transactional(readOnly = true)
     override fun getSaveStatus(userId: UUID, contentId: UUID): Mono<SaveStatusResponse> {
         logger.debug("Getting save status: userId={}, contentId={}", userId, contentId)
 

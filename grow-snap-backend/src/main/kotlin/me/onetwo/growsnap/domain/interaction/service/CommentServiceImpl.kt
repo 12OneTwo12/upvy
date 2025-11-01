@@ -1,19 +1,20 @@
 package me.onetwo.growsnap.domain.interaction.service
 
-import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
-import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.interaction.dto.CommentListResponse
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.dto.CommentResponse
+import me.onetwo.growsnap.domain.interaction.event.CommentCreatedEvent
+import me.onetwo.growsnap.domain.interaction.event.CommentDeletedEvent
 import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.growsnap.domain.interaction.repository.CommentRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -23,16 +24,22 @@ import java.util.UUID
  *
  * 댓글 작성, 조회, 삭제 비즈니스 로직을 처리합니다.
  *
- * ### 처리 흐름
+ * ### 처리 흐름 (이벤트 기반)
  * 1. 댓글 작성 (comments 테이블)
- * 2. AnalyticsService를 통한 이벤트 발행
- *    - 카운터 증가 (content_interactions.comment_count)
- *    - Spring Event 발행 (UserInteractionEvent)
- *    - user_content_interactions 테이블 저장 (협업 필터링용)
+ * 2. Spring Event 발행 (CommentCreatedEvent / CommentDeletedEvent)
+ * 3. 응답 반환 (사용자는 즉시 성공 확인)
+ * 4. [비동기] InteractionEventListener가 처리:
+ *    - content_interactions의 comment_count 증가/감소
+ *    - user_content_interactions 저장 (협업 필터링용)
+ *
+ * ### 장점
+ * - 카운트 증가 실패해도 사용자 경험에 영향 없음
+ * - 빠른 응답 시간
+ * - 높은 가용성
  *
  * @property commentRepository 댓글 레포지토리
  * @property commentLikeRepository 댓글 좋아요 레포지토리
- * @property analyticsService Analytics 서비스 (이벤트 발행)
+ * @property applicationEventPublisher Spring 이벤트 발행자
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
  * @property userProfileRepository 사용자 프로필 레포지토리
  */
@@ -40,7 +47,7 @@ import java.util.UUID
 class CommentServiceImpl(
     private val commentRepository: CommentRepository,
     private val commentLikeRepository: CommentLikeRepository,
-    private val analyticsService: AnalyticsService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
     private val contentInteractionRepository: ContentInteractionRepository,
     private val userProfileRepository: UserProfileRepository
 ) : CommentService {
@@ -48,20 +55,21 @@ class CommentServiceImpl(
     /**
      * 댓글 작성
      *
-     * ### 처리 흐름
+     * ### 처리 흐름 (이벤트 기반)
      * 1. 부모 댓글 존재 여부 확인 (대댓글인 경우)
      * 2. comments 테이블에 댓글 저장
-     * 3. AnalyticsService.trackInteractionEvent(COMMENT) 호출
+     * 3. CommentCreatedEvent 발행
+     * 4. 응답 반환 (사용자는 즉시 성공 확인)
+     * 5. [비동기] InteractionEventListener가 처리:
      *    - content_interactions의 comment_count 증가
-     *    - UserInteractionEvent 발행
-     *    - UserInteractionEventListener가 user_content_interactions 저장 (협업 필터링용)
-     * 4. 사용자 정보 조회 후 응답 반환
+     *    - user_content_interactions 저장 (협업 필터링용)
      *
      * @param userId 작성자 ID
      * @param contentId 콘텐츠 ID
      * @param request 댓글 작성 요청
      * @return 작성된 댓글
      */
+    @Transactional
     override fun createComment(userId: UUID, contentId: UUID, request: CommentRequest): Mono<CommentResponse> {
         logger.debug("Creating comment: userId={}, contentId={}", userId, contentId)
 
@@ -88,15 +96,11 @@ class CommentServiceImpl(
                     ) ?: throw IllegalStateException("Failed to create comment")
                 }
             )
-            .flatMap { savedComment: Comment ->
-                analyticsService.trackInteractionEvent(
-                    userId,
-                    InteractionEventRequest(
-                        contentId = contentId,
-                        interactionType = InteractionType.COMMENT
-                    )
+            .doOnSuccess { savedComment ->
+                logger.debug("Publishing CommentCreatedEvent: userId={}, contentId={}", userId, contentId)
+                applicationEventPublisher.publishEvent(
+                    CommentCreatedEvent(userId, contentId)
                 )
-                    .then(Mono.just(savedComment))
             }
             .flatMap { savedComment: Comment ->
                 Mono.fromCallable {
@@ -134,6 +138,7 @@ class CommentServiceImpl(
      * @param limit 조회 개수
      * @return 댓글 목록 응답 (페이징 정보 포함, likeCount와 isLiked 포함)
      */
+    @Transactional(readOnly = true)
     override fun getComments(userId: UUID?, contentId: UUID, cursor: String?, limit: Int): Mono<CommentListResponse> {
         logger.debug("Getting comments with pagination: userId={}, contentId={}, cursor={}, limit={}", userId, contentId, cursor, limit)
 
@@ -198,6 +203,7 @@ class CommentServiceImpl(
      * @param limit 조회 개수
      * @return 대댓글 목록 응답 (페이징 정보 포함)
      */
+    @Transactional(readOnly = true)
     override fun getReplies(userId: UUID?, parentCommentId: UUID, cursor: String?, limit: Int): Mono<CommentListResponse> {
         logger.debug("Getting replies with pagination: userId={}, parentCommentId={}, cursor={}, limit={}", userId, parentCommentId, cursor, limit)
 
@@ -260,6 +266,7 @@ class CommentServiceImpl(
      * @return 댓글 목록 (계층 구조)
      */
     @Deprecated("Use getComments(contentId, cursor, limit) instead")
+    @Transactional(readOnly = true)
     override fun getCommentsLegacy(contentId: UUID): Flux<CommentResponse> {
         logger.debug("Getting comments: contentId={}", contentId)
 
@@ -294,10 +301,13 @@ class CommentServiceImpl(
     /**
      * 댓글 삭제
      *
-     * ### 처리 흐름
+     * ### 처리 흐름 (이벤트 기반)
      * 1. 댓글 존재 여부 및 소유권 확인
      * 2. comments 테이블에서 Soft Delete
-     * 3. content_interactions의 comment_count 감소
+     * 3. CommentDeletedEvent 발행
+     * 4. 응답 반환
+     * 5. [비동기] InteractionEventListener가 처리:
+     *    - content_interactions의 comment_count 감소
      *
      * ### 비즈니스 규칙
      * - 자신의 댓글만 삭제 가능 (소유권 검증)
@@ -307,6 +317,7 @@ class CommentServiceImpl(
      * @param commentId 댓글 ID
      * @return Void
      */
+    @Transactional
     override fun deleteComment(userId: UUID, commentId: UUID): Mono<Void> {
         logger.debug("Deleting comment: userId={}, commentId={}", userId, commentId)
 
@@ -319,7 +330,13 @@ class CommentServiceImpl(
             }
 
             Mono.fromCallable { commentRepository.delete(commentId, userId) }
-                .then(contentInteractionRepository.decrementCommentCount(comment.contentId))
+                .doOnSuccess {
+                    logger.debug("Publishing CommentDeletedEvent: userId={}, contentId={}", userId, comment.contentId)
+                    applicationEventPublisher.publishEvent(
+                        CommentDeletedEvent(userId, comment.contentId)
+                    )
+                }
+                .then()
         }
             .doOnSuccess { logger.debug("Comment deleted successfully: commentId={}", commentId) }
             .doOnError { error ->

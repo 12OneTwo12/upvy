@@ -4,11 +4,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.justRun
 import io.mockk.verify
-import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
-import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
+import me.onetwo.growsnap.domain.interaction.event.LikeCreatedEvent
+import me.onetwo.growsnap.domain.interaction.event.LikeDeletedEvent
 import me.onetwo.growsnap.domain.interaction.model.UserLike
 import me.onetwo.growsnap.domain.interaction.repository.UserLikeRepository
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.LocalDateTime
@@ -34,7 +35,7 @@ class LikeServiceTest {
     private lateinit var userLikeRepository: UserLikeRepository
 
     @MockK
-    private lateinit var analyticsService: AnalyticsService
+    private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
     @MockK
     private lateinit var contentInteractionRepository: ContentInteractionRepository
@@ -50,7 +51,7 @@ class LikeServiceTest {
     inner class LikeContent {
 
         @Test
-        @DisplayName("새로운 좋아요를 생성하면, Repository에 저장하고 Analytics 이벤트를 발행한다")
+        @DisplayName("새로운 좋아요를 생성하면, Repository에 저장하고 LikeCreatedEvent를 발행한다")
         fun likeContent_New_Success() {
             // Given
             val userLike = UserLike(
@@ -65,7 +66,7 @@ class LikeServiceTest {
 
             every { userLikeRepository.exists(testUserId, testContentId) } returns false
             every { userLikeRepository.save(testUserId, testContentId) } returns userLike
-            every { analyticsService.trackInteractionEvent(any(), any()) } returns Mono.empty()
+            justRun { applicationEventPublisher.publishEvent(any<LikeCreatedEvent>()) }
             every { contentInteractionRepository.getLikeCount(testContentId) } returns Mono.just(1)
 
             // When
@@ -82,12 +83,8 @@ class LikeServiceTest {
 
             verify(exactly = 1) { userLikeRepository.save(testUserId, testContentId) }
             verify(exactly = 1) {
-                analyticsService.trackInteractionEvent(
-                    testUserId,
-                    InteractionEventRequest(
-                        contentId = testContentId,
-                        interactionType = InteractionType.LIKE
-                    )
+                applicationEventPublisher.publishEvent(
+                    LikeCreatedEvent(testUserId, testContentId)
                 )
             }
         }
@@ -112,7 +109,7 @@ class LikeServiceTest {
                 .verifyComplete()
 
             verify(exactly = 0) { userLikeRepository.save(any(), any()) }
-            verify(exactly = 0) { analyticsService.trackInteractionEvent(any(), any()) }
+            verify(exactly = 0) { applicationEventPublisher.publishEvent(any<LikeCreatedEvent>()) }
         }
     }
 
@@ -121,12 +118,12 @@ class LikeServiceTest {
     inner class UnlikeContent {
 
         @Test
-        @DisplayName("좋아요를 취소하면, Repository에서 삭제하고 카운트를 감소시킨다")
+        @DisplayName("좋아요를 취소하면, Repository에서 삭제하고 LikeDeletedEvent를 발행한다")
         fun unlikeContent_Success() {
             // Given
             every { userLikeRepository.exists(testUserId, testContentId) } returns true
             every { userLikeRepository.delete(testUserId, testContentId) } returns Unit
-            every { contentInteractionRepository.decrementLikeCount(testContentId) } returns Mono.empty()
+            justRun { applicationEventPublisher.publishEvent(any<LikeDeletedEvent>()) }
             every { contentInteractionRepository.getLikeCount(testContentId) } returns Mono.just(0)
 
             // When
@@ -142,7 +139,11 @@ class LikeServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { userLikeRepository.delete(testUserId, testContentId) }
-            verify(exactly = 1) { contentInteractionRepository.decrementLikeCount(testContentId) }
+            verify(exactly = 1) {
+                applicationEventPublisher.publishEvent(
+                    LikeDeletedEvent(testUserId, testContentId)
+                )
+            }
         }
 
         @Test
@@ -165,7 +166,7 @@ class LikeServiceTest {
                 .verifyComplete()
 
             verify(exactly = 0) { userLikeRepository.delete(any(), any()) }
-            verify(exactly = 0) { contentInteractionRepository.decrementLikeCount(any()) }
+            verify(exactly = 0) { applicationEventPublisher.publishEvent(any<LikeDeletedEvent>()) }
         }
     }
 

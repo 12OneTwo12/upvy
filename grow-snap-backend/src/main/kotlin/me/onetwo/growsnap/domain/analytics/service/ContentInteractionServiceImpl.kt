@@ -4,6 +4,8 @@ import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionReposito
 import me.onetwo.growsnap.domain.content.model.ContentInteraction
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import reactor.core.publisher.Mono
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -54,5 +56,35 @@ class ContentInteractionServiceImpl(
                 logger.error("Failed to create ContentInteraction: contentId=$contentId", error)
             }
             .subscribe()
+    }
+
+    @Transactional
+    override fun incrementLikeCount(contentId: UUID): Mono<Void> {
+        return contentInteractionRepository.incrementLikeCount(contentId)
+    }
+
+    @Transactional
+    override fun decrementLikeCount(contentId: UUID): Mono<Void> {
+        return contentInteractionRepository.decrementLikeCount(contentId)
+    }
+
+    @Transactional
+    override fun incrementSaveCount(contentId: UUID): Mono<Void> {
+        return contentInteractionRepository.incrementSaveCount(contentId)
+    }
+
+    @Transactional
+    override fun decrementSaveCount(contentId: UUID): Mono<Void> {
+        return contentInteractionRepository.decrementSaveCount(contentId)
+    }
+
+    @Transactional
+    override fun incrementCommentCount(contentId: UUID): Mono<Void> {
+        return contentInteractionRepository.incrementCommentCount(contentId)
+    }
+
+    @Transactional
+    override fun decrementCommentCount(contentId: UUID): Mono<Void> {
+        return contentInteractionRepository.decrementCommentCount(contentId)
     }
 }

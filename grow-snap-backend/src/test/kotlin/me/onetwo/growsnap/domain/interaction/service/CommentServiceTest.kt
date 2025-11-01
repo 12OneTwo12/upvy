@@ -4,12 +4,12 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.justRun
 import io.mockk.verify
-import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
-import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
+import me.onetwo.growsnap.domain.interaction.event.CommentCreatedEvent
+import me.onetwo.growsnap.domain.interaction.event.CommentDeletedEvent
 import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.LocalDateTime
@@ -42,7 +43,7 @@ class CommentServiceTest {
     private lateinit var commentLikeRepository: CommentLikeRepository
 
     @MockK
-    private lateinit var analyticsService: AnalyticsService
+    private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
     @MockK
     private lateinit var contentInteractionRepository: ContentInteractionRepository
@@ -62,7 +63,7 @@ class CommentServiceTest {
     inner class CreateComment {
 
         @Test
-        @DisplayName("일반 댓글을 생성하면, Repository에 저장하고 Analytics 이벤트를 발행한다")
+        @DisplayName("일반 댓글을 생성하면, Repository에 저장하고 CommentCreatedEvent를 발행한다")
         fun createComment_Success() {
             // Given
             val request = CommentRequest(
@@ -87,7 +88,7 @@ class CommentServiceTest {
             )
 
             every { commentRepository.save(any()) } returns savedComment
-            every { analyticsService.trackInteractionEvent(any(), any()) } returns Mono.empty()
+            justRun { applicationEventPublisher.publishEvent(any<CommentCreatedEvent>()) }
             every { userProfileRepository.findUserInfosByUserIds(any()) } returns userInfoMap
 
             // When
@@ -105,12 +106,8 @@ class CommentServiceTest {
 
             verify(exactly = 1) { commentRepository.save(any()) }
             verify(exactly = 1) {
-                analyticsService.trackInteractionEvent(
-                    testUserId,
-                    InteractionEventRequest(
-                        contentId = testContentId,
-                        interactionType = InteractionType.COMMENT
-                    )
+                applicationEventPublisher.publishEvent(
+                    CommentCreatedEvent(testUserId, testContentId)
                 )
             }
         }
@@ -371,7 +368,7 @@ class CommentServiceTest {
     inner class DeleteComment {
 
         @Test
-        @DisplayName("댓글을 삭제하면, Repository에서 삭제하고 카운트를 감소시킨다")
+        @DisplayName("댓글을 삭제하면, Repository에서 삭제하고 CommentDeletedEvent를 발행한다")
         fun deleteComment_Success() {
             // Given
             val comment = Comment(
@@ -388,7 +385,7 @@ class CommentServiceTest {
 
             every { commentRepository.findById(testCommentId) } returns comment
             every { commentRepository.delete(testCommentId, testUserId) } returns Unit
-            every { contentInteractionRepository.decrementCommentCount(testContentId) } returns Mono.empty()
+            justRun { applicationEventPublisher.publishEvent(any<CommentDeletedEvent>()) }
 
             // When
             val result = commentService.deleteComment(testUserId, testCommentId)
@@ -398,7 +395,11 @@ class CommentServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { commentRepository.delete(testCommentId, testUserId) }
-            verify(exactly = 1) { contentInteractionRepository.decrementCommentCount(testContentId) }
+            verify(exactly = 1) {
+                applicationEventPublisher.publishEvent(
+                    CommentDeletedEvent(testUserId, testContentId)
+                )
+            }
         }
 
         @Test

@@ -7,6 +7,7 @@ import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import org.jooq.exception.DataAccessException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import java.util.UUID
@@ -43,6 +44,7 @@ class CommentLikeServiceImpl(
      * @param commentId 댓글 ID
      * @return 댓글 좋아요 응답
      */
+    @Transactional
     override fun likeComment(userId: UUID, commentId: UUID): Mono<CommentLikeResponse> {
         logger.debug("Liking comment: userId={}, commentId={}", userId, commentId)
 
@@ -72,6 +74,7 @@ class CommentLikeServiceImpl(
      * @param commentId 댓글 ID
      * @return 댓글 좋아요 응답
      */
+    @Transactional
     override fun unlikeComment(userId: UUID, commentId: UUID): Mono<CommentLikeResponse> {
         logger.debug("Unliking comment: userId={}, commentId={}", userId, commentId)
 
@@ -89,6 +92,7 @@ class CommentLikeServiceImpl(
      * @param commentId 댓글 ID
      * @return 댓글 좋아요 수 응답
      */
+    @Transactional(readOnly = true)
     override fun getLikeCount(commentId: UUID): Mono<CommentLikeCountResponse> {
         logger.debug("Getting like count: commentId={}", commentId)
 
@@ -117,6 +121,7 @@ class CommentLikeServiceImpl(
      * @param commentId 댓글 ID
      * @return 댓글 좋아요 상태 응답
      */
+    @Transactional(readOnly = true)
     override fun getLikeStatus(userId: UUID, commentId: UUID): Mono<CommentLikeStatusResponse> {
         logger.debug("Getting like status: userId={}, commentId={}", userId, commentId)
 
