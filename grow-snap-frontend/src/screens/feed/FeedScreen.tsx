@@ -409,9 +409,15 @@ export default function FeedScreen() {
     setRefreshing(true);
     setPullDistance(0);
     try {
-      // 기존 데이터 완전히 리셋하고 첫 페이지부터 다시 로드
+      // 1. 백엔드 Redis 캐시 삭제 (추천 피드만)
+      if (currentTab === 'recommended') {
+        await refreshFeedApi();
+      }
+
+      // 2. 프론트엔드 React Query 캐시 리셋
       await queryClient.resetQueries({ queryKey: ['feed', currentTab] });
-      // 첫 번째 아이템으로 이동
+
+      // 3. 첫 번째 아이템으로 이동
       setCurrentIndex(0);
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     } finally {
