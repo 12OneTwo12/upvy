@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.analytics.repository
 
+import me.onetwo.growsnap.domain.content.model.ContentInteraction
 import me.onetwo.growsnap.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
@@ -19,6 +20,32 @@ import java.util.UUID
 class ContentInteractionRepositoryImpl(
     private val dslContext: DSLContext
 ) : ContentInteractionRepository {
+
+    /**
+     * 콘텐츠 인터랙션 생성
+     *
+     * 새로운 콘텐츠에 대한 인터랙션 레코드를 초기화합니다.
+     * 모든 카운터는 0으로 시작합니다.
+     *
+     * @param contentInteraction 생성할 콘텐츠 인터랙션
+     * @return 생성 완료 신호
+     */
+    override fun create(contentInteraction: ContentInteraction): Mono<Void> {
+        return Mono.fromCallable {
+            dslContext.insertInto(CONTENT_INTERACTIONS)
+                .set(CONTENT_INTERACTIONS.CONTENT_ID, contentInteraction.contentId.toString())
+                .set(CONTENT_INTERACTIONS.LIKE_COUNT, contentInteraction.likeCount)
+                .set(CONTENT_INTERACTIONS.COMMENT_COUNT, contentInteraction.commentCount)
+                .set(CONTENT_INTERACTIONS.SAVE_COUNT, contentInteraction.saveCount)
+                .set(CONTENT_INTERACTIONS.SHARE_COUNT, contentInteraction.shareCount)
+                .set(CONTENT_INTERACTIONS.VIEW_COUNT, contentInteraction.viewCount)
+                .set(CONTENT_INTERACTIONS.CREATED_AT, contentInteraction.createdAt)
+                .set(CONTENT_INTERACTIONS.CREATED_BY, contentInteraction.createdBy?.toString())
+                .set(CONTENT_INTERACTIONS.UPDATED_AT, contentInteraction.updatedAt)
+                .set(CONTENT_INTERACTIONS.UPDATED_BY, contentInteraction.updatedBy?.toString())
+                .execute()
+        }.then()
+    }
 
     /**
      * 조회수 증가

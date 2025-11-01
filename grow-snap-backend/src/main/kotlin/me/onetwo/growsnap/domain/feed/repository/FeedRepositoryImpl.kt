@@ -1,7 +1,8 @@
 package me.onetwo.growsnap.domain.feed.repository
 
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.feed.dto.CreatorInfoResponse
@@ -20,6 +21,7 @@ import me.onetwo.growsnap.jooq.generated.tables.references.USER_SAVES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -39,6 +41,8 @@ class FeedRepositoryImpl(
     private val objectMapper: ObjectMapper,
     private val contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
 ) : FeedRepository {
+
+    private val logger = LoggerFactory.getLogger(FeedRepositoryImpl::class.java)
 
     /**
      * 메인 피드 조회
@@ -288,13 +292,16 @@ class FeedRepositoryImpl(
     ): FeedItemResponse {
         val contentId = UUID.fromString(record.get(CONTENTS.ID))
 
-        // 태그 파싱
-        val tagsJson = record.get(CONTENT_METADATA.TAGS)
-        val tags = if (tagsJson != null) {
-            // tagsJson.data()가 문자열을 반환하므로, 먼저 String으로 읽고 다시 JSON으로 파싱
-            val jsonString = objectMapper.readValue(tagsJson.data(), String::class.java)
-            @Suppress("UNCHECKED_CAST")
-            objectMapper.readValue(jsonString, List::class.java) as List<String>
+        // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
+        val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
+        val tags = if (tagsString != null && tagsString.isNotBlank()) {
+            try {
+                objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
+            } catch (e: JsonProcessingException) {
+                // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
+                logger.warn("Failed to parse tags JSON for content $contentId: ${e.message}", e)
+                emptyList()
+            }
         } else {
             emptyList()
         }

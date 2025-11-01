@@ -5,7 +5,7 @@ import { MainTabParamList } from '@/types/navigation.types';
 import { theme } from '@/theme';
 import FeedScreen from '@/screens/feed/FeedScreen';
 import SearchScreen from '@/screens/search/SearchScreen';
-import UploadScreen from '@/screens/upload/UploadScreen';
+import UploadNavigator from '@/navigation/UploadNavigator';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -56,7 +56,7 @@ export default function MainNavigator() {
       />
       <Tab.Screen
         name="Upload"
-        component={UploadScreen}
+        component={UploadNavigator}
         options={{ tabBarLabel: '업로드' }}
       />
       <Tab.Screen

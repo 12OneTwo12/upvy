@@ -216,9 +216,9 @@ class CommentLikeRepositoryImpl(
             userId = UUID.fromString(record.getValue(USER_COMMENT_LIKES.USER_ID)),
             commentId = UUID.fromString(record.getValue(USER_COMMENT_LIKES.COMMENT_ID)),
             createdAt = record.getValue(USER_COMMENT_LIKES.CREATED_AT)!!,
-            createdBy = record.getValue(USER_COMMENT_LIKES.CREATED_BY)?.let { UUID.fromString(it) },
+            createdBy = record.getValue(USER_COMMENT_LIKES.CREATED_BY),
             updatedAt = record.getValue(USER_COMMENT_LIKES.UPDATED_AT)!!,
-            updatedBy = record.getValue(USER_COMMENT_LIKES.UPDATED_BY)?.let { UUID.fromString(it) },
+            updatedBy = record.getValue(USER_COMMENT_LIKES.UPDATED_BY),
             deletedAt = record.getValue(USER_COMMENT_LIKES.DELETED_AT)
         )
     }

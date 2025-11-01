@@ -98,6 +98,22 @@ export const API_ENDPOINTS = {
   ANALYTICS: {
     TRACK_VIEW: '/analytics/view',
   },
+
+  // Content (크리에이터 스튜디오)
+  CONTENT: {
+    // S3 Presigned Upload URL 생성
+    UPLOAD_URL: '/contents/upload-url',
+    // 콘텐츠 생성
+    CREATE: '/contents',
+    // 콘텐츠 조회
+    GET: (contentId: string) => `/contents/${contentId}`,
+    // 내 콘텐츠 목록
+    MY_CONTENTS: '/contents/me',
+    // 콘텐츠 수정
+    UPDATE: (contentId: string) => `/contents/${contentId}`,
+    // 콘텐츠 삭제
+    DELETE: (contentId: string) => `/contents/${contentId}`,
+  },
 } as const;
 
 /**

@@ -1,10 +1,13 @@
 package me.onetwo.growsnap.domain.content.service
 
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
+import me.onetwo.growsnap.domain.content.dto.ContentCreationResult
 import me.onetwo.growsnap.domain.content.dto.ContentResponse
+import me.onetwo.growsnap.domain.content.dto.ContentResponseWithMetadata
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlResponse
+import me.onetwo.growsnap.domain.content.event.ContentCreatedEvent
 import me.onetwo.growsnap.domain.content.exception.FileNotUploadedException
 import me.onetwo.growsnap.domain.content.exception.UploadSessionNotFoundException
 import me.onetwo.growsnap.domain.content.exception.UploadSessionUnauthorizedException
@@ -16,6 +19,7 @@ import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
@@ -38,6 +42,7 @@ class ContentServiceImpl(
     private val contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository,
     private val uploadSessionRepository: me.onetwo.growsnap.domain.content.repository.UploadSessionRepository,
     private val s3Client: software.amazon.awssdk.services.s3.S3Client,
+    private val eventPublisher: ApplicationEventPublisher,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -57,13 +62,14 @@ class ContentServiceImpl(
         userId: UUID,
         request: ContentUploadUrlRequest
     ): Mono<ContentUploadUrlResponse> {
-        logger.info("Generating upload URL for user: $userId, contentType: ${request.contentType}")
+        logger.info("Generating upload URL for user: $userId, contentType: ${request.contentType}, mimeType: ${request.mimeType}")
 
         return contentUploadService.generateUploadUrl(
             userId = userId,
             contentType = request.contentType,
             fileName = request.fileName,
-            fileSize = request.fileSize
+            fileSize = request.fileSize,
+            mimeType = request.mimeType
         ).map { presignedUrlInfo ->
             ContentUploadUrlResponse(
                 contentId = presignedUrlInfo.contentId.toString(),
@@ -129,9 +135,9 @@ class ContentServiceImpl(
                 height = request.height,
                 status = ContentStatus.PUBLISHED,
                 createdAt = now,
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = now,
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val savedContent = contentRepository.save(content)
@@ -146,9 +152,9 @@ class ContentServiceImpl(
                 tags = request.tags,
                 language = request.language,
                 createdAt = now,
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = now,
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val savedMetadata = contentRepository.saveMetadata(metadata)
@@ -178,36 +184,51 @@ class ContentServiceImpl(
             uploadSessionRepository.deleteById(request.contentId)
             logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
 
-            Pair(savedContent, savedMetadata)
-        }.map { (content, metadata) ->
+            ContentCreationResult(
+                content = savedContent,
+                metadata = savedMetadata,
+                contentId = contentId
+            )
+        }.map { result ->
             // PHOTO 타입인 경우 사진 목록 (이미 저장된 request.photoUrls 사용)
-            val photoUrls = if (content.contentType == ContentType.PHOTO) {
+            val photoUrls = if (result.content.contentType == ContentType.PHOTO) {
                 request.photoUrls
             } else {
                 null
             }
 
-            ContentResponse(
-                id = content.id.toString(),
-                creatorId = content.creatorId.toString(),
-                contentType = content.contentType,
-                url = content.url,
+            val response = ContentResponse(
+                id = result.content.id.toString(),
+                creatorId = result.content.creatorId.toString(),
+                contentType = result.content.contentType,
+                url = result.content.url,
                 photoUrls = photoUrls,
-                thumbnailUrl = content.thumbnailUrl,
-                duration = content.duration,
-                width = content.width,
-                height = content.height,
-                status = content.status,
-                title = metadata.title,
-                description = metadata.description,
-                category = metadata.category,
-                tags = metadata.tags,
-                language = metadata.language,
-                createdAt = content.createdAt,
-                updatedAt = content.updatedAt
+                thumbnailUrl = result.content.thumbnailUrl,
+                duration = result.content.duration,
+                width = result.content.width,
+                height = result.content.height,
+                status = result.content.status,
+                title = result.metadata.title,
+                description = result.metadata.description,
+                category = result.metadata.category,
+                tags = result.metadata.tags,
+                language = result.metadata.language,
+                createdAt = result.content.createdAt,
+                updatedAt = result.content.updatedAt
             )
-        }.doOnSuccess {
-            logger.info("Content created successfully: contentId=${it.id}")
+
+            ContentResponseWithMetadata(
+                response = response,
+                contentId = result.contentId
+            )
+        }.doOnSuccess { result ->
+            logger.info("Content created successfully: contentId=${result.response.id}")
+
+            // ContentCreatedEvent 발행 - 전체 작업이 성공한 후에만 발행
+            eventPublisher.publishEvent(ContentCreatedEvent(result.contentId, userId))
+            logger.info("ContentCreatedEvent published: contentId=${result.contentId}")
+        }.map { result ->
+            result.response
         }.doOnError { error ->
             logger.error("Failed to create content: userId=$userId, contentId=${request.contentId}", error)
         }
@@ -353,7 +374,7 @@ class ContentServiceImpl(
                 tags = request.tags ?: metadata.tags,
                 language = request.language ?: metadata.language,
                 updatedAt = LocalDateTime.now(),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val success = contentRepository.updateMetadata(updatedMetadata)

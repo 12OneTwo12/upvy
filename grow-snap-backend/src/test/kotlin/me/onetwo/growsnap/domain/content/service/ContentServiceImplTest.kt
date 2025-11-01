@@ -8,6 +8,7 @@ import io.mockk.verify
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
+import me.onetwo.growsnap.domain.content.event.ContentCreatedEvent
 import me.onetwo.growsnap.domain.content.exception.FileNotUploadedException
 import me.onetwo.growsnap.domain.content.exception.UploadSessionNotFoundException
 import me.onetwo.growsnap.domain.content.exception.UploadSessionUnauthorizedException
@@ -53,6 +54,9 @@ class ContentServiceImplTest {
     @MockK
     private lateinit var s3Client: S3Client
 
+    @MockK
+    private lateinit var eventPublisher: org.springframework.context.ApplicationEventPublisher
+
     private lateinit var contentService: ContentServiceImpl
 
     @BeforeEach
@@ -64,7 +68,8 @@ class ContentServiceImplTest {
             uploadSessionRepository = uploadSessionRepository,
             s3Client = s3Client,
             bucketName = "test-bucket",
-            region = "ap-northeast-2"
+            region = "ap-northeast-2",
+            eventPublisher = eventPublisher
         )
     }
 
@@ -156,9 +161,9 @@ class ContentServiceImplTest {
                 height = request.height,
                 status = ContentStatus.PUBLISHED,
                 createdAt = LocalDateTime.now(),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val savedMetadata = ContentMetadata(
@@ -170,9 +175,9 @@ class ContentServiceImplTest {
                 tags = request.tags,
                 language = request.language,
                 createdAt = LocalDateTime.now(),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             // Mock Redis: 업로드 세션 조회
@@ -187,6 +192,9 @@ class ContentServiceImplTest {
 
             // Mock Redis: 세션 삭제
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
+
+            // Mock Event Publisher
+            every { eventPublisher.publishEvent(any<ContentCreatedEvent>()) } returns Unit
 
             // When: 메서드 실행
             val result = contentService.createContent(userId, request)
@@ -206,6 +214,7 @@ class ContentServiceImplTest {
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
             verify(exactly = 1) { uploadSessionRepository.deleteById(contentId.toString()) }
+            verify(exactly = 1) { eventPublisher.publishEvent(any<ContentCreatedEvent>()) }
         }
 
         @Test
@@ -255,9 +264,9 @@ class ContentServiceImplTest {
                 height = request.height,
                 status = ContentStatus.PUBLISHED,
                 createdAt = LocalDateTime.now(),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val savedMetadata = ContentMetadata(
@@ -269,9 +278,9 @@ class ContentServiceImplTest {
                 tags = request.tags,
                 language = request.language,
                 createdAt = LocalDateTime.now(),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             // Mock 설정
@@ -281,6 +290,7 @@ class ContentServiceImplTest {
             every { contentRepository.saveMetadata(any()) } returns savedMetadata
             every { contentPhotoRepository.save(any()) } returns true
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
+            every { eventPublisher.publishEvent(any<ContentCreatedEvent>()) } returns Unit
 
             // When: 메서드 실행
             val result = contentService.createContent(userId, request)
@@ -301,6 +311,7 @@ class ContentServiceImplTest {
             verify(exactly = 3) { contentPhotoRepository.save(any()) }
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
+            verify(exactly = 1) { eventPublisher.publishEvent(any<ContentCreatedEvent>()) }
         }
 
         @Test
@@ -465,9 +476,9 @@ class ContentServiceImplTest {
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
                 createdAt = LocalDateTime.now(),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val metadata = ContentMetadata(
@@ -479,9 +490,9 @@ class ContentServiceImplTest {
                 tags = listOf("test"),
                 language = "ko",
                 createdAt = LocalDateTime.now(),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             every { contentRepository.findById(contentId) } returns content
@@ -525,9 +536,9 @@ class ContentServiceImplTest {
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
                 createdAt = LocalDateTime.now().minusDays(1),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now().minusDays(1),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val existingMetadata = ContentMetadata(
@@ -539,9 +550,9 @@ class ContentServiceImplTest {
                 tags = listOf("old"),
                 language = "ko",
                 createdAt = LocalDateTime.now().minusDays(1),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now().minusDays(1),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val newPhotoUrls = listOf(
@@ -603,9 +614,9 @@ class ContentServiceImplTest {
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
                 createdAt = LocalDateTime.now().minusDays(1),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now().minusDays(1),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val existingMetadata = ContentMetadata(
@@ -617,9 +628,9 @@ class ContentServiceImplTest {
                 tags = listOf("old"),
                 language = "ko",
                 createdAt = LocalDateTime.now().minusDays(1),
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = LocalDateTime.now().minusDays(1),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val existingPhotoUrls = listOf(

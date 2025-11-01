@@ -31,8 +31,8 @@ data class ContentInteraction(
     val shareCount: Int = 0,
     val viewCount: Int = 0,
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val createdBy: UUID? = null,
+    val createdBy: String? = null,
     val updatedAt: LocalDateTime = LocalDateTime.now(),
-    val updatedBy: UUID? = null,
+    val updatedBy: String? = null,
     val deletedAt: LocalDateTime? = null
 )

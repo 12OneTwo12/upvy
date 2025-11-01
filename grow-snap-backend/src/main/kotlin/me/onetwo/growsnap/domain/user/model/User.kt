@@ -10,9 +10,9 @@ data class User(
     val providerId: String,
     val role: UserRole = UserRole.USER,
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val createdBy: UUID? = null,
+    val createdBy: String? = null,
     val updatedAt: LocalDateTime = LocalDateTime.now(),
-    val updatedBy: UUID? = null,
+    val updatedBy: String? = null,
     val deletedAt: LocalDateTime? = null
 )
 

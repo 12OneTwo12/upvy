@@ -62,9 +62,9 @@ class SaveServiceTest {
                 userId = testUserId,
                 contentId = testContentId,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString()
             )
 
             every { userSaveRepository.exists(testUserId, testContentId) } returns false
@@ -189,9 +189,9 @@ class SaveServiceTest {
                 userId = testUserId,
                 contentId = contentId1,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString()
             )
 
             val userSave2 = UserSave(
@@ -199,9 +199,9 @@ class SaveServiceTest {
                 userId = testUserId,
                 contentId = contentId2,
                 createdAt = LocalDateTime.now(),
-                createdBy = testUserId,
+                createdBy = testUserId.toString(),
                 updatedAt = LocalDateTime.now(),
-                updatedBy = testUserId
+                updatedBy = testUserId.toString()
             )
 
             val contentInfoMap = mapOf(

@@ -215,9 +215,9 @@ class CommentRepositoryImpl(
                     parentCommentId = record.getValue(COMMENTS.PARENT_COMMENT_ID)?.let { UUID.fromString(it) },
                     content = record.getValue(COMMENTS.CONTENT)!!,
                     createdAt = record.getValue(COMMENTS.CREATED_AT)!!,
-                    createdBy = record.getValue(COMMENTS.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = record.getValue(COMMENTS.CREATED_BY),
                     updatedAt = record.getValue(COMMENTS.UPDATED_AT)!!,
-                    updatedBy = record.getValue(COMMENTS.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = record.getValue(COMMENTS.UPDATED_BY),
                     deletedAt = record.getValue(COMMENTS.DELETED_AT)
                 )
             }
@@ -314,9 +314,9 @@ class CommentRepositoryImpl(
             parentCommentId = record.getValue(COMMENTS.PARENT_COMMENT_ID)?.let { UUID.fromString(it) },
             content = record.getValue(COMMENTS.CONTENT)!!,
             createdAt = record.getValue(COMMENTS.CREATED_AT)!!,
-            createdBy = record.getValue(COMMENTS.CREATED_BY)?.let { UUID.fromString(it) },
+            createdBy = record.getValue(COMMENTS.CREATED_BY),
             updatedAt = record.getValue(COMMENTS.UPDATED_AT)!!,
-            updatedBy = record.getValue(COMMENTS.UPDATED_BY)?.let { UUID.fromString(it) },
+            updatedBy = record.getValue(COMMENTS.UPDATED_BY),
             deletedAt = record.getValue(COMMENTS.DELETED_AT)
         )
     }

@@ -1,23 +1,22 @@
 package me.onetwo.growsnap.domain.user.event
 
 import org.slf4j.LoggerFactory
+import org.springframework.context.event.EventListener
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
-import org.springframework.transaction.event.TransactionPhase
-import org.springframework.transaction.event.TransactionalEventListener
 
 /**
  * 팔로우 이벤트 리스너
  *
  * 팔로우 이벤트를 비동기로 처리하여 알림을 생성합니다.
  *
- * ## 처리 흐름
- * 1. 메인 트랜잭션 커밋 후 실행 (@TransactionalEventListener + AFTER_COMMIT)
+ * ## 처리 흐름 (WebFlux 환경)
+ * 1. 이벤트 발행 즉시 실행 (@EventListener)
  * 2. 비동기로 실행 (@Async)
  * 3. 팔로우 알림 생성 및 전송
  *
  * ## 장애 격리
- * - 이 메서드가 실패해도 메인 트랜잭션(팔로우 요청)에 영향 없음
+ * - 이 메서드가 실패해도 메인 요청에 영향 없음
  * - 로그만 남기고 예외를 삼킴
  * - 알림 전송 실패는 사용자 경험에 크리티컬하지 않음
  *
@@ -37,7 +36,7 @@ class FollowEventListener {
      * @param event 팔로우 이벤트
      */
     @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleFollowEvent(event: FollowEvent) {
         @Suppress("TooGenericExceptionCaught")
         try {

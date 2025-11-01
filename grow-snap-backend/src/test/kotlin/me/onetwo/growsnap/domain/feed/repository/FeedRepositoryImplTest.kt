@@ -101,7 +101,7 @@ class FeedRepositoryImplTest {
             UserProfile(
                 userId = viewer.id!!,
                 nickname = "Viewer",
-                createdBy = viewer.id!!
+                createdBy = viewer.id.toString()!!
             )
         )
 
@@ -109,7 +109,7 @@ class FeedRepositoryImplTest {
             UserProfile(
                 userId = creator1.id!!,
                 nickname = "Creator1",
-                createdBy = creator1.id!!
+                createdBy = creator1.id.toString()!!
             )
         )
 
@@ -117,7 +117,7 @@ class FeedRepositoryImplTest {
             UserProfile(
                 userId = creator2.id!!,
                 nickname = "Creator2",
-                createdBy = creator2.id!!
+                createdBy = creator2.id.toString()!!
             )
         )
 
@@ -349,7 +349,7 @@ class FeedRepositoryImplTest {
                 Follow(
                     followerId = viewer.id!!,
                     followingId = creator1.id!!,
-                    createdBy = viewer.id!!
+                    createdBy = viewer.id.toString()!!
                 )
             )
 
@@ -388,14 +388,14 @@ class FeedRepositoryImplTest {
                 Follow(
                     followerId = viewer.id!!,
                     followingId = creator1.id!!,
-                    createdBy = viewer.id!!
+                    createdBy = viewer.id.toString()!!
                 )
             )
             followRepository.save(
                 Follow(
                     followerId = viewer.id!!,
                     followingId = creator2.id!!,
-                    createdBy = viewer.id!!
+                    createdBy = viewer.id.toString()!!
                 )
             )
 
@@ -418,7 +418,7 @@ class FeedRepositoryImplTest {
                 Follow(
                     followerId = viewer.id!!,
                     followingId = creator1.id!!,
-                    createdBy = viewer.id!!
+                    createdBy = viewer.id.toString()!!
                 )
             )
 

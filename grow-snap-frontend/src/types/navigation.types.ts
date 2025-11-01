@@ -28,3 +28,43 @@ export type MainTabParamList = {
   Upload: undefined;
   Profile: undefined;
 };
+
+/**
+ * Media Asset (갤러리에서 선택한 미디어)
+ */
+export interface MediaAsset {
+  id: string;
+  uri: string;
+  mediaType: 'photo' | 'video';
+  duration: number;
+  width: number;
+  height: number;
+  filename: string;
+}
+
+/**
+ * Upload Stack Navigator Params
+ */
+export type UploadStackParamList = {
+  UploadMain: undefined;
+  VideoEdit: {
+    asset: MediaAsset;
+    type: 'video';
+  };
+  PhotoEdit: {
+    assets: MediaAsset[];
+    type: 'photo';
+  };
+  ContentMetadata: {
+    contentId: string;
+    contentType: 'VIDEO' | 'PHOTO';
+    mediaInfo: {
+      uri: string | string[];
+      thumbnailUrl: string;
+      duration?: number;
+      width: number;
+      height: number;
+    };
+  };
+  ContentManagement: undefined;
+};

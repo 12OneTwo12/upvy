@@ -18,6 +18,7 @@ import java.time.LocalDateTime
  * @property contentType 콘텐츠 타입 (VIDEO, PHOTO)
  * @property fileName 파일 이름
  * @property fileSize 파일 크기 (바이트)
+ * @property mimeType MIME 타입 (선택, 제공되지 않으면 fileName에서 추론)
  *
  * ## 파일 크기 제한
  * - 비디오: 최대 500MB (ContentUploadServiceImpl에서 검증)
@@ -36,7 +37,10 @@ data class ContentUploadUrlRequest(
 
     @field:NotNull(message = "파일 크기는 필수입니다")
     @field:Min(value = 1, message = "파일 크기는 1바이트 이상이어야 합니다")
-    val fileSize: Long
+    val fileSize: Long,
+
+    @field:Size(max = 100, message = "MIME 타입은 100자 이하여야 합니다")
+    val mimeType: String? = null
 )
 
 /**

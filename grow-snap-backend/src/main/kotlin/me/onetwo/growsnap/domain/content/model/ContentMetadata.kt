@@ -30,8 +30,8 @@ data class ContentMetadata(
     val tags: List<String> = emptyList(),
     val language: String = "ko",
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val createdBy: UUID? = null,
+    val createdBy: String? = null,
     val updatedAt: LocalDateTime = LocalDateTime.now(),
-    val updatedBy: UUID? = null,
+    val updatedBy: String? = null,
     val deletedAt: LocalDateTime? = null
 )

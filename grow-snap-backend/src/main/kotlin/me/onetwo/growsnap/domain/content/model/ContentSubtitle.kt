@@ -24,8 +24,8 @@ data class ContentSubtitle(
     val language: String,
     val subtitleUrl: String,
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val createdBy: UUID? = null,
+    val createdBy: String? = null,
     val updatedAt: LocalDateTime = LocalDateTime.now(),
-    val updatedBy: UUID? = null,
+    val updatedBy: String? = null,
     val deletedAt: LocalDateTime? = null
 )
