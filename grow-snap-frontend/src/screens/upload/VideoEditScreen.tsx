@@ -20,8 +20,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
+import * as MediaLibrary from 'expo-media-library';
 import { theme } from '@/theme';
-import type { UploadStackParamList } from '@/types/navigation.types';
+import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { generateUploadUrl, uploadFileToS3 } from '@/api/content.api';
 
@@ -31,7 +32,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const VIDEO_HEIGHT = SCREEN_WIDTH * (16 / 9); // 16:9 비율
 
 export default function VideoEditScreen({ navigation, route }: Props) {
-  const { uri, fileName } = route.params;
+  const { asset } = route.params;
 
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -128,13 +129,17 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     try {
       setIsUploading(true);
 
-      // 1. 비디오 업로드
-      const videoResponse = await fetch(uri);
+      // 1. MediaLibrary로 실제 파일 URI 얻기 (ph:// -> file://)
+      const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+      const videoFileUri = assetInfo.localUri || assetInfo.uri;
+
+      // 2. 비디오 업로드
+      const videoResponse = await fetch(videoFileUri);
       const videoBlob = await videoResponse.blob();
 
       const videoUploadUrlResponse = await generateUploadUrl({
         contentType: 'VIDEO',
-        fileName,
+        fileName: asset.filename,
         fileSize: videoBlob.size,
       });
 
@@ -213,7 +218,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         <View style={styles.videoContainer}>
           <Video
             ref={videoRef}
-            source={{ uri }}
+            source={{ uri: asset.uri }}
             style={styles.video}
             resizeMode={ResizeMode.CONTAIN}
             isLooping={false}

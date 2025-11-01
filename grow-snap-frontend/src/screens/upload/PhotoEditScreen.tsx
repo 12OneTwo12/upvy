@@ -21,8 +21,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as MediaLibrary from 'expo-media-library';
 import { theme } from '@/theme';
-import type { UploadStackParamList } from '@/types/navigation.types';
+import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { generateUploadUrl, uploadFileToS3 } from '@/api/content.api';
 
@@ -49,9 +50,9 @@ const ASPECT_RATIOS: AspectRatioOption[] = [
 ];
 
 export default function PhotoEditScreen({ navigation, route }: Props) {
-  const { uris: initialUris } = route.params;
+  const { assets: initialAssets } = route.params;
 
-  const [photos, setPhotos] = useState<string[]>(initialUris);
+  const [assets, setAssets] = useState<MediaAsset[]>(initialAssets);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1');
   const [isUploading, setIsUploading] = useState(false);
@@ -59,7 +60,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
   const [showAspectRatioMenu, setShowAspectRatioMenu] = useState(false);
 
   const handleRemovePhoto = (index: number) => {
-    if (photos.length === 1) {
+    if (assets.length === 1) {
       Alert.alert('알림', '최소 1개의 사진이 필요합니다.');
       return;
     }
@@ -73,10 +74,10 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
           text: '삭제',
           style: 'destructive',
           onPress: () => {
-            const newPhotos = photos.filter((_, i) => i !== index);
-            setPhotos(newPhotos);
-            if (currentPhotoIndex >= newPhotos.length) {
-              setCurrentPhotoIndex(newPhotos.length - 1);
+            const newAssets = assets.filter((_, i) => i !== index);
+            setAssets(newAssets);
+            if (currentPhotoIndex >= newAssets.length) {
+              setCurrentPhotoIndex(newAssets.length - 1);
             }
           },
         },
@@ -92,17 +93,21 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
       const uploadedPhotoUrls: string[] = [];
       let firstContentId = '';
 
-      for (let i = 0; i < photos.length; i++) {
-        const photoUri = photos[i];
+      for (let i = 0; i < assets.length; i++) {
+        const asset = assets[i];
 
-        // 1. blob을 먼저 가져와서 실제 파일 크기 확인
-        const response = await fetch(photoUri);
+        // 1. MediaLibrary로 실제 파일 URI 얻기 (ph:// -> file://)
+        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+        const fileUri = assetInfo.localUri || assetInfo.uri;
+
+        // 2. blob을 먼저 가져와서 실제 파일 크기 확인
+        const response = await fetch(fileUri);
         const blob = await response.blob();
 
-        // 2. Presigned URL 요청 - 실제 파일 크기 사용
+        // 3. Presigned URL 요청 - 실제 파일 크기 사용
         const uploadUrlResponse = await generateUploadUrl({
           contentType: 'PHOTO',
-          fileName: `photo_${Date.now()}_${i}.jpg`,
+          fileName: asset.filename,
           fileSize: blob.size,
         });
 
@@ -111,17 +116,17 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
           firstContentId = uploadUrlResponse.contentId;
         }
 
-        // 3. S3에 업로드
+        // 4. S3에 업로드
         await uploadFileToS3(
           uploadUrlResponse.uploadUrl,
           blob,
           (progress) => {
-            const totalProgress = ((i + progress / 100) / photos.length) * 100;
+            const totalProgress = ((i + progress / 100) / assets.length) * 100;
             setUploadProgress(Math.floor(totalProgress));
           }
         );
 
-        // 4. Presigned URL에서 실제 S3 URL 추출 (query string 제거)
+        // 5. Presigned URL에서 실제 S3 URL 추출 (query string 제거)
         const s3Url = uploadUrlResponse.uploadUrl.split('?')[0];
         uploadedPhotoUrls.push(s3Url);
       }
@@ -170,11 +175,11 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
       {/* 큰 미리보기 - 스와이프 가능 */}
       <View style={styles.previewContainer}>
         <FlatList
-          data={photos}
+          data={assets}
           renderItem={({ item }) => (
             <View style={styles.previewImageContainer}>
               <Image
-                source={{ uri: item }}
+                source={{ uri: item.uri }}
                 style={[
                   styles.previewImage,
                   aspectRatio === '1:1' && { aspectRatio: 1 },
@@ -185,7 +190,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
               />
             </View>
           )}
-          keyExtractor={(item, index) => `${item}-${index}`}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -241,18 +246,18 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
         )}
 
         {/* 사진 카운터 */}
-        {photos.length > 1 && (
+        {assets.length > 1 && (
           <View style={styles.photoCounter}>
             <Text style={styles.photoCounterText}>
-              {currentPhotoIndex + 1} / {photos.length}
+              {currentPhotoIndex + 1} / {assets.length}
             </Text>
           </View>
         )}
 
         {/* 인디케이터 */}
-        {photos.length > 1 && (
+        {assets.length > 1 && (
           <View style={styles.previewIndicator}>
-            {photos.map((_, index) => (
+            {assets.map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -268,9 +273,9 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
       {/* 하단 사진 목록 */}
       <View style={styles.bottomContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnailScroll}>
-          {photos.map((uri, index) => (
+          {assets.map((asset, index) => (
             <TouchableOpacity
-              key={`${uri}-${index}`}
+              key={`${asset.id}-${index}`}
               style={[
                 styles.thumbnailItem,
                 index === currentPhotoIndex && styles.thumbnailItemActive,
@@ -280,11 +285,11 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
                 setCurrentPhotoIndex(index);
               }}
             >
-              <Image source={{ uri }} style={styles.thumbnailImage} />
+              <Image source={{ uri: asset.uri }} style={styles.thumbnailImage} />
               {index === currentPhotoIndex && <View style={styles.thumbnailOverlay} />}
 
               {/* 삭제 버튼 */}
-              {photos.length > 1 && (
+              {assets.length > 1 && (
                 <TouchableOpacity
                   style={styles.thumbnailDelete}
                   onPress={(e) => {

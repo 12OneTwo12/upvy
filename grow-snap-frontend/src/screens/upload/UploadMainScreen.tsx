@@ -24,7 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/theme';
-import type { UploadStackParamList } from '@/types/navigation.types';
+import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type Props = NativeStackScreenProps<UploadStackParamList, 'UploadMain'>;
@@ -34,16 +34,6 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 const GRID_COLUMNS = 4;
 const GRID_IMAGE_SIZE = SCREEN_WIDTH / GRID_COLUMNS;
 const PREVIEW_HEIGHT = SCREEN_HEIGHT * 0.5;
-
-interface MediaAsset {
-  id: string;
-  uri: string;
-  mediaType: 'photo' | 'video';
-  duration: number;
-  width: number;
-  height: number;
-  filename: string;
-}
 
 export default function UploadMainScreen({ navigation }: Props) {
   const [hasPermission, setHasPermission] = useState<boolean>(false);
@@ -156,13 +146,12 @@ export default function UploadMainScreen({ navigation }: Props) {
       }
 
       navigation.navigate('VideoEdit', {
-        uri: asset.uri,
+        asset: asset,
         type: 'video',
-        fileName: asset.filename,
       });
     } else {
       navigation.navigate('PhotoEdit', {
-        uris: selectedAssets.map((a) => a.uri),
+        assets: selectedAssets,
         type: 'photo',
       });
     }
@@ -200,13 +189,12 @@ export default function UploadMainScreen({ navigation }: Props) {
 
         if (contentType === 'video') {
           navigation.navigate('VideoEdit', {
-            uri: mediaAsset.uri,
+            asset: mediaAsset,
             type: 'video',
-            fileName: mediaAsset.filename,
           });
         } else {
           navigation.navigate('PhotoEdit', {
-            uris: [mediaAsset.uri],
+            assets: [mediaAsset],
             type: 'photo',
           });
         }

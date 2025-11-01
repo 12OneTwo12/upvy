@@ -30,18 +30,29 @@ export type MainTabParamList = {
 };
 
 /**
+ * Media Asset (갤러리에서 선택한 미디어)
+ */
+export interface MediaAsset {
+  id: string;
+  uri: string;
+  mediaType: 'photo' | 'video';
+  duration: number;
+  width: number;
+  height: number;
+  filename: string;
+}
+
+/**
  * Upload Stack Navigator Params
  */
 export type UploadStackParamList = {
   UploadMain: undefined;
   VideoEdit: {
-    uri: string;
+    asset: MediaAsset;
     type: 'video';
-    fileName: string;
-    fileSize?: number;
   };
   PhotoEdit: {
-    uris: string[];
+    assets: MediaAsset[];
     type: 'photo';
   };
   ContentMetadata: {
