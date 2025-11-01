@@ -37,7 +37,7 @@ class ContentUploadServiceImpl(
         private const val PRESIGNED_URL_DURATION_MINUTES = 15L
 
         private val ALLOWED_VIDEO_TYPES = listOf("video/mp4", "video/quicktime", "video/x-msvideo")
-        private val ALLOWED_PHOTO_TYPES = listOf("image/jpeg", "image/jpg", "image/png")
+        private val ALLOWED_PHOTO_TYPES = listOf("image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif")
     }
 
     /**
@@ -184,6 +184,8 @@ class ContentUploadServiceImpl(
             ContentType.PHOTO -> when (extension) {
                 "jpg", "jpeg" -> "image/jpeg"
                 "png" -> "image/png"
+                "heic" -> "image/heic"
+                "heif" -> "image/heif"
                 else -> throw IllegalArgumentException("Unsupported photo extension: $extension")
             }
         }
