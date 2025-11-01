@@ -1260,7 +1260,7 @@ class FeedRepositoryImplTest {
         contentId: UUID,
         photoUrl: String,
         displayOrder: Int,
-        createdBy: UUID
+        createdBy: String
     ) {
         dslContext.insertInto(CONTENT_PHOTOS)
             .set(CONTENT_PHOTOS.CONTENT_ID, contentId.toString())

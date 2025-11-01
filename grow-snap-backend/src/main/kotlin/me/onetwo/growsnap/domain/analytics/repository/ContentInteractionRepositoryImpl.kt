@@ -33,16 +33,16 @@ class ContentInteractionRepositoryImpl(
     override fun create(contentInteraction: ContentInteraction): Mono<Void> {
         return Mono.fromCallable {
             dslContext.insertInto(CONTENT_INTERACTIONS)
-                .set(CONTENT_INTERACTIONS.CONTENT_ID, contentInteraction.contentId)
+                .set(CONTENT_INTERACTIONS.CONTENT_ID, contentInteraction.contentId.toString())
                 .set(CONTENT_INTERACTIONS.LIKE_COUNT, contentInteraction.likeCount)
                 .set(CONTENT_INTERACTIONS.COMMENT_COUNT, contentInteraction.commentCount)
                 .set(CONTENT_INTERACTIONS.SAVE_COUNT, contentInteraction.saveCount)
                 .set(CONTENT_INTERACTIONS.SHARE_COUNT, contentInteraction.shareCount)
                 .set(CONTENT_INTERACTIONS.VIEW_COUNT, contentInteraction.viewCount)
                 .set(CONTENT_INTERACTIONS.CREATED_AT, contentInteraction.createdAt)
-                .set(CONTENT_INTERACTIONS.CREATED_BY, contentInteraction.createdBy)
+                .set(CONTENT_INTERACTIONS.CREATED_BY, contentInteraction.createdBy?.toString())
                 .set(CONTENT_INTERACTIONS.UPDATED_AT, contentInteraction.updatedAt)
-                .set(CONTENT_INTERACTIONS.UPDATED_BY, contentInteraction.updatedBy)
+                .set(CONTENT_INTERACTIONS.UPDATED_BY, contentInteraction.updatedBy?.toString())
                 .execute()
         }.then()
     }

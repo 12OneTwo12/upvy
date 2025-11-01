@@ -41,9 +41,9 @@ class UserSaveRepositoryImpl(
                     userId = UUID.fromString(it.getValue(USER_SAVES.USER_ID)),
                     contentId = UUID.fromString(it.getValue(USER_SAVES.CONTENT_ID)),
                     createdAt = it.getValue(USER_SAVES.CREATED_AT)!!,
-                    createdBy = it.getValue(USER_SAVES.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = it.getValue(USER_SAVES.CREATED_BY),
                     updatedAt = it.getValue(USER_SAVES.UPDATED_AT)!!,
-                    updatedBy = it.getValue(USER_SAVES.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = it.getValue(USER_SAVES.UPDATED_BY),
                     deletedAt = it.getValue(USER_SAVES.DELETED_AT)
                 )
             }
@@ -98,9 +98,9 @@ class UserSaveRepositoryImpl(
                     userId = UUID.fromString(it.getValue(USER_SAVES.USER_ID)),
                     contentId = UUID.fromString(it.getValue(USER_SAVES.CONTENT_ID)),
                     createdAt = it.getValue(USER_SAVES.CREATED_AT)!!,
-                    createdBy = it.getValue(USER_SAVES.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = it.getValue(USER_SAVES.CREATED_BY),
                     updatedAt = it.getValue(USER_SAVES.UPDATED_AT)!!,
-                    updatedBy = it.getValue(USER_SAVES.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = it.getValue(USER_SAVES.UPDATED_BY),
                     deletedAt = it.getValue(USER_SAVES.DELETED_AT)
                 )
             }

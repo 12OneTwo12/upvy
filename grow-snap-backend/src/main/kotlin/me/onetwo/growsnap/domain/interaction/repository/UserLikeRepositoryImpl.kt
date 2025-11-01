@@ -57,9 +57,9 @@ class UserLikeRepositoryImpl(
                     userId = UUID.fromString(it.getValue(USER_LIKES.USER_ID)),
                     contentId = UUID.fromString(it.getValue(USER_LIKES.CONTENT_ID)),
                     createdAt = it.getValue(USER_LIKES.CREATED_AT)!!,
-                    createdBy = it.getValue(USER_LIKES.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = it.getValue(USER_LIKES.CREATED_BY),
                     updatedAt = it.getValue(USER_LIKES.UPDATED_AT)!!,
-                    updatedBy = it.getValue(USER_LIKES.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = it.getValue(USER_LIKES.UPDATED_BY),
                     deletedAt = it.getValue(USER_LIKES.DELETED_AT)
                 )
             }
@@ -147,9 +147,9 @@ class UserLikeRepositoryImpl(
                     userId = UUID.fromString(it.getValue(USER_LIKES.USER_ID)),
                     contentId = UUID.fromString(it.getValue(USER_LIKES.CONTENT_ID)),
                     createdAt = it.getValue(USER_LIKES.CREATED_AT)!!,
-                    createdBy = it.getValue(USER_LIKES.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = it.getValue(USER_LIKES.CREATED_BY),
                     updatedAt = it.getValue(USER_LIKES.UPDATED_AT)!!,
-                    updatedBy = it.getValue(USER_LIKES.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = it.getValue(USER_LIKES.UPDATED_BY),
                     deletedAt = it.getValue(USER_LIKES.DELETED_AT)
                 )
             }

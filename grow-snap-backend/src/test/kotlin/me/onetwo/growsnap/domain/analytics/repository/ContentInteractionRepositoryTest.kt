@@ -67,6 +67,114 @@ class ContentInteractionRepositoryTest {
     }
 
     @Nested
+    @DisplayName("create - ContentInteraction 생성")
+    inner class Create {
+
+        @Test
+        @DisplayName("새로운 ContentInteraction을 생성한다")
+        fun create_CreatesNewContentInteraction() {
+            // Given: 새로운 콘텐츠 ID
+            val newContentId = UUID.randomUUID()
+
+            // 콘텐츠 먼저 생성 (FK 제약조건)
+            val now = LocalDateTime.now()
+            dslContext.insertInto(CONTENTS)
+                .set(CONTENTS.ID, newContentId.toString())
+                .set(CONTENTS.CREATOR_ID, testUser.id.toString())
+                .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
+                .set(CONTENTS.URL, "https://example.com/test.mp4")
+                .set(CONTENTS.THUMBNAIL_URL, "https://example.com/thumb.jpg")
+                .set(CONTENTS.DURATION, 60)
+                .set(CONTENTS.WIDTH, 1920)
+                .set(CONTENTS.HEIGHT, 1080)
+                .set(CONTENTS.STATUS, ContentStatus.PUBLISHED.name)
+                .set(CONTENTS.CREATED_AT, now)
+                .set(CONTENTS.CREATED_BY, testUser.id.toString())
+                .set(CONTENTS.UPDATED_AT, now)
+                .set(CONTENTS.UPDATED_BY, testUser.id.toString())
+                .execute()
+
+            val contentInteraction = me.onetwo.growsnap.domain.content.model.ContentInteraction(
+                contentId = newContentId,
+                likeCount = 0,
+                commentCount = 0,
+                saveCount = 0,
+                shareCount = 0,
+                viewCount = 0,
+                createdAt = now,
+                createdBy = testUser.id,
+                updatedAt = now,
+                updatedBy = testUser.id
+            )
+
+            // When: ContentInteraction 생성
+            contentInteractionRepository.create(contentInteraction).block()
+
+            // Then: 데이터베이스에 저장되었는지 확인
+            val savedRecord = dslContext.selectFrom(CONTENT_INTERACTIONS)
+                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(newContentId.toString()))
+                .fetchOne()
+
+            assertEquals(newContentId.toString(), savedRecord?.contentId)
+            assertEquals(0, savedRecord?.likeCount)
+            assertEquals(0, savedRecord?.commentCount)
+            assertEquals(0, savedRecord?.saveCount)
+            assertEquals(0, savedRecord?.shareCount)
+            assertEquals(0, savedRecord?.viewCount)
+            assertEquals(testUser.id.toString(), savedRecord?.createdBy)
+            assertEquals(testUser.id.toString(), savedRecord?.updatedBy)
+        }
+
+        @Test
+        @DisplayName("nullable createdBy/updatedBy를 처리한다")
+        fun create_HandlesNullableFields() {
+            // Given: 새로운 콘텐츠 ID와 nullable 필드가 있는 ContentInteraction
+            val newContentId = UUID.randomUUID()
+
+            // 콘텐츠 먼저 생성
+            val now = LocalDateTime.now()
+            dslContext.insertInto(CONTENTS)
+                .set(CONTENTS.ID, newContentId.toString())
+                .set(CONTENTS.CREATOR_ID, testUser.id.toString())
+                .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
+                .set(CONTENTS.URL, "https://example.com/test.mp4")
+                .set(CONTENTS.THUMBNAIL_URL, "https://example.com/thumb.jpg")
+                .set(CONTENTS.DURATION, 60)
+                .set(CONTENTS.WIDTH, 1920)
+                .set(CONTENTS.HEIGHT, 1080)
+                .set(CONTENTS.STATUS, ContentStatus.PUBLISHED.name)
+                .set(CONTENTS.CREATED_AT, now)
+                .set(CONTENTS.UPDATED_AT, now)
+                .execute()
+
+            val contentInteraction = me.onetwo.growsnap.domain.content.model.ContentInteraction(
+                contentId = newContentId,
+                likeCount = 0,
+                commentCount = 0,
+                saveCount = 0,
+                shareCount = 0,
+                viewCount = 0,
+                createdAt = now,
+                createdBy = null,  // nullable
+                updatedAt = now,
+                updatedBy = null   // nullable
+            )
+
+            // When: ContentInteraction 생성
+            contentInteractionRepository.create(contentInteraction).block()
+
+            // Then: 데이터베이스에 저장되었는지 확인
+            val savedRecord = dslContext.selectFrom(CONTENT_INTERACTIONS)
+                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(newContentId.toString()))
+                .fetchOne()
+
+            assertEquals(newContentId.toString(), savedRecord?.contentId)
+            assertEquals(null, savedRecord?.createdBy)
+            assertEquals(null, savedRecord?.updatedBy)
+        }
+    }
+
+    @Nested
     @DisplayName("incrementViewCount - 조회수 증가")
     inner class IncrementViewCount {
 

@@ -132,9 +132,9 @@ class ContentServiceImpl(
                 height = request.height,
                 status = ContentStatus.PUBLISHED,
                 createdAt = now,
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = now,
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val savedContent = contentRepository.save(content)
@@ -149,9 +149,9 @@ class ContentServiceImpl(
                 tags = request.tags,
                 language = request.language,
                 createdAt = now,
-                createdBy = userId,
+                createdBy = userId.toString(),
                 updatedAt = now,
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val savedMetadata = contentRepository.saveMetadata(metadata)
@@ -360,7 +360,7 @@ class ContentServiceImpl(
                 tags = request.tags ?: metadata.tags,
                 language = request.language ?: metadata.language,
                 updatedAt = LocalDateTime.now(),
-                updatedBy = userId
+                updatedBy = userId.toString()
             )
 
             val success = contentRepository.updateMetadata(updatedMetadata)

@@ -105,9 +105,9 @@ class ContentRepositoryImpl(
                     height = record.getValue(CONTENTS.HEIGHT)!!,
                     status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
                     createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
-                    createdBy = record.getValue(CONTENTS.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = record.getValue(CONTENTS.CREATED_BY),
                     updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
-                    updatedBy = record.getValue(CONTENTS.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = record.getValue(CONTENTS.UPDATED_BY),
                     deletedAt = record.getValue(CONTENTS.DELETED_AT)
                 )
             }
@@ -154,9 +154,9 @@ class ContentRepositoryImpl(
                     height = record.getValue(CONTENTS.HEIGHT)!!,
                     status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
                     createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
-                    createdBy = record.getValue(CONTENTS.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = record.getValue(CONTENTS.CREATED_BY),
                     updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
-                    updatedBy = record.getValue(CONTENTS.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = record.getValue(CONTENTS.UPDATED_BY),
                     deletedAt = record.getValue(CONTENTS.DELETED_AT)
                 )
             }
@@ -219,9 +219,9 @@ class ContentRepositoryImpl(
                     height = record.getValue(CONTENTS.HEIGHT)!!,
                     status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
                     createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
-                    createdBy = record.getValue(CONTENTS.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = record.getValue(CONTENTS.CREATED_BY),
                     updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
-                    updatedBy = record.getValue(CONTENTS.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = record.getValue(CONTENTS.UPDATED_BY),
                     deletedAt = record.getValue(CONTENTS.DELETED_AT)
                 )
 
@@ -244,9 +244,9 @@ class ContentRepositoryImpl(
                     tags = tags,
                     language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                     createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
-                    createdBy = record.getValue(CONTENT_METADATA.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
                     updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
-                    updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
                     deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
                 )
 
@@ -380,9 +380,9 @@ class ContentRepositoryImpl(
                     tags = tags,
                     language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                     createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
-                    createdBy = record.getValue(CONTENT_METADATA.CREATED_BY)?.let { UUID.fromString(it) },
+                    createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
                     updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
-                    updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY)?.let { UUID.fromString(it) },
+                    updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
                     deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
                 )
             }

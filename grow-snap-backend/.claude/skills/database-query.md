@@ -189,7 +189,7 @@ fun createUser(userId: UUID, email: String): User {
 
 ```kotlin
 // ✅ GOOD: 수정 시 updatedAt, updatedBy 갱신
-fun updateUser(userId: UUID, updatedBy: UUID, email: String) {
+fun updateUser(userId: UUID, updatedBy: String, email: String) {
     dslContext
         .update(USER)
         .set(USER.EMAIL, email)

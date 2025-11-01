@@ -53,6 +53,9 @@ class ContentServiceImplTest {
     @MockK
     private lateinit var s3Client: S3Client
 
+    @MockK
+    private lateinit var eventPublisher: org.springframework.context.ApplicationEventPublisher
+
     private lateinit var contentService: ContentServiceImpl
 
     @BeforeEach
@@ -64,7 +67,8 @@ class ContentServiceImplTest {
             uploadSessionRepository = uploadSessionRepository,
             s3Client = s3Client,
             bucketName = "test-bucket",
-            region = "ap-northeast-2"
+            region = "ap-northeast-2",
+            eventPublisher = eventPublisher
         )
     }
 

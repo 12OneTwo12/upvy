@@ -156,9 +156,9 @@ data class User(
     val email: String,
     // Audit Trail 필드 (필수)
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val createdBy: UUID? = null,
+    val createdBy: String? = null,
     val updatedAt: LocalDateTime = LocalDateTime.now(),
-    val updatedBy: UUID? = null,
+    val updatedBy: String? = null,
     val deletedAt: LocalDateTime? = null  // Soft Delete
 )
 ```
