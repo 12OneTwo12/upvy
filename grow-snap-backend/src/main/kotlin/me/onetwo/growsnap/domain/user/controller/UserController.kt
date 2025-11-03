@@ -35,7 +35,7 @@ class UserController(
     fun getMe(principal: Mono<Principal>): Mono<ResponseEntity<UserResponse>> {
         return principal
             .toUserId()
-            .map { userId -> userService.getUserById(userId) }
+            .flatMap { userId -> userService.getUserById(userId) }
             .map { user -> ResponseEntity.ok(UserResponse.from(user)) }
     }
 
@@ -49,10 +49,8 @@ class UserController(
     fun getUserById(
         @PathVariable targetUserId: UUID
     ): Mono<ResponseEntity<UserResponse>> {
-        return Mono.defer {
-            Mono.just(userService.getUserById(targetUserId))
-                .map { user -> ResponseEntity.ok(UserResponse.from(user)) }
-        }
+        return userService.getUserById(targetUserId)
+            .map { user -> ResponseEntity.ok(UserResponse.from(user)) }
     }
 
     /**
@@ -68,7 +66,7 @@ class UserController(
     fun withdrawMe(principal: Mono<Principal>): Mono<ResponseEntity<Void>> {
         return principal
             .toUserId()
-            .doOnNext { userId -> userService.withdrawUser(userId) }
+            .flatMap { userId -> userService.withdrawUser(userId) }
             .map { ResponseEntity.noContent().build<Void>() }
     }
 }
