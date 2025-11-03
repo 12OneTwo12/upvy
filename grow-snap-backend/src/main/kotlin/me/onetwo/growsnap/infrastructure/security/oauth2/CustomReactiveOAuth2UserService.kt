@@ -52,16 +52,14 @@ class CustomReactiveOAuth2UserService(
                 val userInfo = extractUserInfo(provider, attributes)
 
                 // 사용자 조회 또는 생성 (프로필 자동 생성 포함)
-                Mono.fromCallable {
-                    logger.debug("Loading OAuth2 user - email: {}, provider: {}", userInfo.email, provider)
-                    userService.findOrCreateOAuthUser(
-                        email = userInfo.email,
-                        provider = provider,
-                        providerId = userInfo.providerId,
-                        name = userInfo.name,
-                        profileImageUrl = userInfo.profileImageUrl
-                    )
-                }.map { user ->
+                logger.debug("Loading OAuth2 user - email: {}, provider: {}", userInfo.email, provider)
+                userService.findOrCreateOAuthUser(
+                    email = userInfo.email,
+                    provider = provider,
+                    providerId = userInfo.providerId,
+                    name = userInfo.name,
+                    profileImageUrl = userInfo.profileImageUrl
+                ).map { user ->
                     logger.debug("User loaded from DB - id: {}, email: {}, role: {}", user.id, user.email, user.role)
                     logger.debug("User ID type: {}", user.id!!.javaClass.name)
 

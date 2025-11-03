@@ -44,28 +44,34 @@ class UserProfileServiceImpl(
         nickname: String,
         profileImageUrl: String?,
         bio: String?
-    ): UserProfile {
+    ): Mono<UserProfile> {
         // 사용자 존재 여부 확인
-        userService.getUserById(userId)
-
-        // 사용자당 프로필은 1개만 가능
-        if (userProfileRepository.existsByUserId(userId)) {
-            throw IllegalStateException("이미 프로필이 존재합니다. User ID: $userId")
-        }
-
-        // 닉네임 중복 확인
-        if (userProfileRepository.existsByNickname(nickname)) {
-            throw DuplicateNicknameException(nickname)
-        }
-
-        val profile = UserProfile(
-            userId = userId,
-            nickname = nickname,
-            profileImageUrl = profileImageUrl,
-            bio = bio
-        )
-
-        return userProfileRepository.save(profile)
+        return userService.getUserById(userId)
+            .flatMap {
+                // 사용자당 프로필은 1개만 가능
+                userProfileRepository.existsByUserId(userId)
+                    .flatMap { exists ->
+                        if (exists) {
+                            Mono.error(IllegalStateException("이미 프로필이 존재합니다. User ID: $userId"))
+                        } else {
+                            // 닉네임 중복 확인
+                            userProfileRepository.existsByNickname(nickname)
+                                .flatMap { nicknameExists ->
+                                    if (nicknameExists) {
+                                        Mono.error(DuplicateNicknameException(nickname))
+                                    } else {
+                                        val profile = UserProfile(
+                                            userId = userId,
+                                            nickname = nickname,
+                                            profileImageUrl = profileImageUrl,
+                                            bio = bio
+                                        )
+                                        userProfileRepository.save(profile)
+                                    }
+                                }
+                        }
+                    }
+            }
     }
 
     /**
@@ -75,9 +81,9 @@ class UserProfileServiceImpl(
      * @return 프로필 정보
      * @throws UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
-    override fun getProfileByUserId(userId: UUID): UserProfile {
+    override fun getProfileByUserId(userId: UUID): Mono<UserProfile> {
         return userProfileRepository.findByUserId(userId)
-            ?: throw UserProfileNotFoundException("프로필을 찾을 수 없습니다. User ID: $userId")
+            .switchIfEmpty(Mono.error(UserProfileNotFoundException("프로필을 찾을 수 없습니다. User ID: $userId")))
     }
 
     /**
@@ -87,9 +93,9 @@ class UserProfileServiceImpl(
      * @return 프로필 정보
      * @throws UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
-    override fun getProfileByNickname(nickname: String): UserProfile {
+    override fun getProfileByNickname(nickname: String): Mono<UserProfile> {
         return userProfileRepository.findByNickname(nickname)
-            ?: throw UserProfileNotFoundException("프로필을 찾을 수 없습니다. Nickname: $nickname")
+            .switchIfEmpty(Mono.error(UserProfileNotFoundException("프로필을 찾을 수 없습니다. Nickname: $nickname")))
     }
 
     /**
@@ -98,7 +104,7 @@ class UserProfileServiceImpl(
      * @param nickname 확인할 닉네임
      * @return 중복 여부 (true: 중복, false: 사용 가능)
      */
-    override fun isNicknameDuplicated(nickname: String): Boolean {
+    override fun isNicknameDuplicated(nickname: String): Mono<Boolean> {
         return userProfileRepository.existsByNickname(nickname)
     }
 
@@ -121,23 +127,32 @@ class UserProfileServiceImpl(
         nickname: String?,
         profileImageUrl: String?,
         bio: String?
-    ): UserProfile {
-        val currentProfile = getProfileByUserId(userId)
+    ): Mono<UserProfile> {
+        return getProfileByUserId(userId)
+            .flatMap { currentProfile ->
+                // 닉네임 변경 시 중복 확인
+                val nicknameCheck = if (nickname != null && nickname != currentProfile.nickname) {
+                    userProfileRepository.existsByNickname(nickname)
+                        .flatMap { exists ->
+                            if (exists) {
+                                Mono.error<Boolean>(DuplicateNicknameException(nickname))
+                            } else {
+                                Mono.just(false)
+                            }
+                        }
+                } else {
+                    Mono.just(false)
+                }
 
-        // 닉네임 변경 시 중복 확인
-        nickname?.let {
-            if (it != currentProfile.nickname && userProfileRepository.existsByNickname(it)) {
-                throw DuplicateNicknameException(it)
+                nicknameCheck.flatMap {
+                    val updatedProfile = currentProfile.copy(
+                        nickname = nickname ?: currentProfile.nickname,
+                        profileImageUrl = profileImageUrl ?: currentProfile.profileImageUrl,
+                        bio = bio ?: currentProfile.bio
+                    )
+                    userProfileRepository.update(updatedProfile)
+                }
             }
-        }
-
-        val updatedProfile = currentProfile.copy(
-            nickname = nickname ?: currentProfile.nickname,
-            profileImageUrl = profileImageUrl ?: currentProfile.profileImageUrl,
-            bio = bio ?: currentProfile.bio
-        )
-
-        return userProfileRepository.update(updatedProfile)
     }
 
     /**
@@ -148,10 +163,12 @@ class UserProfileServiceImpl(
      * @throws UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
     @Transactional
-    override fun incrementFollowerCount(userId: UUID): UserProfile {
-        val profile = getProfileByUserId(userId)
-        val updatedProfile = profile.copy(followerCount = profile.followerCount + 1)
-        return userProfileRepository.update(updatedProfile)
+    override fun incrementFollowerCount(userId: UUID): Mono<UserProfile> {
+        return getProfileByUserId(userId)
+            .flatMap { profile ->
+                val updatedProfile = profile.copy(followerCount = profile.followerCount + 1)
+                userProfileRepository.update(updatedProfile)
+            }
     }
 
     /**
@@ -162,12 +179,14 @@ class UserProfileServiceImpl(
      * @throws UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
     @Transactional
-    override fun decrementFollowerCount(userId: UUID): UserProfile {
-        val profile = getProfileByUserId(userId)
-        val updatedProfile = profile.copy(
-            followerCount = maxOf(0, profile.followerCount - 1)
-        )
-        return userProfileRepository.update(updatedProfile)
+    override fun decrementFollowerCount(userId: UUID): Mono<UserProfile> {
+        return getProfileByUserId(userId)
+            .flatMap { profile ->
+                val updatedProfile = profile.copy(
+                    followerCount = maxOf(0, profile.followerCount - 1)
+                )
+                userProfileRepository.update(updatedProfile)
+            }
     }
 
     /**
@@ -178,10 +197,12 @@ class UserProfileServiceImpl(
      * @throws UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
     @Transactional
-    override fun incrementFollowingCount(userId: UUID): UserProfile {
-        val profile = getProfileByUserId(userId)
-        val updatedProfile = profile.copy(followingCount = profile.followingCount + 1)
-        return userProfileRepository.update(updatedProfile)
+    override fun incrementFollowingCount(userId: UUID): Mono<UserProfile> {
+        return getProfileByUserId(userId)
+            .flatMap { profile ->
+                val updatedProfile = profile.copy(followingCount = profile.followingCount + 1)
+                userProfileRepository.update(updatedProfile)
+            }
     }
 
     /**
@@ -192,12 +213,14 @@ class UserProfileServiceImpl(
      * @throws UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
     @Transactional
-    override fun decrementFollowingCount(userId: UUID): UserProfile {
-        val profile = getProfileByUserId(userId)
-        val updatedProfile = profile.copy(
-            followingCount = maxOf(0, profile.followingCount - 1)
-        )
-        return userProfileRepository.update(updatedProfile)
+    override fun decrementFollowingCount(userId: UUID): Mono<UserProfile> {
+        return getProfileByUserId(userId)
+            .flatMap { profile ->
+                val updatedProfile = profile.copy(
+                    followingCount = maxOf(0, profile.followingCount - 1)
+                )
+                userProfileRepository.update(updatedProfile)
+            }
     }
 
     /**

@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
-import reactor.core.scheduler.Schedulers
 import java.util.UUID
 
 /**
@@ -49,7 +48,7 @@ class CommentLikeServiceImpl(
     override fun likeComment(userId: UUID, commentId: UUID): Mono<CommentLikeResponse> {
         logger.debug("Liking comment: userId={}, commentId={}", userId, commentId)
 
-        return Mono.fromCallable { commentLikeRepository.save(userId, commentId) }
+        return commentLikeRepository.save(userId, commentId)
             .then(getLikeResponse(commentId, true))
             .onErrorResume(DataAccessException::class.java) {
                 logger.debug("Comment already liked: userId={}, commentId={}", userId, commentId)
@@ -79,7 +78,7 @@ class CommentLikeServiceImpl(
     override fun unlikeComment(userId: UUID, commentId: UUID): Mono<CommentLikeResponse> {
         logger.debug("Unliking comment: userId={}, commentId={}", userId, commentId)
 
-        return Mono.fromCallable { commentLikeRepository.delete(userId, commentId) }
+        return commentLikeRepository.delete(userId, commentId)
             .then(getLikeResponse(commentId, false))
             .doOnSuccess { logger.debug("Comment unliked successfully: userId={}, commentId={}", userId, commentId) }
             .doOnError { error ->
@@ -97,7 +96,7 @@ class CommentLikeServiceImpl(
     override fun getLikeCount(commentId: UUID): Mono<CommentLikeCountResponse> {
         logger.debug("Getting like count: commentId={}", commentId)
 
-        return Mono.fromCallable { commentLikeRepository.countByCommentId(commentId) }
+        return commentLikeRepository.countByCommentId(commentId)
             .map { likeCount ->
                 CommentLikeCountResponse(
                     commentId = commentId.toString(),
@@ -126,8 +125,7 @@ class CommentLikeServiceImpl(
     override fun getLikeStatus(userId: UUID, commentId: UUID): Mono<CommentLikeStatusResponse> {
         logger.debug("Getting like status: userId={}, commentId={}", userId, commentId)
 
-        return Mono.fromCallable { commentLikeRepository.exists(userId, commentId) }
-            .subscribeOn(Schedulers.boundedElastic())
+        return commentLikeRepository.exists(userId, commentId)
             .map { isLiked ->
                 CommentLikeStatusResponse(
                     commentId = commentId.toString(),
@@ -147,7 +145,7 @@ class CommentLikeServiceImpl(
      * @return 댓글 좋아요 응답
      */
     private fun getLikeResponse(commentId: UUID, isLiked: Boolean): Mono<CommentLikeResponse> {
-        return Mono.fromCallable { commentLikeRepository.countByCommentId(commentId) }
+        return commentLikeRepository.countByCommentId(commentId)
             .map { likeCount ->
                 CommentLikeResponse(
                     commentId = commentId.toString(),

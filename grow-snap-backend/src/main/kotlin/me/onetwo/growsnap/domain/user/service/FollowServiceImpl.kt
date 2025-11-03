@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
@@ -50,46 +52,51 @@ class FollowServiceImpl(
      * @throws AlreadyFollowingException 이미 팔로우 중인 경우
      */
     @Transactional
-    override fun follow(followerId: UUID, followingId: UUID): Follow {
+    override fun follow(followerId: UUID, followingId: UUID): Mono<Follow> {
         // 자기 자신 팔로우 방지
         if (followerId == followingId) {
-            throw CannotFollowSelfException()
+            return Mono.error(CannotFollowSelfException())
         }
 
         // 사용자 존재 여부 확인
-        userService.getUserById(followerId)
-        userService.getUserById(followingId)
-
-        // 이미 팔로우 중인지 확인
-        if (followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)) {
-            throw AlreadyFollowingException(followingId)
-        }
-
-        // 팔로우 관계 생성
-        val follow = Follow(
-            followerId = followerId,
-            followingId = followingId
-        )
-        val savedFollow = followRepository.save(follow)
-
-        // 팔로워/팔로잉 수 업데이트
-        userProfileService.incrementFollowingCount(followerId)
-        userProfileService.incrementFollowerCount(followingId)
-
-        // 팔로우 이벤트 발행 (트랜잭션 커밋 후 비동기 알림 처리)
-        logger.debug(
-            "Publishing FollowEvent: follower={}, following={}",
-            followerId,
-            followingId
-        )
-        applicationEventPublisher.publishEvent(
-            FollowEvent(
-                followerId = followerId,
-                followingId = followingId
-            )
-        )
-
-        return savedFollow
+        return userService.getUserById(followerId)
+            .zipWith(userService.getUserById(followingId))
+            .flatMap {
+                // 이미 팔로우 중인지 확인
+                followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
+                    .flatMap { exists ->
+                        if (exists) {
+                            Mono.error(AlreadyFollowingException(followingId))
+                        } else {
+                            // 팔로우 관계 생성
+                            val follow = Follow(
+                                followerId = followerId,
+                                followingId = followingId
+                            )
+                            followRepository.save(follow)
+                        }
+                    }
+            }
+            .flatMap { savedFollow ->
+                // 팔로워/팔로잉 수 업데이트
+                userProfileService.incrementFollowingCount(followerId)
+                    .zipWith(userProfileService.incrementFollowerCount(followingId))
+                    .thenReturn(savedFollow)
+            }
+            .doOnSuccess { savedFollow ->
+                // 팔로우 이벤트 발행 (트랜잭션 커밋 후 비동기 알림 처리)
+                logger.debug(
+                    "Publishing FollowEvent: follower={}, following={}",
+                    followerId,
+                    followingId
+                )
+                applicationEventPublisher.publishEvent(
+                    FollowEvent(
+                        followerId = followerId,
+                        followingId = followingId
+                    )
+                )
+            }
     }
 
     /**
@@ -103,22 +110,28 @@ class FollowServiceImpl(
      * @throws NotFollowingException 팔로우하지 않은 사용자를 언팔로우하려는 경우
      */
     @Transactional
-    override fun unfollow(followerId: UUID, followingId: UUID) {
+    override fun unfollow(followerId: UUID, followingId: UUID): Mono<Void> {
         // 사용자 존재 여부 확인
-        userService.getUserById(followerId)
-        userService.getUserById(followingId)
-
-        // 팔로우 관계 확인
-        if (!followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)) {
-            throw NotFollowingException(followingId)
-        }
-
-        // 팔로우 관계 삭제 (Soft Delete)
-        followRepository.softDelete(followerId, followingId)
-
-        // 팔로워/팔로잉 수 업데이트
-        userProfileService.decrementFollowingCount(followerId)
-        userProfileService.decrementFollowerCount(followingId)
+        return userService.getUserById(followerId)
+            .zipWith(userService.getUserById(followingId))
+            .flatMap {
+                // 팔로우 관계 확인
+                followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
+                    .flatMap { exists ->
+                        if (!exists) {
+                            Mono.error(NotFollowingException(followingId))
+                        } else {
+                            // 팔로우 관계 삭제 (Soft Delete)
+                            followRepository.softDelete(followerId, followingId)
+                        }
+                    }
+            }
+            .flatMap {
+                // 팔로워/팔로잉 수 업데이트
+                userProfileService.decrementFollowingCount(followerId)
+                    .zipWith(userProfileService.decrementFollowerCount(followingId))
+                    .then()
+            }
     }
 
     /**
@@ -128,7 +141,7 @@ class FollowServiceImpl(
      * @param followingId 팔로우받는 사용자 ID
      * @return 팔로우 여부 (true: 팔로우 중, false: 팔로우하지 않음)
      */
-    override fun isFollowing(followerId: UUID, followingId: UUID): Boolean {
+    override fun isFollowing(followerId: UUID, followingId: UUID): Mono<Boolean> {
         return followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
     }
 
@@ -138,7 +151,7 @@ class FollowServiceImpl(
      * @param userId 사용자 ID
      * @return 팔로잉 수
      */
-    override fun getFollowingCount(userId: UUID): Int {
+    override fun getFollowingCount(userId: UUID): Mono<Int> {
         return followRepository.countByFollowerId(userId)
     }
 
@@ -148,7 +161,7 @@ class FollowServiceImpl(
      * @param userId 사용자 ID
      * @return 팔로워 수
      */
-    override fun getFollowerCount(userId: UUID): Int {
+    override fun getFollowerCount(userId: UUID): Mono<Int> {
         return followRepository.countByFollowingId(userId)
     }
 
@@ -161,17 +174,18 @@ class FollowServiceImpl(
      * @param userId 사용자 ID
      * @return 팔로워 프로필 목록
      */
-    override fun getFollowers(userId: UUID): List<UserProfileResponse> {
-        val followerUserIds = followRepository.findFollowerUserIds(userId)
-
-        if (followerUserIds.isEmpty()) {
-            return emptyList()
-        }
-
-        // N+1 쿼리 문제를 방지하기 위해 한 번의 쿼리로 모든 프로필을 조회합니다.
-        val profiles = userProfileRepository.findByUserIds(followerUserIds)
-
-        return profiles.map { UserProfileResponse.from(it) }
+    override fun getFollowers(userId: UUID): Flux<UserProfileResponse> {
+        return followRepository.findFollowerUserIds(userId)
+            .collectList()
+            .flatMapMany { followerUserIds ->
+                if (followerUserIds.isEmpty()) {
+                    Flux.empty()
+                } else {
+                    // N+1 쿼리 문제를 방지하기 위해 한 번의 쿼리로 모든 프로필을 조회합니다.
+                    userProfileRepository.findByUserIds(followerUserIds.toSet())
+                }
+            }
+            .map { profile -> UserProfileResponse.from(profile) }
     }
 
     /**
@@ -183,17 +197,18 @@ class FollowServiceImpl(
      * @param userId 사용자 ID
      * @return 팔로잉 프로필 목록
      */
-    override fun getFollowing(userId: UUID): List<UserProfileResponse> {
-        val followingUserIds = followRepository.findFollowingUserIds(userId)
-
-        if (followingUserIds.isEmpty()) {
-            return emptyList()
-        }
-
-        // N+1 쿼리 문제를 방지하기 위해 한 번의 쿼리로 모든 프로필을 조회합니다.
-        val profiles = userProfileRepository.findByUserIds(followingUserIds)
-
-        return profiles.map { UserProfileResponse.from(it) }
+    override fun getFollowing(userId: UUID): Flux<UserProfileResponse> {
+        return followRepository.findFollowingUserIds(userId)
+            .collectList()
+            .flatMapMany { followingUserIds ->
+                if (followingUserIds.isEmpty()) {
+                    Flux.empty()
+                } else {
+                    // N+1 쿼리 문제를 방지하기 위해 한 번의 쿼리로 모든 프로필을 조회합니다.
+                    userProfileRepository.findByUserIds(followingUserIds.toSet())
+                }
+            }
+            .map { profile -> UserProfileResponse.from(profile) }
     }
 
     companion object {

@@ -2,6 +2,7 @@ package me.onetwo.growsnap.domain.user.service
 
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
+import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
@@ -30,7 +31,7 @@ interface UserService {
         providerId: String,
         name: String?,
         profileImageUrl: String?
-    ): User
+    ): Mono<User>
 
     /**
      * 사용자 ID로 조회
@@ -39,7 +40,7 @@ interface UserService {
      * @return 사용자 정보
      * @throws me.onetwo.growsnap.domain.user.exception.UserNotFoundException 사용자를 찾을 수 없는 경우
      */
-    fun getUserById(userId: UUID): User
+    fun getUserById(userId: UUID): Mono<User>
 
     /**
      * 이메일로 사용자 조회
@@ -48,7 +49,7 @@ interface UserService {
      * @return 사용자 정보
      * @throws me.onetwo.growsnap.domain.user.exception.UserNotFoundException 사용자를 찾을 수 없는 경우
      */
-    fun getUserByEmail(email: String): User
+    fun getUserByEmail(email: String): Mono<User>
 
     /**
      * 사용자 이메일 중복 확인
@@ -56,7 +57,7 @@ interface UserService {
      * @param email 확인할 이메일
      * @return 중복 여부 (true: 중복, false: 사용 가능)
      */
-    fun isEmailDuplicated(email: String): Boolean
+    fun isEmailDuplicated(email: String): Mono<Boolean>
 
     /**
      * 사용자 회원 탈퇴 (Soft Delete)
@@ -71,5 +72,5 @@ interface UserService {
      * @param userId 탈퇴할 사용자 ID
      * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
      */
-    fun withdrawUser(userId: UUID)
+    fun withdrawUser(userId: UUID): Mono<Void>
 }

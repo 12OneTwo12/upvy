@@ -53,7 +53,7 @@ class AuthServiceImpl(
         }
 
         // 사용자 정보 조회
-        val user = userService.getUserById(userId)
+        val user = userService.getUserById(userId).block()!!
 
         // 새로운 Access Token 생성
         val newAccessToken = jwtTokenProvider.generateAccessToken(

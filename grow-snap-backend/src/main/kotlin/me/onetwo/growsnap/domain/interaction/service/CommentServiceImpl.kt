@@ -77,26 +77,23 @@ class CommentServiceImpl(
 
         val parentCommentId = request.parentCommentId?.let { UUID.fromString(it) }
         val validateParent: Mono<Void> = if (parentCommentId != null) {
-            Mono.fromCallable {
-                commentRepository.findById(parentCommentId)
-                    ?: throw CommentException.ParentCommentNotFoundException(parentCommentId)
-            }.then()
+            commentRepository.findById(parentCommentId)
+                .switchIfEmpty(Mono.error(CommentException.ParentCommentNotFoundException(parentCommentId)))
+                .then()
         } else {
             Mono.empty()
         }
 
         return validateParent
             .then(
-                Mono.fromCallable {
-                    commentRepository.save(
-                        Comment(
-                            contentId = contentId,
-                            userId = userId,
-                            parentCommentId = parentCommentId,
-                            content = request.content,
-                        )
-                    ) ?: throw IllegalStateException("Failed to create comment")
-                }
+                commentRepository.save(
+                    Comment(
+                        contentId = contentId,
+                        userId = userId,
+                        parentCommentId = parentCommentId,
+                        content = request.content,
+                    )
+                ).switchIfEmpty(Mono.error(IllegalStateException("Failed to create comment")))
             )
             .doOnSuccess { savedComment ->
                 logger.debug("Publishing CommentCreatedEvent: userId={}, contentId={}", userId, contentId)
@@ -146,55 +143,66 @@ class CommentServiceImpl(
 
         val cursorUUID = cursor?.let { UUID.fromString(it) }
 
-        return Mono.fromCallable {
-            val comments = commentRepository.findTopLevelCommentsByContentId(contentId, cursorUUID, limit)
-            val actualComments = if (comments.size > limit) comments.take(limit) else comments
-            val hasNext = comments.size > limit
-            val nextCursor = if (hasNext) actualComments.lastOrNull()?.id?.toString() else null
+        return commentRepository.findTopLevelCommentsByContentId(contentId, cursorUUID, limit + 1)
+            .collectList()
+            .flatMap { comments ->
+                val actualComments = if (comments.size > limit) comments.take(limit) else comments
+                val hasNext = comments.size > limit
+                val nextCursor = if (hasNext) actualComments.lastOrNull()?.id?.toString() else null
 
-            val userIds = actualComments.map { it.userId }.toSet()
-            val userInfoMap = if (userIds.isNotEmpty()) {
-                userProfileRepository.findUserInfosByUserIds(userIds)
-            } else {
-                emptyMap()
+                val userIds = actualComments.map { it.userId }.toSet()
+                val userInfoMapMono = if (userIds.isNotEmpty()) {
+                    Mono.fromCallable {
+                        userProfileRepository.findUserInfosByUserIds(userIds)
+                    }
+                } else {
+                    Mono.just(emptyMap())
+                }
+
+                // N+1 쿼리 문제 해결: 답글 수를 일괄 조회
+                val commentIds = actualComments.mapNotNull { it.id }
+                val replyCountMapMono = if (commentIds.isNotEmpty()) {
+                    commentRepository.countRepliesByParentCommentIds(commentIds)
+                } else {
+                    Mono.just(emptyMap())
+                }
+
+                // N+1 API 호출 문제 해결: 좋아요 수와 좋아요 여부를 일괄 조회
+                val likeCountMapMono = if (commentIds.isNotEmpty()) {
+                    commentLikeRepository.countByCommentIds(commentIds)
+                } else {
+                    Mono.just(emptyMap())
+                }
+
+                val likedCommentIdsMono = if (userId != null && commentIds.isNotEmpty()) {
+                    commentLikeRepository.findLikedCommentIds(userId, commentIds)
+                } else {
+                    Mono.just(emptySet())
+                }
+
+                Mono.zip(userInfoMapMono, replyCountMapMono, likeCountMapMono, likedCommentIdsMono)
+                    .map { tuple ->
+                        val userInfoMap = tuple.t1
+                        val replyCountMap = tuple.t2
+                        val likeCountMap = tuple.t3
+                        val likedCommentIds = tuple.t4
+
+                        val responseList = actualComments.map { comment ->
+                            val userInfo = userInfoMap[comment.userId] ?: UserInfo("Unknown", null)
+                            val replyCount = replyCountMap[comment.id] ?: 0
+                            val likeCount = likeCountMap[comment.id] ?: 0
+                            val isLiked = comment.id in likedCommentIds
+
+                            mapToCommentResponse(comment, userInfo, replyCount, likeCount, isLiked)
+                        }
+
+                        CommentListResponse(
+                            comments = responseList,
+                            hasNext = hasNext,
+                            nextCursor = nextCursor
+                        )
+                    }
             }
-
-            // N+1 쿼리 문제 해결: 답글 수를 일괄 조회
-            val commentIds = actualComments.mapNotNull { it.id }
-            val replyCountMap = if (commentIds.isNotEmpty()) {
-                commentRepository.countRepliesByParentCommentIds(commentIds)
-            } else {
-                emptyMap()
-            }
-
-            // N+1 API 호출 문제 해결: 좋아요 수와 좋아요 여부를 일괄 조회
-            val likeCountMap = if (commentIds.isNotEmpty()) {
-                commentLikeRepository.countByCommentIds(commentIds)
-            } else {
-                emptyMap()
-            }
-
-            val likedCommentIds = if (userId != null && commentIds.isNotEmpty()) {
-                commentLikeRepository.findLikedCommentIds(userId, commentIds)
-            } else {
-                emptySet()
-            }
-
-            val responseList = actualComments.map { comment ->
-                val userInfo = userInfoMap[comment.userId] ?: UserInfo("Unknown", null)
-                val replyCount = replyCountMap[comment.id] ?: 0
-                val likeCount = likeCountMap[comment.id] ?: 0
-                val isLiked = comment.id in likedCommentIds
-
-                mapToCommentResponse(comment, userInfo, replyCount, likeCount, isLiked)
-            }
-
-            CommentListResponse(
-                comments = responseList,
-                hasNext = hasNext,
-                nextCursor = nextCursor
-            )
-        }
     }
 
     /**
@@ -211,46 +219,56 @@ class CommentServiceImpl(
 
         val cursorUUID = cursor?.let { UUID.fromString(it) }
 
-        return Mono.fromCallable {
-            val replies = commentRepository.findRepliesByParentCommentId(parentCommentId, cursorUUID, limit)
-            val actualReplies = if (replies.size > limit) replies.take(limit) else replies
-            val hasNext = replies.size > limit
-            val nextCursor = if (hasNext) actualReplies.lastOrNull()?.id?.toString() else null
+        return commentRepository.findRepliesByParentCommentId(parentCommentId, cursorUUID, limit + 1)
+            .collectList()
+            .flatMap { replies ->
+                val actualReplies = if (replies.size > limit) replies.take(limit) else replies
+                val hasNext = replies.size > limit
+                val nextCursor = if (hasNext) actualReplies.lastOrNull()?.id?.toString() else null
 
-            val userIds = actualReplies.map { it.userId }.toSet()
-            val userInfoMap = if (userIds.isNotEmpty()) {
-                userProfileRepository.findUserInfosByUserIds(userIds)
-            } else {
-                emptyMap()
+                val userIds = actualReplies.map { it.userId }.toSet()
+                val userInfoMapMono = if (userIds.isNotEmpty()) {
+                    Mono.fromCallable {
+                        userProfileRepository.findUserInfosByUserIds(userIds)
+                    }
+                } else {
+                    Mono.just(emptyMap())
+                }
+
+                // N+1 API 호출 문제 해결: 좋아요 수와 좋아요 여부를 일괄 조회
+                val replyIds = actualReplies.mapNotNull { it.id }
+                val likeCountMapMono = if (replyIds.isNotEmpty()) {
+                    commentLikeRepository.countByCommentIds(replyIds)
+                } else {
+                    Mono.just(emptyMap())
+                }
+
+                val likedReplyIdsMono = if (userId != null && replyIds.isNotEmpty()) {
+                    commentLikeRepository.findLikedCommentIds(userId, replyIds)
+                } else {
+                    Mono.just(emptySet())
+                }
+
+                Mono.zip(userInfoMapMono, likeCountMapMono, likedReplyIdsMono)
+                    .map { tuple ->
+                        val userInfoMap = tuple.t1
+                        val likeCountMap = tuple.t2
+                        val likedReplyIds = tuple.t3
+
+                        val responseList = actualReplies.map { reply ->
+                            val userInfo = userInfoMap[reply.userId] ?: UserInfo("Unknown", null)
+                            val likeCount = likeCountMap[reply.id] ?: 0
+                            val isLiked = reply.id in likedReplyIds
+                            mapToCommentResponse(reply, userInfo, 0, likeCount, isLiked)
+                        }
+
+                        CommentListResponse(
+                            comments = responseList,
+                            hasNext = hasNext,
+                            nextCursor = nextCursor
+                        )
+                    }
             }
-
-            // N+1 API 호출 문제 해결: 좋아요 수와 좋아요 여부를 일괄 조회
-            val replyIds = actualReplies.mapNotNull { it.id }
-            val likeCountMap = if (replyIds.isNotEmpty()) {
-                commentLikeRepository.countByCommentIds(replyIds)
-            } else {
-                emptyMap()
-            }
-
-            val likedReplyIds = if (userId != null && replyIds.isNotEmpty()) {
-                commentLikeRepository.findLikedCommentIds(userId, replyIds)
-            } else {
-                emptySet()
-            }
-
-            val responseList = actualReplies.map { reply ->
-                val userInfo = userInfoMap[reply.userId] ?: UserInfo("Unknown", null)
-                val likeCount = likeCountMap[reply.id] ?: 0
-                val isLiked = reply.id in likedReplyIds
-                mapToCommentResponse(reply, userInfo, 0, likeCount, isLiked)
-            }
-
-            CommentListResponse(
-                comments = responseList,
-                hasNext = hasNext,
-                nextCursor = nextCursor
-            )
-        }
     }
 
     /**
@@ -272,7 +290,8 @@ class CommentServiceImpl(
     override fun getCommentsLegacy(contentId: UUID): Flux<CommentResponse> {
         logger.debug("Getting comments: contentId={}", contentId)
 
-        return Mono.fromCallable { commentRepository.findByContentId(contentId) }
+        return commentRepository.findByContentId(contentId)
+            .collectList()
             .flatMapMany { comments ->
                 if (comments.isEmpty()) {
                     return@flatMapMany Flux.empty()
@@ -323,23 +342,21 @@ class CommentServiceImpl(
     override fun deleteComment(userId: UUID, commentId: UUID): Mono<Void> {
         logger.debug("Deleting comment: userId={}, commentId={}", userId, commentId)
 
-        return Mono.fromCallable {
-            commentRepository.findById(commentId)
-                ?: throw CommentException.CommentNotFoundException(commentId)
-        }.flatMap { comment ->
-            if (comment.userId != userId) {
-                return@flatMap Mono.error<Void>(CommentException.CommentAccessDeniedException(commentId))
-            }
-
-            Mono.fromCallable { commentRepository.delete(commentId, userId) }
-                .doOnSuccess {
-                    logger.debug("Publishing CommentDeletedEvent: userId={}, contentId={}", userId, comment.contentId)
-                    applicationEventPublisher.publishEvent(
-                        CommentDeletedEvent(userId, comment.contentId)
-                    )
+        return commentRepository.findById(commentId)
+            .switchIfEmpty(Mono.error(CommentException.CommentNotFoundException(commentId)))
+            .flatMap { comment ->
+                if (comment.userId != userId) {
+                    return@flatMap Mono.error<Void>(CommentException.CommentAccessDeniedException(commentId))
                 }
-                .then()
-        }
+
+                commentRepository.delete(commentId, userId)
+                    .doOnSuccess {
+                        logger.debug("Publishing CommentDeletedEvent: userId={}, contentId={}", userId, comment.contentId)
+                        applicationEventPublisher.publishEvent(
+                            CommentDeletedEvent(userId, comment.contentId)
+                        )
+                    }
+            }
             .doOnSuccess { logger.debug("Comment deleted successfully: commentId={}", commentId) }
             .doOnError { error ->
                 logger.error("Failed to delete comment: userId={}, commentId={}", userId, commentId, error)

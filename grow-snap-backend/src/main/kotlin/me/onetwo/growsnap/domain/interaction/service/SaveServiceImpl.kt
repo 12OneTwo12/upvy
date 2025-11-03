@@ -14,26 +14,18 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.core.scheduler.Schedulers
 import java.util.UUID
 
 /**
- * 저장 서비스 구현체
+ * 저장 서비스 구현체 (Reactive)
  *
- * 콘텐츠 저장 비즈니스 로직을 처리합니다.
+ * 이벤트 기반 처리:
+ * 1. 저장 상태 변경 → 2. Event 발행 → 3. 응답 반환
+ * 4. [비동기] save_count 증가/감소, 협업 필터링 데이터 저장
  *
- * ### 처리 흐름 (이벤트 기반)
- * 1. 저장 상태 변경 (user_saves 테이블)
- * 2. Spring Event 발행 (SaveCreatedEvent / SaveDeletedEvent)
- * 3. 응답 반환 (사용자는 즉시 성공 확인)
- * 4. [비동기] InteractionEventListener가 처리:
- *    - content_interactions의 save_count 증가/감소
- *    - user_content_interactions 저장 (협업 필터링용)
- *
- * ### 장점
- * - 카운트 증가 실패해도 사용자 경험에 영향 없음
- * - 빠른 응답 시간
- * - 높은 가용성
+ * R2DBC 트랜잭션: @Transactional + ReactiveTransactionManager
+ * - 트랜잭션 커밋 후 @TransactionalEventListener(AFTER_COMMIT) 발화 보장
+ * - 완전한 Non-blocking 처리
  *
  * @property userSaveRepository 사용자 저장 레포지토리
  * @property applicationEventPublisher Spring 이벤트 발행자
@@ -41,7 +33,6 @@ import java.util.UUID
  * @property contentMetadataRepository 콘텐츠 메타데이터 레포지토리
  */
 @Service
-@Transactional(readOnly = true)
 class SaveServiceImpl(
     private val userSaveRepository: UserSaveRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,
@@ -53,18 +44,16 @@ class SaveServiceImpl(
     override fun saveContent(userId: UUID, contentId: UUID): Mono<SaveResponse> {
         logger.debug("Saving content: userId={}, contentId={}", userId, contentId)
 
-        return Mono.fromCallable { userSaveRepository.exists(userId, contentId) }
+        return userSaveRepository.exists(userId, contentId)
             .flatMap { exists ->
                 if (exists) {
                     logger.debug("Content already saved: userId={}, contentId={}", userId, contentId)
                     getSaveResponse(contentId, true)
                 } else {
-                    Mono.fromCallable { userSaveRepository.save(userId, contentId) }
+                    userSaveRepository.save(userId, contentId)
                         .doOnSuccess {
                             logger.debug("Publishing SaveCreatedEvent: userId={}, contentId={}", userId, contentId)
-                            applicationEventPublisher.publishEvent(
-                                SaveCreatedEvent(userId, contentId)
-                            )
+                            applicationEventPublisher.publishEvent(SaveCreatedEvent(userId, contentId))
                         }
                         .then(getSaveResponse(contentId, true))
                 }
@@ -76,18 +65,16 @@ class SaveServiceImpl(
     override fun unsaveContent(userId: UUID, contentId: UUID): Mono<SaveResponse> {
         logger.debug("Unsaving content: userId={}, contentId={}", userId, contentId)
 
-        return Mono.fromCallable { userSaveRepository.exists(userId, contentId) }
+        return userSaveRepository.exists(userId, contentId)
             .flatMap { exists ->
                 if (!exists) {
                     logger.debug("Content not saved: userId={}, contentId={}", userId, contentId)
                     getSaveResponse(contentId, false)
                 } else {
-                    Mono.fromCallable { userSaveRepository.delete(userId, contentId) }
+                    userSaveRepository.delete(userId, contentId)
                         .doOnSuccess {
                             logger.debug("Publishing SaveDeletedEvent: userId={}, contentId={}", userId, contentId)
-                            applicationEventPublisher.publishEvent(
-                                SaveDeletedEvent(userId, contentId)
-                            )
+                            applicationEventPublisher.publishEvent(SaveDeletedEvent(userId, contentId))
                         }
                         .then(getSaveResponse(contentId, false))
                 }
@@ -109,11 +96,11 @@ class SaveServiceImpl(
      * @param userId 사용자 ID
      * @return 저장된 콘텐츠 목록
      */
-    @Transactional(readOnly = true)
     override fun getSavedContents(userId: UUID): Flux<SavedContentResponse> {
         logger.debug("Getting saved contents: userId={}", userId)
 
-        return Mono.fromCallable { userSaveRepository.findByUserId(userId) }
+        return userSaveRepository.findByUserId(userId)
+            .collectList()
             .flatMapMany { userSaves ->
                 if (userSaves.isEmpty()) {
                     return@flatMapMany Flux.empty()
@@ -151,12 +138,10 @@ class SaveServiceImpl(
      * @param contentId 콘텐츠 ID
      * @return 저장 상태 응답
      */
-    @Transactional(readOnly = true)
     override fun getSaveStatus(userId: UUID, contentId: UUID): Mono<SaveStatusResponse> {
         logger.debug("Getting save status: userId={}, contentId={}", userId, contentId)
 
-        return Mono.fromCallable { userSaveRepository.exists(userId, contentId) }
-            .subscribeOn(Schedulers.boundedElastic())
+        return userSaveRepository.exists(userId, contentId)
             .map { isSaved ->
                 SaveStatusResponse(
                     contentId = contentId.toString(),
