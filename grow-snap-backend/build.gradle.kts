@@ -35,8 +35,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    runtimeOnly("com.h2database:h2")
-    runtimeOnly("com.mysql:mysql-connector-j")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.restdocs:spring-restdocs-webtestclient")
@@ -84,8 +82,11 @@ dependencies {
     // Image processing (Thumbnailator for resizing)
     implementation("net.coobird:thumbnailator:0.4.20")
 
-    // JDBC for JOOQ
-    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    // R2DBC for Reactive Database Access
+    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
+    implementation("io.r2dbc:r2dbc-pool")
+    runtimeOnly("io.asyncer:r2dbc-mysql:1.0.5")
+    testRuntimeOnly("io.r2dbc:r2dbc-h2")
 
     // JOOQ 기본 런타임 라이브러리
     implementation("org.jooq:jooq:$jooqVersion")

@@ -1,19 +1,21 @@
 package me.onetwo.growsnap.infrastructure.config
 
+import io.r2dbc.spi.ConnectionFactory
+import org.jooq.DSLContext
 import org.jooq.SQLDialect
 import org.jooq.conf.RenderNameCase
 import org.jooq.conf.RenderQuotedNames
 import org.jooq.conf.Settings
-import org.jooq.impl.DataSourceConnectionProvider
-import org.jooq.impl.DefaultConfiguration
-import org.jooq.impl.DefaultDSLContext
+import org.jooq.impl.DSL
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy
-import javax.sql.DataSource
 
 /**
- * JOOQ 설정
+ * JOOQ 설정 (R2DBC)
+ *
+ * JOOQ 3.17+는 R2DBC를 네이티브로 지원합니다.
+ * ConnectionFactory를 사용하여 DSLContext를 생성하면,
+ * JOOQ의 type-safe API로 reactive 쿼리를 실행할 수 있습니다.
  *
  * JOOQ가 생성하는 SQL에서 스키마 이름(PUBLIC)을 제거하도록 설정합니다.
  * MySQL은 H2와 달리 PUBLIC 스키마가 없으므로, 스키마를 렌더링하지 않아야 합니다.
@@ -31,28 +33,19 @@ class JooqConfig {
     @Bean
     fun jooqSettings(): Settings {
         return Settings()
-            .withRenderSchema(false) // 스키마 이름을 렌더링하지 않음 (PUBLIC 제거)
-            .withRenderNameCase(RenderNameCase.LOWER) // 소문자로 렌더링
-            .withRenderQuotedNames(RenderQuotedNames.ALWAYS) // 백틱으로 감싸기
+            .withRenderSchema(false)
+            .withRenderNameCase(RenderNameCase.LOWER)
+            .withRenderQuotedNames(RenderQuotedNames.ALWAYS)
     }
 
     /**
-     * JOOQ Configuration 설정
+     * JOOQ DSLContext 설정 (R2DBC)
+     *
+     * ConnectionFactory를 사용하여 R2DBC 기반 DSLContext를 생성합니다.
+     * 이를 통해 JOOQ의 type-safe API로 reactive 쿼리를 실행할 수 있습니다.
      */
     @Bean
-    fun jooqConfiguration(dataSource: DataSource, settings: Settings): DefaultConfiguration {
-        val configuration = DefaultConfiguration()
-        configuration.set(SQLDialect.MYSQL)
-        configuration.set(DataSourceConnectionProvider(TransactionAwareDataSourceProxy(dataSource)))
-        configuration.set(settings)
-        return configuration
-    }
-
-    /**
-     * JOOQ DSLContext 설정
-     */
-    @Bean
-    fun dslContext(configuration: DefaultConfiguration): DefaultDSLContext {
-        return DefaultDSLContext(configuration)
+    fun dslContext(connectionFactory: ConnectionFactory, settings: Settings): DSLContext {
+        return DSL.using(connectionFactory, SQLDialect.MYSQL, settings)
     }
 }

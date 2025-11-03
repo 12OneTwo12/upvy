@@ -1,26 +1,33 @@
 package me.onetwo.growsnap.infrastructure.config
 
+import io.r2dbc.spi.ConnectionFactory
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.transaction.ReactiveTransactionManager
 import org.springframework.transaction.annotation.EnableTransactionManagement
+import org.springframework.transaction.reactive.TransactionalOperator
 
 /**
- * 트랜잭션 관리 설정
+ * 트랜잭션 관리 설정 (R2DBC)
  *
- * JOOQ는 JDBC 기반이므로 일반적인 Spring Transaction Management를 사용합니다.
- *
- * ## WebFlux + JOOQ Hybrid 구조
- * - WebFlux: HTTP 레이어 (Non-blocking)
- * - JOOQ: DB 레이어 (Blocking JDBC)
- * - Transaction: JDBC PlatformTransactionManager
- *
- * ## @TransactionalEventListener 지원
- * - AFTER_COMMIT 이벤트가 트랜잭션 커밋 후 발행됨
- * - @Async와 함께 사용하여 비동기 이벤트 처리
- *
- * ## 주의사항
- * - Blocking I/O (JOOQ)를 Reactor 스케줄러에서 실행 시 `Schedulers.boundedElastic()` 사용 필요
- * - Controller에서 반환하는 Mono/Flux는 Non-blocking이지만, Repository 호출은 Blocking
+ * WebFlux + R2DBC 완전한 Reactive 스택:
+ * - ReactiveTransactionManager: Reactor Context 기반 트랜잭션 관리
+ * - @Transactional: Mono/Flux 구독 시 트랜잭션 시작, 완료 시 커밋
+ * - @TransactionalEventListener(AFTER_COMMIT): 트랜잭션 커밋 후 이벤트 발화 보장
+ * - 완전한 Non-blocking 처리 (Schedulers.boundedElastic() 불필요)
  */
 @Configuration
 @EnableTransactionManagement
-class TransactionConfig
+class TransactionConfig {
+
+    /**
+     * TransactionalOperator Bean
+     *
+     * 프로그래밍 방식으로 트랜잭션을 관리하기 위한 Bean입니다.
+     * @Transactional 애노테이션 대신 코드로 직접 트랜잭션을 제어할 수 있습니다.
+     */
+    @Bean
+    fun transactionalOperator(transactionManager: ReactiveTransactionManager): TransactionalOperator {
+        return TransactionalOperator.create(transactionManager)
+    }
+}
