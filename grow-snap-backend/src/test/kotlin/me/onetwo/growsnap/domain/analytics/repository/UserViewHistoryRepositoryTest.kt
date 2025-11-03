@@ -62,7 +62,7 @@ class UserViewHistoryRepositoryTest {
                 providerId = "user-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         // 콘텐츠 3개 생성
         testContent1Id = UUID.randomUUID()

@@ -50,7 +50,7 @@ class ContentPhotoRepositoryTest {
                 providerId = "creator-123",
                 role = UserRole.USER
             )
-        )!!
+        ).block()!!
 
         testContentId = UUID.randomUUID()
         insertContent(testContentId, testUser.id!!, "Photo Test")

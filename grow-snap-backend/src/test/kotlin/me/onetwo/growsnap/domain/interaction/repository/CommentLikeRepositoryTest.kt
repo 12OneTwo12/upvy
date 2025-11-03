@@ -63,7 +63,7 @@ class CommentLikeRepositoryTest {
                 providerId = "test-provider-id",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
         testUserId = user.id!!
 
         // 콘텐츠 생성
@@ -77,8 +77,8 @@ class CommentLikeRepositoryTest {
                 userId = testUserId,
                 content = "Test comment"
             )
-        )
-        testCommentId = comment!!.id!!
+        ).block()!!
+        testCommentId = comment.id!!
     }
 
     @Nested
@@ -91,7 +91,7 @@ class CommentLikeRepositoryTest {
             // Given: 준비된 사용자와 댓글
 
             // When: 댓글 좋아요 생성
-            val commentLike = commentLikeRepository.save(testUserId, testCommentId)!!
+            val commentLike = commentLikeRepository.save(testUserId, testCommentId).block()!!
 
             // Then: 생성된 댓글 좋아요 검증
             assertEquals(testUserId, commentLike.userId)
@@ -104,11 +104,11 @@ class CommentLikeRepositoryTest {
         @DisplayName("이미 댓글 좋아요가 존재하면, 중복 생성 시 예외가 발생한다")
         fun save_WhenAlreadyExists_ThrowsException() {
             // Given: 이미 댓글 좋아요가 존재
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
 
             // When & Then: 중복 생성 시 DataAccessException 발생
             assertThrows<DataAccessException> {
-                commentLikeRepository.save(testUserId, testCommentId)
+                commentLikeRepository.save(testUserId, testCommentId).block()
             }
         }
     }
@@ -121,13 +121,13 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글 좋아요를 삭제하면, deleted_at이 설정된다")
         fun delete_SetsDeletedAt() {
             // Given: 댓글 좋아요가 존재
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
 
             // When: 댓글 좋아요 삭제
-            commentLikeRepository.delete(testUserId, testCommentId)
+            commentLikeRepository.delete(testUserId, testCommentId).block()
 
             // Then: deleted_at이 설정됨
-            val exists = commentLikeRepository.exists(testUserId, testCommentId)
+            val exists = commentLikeRepository.exists(testUserId, testCommentId).block()!!
             assertFalse(exists)
         }
 
@@ -137,7 +137,7 @@ class CommentLikeRepositoryTest {
             // Given: 댓글 좋아요가 존재하지 않음
 
             // When & Then: 삭제해도 예외 없음
-            commentLikeRepository.delete(testUserId, testCommentId)
+            commentLikeRepository.delete(testUserId, testCommentId).block()
         }
     }
 
@@ -149,10 +149,10 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글 좋아요가 존재하면, true를 반환한다")
         fun exists_WhenExists_ReturnsTrue() {
             // Given: 댓글 좋아요가 존재
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
 
             // When: 존재 여부 확인
-            val exists = commentLikeRepository.exists(testUserId, testCommentId)
+            val exists = commentLikeRepository.exists(testUserId, testCommentId).block()!!
 
             // Then: true 반환
             assertTrue(exists)
@@ -164,7 +164,7 @@ class CommentLikeRepositoryTest {
             // Given: 댓글 좋아요가 존재하지 않음
 
             // When: 존재 여부 확인
-            val exists = commentLikeRepository.exists(testUserId, testCommentId)
+            val exists = commentLikeRepository.exists(testUserId, testCommentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -174,11 +174,11 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글 좋아요가 삭제되면, false를 반환한다")
         fun exists_WhenDeleted_ReturnsFalse() {
             // Given: 댓글 좋아요가 삭제됨
-            commentLikeRepository.save(testUserId, testCommentId)
-            commentLikeRepository.delete(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
+            commentLikeRepository.delete(testUserId, testCommentId).block()
 
             // When: 존재 여부 확인
-            val exists = commentLikeRepository.exists(testUserId, testCommentId)
+            val exists = commentLikeRepository.exists(testUserId, testCommentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -193,10 +193,10 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글 좋아요가 존재하면, 댓글 좋아요를 반환한다")
         fun findByUserIdAndCommentId_WhenExists_ReturnsCommentLike() {
             // Given: 댓글 좋아요가 존재
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
 
             // When: 댓글 좋아요 조회
-            val commentLike = commentLikeRepository.findByUserIdAndCommentId(testUserId, testCommentId)
+            val commentLike = commentLikeRepository.findByUserIdAndCommentId(testUserId, testCommentId).block()
 
             // Then: 댓글 좋아요 반환
             assertNotNull(commentLike)
@@ -210,7 +210,7 @@ class CommentLikeRepositoryTest {
             // Given: 댓글 좋아요가 존재하지 않음
 
             // When: 댓글 좋아요 조회
-            val commentLike = commentLikeRepository.findByUserIdAndCommentId(testUserId, testCommentId)
+            val commentLike = commentLikeRepository.findByUserIdAndCommentId(testUserId, testCommentId).block()
 
             // Then: null 반환
             assertEquals(null, commentLike)
@@ -246,7 +246,7 @@ class CommentLikeRepositoryTest {
                     providerId = "test-provider-id-2",
                     role = UserRole.USER
                 )
-            )
+            ).block()!!
             commentLikeRepository.save(user2.id!!, testCommentId)
 
             // When: 좋아요 수 조회
@@ -269,7 +269,7 @@ class CommentLikeRepositoryTest {
                     providerId = "test-provider-id-2",
                     role = UserRole.USER
                 )
-            )
+            ).block()!!
             commentLikeRepository.save(user2.id!!, testCommentId)
             commentLikeRepository.delete(user2.id!!, testCommentId)
 

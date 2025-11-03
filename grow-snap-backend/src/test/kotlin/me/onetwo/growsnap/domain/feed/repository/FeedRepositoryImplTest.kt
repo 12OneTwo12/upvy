@@ -76,7 +76,7 @@ class FeedRepositoryImplTest {
                 providerId = "viewer-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         creator1 = userRepository.save(
             User(
@@ -85,7 +85,7 @@ class FeedRepositoryImplTest {
                 providerId = "creator1-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         creator2 = userRepository.save(
             User(
@@ -94,7 +94,7 @@ class FeedRepositoryImplTest {
                 providerId = "creator2-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         // 프로필 생성
         userProfileRepository.save(

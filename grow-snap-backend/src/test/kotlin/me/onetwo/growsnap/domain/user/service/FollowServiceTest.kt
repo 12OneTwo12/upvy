@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 
 /**
  * FollowService 단위 테스트
@@ -103,16 +105,16 @@ class FollowServiceTest {
             followingId = followingId
         )
 
-        every { userService.getUserById(followerId) } returns followerUser
-        every { userService.getUserById(followingId) } returns followingUser
+        every { userService.getUserById(followerId) } returns Mono.just(followerUser)
+        every { userService.getUserById(followingId) } returns Mono.just(followingUser)
         every {
             followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
-        } returns false
-        every { followRepository.save(any()) } returns follow
+        } returns Mono.just(false)
+        every { followRepository.save(any()) } returns Mono.just(follow)
         every { userProfileService.incrementFollowingCount(followerId) } returns
-                followerProfile.copy(followingCount = 1)
+                Mono.just(followerProfile.copy(followingCount = 1))
         every { userProfileService.incrementFollowerCount(followingId) } returns
-                followingProfile.copy(followerCount = 1)
+                Mono.just(followingProfile.copy(followerCount = 1))
 
         // When
         val result = followService.follow(followerId, followingId)
@@ -158,12 +160,11 @@ class FollowServiceTest {
         val followerId = UUID.randomUUID()
         val followingId = UUID.randomUUID()
 
-        every { userService.getUserById(followerId) } returns followerUser
-        every { userService.getUserById(followingId) } returns followingUser
+        every { userService.getUserById(followerId) } returns Mono.just(followerUser)
+        every { userService.getUserById(followingId) } returns Mono.just(followingUser)
         every {
             followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
-        } returns true
-
+        } returns Mono.just(true)
         // When & Then
         val exception = assertThrows<AlreadyFollowingException> {
             followService.follow(followerId, followingId)
@@ -185,16 +186,16 @@ class FollowServiceTest {
         val followerId = UUID.randomUUID()
         val followingId = UUID.randomUUID()
 
-        every { userService.getUserById(followerId) } returns followerUser
-        every { userService.getUserById(followingId) } returns followingUser
+        every { userService.getUserById(followerId) } returns Mono.just(followerUser)
+        every { userService.getUserById(followingId) } returns Mono.just(followingUser)
         every {
             followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
-        } returns true
-        every { followRepository.softDelete(followerId, followingId) } returns Unit
+        } returns Mono.just(true)
+        every { followRepository.softDelete(followerId, followingId) } returns Mono.empty()
         every { userProfileService.decrementFollowingCount(followerId) } returns
-                followerProfile.copy(followingCount = 0)
+                Mono.just(followerProfile.copy(followingCount = 0))
         every { userProfileService.decrementFollowerCount(followingId) } returns
-                followingProfile.copy(followerCount = 0)
+                Mono.just(followingProfile.copy(followerCount = 0))
 
         // When
         followService.unfollow(followerId, followingId)
@@ -217,12 +218,11 @@ class FollowServiceTest {
         val followerId = UUID.randomUUID()
         val followingId = UUID.randomUUID()
 
-        every { userService.getUserById(followerId) } returns followerUser
-        every { userService.getUserById(followingId) } returns followingUser
+        every { userService.getUserById(followerId) } returns Mono.just(followerUser)
+        every { userService.getUserById(followingId) } returns Mono.just(followingUser)
         every {
             followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
-        } returns false
-
+        } returns Mono.just(false)
         // When & Then
         val exception = assertThrows<NotFollowingException> {
             followService.unfollow(followerId, followingId)
@@ -246,10 +246,9 @@ class FollowServiceTest {
 
         every {
             followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
-        } returns true
-
+        } returns Mono.just(true)
         // When
-        val result = followService.isFollowing(followerId, followingId)
+        val result = followService.isFollowing(followerId, followingId).block()!!
 
         // Then
         assertTrue(result)
@@ -267,10 +266,9 @@ class FollowServiceTest {
 
         every {
             followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
-        } returns false
-
+        } returns Mono.just(false)
         // When
-        val result = followService.isFollowing(followerId, followingId)
+        val result = followService.isFollowing(followerId, followingId).block()!!
 
         // Then
         assertFalse(result)
@@ -286,10 +284,9 @@ class FollowServiceTest {
         val userId = UUID.randomUUID()
         val count = 5
 
-        every { followRepository.countByFollowerId(userId) } returns count
-
+        every { followRepository.countByFollowerId(userId) } returns Mono.just(count)
         // When: 팔로잉 수 조회
-        val result = followService.getFollowingCount(userId)
+        val result = followService.getFollowingCount(userId).block()!!
 
         // Then: 팔로잉 수 반환
         assertEquals(count, result)
@@ -303,10 +300,9 @@ class FollowServiceTest {
         val userId = UUID.randomUUID()
         val count = 10
 
-        every { followRepository.countByFollowingId(userId) } returns count
-
+        every { followRepository.countByFollowingId(userId) } returns Mono.just(count)
         // When: 팔로워 수 조회
-        val result = followService.getFollowerCount(userId)
+        val result = followService.getFollowerCount(userId).block()!!
 
         // Then: 팔로워 수 반환
         assertEquals(count, result)
@@ -345,12 +341,12 @@ class FollowServiceTest {
             updatedAt = LocalDateTime.now()
         )
 
-        every { followRepository.findFollowerUserIds(userId) } returns setOf(follower1Id, follower2Id)
+        every { followRepository.findFollowerUserIds(userId) } returns Flux.fromIterable(setOf(follower1Id, follower2Id))
         every { userProfileRepository.findByUserIds(setOf(follower1Id, follower2Id)) } returns
-            listOf(follower1Profile, follower2Profile)
+            Flux.fromIterable(listOf(follower1Profile, follower2Profile))
 
         // When
-        val result = followService.getFollowers(userId)
+        val result = followService.getFollowers(userId).collectList().block()!!
 
         // Then
         assertEquals(2, result.size)
@@ -366,10 +362,9 @@ class FollowServiceTest {
         // Given: 팔로워가 없음
         val userId = UUID.randomUUID()
 
-        every { followRepository.findFollowerUserIds(userId) } returns emptySet()
-
+        every { followRepository.findFollowerUserIds(userId) } returns Flux.empty()
         // When
-        val result = followService.getFollowers(userId)
+        val result = followService.getFollowers(userId).collectList().block()!!
 
         // Then
         assertTrue(result.isEmpty())
@@ -409,12 +404,12 @@ class FollowServiceTest {
             updatedAt = LocalDateTime.now()
         )
 
-        every { followRepository.findFollowingUserIds(userId) } returns setOf(following1Id, following2Id)
+        every { followRepository.findFollowingUserIds(userId) } returns Flux.fromIterable(setOf(following1Id, following2Id))
         every { userProfileRepository.findByUserIds(setOf(following1Id, following2Id)) } returns
-            listOf(following1Profile, following2Profile)
+            Flux.fromIterable(listOf(following1Profile, following2Profile))
 
         // When
-        val result = followService.getFollowing(userId)
+        val result = followService.getFollowing(userId).collectList().block()!!
 
         // Then
         assertEquals(2, result.size)
@@ -430,10 +425,9 @@ class FollowServiceTest {
         // Given: 팔로잉이 없음
         val userId = UUID.randomUUID()
 
-        every { followRepository.findFollowingUserIds(userId) } returns emptySet()
-
+        every { followRepository.findFollowingUserIds(userId) } returns Flux.empty()
         // When
-        val result = followService.getFollowing(userId)
+        val result = followService.getFollowing(userId).collectList().block()!!
 
         // Then
         assertTrue(result.isEmpty())

@@ -187,8 +187,8 @@ class ContentServiceImplTest {
             every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
 
             // Mock Repository: 저장
-            every { contentRepository.save(any()) } returns savedContent
-            every { contentRepository.saveMetadata(any()) } returns savedMetadata
+            every { contentRepository.save(any()) } returns Mono.just(savedContent)
+            every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
 
             // Mock Redis: 세션 삭제
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
@@ -286,8 +286,8 @@ class ContentServiceImplTest {
             // Mock 설정
             every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
             every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
-            every { contentRepository.save(any()) } returns savedContent
-            every { contentRepository.saveMetadata(any()) } returns savedMetadata
+            every { contentRepository.save(any()) } returns Mono.just(savedContent)
+            every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
             every { contentPhotoRepository.save(any()) } returns true
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
             every { eventPublisher.publishEvent(any<ContentCreatedEvent>()) } returns Unit
@@ -495,8 +495,8 @@ class ContentServiceImplTest {
                 updatedBy = userId.toString()
             )
 
-            every { contentRepository.findById(contentId) } returns content
-            every { contentRepository.findMetadataByContentId(contentId) } returns metadata
+            every { contentRepository.findById(contentId) } returns Mono.just(content)
+            every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(metadata)
 
             // When: 메서드 실행
             val result = contentService.getContent(contentId)
@@ -567,9 +567,9 @@ class ContentServiceImplTest {
             )
 
             // Mock 설정
-            every { contentRepository.findById(contentId) } returns existingContent
-            every { contentRepository.findMetadataByContentId(contentId) } returns existingMetadata
-            every { contentRepository.updateMetadata(any()) } returns true
+            every { contentRepository.findById(contentId) } returns Mono.just(existingContent)
+            every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(existingMetadata)
+            every { contentRepository.updateMetadata(any()) } returns Mono.just(true)
             every { contentPhotoRepository.deleteByContentId(contentId, userId.toString()) } returns 3 // 기존 3개 삭제
             every { contentPhotoRepository.save(any()) } returns true
 
@@ -644,9 +644,9 @@ class ContentServiceImplTest {
             )
 
             // Mock 설정
-            every { contentRepository.findById(contentId) } returns existingContent
-            every { contentRepository.findMetadataByContentId(contentId) } returns existingMetadata
-            every { contentRepository.updateMetadata(any()) } returns true
+            every { contentRepository.findById(contentId) } returns Mono.just(existingContent)
+            every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(existingMetadata)
+            every { contentRepository.updateMetadata(any()) } returns Mono.just(true)
             every { contentPhotoRepository.findByContentId(contentId) } returns listOf(
                 me.onetwo.growsnap.domain.content.model.ContentPhoto(
                     contentId = contentId,

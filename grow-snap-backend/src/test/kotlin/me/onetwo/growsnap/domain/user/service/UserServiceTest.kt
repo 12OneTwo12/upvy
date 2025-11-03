@@ -20,6 +20,8 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 
 /**
  * UserService 단위 테스트
@@ -61,8 +63,7 @@ class UserServiceTest {
 
         every {
             userRepository.findByProviderAndProviderId(provider, providerId)
-        } returns existingUser
-
+        } returns Mono.just(existingUser)
         // When
         val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl)
 
@@ -104,12 +105,10 @@ class UserServiceTest {
 
         every {
             userRepository.findByProviderAndProviderId(provider, providerId)
-        } returns null
-
-        every { userRepository.save(any()) } returns newUser
-        every { userProfileRepository.existsByNickname(any()) } returns false  // 닉네임 중복 없음
-        every { userProfileRepository.save(any()) } returns mockProfile
-
+        } returns Mono.empty()
+        every { userRepository.save(any()) } returns Mono.just(newUser)
+        every { userProfileRepository.existsByNickname(any()) } returns Mono.just(false)  // 닉네임 중복 없음
+        every { userProfileRepository.save(any()) } returns Mono.just(mockProfile)
         // When
         val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl)
 
@@ -135,8 +134,7 @@ class UserServiceTest {
             role = UserRole.USER
         )
 
-        every { userRepository.findById(userId) } returns user
-
+        every { userRepository.findById(userId) } returns Mono.just(user)
         // When
         val result = userService.getUserById(userId)
 
@@ -151,11 +149,10 @@ class UserServiceTest {
         // Given
         val userId = UUID.randomUUID()
 
-        every { userRepository.findById(userId) } returns null
-
+        every { userRepository.findById(userId) } returns Mono.empty()
         // When & Then
         val exception = assertThrows<UserNotFoundException> {
-            userService.getUserById(userId)
+            userService.getUserById(userId).block()!!
         }
 
         assertTrue(exception.message!!.contains("$userId"))
@@ -175,8 +172,7 @@ class UserServiceTest {
             role = UserRole.USER
         )
 
-        every { userRepository.findByEmail(email) } returns user
-
+        every { userRepository.findByEmail(email) } returns Mono.just(user)
         // When
         val result = userService.getUserByEmail(email)
 
@@ -191,11 +187,10 @@ class UserServiceTest {
         // Given
         val email = "nonexistent@example.com"
 
-        every { userRepository.findByEmail(email) } returns null
-
+        every { userRepository.findByEmail(email) } returns Mono.empty()
         // When & Then
         val exception = assertThrows<UserNotFoundException> {
-            userService.getUserByEmail(email)
+            userService.getUserByEmail(email).block()!!
         }
 
         assertTrue(exception.message!!.contains(email))
@@ -215,10 +210,9 @@ class UserServiceTest {
             role = UserRole.USER
         )
 
-        every { userRepository.findByEmail(email) } returns user
-
+        every { userRepository.findByEmail(email) } returns Mono.just(user)
         // When
-        val result = userService.isEmailDuplicated(email)
+        val result = userService.isEmailDuplicated(email).block()!!
 
         // Then
         assertTrue(result)
@@ -231,10 +225,9 @@ class UserServiceTest {
         // Given
         val email = "new@example.com"
 
-        every { userRepository.findByEmail(email) } returns null
-
+        every { userRepository.findByEmail(email) } returns Mono.empty()
         // When
-        val result = userService.isEmailDuplicated(email)
+        val result = userService.isEmailDuplicated(email).block()!!
 
         // Then
         assertFalse(result)

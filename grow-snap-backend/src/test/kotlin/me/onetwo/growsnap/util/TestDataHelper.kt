@@ -35,16 +35,16 @@ fun createUserWithProfile(
             providerId = providerId,
             role = role
         )
-    )
+    ).block()!!
 
     val profile = userProfileRepository.save(
         UserProfile(
-            userId = user!!.id!!,
+            userId = user.id!!,
             nickname = nickname
         )
-    )
+    ).block()!!
 
-    return Pair(user, profile!!)
+    return Pair(user, profile)
 }
 
 /**
@@ -78,7 +78,7 @@ fun createContent(
             height = height,
             status = status
         )
-    )!!
+    ).block()!!
 
     // ContentMetadata 저장 (getContent API에서 필수)
     contentRepository.saveMetadata(
@@ -90,7 +90,7 @@ fun createContent(
             tags = emptyList(),
             language = "ko"
         )
-    )
+    ).block()
 
     // ContentInteraction 저장 (likeCount 등을 위해 필요)
     contentInteractionRepository?.create(

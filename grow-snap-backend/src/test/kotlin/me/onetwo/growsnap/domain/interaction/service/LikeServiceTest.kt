@@ -64,8 +64,8 @@ class LikeServiceTest {
                 updatedBy = testUserId.toString()
             )
 
-            every { userLikeRepository.exists(testUserId, testContentId) } returns false
-            every { userLikeRepository.save(testUserId, testContentId) } returns userLike
+            every { userLikeRepository.exists(testUserId, testContentId) } returns Mono.just(false)
+            every { userLikeRepository.save(testUserId, testContentId) } returns Mono.just(userLike)
             justRun { applicationEventPublisher.publishEvent(any<LikeCreatedEvent>()) }
             every { contentInteractionRepository.getLikeCount(testContentId) } returns Mono.just(1)
 
@@ -93,7 +93,7 @@ class LikeServiceTest {
         @DisplayName("이미 좋아요가 있으면, 중복 생성하지 않는다 (idempotent)")
         fun likeContent_AlreadyExists_Idempotent() {
             // Given
-            every { userLikeRepository.exists(testUserId, testContentId) } returns true
+            every { userLikeRepository.exists(testUserId, testContentId) } returns Mono.just(true)
             every { contentInteractionRepository.getLikeCount(testContentId) } returns Mono.just(1)
 
             // When
@@ -121,8 +121,8 @@ class LikeServiceTest {
         @DisplayName("좋아요를 취소하면, Repository에서 삭제하고 LikeDeletedEvent를 발행한다")
         fun unlikeContent_Success() {
             // Given
-            every { userLikeRepository.exists(testUserId, testContentId) } returns true
-            every { userLikeRepository.delete(testUserId, testContentId) } returns Unit
+            every { userLikeRepository.exists(testUserId, testContentId) } returns Mono.just(true)
+            every { userLikeRepository.delete(testUserId, testContentId) } returns Mono.empty()
             justRun { applicationEventPublisher.publishEvent(any<LikeDeletedEvent>()) }
             every { contentInteractionRepository.getLikeCount(testContentId) } returns Mono.just(0)
 
@@ -150,7 +150,7 @@ class LikeServiceTest {
         @DisplayName("좋아요가 없으면, 삭제하지 않는다 (idempotent)")
         fun unlikeContent_NotExists_Idempotent() {
             // Given
-            every { userLikeRepository.exists(testUserId, testContentId) } returns false
+            every { userLikeRepository.exists(testUserId, testContentId) } returns Mono.just(false)
             every { contentInteractionRepository.getLikeCount(testContentId) } returns Mono.just(0)
 
             // When
@@ -201,7 +201,7 @@ class LikeServiceTest {
         @DisplayName("좋아요 상태 조회 시, Repository의 exists 결과를 반환한다 (좋아요O)")
         fun getLikeStatus_WhenLiked_ReturnsTrue() {
             // Given: 사용자가 좋아요를 누른 상태
-            every { userLikeRepository.exists(testUserId, testContentId) } returns true
+            every { userLikeRepository.exists(testUserId, testContentId) } returns Mono.just(true)
 
             // When: 좋아요 상태 조회
             val result = likeService.getLikeStatus(testUserId, testContentId)
@@ -221,7 +221,7 @@ class LikeServiceTest {
         @DisplayName("좋아요 상태 조회 시, Repository의 exists 결과를 반환한다 (좋아요X)")
         fun getLikeStatus_WhenNotLiked_ReturnsFalse() {
             // Given: 사용자가 좋아요를 누르지 않은 상태
-            every { userLikeRepository.exists(testUserId, testContentId) } returns false
+            every { userLikeRepository.exists(testUserId, testContentId) } returns Mono.just(false)
 
             // When: 좋아요 상태 조회
             val result = likeService.getLikeStatus(testUserId, testContentId)

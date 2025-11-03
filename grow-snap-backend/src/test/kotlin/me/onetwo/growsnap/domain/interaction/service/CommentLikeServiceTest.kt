@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.LocalDateTime
 import java.util.UUID
@@ -53,8 +54,8 @@ class CommentLikeServiceTest {
                 updatedBy = testUserId.toString()
             )
 
-            every { commentLikeRepository.save(testUserId, testCommentId) } returns commentLike
-            every { commentLikeRepository.countByCommentId(testCommentId) } returns 1
+            every { commentLikeRepository.save(testUserId, testCommentId) } returns Mono.just(commentLike)
+            every { commentLikeRepository.countByCommentId(testCommentId) } returns Mono.just(1)
 
             // When
             val result = commentLikeService.likeComment(testUserId, testCommentId)
@@ -76,7 +77,7 @@ class CommentLikeServiceTest {
         fun likeComment_AlreadyExists_Idempotent() {
             // Given
             every { commentLikeRepository.save(testUserId, testCommentId) } throws DataAccessException("Duplicate key")
-            every { commentLikeRepository.countByCommentId(testCommentId) } returns 1
+            every { commentLikeRepository.countByCommentId(testCommentId) } returns Mono.just(1)
 
             // When
             val result = commentLikeService.likeComment(testUserId, testCommentId)
@@ -102,8 +103,8 @@ class CommentLikeServiceTest {
         @DisplayName("댓글 좋아요를 취소하면, Repository에서 삭제하고 좋아요 응답을 반환한다")
         fun unlikeComment_Success() {
             // Given
-            every { commentLikeRepository.delete(testUserId, testCommentId) } returns Unit
-            every { commentLikeRepository.countByCommentId(testCommentId) } returns 0
+            every { commentLikeRepository.delete(testUserId, testCommentId) } returns Mono.empty()
+            every { commentLikeRepository.countByCommentId(testCommentId) } returns Mono.just(0)
 
             // When
             val result = commentLikeService.unlikeComment(testUserId, testCommentId)
@@ -124,8 +125,8 @@ class CommentLikeServiceTest {
         @DisplayName("댓글 좋아요가 없어도, delete는 안전하게 처리된다 (idempotent)")
         fun unlikeComment_NotExists_Idempotent() {
             // Given
-            every { commentLikeRepository.delete(testUserId, testCommentId) } returns Unit
-            every { commentLikeRepository.countByCommentId(testCommentId) } returns 0
+            every { commentLikeRepository.delete(testUserId, testCommentId) } returns Mono.empty()
+            every { commentLikeRepository.countByCommentId(testCommentId) } returns Mono.just(0)
 
             // When
             val result = commentLikeService.unlikeComment(testUserId, testCommentId)
@@ -151,7 +152,7 @@ class CommentLikeServiceTest {
         @DisplayName("댓글 좋아요 수를 조회하면, Repository에서 가져온다")
         fun getLikeCount_Success() {
             // Given
-            every { commentLikeRepository.countByCommentId(testCommentId) } returns 42
+            every { commentLikeRepository.countByCommentId(testCommentId) } returns Mono.just(42)
 
             // When
             val result = commentLikeService.getLikeCount(testCommentId)
@@ -174,7 +175,7 @@ class CommentLikeServiceTest {
         @DisplayName("댓글 좋아요 상태 조회 시, Repository의 exists 결과를 반환한다 (좋아요O)")
         fun getLikeStatus_WhenLiked_ReturnsTrue() {
             // Given: 사용자가 댓글에 좋아요를 누른 상태
-            every { commentLikeRepository.exists(testUserId, testCommentId) } returns true
+            every { commentLikeRepository.exists(testUserId, testCommentId) } returns Mono.just(true)
 
             // When: 좋아요 상태 조회
             val result = commentLikeService.getLikeStatus(testUserId, testCommentId)
@@ -194,7 +195,7 @@ class CommentLikeServiceTest {
         @DisplayName("댓글 좋아요 상태 조회 시, Repository의 exists 결과를 반환한다 (좋아요X)")
         fun getLikeStatus_WhenNotLiked_ReturnsFalse() {
             // Given: 사용자가 댓글에 좋아요를 누르지 않은 상태
-            every { commentLikeRepository.exists(testUserId, testCommentId) } returns false
+            every { commentLikeRepository.exists(testUserId, testCommentId) } returns Mono.just(false)
 
             // When: 좋아요 상태 조회
             val result = commentLikeService.getLikeStatus(testUserId, testCommentId)

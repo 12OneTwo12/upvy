@@ -102,7 +102,7 @@ class CommentControllerIntegrationTest {
 
             // Then: 이벤트가 처리되어 DB에 댓글이 저장되었는지 확인
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {
-                val comments = commentRepository.findTopLevelCommentsByContentId(content.id!!, null, 100)
+                val comments = commentRepository.findTopLevelCommentsByContentId(content.id!!, null, 100).collectList().block()!!
                 assertThat(comments).isNotEmpty
             }
         }

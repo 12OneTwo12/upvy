@@ -163,7 +163,7 @@ class ContentControllerIntegrationTest {
                 .expectStatus().isNoContent
 
             // Then: 소프트 삭제 확인
-            val deletedContent = contentRepository.findById(content.id!!)
+            val deletedContent = contentRepository.findById(content.id!!).block()
             assertThat(deletedContent?.deletedAt).isNotNull
         }
     }

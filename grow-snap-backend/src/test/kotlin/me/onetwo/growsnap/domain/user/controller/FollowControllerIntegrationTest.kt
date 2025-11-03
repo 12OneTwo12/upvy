@@ -23,6 +23,8 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
 import java.util.concurrent.TimeUnit
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -77,7 +79,7 @@ class FollowControllerIntegrationTest {
 
         // Then: 이벤트가 처리되어 DB에 팔로우가 저장되었는지 확인
         await.atMost(2, TimeUnit.SECONDS).untilAsserted {
-            val exists = followRepository.existsByFollowerIdAndFollowingId(follower.id!!, following.id!!)
+            val exists = followRepository.existsByFollowerIdAndFollowingId(follower.id!!, following.id!!).block()!!
             assertThat(exists).isTrue
         }
     }
@@ -120,7 +122,7 @@ class FollowControllerIntegrationTest {
 
         // Then: 이벤트가 처리되어 DB에서 팔로우가 삭제되었는지 확인
         await.atMost(2, TimeUnit.SECONDS).untilAsserted {
-            val exists = followRepository.existsByFollowerIdAndFollowingId(follower.id!!, following.id!!)
+            val exists = followRepository.existsByFollowerIdAndFollowingId(follower.id!!, following.id!!).block()!!
             assertThat(exists).isFalse
         }
     }

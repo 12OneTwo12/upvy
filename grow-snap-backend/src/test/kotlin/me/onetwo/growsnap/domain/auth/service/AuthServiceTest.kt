@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.UUID
+import reactor.core.publisher.Mono
 
 /**
  * AuthService 단위 테스트
@@ -62,7 +63,7 @@ class AuthServiceTest {
         every { jwtTokenProvider.validateToken(refreshToken) } returns true
         every { jwtTokenProvider.getUserIdFromToken(refreshToken) } returns testUserId
         every { refreshTokenRepository.findByUserId(testUserId) } returns refreshToken
-        every { userService.getUserById(testUserId) } returns testUser
+        every { userService.getUserById(testUserId) } returns Mono.just(testUser)
         every {
             jwtTokenProvider.generateAccessToken(testUserId, testUser.email, testUser.role)
         } returns newAccessToken

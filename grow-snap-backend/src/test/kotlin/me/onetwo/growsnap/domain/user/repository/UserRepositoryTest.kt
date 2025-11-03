@@ -44,7 +44,7 @@ class UserRepositoryTest {
     @DisplayName("사용자 저장 성공")
     fun save_Success() {
         // When
-        val savedUser = userRepository.save(testUser)
+        val savedUser = userRepository.save(testUser).block()!!
 
         // Then
         assertNotNull(savedUser.id)
@@ -58,10 +58,10 @@ class UserRepositoryTest {
     @DisplayName("이메일로 사용자 조회 성공")
     fun findByEmail_ExistingUser_ReturnsUser() {
         // Given
-        val savedUser = userRepository.save(testUser)
+        val savedUser = userRepository.save(testUser).block()!!
 
         // When
-        val foundUser = userRepository.findByEmail(testUser.email)
+        val foundUser = userRepository.findByEmail(testUser.email).block()
 
         // Then
         assertNotNull(foundUser)
@@ -73,7 +73,7 @@ class UserRepositoryTest {
     @DisplayName("이메일로 사용자 조회 - 존재하지 않는 경우")
     fun findByEmail_NonExistingUser_ReturnsNull() {
         // When
-        val foundUser = userRepository.findByEmail("nonexistent@example.com")
+        val foundUser = userRepository.findByEmail("nonexistent@example.com").block()
 
         // Then
         assertNull(foundUser)
@@ -83,13 +83,13 @@ class UserRepositoryTest {
     @DisplayName("Provider와 Provider ID로 사용자 조회 성공")
     fun findByProviderAndProviderId_ExistingUser_ReturnsUser() {
         // Given
-        val savedUser = userRepository.save(testUser)
+        val savedUser = userRepository.save(testUser).block()!!
 
         // When
         val foundUser = userRepository.findByProviderAndProviderId(
             OAuthProvider.GOOGLE,
             testUser.providerId
-        )
+        ).block()
 
         // Then
         assertNotNull(foundUser)
@@ -104,7 +104,7 @@ class UserRepositoryTest {
         val foundUser = userRepository.findByProviderAndProviderId(
             OAuthProvider.GOOGLE,
             "nonexistent-id"
-        )
+        ).block()
 
         // Then
         assertNull(foundUser)
@@ -114,10 +114,10 @@ class UserRepositoryTest {
     @DisplayName("ID로 사용자 조회 성공")
     fun findById_ExistingUser_ReturnsUser() {
         // Given
-        val savedUser = userRepository.save(testUser)
+        val savedUser = userRepository.save(testUser).block()!!
 
         // When
-        val foundUser = userRepository.findById(savedUser.id!!)
+        val foundUser = userRepository.findById(savedUser.id!!).block()
 
         // Then
         assertNotNull(foundUser)
@@ -129,7 +129,7 @@ class UserRepositoryTest {
     @DisplayName("ID로 사용자 조회 - 존재하지 않는 경우")
     fun findById_NonExistingUser_ReturnsNull() {
         // When
-        val foundUser = userRepository.findById(UUID.randomUUID())
+        val foundUser = userRepository.findById(UUID.randomUUID()).block()
 
         // Then
         assertNull(foundUser)
@@ -139,12 +139,12 @@ class UserRepositoryTest {
     @DisplayName("중복 이메일로 저장 시도 - 예외 발생")
     fun save_DuplicateEmail_ThrowsException() {
         // Given
-        userRepository.save(testUser)
+        userRepository.save(testUser).block()!!
 
         // When & Then
         val duplicateUser = testUser.copy()
         assertThrows(Exception::class.java) {
-            userRepository.save(duplicateUser)
+            userRepository.save(duplicateUser).block()!!
         }
     }
 
@@ -152,12 +152,12 @@ class UserRepositoryTest {
     @DisplayName("중복 Provider와 Provider ID로 저장 시도 - 예외 발생")
     fun save_DuplicateProviderAndProviderId_ThrowsException() {
         // Given
-        userRepository.save(testUser)
+        userRepository.save(testUser).block()!!
 
         // When & Then
         val duplicateUser = testUser.copy(email = "different@example.com")
         assertThrows(Exception::class.java) {
-            userRepository.save(duplicateUser)
+            userRepository.save(duplicateUser).block()!!
         }
     }
 }

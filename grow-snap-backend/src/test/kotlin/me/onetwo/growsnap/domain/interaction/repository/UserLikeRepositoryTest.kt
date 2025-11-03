@@ -56,7 +56,7 @@ class UserLikeRepositoryTest {
                 providerId = "test-provider-id",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
         testUserId = user.id!!
 
         // 콘텐츠 생성
@@ -74,7 +74,7 @@ class UserLikeRepositoryTest {
             // Given: 준비된 사용자와 콘텐츠
 
             // When: 좋아요 생성
-            val userLike = userLikeRepository.save(testUserId, testContentId)!!
+            val userLike = userLikeRepository.save(testUserId, testContentId).block()!!
 
             // Then: 생성된 좋아요 검증
             assertEquals(testUserId, userLike.userId)
@@ -87,11 +87,11 @@ class UserLikeRepositoryTest {
         @DisplayName("이미 좋아요가 존재하면, 중복 생성 시 예외가 발생한다")
         fun save_WhenAlreadyExists_ThrowsException() {
             // Given: 이미 좋아요가 존재
-            userLikeRepository.save(testUserId, testContentId)
+            userLikeRepository.save(testUserId, testContentId).block()
 
             // When & Then: 중복 생성 시 예외 발생
             try {
-                userLikeRepository.save(testUserId, testContentId)
+                userLikeRepository.save(testUserId, testContentId).block()
                 assert(false) { "Expected exception but none was thrown" }
             } catch (e: Exception) {
                 // 예외 발생 확인 (duplicate, unique constraint violation 등)
@@ -114,13 +114,13 @@ class UserLikeRepositoryTest {
         @DisplayName("좋아요를 삭제하면, deleted_at이 설정된다")
         fun delete_SetDeletedAt() {
             // Given: 좋아요가 존재
-            userLikeRepository.save(testUserId, testContentId)
+            userLikeRepository.save(testUserId, testContentId).block()
 
             // When: 좋아요 삭제
-            userLikeRepository.delete(testUserId, testContentId)
+            userLikeRepository.delete(testUserId, testContentId).block()
 
             // Then: deleted_at이 설정됨
-            val exists = userLikeRepository.exists(testUserId, testContentId)
+            val exists = userLikeRepository.exists(testUserId, testContentId).block()!!
             assertFalse(exists)
         }
 
@@ -130,7 +130,7 @@ class UserLikeRepositoryTest {
             // Given: 좋아요가 존재하지 않음
 
             // When & Then: 삭제해도 예외 없음
-            userLikeRepository.delete(testUserId, testContentId)
+            userLikeRepository.delete(testUserId, testContentId).block()
         }
     }
 
@@ -142,10 +142,10 @@ class UserLikeRepositoryTest {
         @DisplayName("좋아요가 존재하면, true를 반환한다")
         fun exists_WhenExists_ReturnsTrue() {
             // Given: 좋아요가 존재
-            userLikeRepository.save(testUserId, testContentId)
+            userLikeRepository.save(testUserId, testContentId).block()
 
             // When: 존재 여부 확인
-            val exists = userLikeRepository.exists(testUserId, testContentId)
+            val exists = userLikeRepository.exists(testUserId, testContentId).block()!!
 
             // Then: true 반환
             assertTrue(exists)
@@ -157,7 +157,7 @@ class UserLikeRepositoryTest {
             // Given: 좋아요가 존재하지 않음
 
             // When: 존재 여부 확인
-            val exists = userLikeRepository.exists(testUserId, testContentId)
+            val exists = userLikeRepository.exists(testUserId, testContentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -167,11 +167,11 @@ class UserLikeRepositoryTest {
         @DisplayName("삭제된 좋아요는, false를 반환한다")
         fun exists_WhenDeleted_ReturnsFalse() {
             // Given: 좋아요가 삭제됨
-            userLikeRepository.save(testUserId, testContentId)
-            userLikeRepository.delete(testUserId, testContentId)
+            userLikeRepository.save(testUserId, testContentId).block()
+            userLikeRepository.delete(testUserId, testContentId).block()
 
             // When: 존재 여부 확인
-            val exists = userLikeRepository.exists(testUserId, testContentId)
+            val exists = userLikeRepository.exists(testUserId, testContentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -186,10 +186,10 @@ class UserLikeRepositoryTest {
         @DisplayName("좋아요가 존재하면, 좋아요를 반환한다")
         fun findByUserIdAndContentId_WhenExists_ReturnsUserLike() {
             // Given: 좋아요가 존재
-            userLikeRepository.save(testUserId, testContentId)
+            userLikeRepository.save(testUserId, testContentId).block()
 
             // When: 좋아요 조회
-            val userLike = userLikeRepository.findByUserIdAndContentId(testUserId, testContentId)
+            val userLike = userLikeRepository.findByUserIdAndContentId(testUserId, testContentId).block()
 
             // Then: 좋아요 반환
             assertEquals(testUserId, userLike?.userId)
@@ -202,7 +202,7 @@ class UserLikeRepositoryTest {
             // Given: 좋아요가 존재하지 않음
 
             // When: 좋아요 조회
-            val userLike = userLikeRepository.findByUserIdAndContentId(testUserId, testContentId)
+            val userLike = userLikeRepository.findByUserIdAndContentId(testUserId, testContentId).block()
 
             // Then: null 반환
             assertNull(userLike)

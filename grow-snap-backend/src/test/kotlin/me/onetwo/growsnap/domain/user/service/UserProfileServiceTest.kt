@@ -20,6 +20,8 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 
 /**
  * UserProfileService 단위 테스트
@@ -69,13 +71,13 @@ class UserProfileServiceTest {
         val userId = UUID.randomUUID()
         val nickname = "newnick"
 
-        every { userService.getUserById(userId) } returns testUser
-        every { userProfileRepository.existsByUserId(userId) } returns false  // 프로필 중복 체크
-        every { userProfileRepository.existsByNickname(nickname) } returns false
-        every { userProfileRepository.save(any()) } returns testProfile.copy(nickname = nickname)
+        every { userService.getUserById(userId) } returns Mono.just(testUser)
+        every { userProfileRepository.existsByUserId(userId) } returns Mono.just(false)  // 프로필 중복 체크
+        every { userProfileRepository.existsByNickname(nickname) } returns Mono.just(false)
+        every { userProfileRepository.save(any()) } returns Mono.just(testProfile.copy(nickname = nickname))
 
         // When
-        val result = userProfileService.createProfile(userId, nickname)
+        val result = userProfileService.createProfile(userId, nickname).block()!!
 
         // Then
         assertEquals(nickname, result.nickname)
@@ -92,10 +94,9 @@ class UserProfileServiceTest {
         val userId = UUID.randomUUID()
         val nickname = "duplicatenick"
 
-        every { userService.getUserById(userId) } returns testUser
-        every { userProfileRepository.existsByUserId(userId) } returns false  // 프로필 중복 체크
-        every { userProfileRepository.existsByNickname(nickname) } returns true
-
+        every { userService.getUserById(userId) } returns Mono.just(testUser)
+        every { userProfileRepository.existsByUserId(userId) } returns Mono.just(false)  // 프로필 중복 체크
+        every { userProfileRepository.existsByNickname(nickname) } returns Mono.just(true)
         // When & Then
         val exception = assertThrows<DuplicateNicknameException> {
             userProfileService.createProfile(userId, nickname)
@@ -114,8 +115,7 @@ class UserProfileServiceTest {
         // Given
         val userId = UUID.randomUUID()
 
-        every { userProfileRepository.findByUserId(userId) } returns testProfile
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
         // When
         val result = userProfileService.getProfileByUserId(userId)
 
@@ -130,11 +130,10 @@ class UserProfileServiceTest {
         // Given
         val userId = UUID.randomUUID()
 
-        every { userProfileRepository.findByUserId(userId) } returns null
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.empty()
         // When & Then
         val exception = assertThrows<UserProfileNotFoundException> {
-            userProfileService.getProfileByUserId(userId)
+            userProfileService.getProfileByUserId(userId).block()!!
         }
 
         assertTrue(exception.message!!.contains("$userId"))
@@ -147,8 +146,7 @@ class UserProfileServiceTest {
         // Given
         val nickname = "testnick"
 
-        every { userProfileRepository.findByNickname(nickname) } returns testProfile
-
+        every { userProfileRepository.findByNickname(nickname) } returns Mono.just(testProfile)
         // When
         val result = userProfileService.getProfileByNickname(nickname)
 
@@ -163,11 +161,10 @@ class UserProfileServiceTest {
         // Given
         val nickname = "nonexistent"
 
-        every { userProfileRepository.findByNickname(nickname) } returns null
-
+        every { userProfileRepository.findByNickname(nickname) } returns Mono.empty()
         // When & Then
         val exception = assertThrows<UserProfileNotFoundException> {
-            userProfileService.getProfileByNickname(nickname)
+            userProfileService.getProfileByNickname(nickname).block()!!
         }
 
         assertTrue(exception.message!!.contains(nickname))
@@ -180,10 +177,9 @@ class UserProfileServiceTest {
         // Given
         val nickname = "existing"
 
-        every { userProfileRepository.existsByNickname(nickname) } returns true
-
+        every { userProfileRepository.existsByNickname(nickname) } returns Mono.just(true)
         // When
-        val result = userProfileService.isNicknameDuplicated(nickname)
+        val result = userProfileService.isNicknameDuplicated(nickname).block()!!
 
         // Then
         assertTrue(result)
@@ -196,10 +192,9 @@ class UserProfileServiceTest {
         // Given
         val nickname = "new"
 
-        every { userProfileRepository.existsByNickname(nickname) } returns false
-
+        every { userProfileRepository.existsByNickname(nickname) } returns Mono.just(false)
         // When
-        val result = userProfileService.isNicknameDuplicated(nickname)
+        val result = userProfileService.isNicknameDuplicated(nickname).block()!!
 
         // Then
         assertFalse(result)
@@ -215,12 +210,11 @@ class UserProfileServiceTest {
 
         val updatedProfile = testProfile.copy(nickname = newNickname)
 
-        every { userProfileRepository.findByUserId(userId) } returns testProfile
-        every { userProfileRepository.existsByNickname(newNickname) } returns false
-        every { userProfileRepository.update(any()) } returns updatedProfile
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
+        every { userProfileRepository.existsByNickname(newNickname) } returns Mono.just(false)
+        every { userProfileRepository.update(any()) } returns Mono.just(updatedProfile)
         // When
-        val result = userProfileService.updateProfile(userId, nickname = newNickname)
+        val result = userProfileService.updateProfile(userId, nickname = newNickname).block()!!
 
         // Then
         assertEquals(newNickname, result.nickname)
@@ -236,9 +230,8 @@ class UserProfileServiceTest {
         val userId = UUID.randomUUID()
         val newNickname = "duplicatenick"
 
-        every { userProfileRepository.findByUserId(userId) } returns testProfile
-        every { userProfileRepository.existsByNickname(newNickname) } returns true
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
+        every { userProfileRepository.existsByNickname(newNickname) } returns Mono.just(true)
         // When & Then
         val exception = assertThrows<DuplicateNicknameException> {
             userProfileService.updateProfile(userId, nickname = newNickname)
@@ -257,11 +250,10 @@ class UserProfileServiceTest {
         val userId = UUID.randomUUID()
         val sameNickname = testProfile.nickname
 
-        every { userProfileRepository.findByUserId(userId) } returns testProfile
-        every { userProfileRepository.update(any()) } returns testProfile
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
+        every { userProfileRepository.update(any()) } returns Mono.just(testProfile)
         // When
-        val result = userProfileService.updateProfile(userId, nickname = sameNickname)
+        val result = userProfileService.updateProfile(userId, nickname = sameNickname).block()!!
 
         // Then
         assertEquals(sameNickname, result.nickname)
@@ -277,11 +269,10 @@ class UserProfileServiceTest {
         val userId = UUID.randomUUID()
         val updatedProfile = testProfile.copy(followerCount = testProfile.followerCount + 1)
 
-        every { userProfileRepository.findByUserId(userId) } returns testProfile
-        every { userProfileRepository.update(any()) } returns updatedProfile
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
+        every { userProfileRepository.update(any()) } returns Mono.just(updatedProfile)
         // When
-        val result = userProfileService.incrementFollowerCount(userId)
+        val result = userProfileService.incrementFollowerCount(userId).block()!!
 
         // Then
         assertEquals(testProfile.followerCount + 1, result.followerCount)
@@ -297,11 +288,10 @@ class UserProfileServiceTest {
         val profileWithFollowers = testProfile.copy(followerCount = 5)
         val updatedProfile = profileWithFollowers.copy(followerCount = 4)
 
-        every { userProfileRepository.findByUserId(userId) } returns profileWithFollowers
-        every { userProfileRepository.update(any()) } returns updatedProfile
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(profileWithFollowers)
+        every { userProfileRepository.update(any()) } returns Mono.just(updatedProfile)
         // When
-        val result = userProfileService.decrementFollowerCount(userId)
+        val result = userProfileService.decrementFollowerCount(userId).block()!!
 
         // Then
         assertEquals(4, result.followerCount)
@@ -316,11 +306,10 @@ class UserProfileServiceTest {
         val userId = UUID.randomUUID()
         val profileWithZeroFollowers = testProfile.copy(followerCount = 0)
 
-        every { userProfileRepository.findByUserId(userId) } returns profileWithZeroFollowers
-        every { userProfileRepository.update(any()) } returns profileWithZeroFollowers
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(profileWithZeroFollowers)
+        every { userProfileRepository.update(any()) } returns Mono.just(profileWithZeroFollowers)
         // When
-        val result = userProfileService.decrementFollowerCount(userId)
+        val result = userProfileService.decrementFollowerCount(userId).block()!!
 
         // Then
         assertEquals(0, result.followerCount)
@@ -335,11 +324,10 @@ class UserProfileServiceTest {
         val userId = UUID.randomUUID()
         val updatedProfile = testProfile.copy(followingCount = testProfile.followingCount + 1)
 
-        every { userProfileRepository.findByUserId(userId) } returns testProfile
-        every { userProfileRepository.update(any()) } returns updatedProfile
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
+        every { userProfileRepository.update(any()) } returns Mono.just(updatedProfile)
         // When
-        val result = userProfileService.incrementFollowingCount(userId)
+        val result = userProfileService.incrementFollowingCount(userId).block()!!
 
         // Then
         assertEquals(testProfile.followingCount + 1, result.followingCount)
@@ -355,11 +343,10 @@ class UserProfileServiceTest {
         val profileWithFollowing = testProfile.copy(followingCount = 3)
         val updatedProfile = profileWithFollowing.copy(followingCount = 2)
 
-        every { userProfileRepository.findByUserId(userId) } returns profileWithFollowing
-        every { userProfileRepository.update(any()) } returns updatedProfile
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(profileWithFollowing)
+        every { userProfileRepository.update(any()) } returns Mono.just(updatedProfile)
         // When
-        val result = userProfileService.decrementFollowingCount(userId)
+        val result = userProfileService.decrementFollowingCount(userId).block()!!
 
         // Then
         assertEquals(2, result.followingCount)
@@ -374,11 +361,10 @@ class UserProfileServiceTest {
         val userId = UUID.randomUUID()
         val profileWithZeroFollowing = testProfile.copy(followingCount = 0)
 
-        every { userProfileRepository.findByUserId(userId) } returns profileWithZeroFollowing
-        every { userProfileRepository.update(any()) } returns profileWithZeroFollowing
-
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(profileWithZeroFollowing)
+        every { userProfileRepository.update(any()) } returns Mono.just(profileWithZeroFollowing)
         // When
-        val result = userProfileService.decrementFollowingCount(userId)
+        val result = userProfileService.decrementFollowingCount(userId).block()!!
 
         // Then
         assertEquals(0, result.followingCount)

@@ -25,6 +25,8 @@ import org.springframework.restdocs.request.RequestDocumentation.*
 import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 
 /**
  * UserController 단위 테스트 + Spring Rest Docs
@@ -55,8 +57,7 @@ class UserControllerTest {
     @DisplayName("내 정보 조회 성공")
     fun getMe_Success() {
         // Given
-        every { userService.getUserById(testUserId) } returns testUser
-
+        every { userService.getUserById(testUserId) } returns Mono.just(testUser)
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))
@@ -93,8 +94,7 @@ class UserControllerTest {
         // Given
         val targetUserId = UUID.randomUUID()
         val targetUser = testUser.copy(id = targetUserId, email = "target@example.com")
-        every { userService.getUserById(targetUserId) } returns targetUser
-
+        every { userService.getUserById(targetUserId) } returns Mono.just(targetUser)
         // When & Then
         webTestClient.get()
             .uri("${ApiPaths.API_V1_USERS}/{targetUserId}", targetUserId)
@@ -141,8 +141,7 @@ class UserControllerTest {
     @DisplayName("회원 탈퇴 성공")
     fun withdrawMe_Success() {
         // Given
-        every { userService.withdrawUser(testUserId) } returns Unit
-
+        every { userService.withdrawUser(testUserId) } returns Mono.empty()
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))

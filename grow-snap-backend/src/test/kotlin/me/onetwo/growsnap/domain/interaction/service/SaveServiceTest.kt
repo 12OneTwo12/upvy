@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.LocalDateTime
@@ -68,8 +69,8 @@ class SaveServiceTest {
                 updatedBy = testUserId.toString()
             )
 
-            every { userSaveRepository.exists(testUserId, testContentId) } returns false
-            every { userSaveRepository.save(testUserId, testContentId) } returns userSave
+            every { userSaveRepository.exists(testUserId, testContentId) } returns Mono.just(false)
+            every { userSaveRepository.save(testUserId, testContentId) } returns Mono.just(userSave)
             justRun { applicationEventPublisher.publishEvent(any<SaveCreatedEvent>()) }
             every { contentInteractionRepository.getSaveCount(testContentId) } returns Mono.just(1)
 
@@ -97,7 +98,7 @@ class SaveServiceTest {
         @DisplayName("이미 저장이 있으면, 중복 생성하지 않는다 (idempotent)")
         fun saveContent_AlreadyExists_Idempotent() {
             // Given
-            every { userSaveRepository.exists(testUserId, testContentId) } returns true
+            every { userSaveRepository.exists(testUserId, testContentId) } returns Mono.just(true)
             every { contentInteractionRepository.getSaveCount(testContentId) } returns Mono.just(1)
 
             // When
@@ -125,8 +126,8 @@ class SaveServiceTest {
         @DisplayName("저장을 취소하면, Repository에서 삭제하고 SaveDeletedEvent를 발행한다")
         fun unsaveContent_Success() {
             // Given
-            every { userSaveRepository.exists(testUserId, testContentId) } returns true
-            every { userSaveRepository.delete(testUserId, testContentId) } returns Unit
+            every { userSaveRepository.exists(testUserId, testContentId) } returns Mono.just(true)
+            every { userSaveRepository.delete(testUserId, testContentId) } returns Mono.empty()
             justRun { applicationEventPublisher.publishEvent(any<SaveDeletedEvent>()) }
             every { contentInteractionRepository.getSaveCount(testContentId) } returns Mono.just(0)
 
@@ -154,7 +155,7 @@ class SaveServiceTest {
         @DisplayName("저장이 없으면, 삭제하지 않는다 (idempotent)")
         fun unsaveContent_NotExists_Idempotent() {
             // Given
-            every { userSaveRepository.exists(testUserId, testContentId) } returns false
+            every { userSaveRepository.exists(testUserId, testContentId) } returns Mono.just(false)
             every { contentInteractionRepository.getSaveCount(testContentId) } returns Mono.just(0)
 
             // When
@@ -210,7 +211,7 @@ class SaveServiceTest {
                 contentId2 to Pair("Content 2", "https://example.com/thumb2.jpg")
             )
 
-            every { userSaveRepository.findByUserId(testUserId) } returns listOf(userSave1, userSave2)
+            every { userSaveRepository.findByUserId(testUserId) } returns Flux.fromIterable(listOf(userSave1, userSave2))
             every { contentMetadataRepository.findContentInfosByContentIds(setOf(contentId1, contentId2)) } returns contentInfoMap
 
             // When
@@ -238,7 +239,7 @@ class SaveServiceTest {
         @DisplayName("저장된 콘텐츠가 없으면, 빈 Flux를 반환한다")
         fun getSavedContents_Empty_ReturnsEmptyFlux() {
             // Given
-            every { userSaveRepository.findByUserId(testUserId) } returns emptyList()
+            every { userSaveRepository.findByUserId(testUserId) } returns Flux.empty()
 
             // When
             val result = saveService.getSavedContents(testUserId)
@@ -257,7 +258,7 @@ class SaveServiceTest {
         @DisplayName("저장 상태 조회 시, Repository의 exists 결과를 반환한다 (저장O)")
         fun getSaveStatus_WhenSaved_ReturnsTrue() {
             // Given: 사용자가 콘텐츠를 저장한 상태
-            every { userSaveRepository.exists(testUserId, testContentId) } returns true
+            every { userSaveRepository.exists(testUserId, testContentId) } returns Mono.just(true)
 
             // When: 저장 상태 조회
             val result = saveService.getSaveStatus(testUserId, testContentId)
@@ -277,7 +278,7 @@ class SaveServiceTest {
         @DisplayName("저장 상태 조회 시, Repository의 exists 결과를 반환한다 (저장X)")
         fun getSaveStatus_WhenNotSaved_ReturnsFalse() {
             // Given: 사용자가 콘텐츠를 저장하지 않은 상태
-            every { userSaveRepository.exists(testUserId, testContentId) } returns false
+            every { userSaveRepository.exists(testUserId, testContentId) } returns Mono.just(false)
 
             // When: 저장 상태 조회
             val result = saveService.getSaveStatus(testUserId, testContentId)

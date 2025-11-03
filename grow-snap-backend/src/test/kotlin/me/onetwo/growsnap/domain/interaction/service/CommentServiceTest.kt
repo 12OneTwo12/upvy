@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.context.ApplicationEventPublisher
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.LocalDateTime
@@ -88,7 +89,7 @@ class CommentServiceTest {
                 testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
-            every { commentRepository.save(any()) } returns savedComment
+            every { commentRepository.save(any()) } returns Mono.just(savedComment)
             justRun { applicationEventPublisher.publishEvent(any<CommentCreatedEvent>()) }
             every { userProfileRepository.findUserInfosByUserIds(any()) } returns userInfoMap
 
@@ -123,7 +124,7 @@ class CommentServiceTest {
                 parentCommentId = parentCommentId.toString()
             )
 
-            every { commentRepository.findById(parentCommentId) } returns null
+            every { commentRepository.findById(parentCommentId) } returns Mono.empty()
 
             // When & Then
             val result = commentService.createComment(testUserId, testContentId, request)
@@ -175,7 +176,7 @@ class CommentServiceTest {
             )
 
             // limit=2로 요청하지만, limit+1=3개를 조회하여 hasNext 확인
-            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 2) } returns listOf(
+            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 2) } returns Flux.fromIterable(listOf(
                 comment1,
                 comment2,
                 Comment(
@@ -189,11 +190,11 @@ class CommentServiceTest {
                     updatedAt = LocalDateTime.now(),
                     updatedBy = testUserId.toString()
                 )
-            )
+            ))
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
-            every { commentRepository.countRepliesByParentCommentIds(any()) } returns emptyMap()
-            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
-            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
+            every { commentRepository.countRepliesByParentCommentIds(any()) } returns Mono.just(emptyMap())
+            every { commentLikeRepository.countByCommentIds(any()) } returns Mono.just(emptyMap())
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns Mono.just(emptySet())
 
             // When
             val result = commentService.getComments(null, testContentId, null, 2)
@@ -228,13 +229,13 @@ class CommentServiceTest {
                 testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
-            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 20) } returns listOf(
+            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 20) } returns Flux.fromIterable(listOf(
                 parentComment
-            )
+            ))
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
-            every { commentRepository.countRepliesByParentCommentIds(listOf(testCommentId)) } returns mapOf(testCommentId to 5)
-            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
-            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
+            every { commentRepository.countRepliesByParentCommentIds(listOf(testCommentId)) } returns Mono.just(mapOf(testCommentId to 5))
+            every { commentLikeRepository.countByCommentIds(any()) } returns Mono.just(emptyMap())
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns Mono.just(emptySet())
 
             // When
             val result = commentService.getComments(null, testContentId, null, 20)
@@ -289,7 +290,7 @@ class CommentServiceTest {
                 testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
-            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 2) } returns listOf(
+            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 2) } returns Flux.fromIterable(listOf(
                 reply1,
                 reply2,
                 Comment(
@@ -303,10 +304,10 @@ class CommentServiceTest {
                     updatedAt = LocalDateTime.now(),
                     updatedBy = testUserId.toString()
                 )
-            )
+            ))
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
-            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
-            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
+            every { commentLikeRepository.countByCommentIds(any()) } returns Mono.just(emptyMap())
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns Mono.just(emptySet())
 
             // When
             val result = commentService.getReplies(null, parentCommentId, null, 2)
@@ -345,10 +346,10 @@ class CommentServiceTest {
             )
 
             // limit=20인데 1개만 조회됨 -> hasNext = false
-            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 20) } returns listOf(reply)
+            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 20) } returns Flux.fromIterable(listOf(reply))
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
-            every { commentLikeRepository.countByCommentIds(any()) } returns emptyMap()
-            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns emptySet()
+            every { commentLikeRepository.countByCommentIds(any()) } returns Mono.just(emptyMap())
+            every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns Mono.just(emptySet())
 
             // When
             val result = commentService.getReplies(null, parentCommentId, null, 20)
@@ -384,8 +385,8 @@ class CommentServiceTest {
                 updatedBy = testUserId.toString()
             )
 
-            every { commentRepository.findById(testCommentId) } returns comment
-            every { commentRepository.delete(testCommentId, testUserId) } returns Unit
+            every { commentRepository.findById(testCommentId) } returns Mono.just(comment)
+            every { commentRepository.delete(testCommentId, testUserId) } returns Mono.empty()
             justRun { applicationEventPublisher.publishEvent(any<CommentDeletedEvent>()) }
 
             // When
@@ -407,7 +408,7 @@ class CommentServiceTest {
         @DisplayName("댓글이 존재하지 않으면, CommentNotFoundException을 발생시킨다")
         fun deleteComment_NotFound_ThrowsException() {
             // Given
-            every { commentRepository.findById(testCommentId) } returns null
+            every { commentRepository.findById(testCommentId) } returns Mono.empty()
 
             // When & Then
             val result = commentService.deleteComment(testUserId, testCommentId)
@@ -437,7 +438,7 @@ class CommentServiceTest {
                 updatedBy = otherUserId.toString()
             )
 
-            every { commentRepository.findById(testCommentId) } returns comment
+            every { commentRepository.findById(testCommentId) } returns Mono.just(comment)
 
             // When & Then
             StepVerifier.create(commentService.deleteComment(testUserId, testCommentId))

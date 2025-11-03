@@ -56,7 +56,7 @@ class UserSaveRepositoryTest {
                 providerId = "test-provider-id",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
         testUserId = user.id!!
 
         // 콘텐츠 생성
@@ -74,7 +74,7 @@ class UserSaveRepositoryTest {
             // Given: 준비된 사용자와 콘텐츠
 
             // When: 저장 생성
-            val userSave = userSaveRepository.save(testUserId, testContentId)!!
+            val userSave = userSaveRepository.save(testUserId, testContentId).block()!!
 
             // Then: 생성된 저장 검증
             assertEquals(testUserId, userSave.userId)
@@ -87,11 +87,11 @@ class UserSaveRepositoryTest {
         @DisplayName("이미 저장이 존재하면, 중복 생성 시 예외가 발생한다")
         fun save_WhenAlreadyExists_ThrowsException() {
             // Given: 이미 저장이 존재
-            userSaveRepository.save(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
 
             // When & Then: 중복 생성 시 예외 발생
             try {
-                userSaveRepository.save(testUserId, testContentId)
+                userSaveRepository.save(testUserId, testContentId).block()
                 assert(false) { "Expected exception but none was thrown" }
             } catch (e: Exception) {
                 // 예외 발생 확인 (duplicate, unique constraint violation 등)
@@ -114,13 +114,13 @@ class UserSaveRepositoryTest {
         @DisplayName("저장을 삭제하면, deleted_at이 설정된다")
         fun delete_SetDeletedAt() {
             // Given: 저장이 존재
-            userSaveRepository.save(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
 
             // When: 저장 삭제
-            userSaveRepository.delete(testUserId, testContentId)
+            userSaveRepository.delete(testUserId, testContentId).block()
 
             // Then: deleted_at이 설정됨
-            val exists = userSaveRepository.exists(testUserId, testContentId)
+            val exists = userSaveRepository.exists(testUserId, testContentId).block()!!
             assertFalse(exists)
         }
 
@@ -130,7 +130,7 @@ class UserSaveRepositoryTest {
             // Given: 저장이 존재하지 않음
 
             // When & Then: 삭제해도 예외 없음
-            userSaveRepository.delete(testUserId, testContentId)
+            userSaveRepository.delete(testUserId, testContentId).block()
         }
     }
 
@@ -142,10 +142,10 @@ class UserSaveRepositoryTest {
         @DisplayName("저장이 존재하면, true를 반환한다")
         fun exists_WhenExists_ReturnsTrue() {
             // Given: 저장이 존재
-            userSaveRepository.save(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
 
             // When: 존재 여부 확인
-            val exists = userSaveRepository.exists(testUserId, testContentId)
+            val exists = userSaveRepository.exists(testUserId, testContentId).block()!!
 
             // Then: true 반환
             assertTrue(exists)
@@ -157,7 +157,7 @@ class UserSaveRepositoryTest {
             // Given: 저장이 존재하지 않음
 
             // When: 존재 여부 확인
-            val exists = userSaveRepository.exists(testUserId, testContentId)
+            val exists = userSaveRepository.exists(testUserId, testContentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -167,11 +167,11 @@ class UserSaveRepositoryTest {
         @DisplayName("삭제된 저장은, false를 반환한다")
         fun exists_WhenDeleted_ReturnsFalse() {
             // Given: 저장이 삭제됨
-            userSaveRepository.save(testUserId, testContentId)
-            userSaveRepository.delete(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
+            userSaveRepository.delete(testUserId, testContentId).block()
 
             // When: 존재 여부 확인
-            val exists = userSaveRepository.exists(testUserId, testContentId)
+            val exists = userSaveRepository.exists(testUserId, testContentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -191,12 +191,12 @@ class UserSaveRepositoryTest {
             insertContent(contentId1, testUserId, "Content 1")
             insertContent(contentId2, testUserId, "Content 2")
 
-            userSaveRepository.save(testUserId, contentId1)
+            userSaveRepository.save(testUserId, contentId1).block()
             // created_at은 millisecond 단위이므로 시간 차이 자동 보장
-            userSaveRepository.save(testUserId, contentId2)
+            userSaveRepository.save(testUserId, contentId2).block()
 
             // When: 저장 목록 조회
-            val userSaves = userSaveRepository.findByUserId(testUserId)
+            val userSaves = userSaveRepository.findByUserId(testUserId).collectList().block()!!
 
             // Then: 최신순으로 반환
             assertEquals(2, userSaves.size)
@@ -208,11 +208,11 @@ class UserSaveRepositoryTest {
         @DisplayName("삭제된 저장은 조회되지 않는다")
         fun findByUserId_ExcludesDeleted() {
             // Given: 저장 후 삭제
-            userSaveRepository.save(testUserId, testContentId)
-            userSaveRepository.delete(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
+            userSaveRepository.delete(testUserId, testContentId).block()
 
             // When: 저장 목록 조회
-            val userSaves = userSaveRepository.findByUserId(testUserId)
+            val userSaves = userSaveRepository.findByUserId(testUserId).collectList().block()!!
 
             // Then: 삭제된 저장은 조회되지 않음
             assertEquals(0, userSaves.size)
@@ -224,7 +224,7 @@ class UserSaveRepositoryTest {
             // Given: 저장이 없음
 
             // When: 저장 목록 조회
-            val userSaves = userSaveRepository.findByUserId(testUserId)
+            val userSaves = userSaveRepository.findByUserId(testUserId).collectList().block()!!
 
             // Then: 빈 목록 반환
             assertEquals(0, userSaves.size)

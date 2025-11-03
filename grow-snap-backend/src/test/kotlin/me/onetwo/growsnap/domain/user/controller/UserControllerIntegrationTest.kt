@@ -22,6 +22,8 @@ import org.springframework.context.annotation.Import
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -105,7 +107,7 @@ class UserControllerIntegrationTest {
 
         // Then: 소프트 삭제 확인 (비동기 처리 대기)
         await.atMost(2, TimeUnit.SECONDS).untilAsserted {
-            val deletedUser = userRepository.findById(user.id!!)
+            val deletedUser = userRepository.findById(user.id!!).block()!!
             assertThat(deletedUser?.deletedAt).isNotNull
         }
     }

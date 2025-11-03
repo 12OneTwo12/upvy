@@ -59,7 +59,7 @@ class ContentInteractionRepositoryTest {
                 providerId = "creator-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         // 콘텐츠 생성
         testContentId = UUID.randomUUID()

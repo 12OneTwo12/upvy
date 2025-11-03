@@ -21,6 +21,8 @@ import org.springframework.http.MediaType
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -137,7 +139,7 @@ class UserProfileControllerIntegrationTest {
             .jsonPath("$.bio").isEqualTo("수정된 자기소개")
 
         // Then: DB에 반영되었는지 확인
-        val updatedProfile = userProfileRepository.findByUserId(user.id!!)
+        val updatedProfile = userProfileRepository.findByUserId(user.id!!).block()!!
         assertThat(updatedProfile?.nickname).isEqualTo("updatednick")
         assertThat(updatedProfile?.bio).isEqualTo("수정된 자기소개")
     }

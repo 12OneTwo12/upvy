@@ -66,7 +66,7 @@ class UserContentInteractionRepositoryTest {
                 providerId = "user1-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         testUser2 = userRepository.save(
             User(
@@ -75,7 +75,7 @@ class UserContentInteractionRepositoryTest {
                 providerId = "user2-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         testUser3 = userRepository.save(
             User(
@@ -84,7 +84,7 @@ class UserContentInteractionRepositoryTest {
                 providerId = "user3-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         // 콘텐츠 3개 생성
         testContent1Id = UUID.randomUUID()
