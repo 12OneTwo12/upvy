@@ -47,7 +47,7 @@ data class UserInteractionEvent(
 - ✅ **명확한 이름**: 이벤트 이름만 보고 무엇을 의미하는지 파악 가능
 - ✅ **KDoc 작성**: 이벤트의 목적과 사용 시점 명시
 
-### 2. 이벤트 발행자 (Publisher)
+### 2. 이벤트 발행자 (Publisher) - R2DBC Reactive
 
 ```kotlin
 @Service
@@ -56,11 +56,23 @@ class AnalyticsServiceImpl(
     private val applicationEventPublisher: ApplicationEventPublisher  // Spring 제공
 ) : AnalyticsService {
 
+    /**
+     * 사용자 인터랙션 이벤트 추적 (Reactive)
+     *
+     * ### 처리 흐름 (R2DBC)
+     * 1. Reactive Repository로 카운터 증가 (Mono<Void> 반환)
+     * 2. doOnSuccess: 트랜잭션 성공 시 이벤트 발행
+     * 3. @TransactionalEventListener(AFTER_COMMIT)이 트랜잭션 커밋 후 이벤트 수신
+     *
+     * @param userId 사용자 ID
+     * @param request 인터랙션 이벤트 요청
+     * @return Mono<Void> - 완료 신호
+     */
     override fun trackInteractionEvent(userId: UUID, request: InteractionEventRequest): Mono<Void> {
         val contentId = request.contentId!!
         val interactionType = request.interactionType!!
 
-        // 1. 메인 트랜잭션: 카운터 증가
+        // 1. 메인 트랜잭션: R2DBC Repository로 카운터 증가 (Reactive)
         val incrementCounter = when (interactionType) {
             InteractionType.LIKE -> contentInteractionRepository.incrementLikeCount(contentId)
             InteractionType.SAVE -> contentInteractionRepository.incrementSaveCount(contentId)
@@ -75,6 +87,7 @@ class AnalyticsServiceImpl(
                 contentId,
                 interactionType
             )
+            // Spring Event 발행 (동기 호출)
             applicationEventPublisher.publishEvent(
                 UserInteractionEvent(
                     userId = userId,
@@ -82,7 +95,7 @@ class AnalyticsServiceImpl(
                     interactionType = interactionType
                 )
             )
-        }.then()
+        }.then()  // ✅ Mono<Void> 반환
     }
 
     companion object {
@@ -91,13 +104,15 @@ class AnalyticsServiceImpl(
 }
 ```
 
-**이벤트 발행 규칙**:
+**이벤트 발행 규칙 (R2DBC)**:
 - ✅ **ApplicationEventPublisher 주입**: Spring이 제공하는 인터페이스 사용
-- ✅ **메인 트랜잭션 성공 후 발행**: `doOnSuccess`로 성공 시에만 발행
+- ✅ **Reactive 타입 반환**: Repository 메서드는 `Mono<Void>` 또는 `Flux<T>` 반환
+- ✅ **doOnSuccess로 발행**: Reactive 체인 성공 시에만 이벤트 발행
 - ✅ **로깅**: 이벤트 발행 시점에 DEBUG 로그 남기기
 - ❌ **메인 트랜잭션 실패 시 발행 금지**: 실패 시 이벤트 발행하지 않음
+- ✅ **.then() 반환**: 최종적으로 `Mono<Void>` 반환
 
-### 3. 이벤트 리스너 (Listener)
+### 3. 이벤트 리스너 (Listener) - R2DBC Reactive
 
 ```kotlin
 @Component
@@ -106,15 +121,22 @@ class UserInteractionEventListener(
 ) {
 
     /**
-     * 사용자 인터랙션 이벤트 처리
+     * 사용자 인터랙션 이벤트 처리 (Reactive)
      *
-     * ### 처리 흐름
+     * ### 처리 흐름 (R2DBC)
      * 1. 메인 트랜잭션 커밋 후 실행 (@TransactionalEventListener + AFTER_COMMIT)
      * 2. 비동기로 실행 (@Async)
-     * 3. user_content_interactions 테이블에 저장
+     * 3. R2DBC Repository로 user_content_interactions 테이블에 저장
+     * 4. subscribe()로 Reactive 체인 실행
+     *
+     * ### R2DBC 트랜잭션 동작
+     * - 메인 트랜잭션: ReactiveTransactionManager가 관리
+     * - 트랜잭션 커밋 → AFTER_COMMIT 이벤트 발행
+     * - 이벤트 리스너가 비동기로 실행 (별도 스레드)
      *
      * ### 장애 격리
      * - 이 메서드가 실패해도 메인 트랜잭션에 영향 없음
+     * - subscribe() 에러 핸들러로 예외 처리
      * - 로그만 남기고 예외를 삼킴
      *
      * @param event 사용자 인터랙션 이벤트
@@ -130,12 +152,12 @@ class UserInteractionEventListener(
                 event.interactionType
             )
 
-            // user_content_interactions 테이블에 저장 (협업 필터링용)
+            // R2DBC Repository로 저장 (Reactive)
             userContentInteractionRepository
                 .saveInteraction(event.userId, event.contentId, event.interactionType)
                 .subscribe(
-                    { logger.debug("User interaction saved successfully") },
-                    { error ->
+                    { logger.debug("User interaction saved successfully") },  // onNext
+                    { error ->  // onError
                         logger.error(
                             "Failed to save user interaction: userId={}, contentId={}, type={}",
                             event.userId,
@@ -157,12 +179,14 @@ class UserInteractionEventListener(
 }
 ```
 
-**이벤트 리스너 규칙**:
-- ✅ **@TransactionalEventListener(AFTER_COMMIT)**: 메인 트랜잭션 커밋 후에만 실행
+**이벤트 리스너 규칙 (R2DBC)**:
+- ✅ **@TransactionalEventListener(AFTER_COMMIT)**: ReactiveTransactionManager 커밋 후 실행
 - ✅ **@Async**: 비동기로 실행하여 메인 요청에 영향 없음
+- ✅ **R2DBC Repository 호출**: Repository 메서드는 `Mono<Void>` 반환
+- ✅ **.subscribe()**: Reactive 체인을 실행하고 에러 핸들링
 - ✅ **try-catch**: 예외를 삼켜서 메인 트랜잭션에 영향을 주지 않음
 - ✅ **로깅**: DEBUG 레벨로 이벤트 처리 시점 로깅, ERROR 레벨로 실패 로깅
-- ✅ **KDoc 작성**: 처리 흐름과 장애 격리 방식 명시
+- ✅ **KDoc 작성**: R2DBC 트랜잭션 동작, 처리 흐름, 장애 격리 방식 명시
 
 ### 4. Spring Async 설정
 
@@ -189,10 +213,88 @@ class AsyncConfig : AsyncConfigurerSupport() {
 - ✅ **적절한 풀 사이즈**: 애플리케이션 부하에 맞게 조정
 - ✅ **스레드 이름 접두사**: 로그 추적을 위해 명확한 이름 설정
 
+## R2DBC 트랜잭션과 Spring Event
+
+### R2DBC에서의 트랜잭션 관리
+
+GrowSnap은 **ReactiveTransactionManager**를 사용하여 R2DBC 트랜잭션을 관리합니다.
+
+```kotlin
+@Configuration
+class TransactionConfig {
+
+    @Bean
+    fun transactionManager(
+        connectionFactory: ConnectionFactory
+    ): ReactiveTransactionManager {
+        return R2dbcTransactionManager(connectionFactory)
+    }
+
+    @Bean
+    fun transactionalOperator(
+        transactionManager: ReactiveTransactionManager
+    ): TransactionalOperator {
+        return TransactionalOperator.create(transactionManager)
+    }
+}
+```
+
+### R2DBC 트랜잭션과 이벤트 발행 흐름
+
+```
+1. Service 메서드 시작 (Reactive 체인 시작)
+   ↓
+2. R2DBC Repository 호출 (Mono<Void> 반환)
+   ↓
+3. doOnSuccess: 쿼리 성공 시 이벤트 발행
+   ↓
+4. ReactiveTransactionManager가 트랜잭션 커밋
+   ↓
+5. @TransactionalEventListener(AFTER_COMMIT) 실행
+   ↓
+6. @Async 스레드에서 이벤트 처리
+   ↓
+7. R2DBC Repository로 비동기 저장
+```
+
+### Service에서 Reactive 트랜잭션 사용
+
+```kotlin
+@Service
+class UserService(
+    private val userRepository: UserRepository,
+    private val profileRepository: ProfileRepository,
+    private val transactionalOperator: TransactionalOperator  // Reactive 트랜잭션
+) {
+
+    /**
+     * 사용자와 프로필을 하나의 트랜잭션으로 생성
+     *
+     * @param user 사용자
+     * @param profile 프로필
+     * @return Mono<User> - 생성된 사용자
+     */
+    fun createUserWithProfile(user: User, profile: Profile): Mono<User> {
+        return userRepository.save(user)
+            .flatMap { savedUser ->
+                profileRepository.save(profile.copy(userId = savedUser.id))
+                    .thenReturn(savedUser)
+            }
+            .`as`(transactionalOperator::transactional)  // ✅ Reactive 트랜잭션 적용
+    }
+}
+```
+
+**중요**:
+- ✅ **`.as(transactionalOperator::transactional)`**: Reactive 체인 전체를 하나의 트랜잭션으로 묶음
+- ✅ **flatMap()으로 순차 처리**: 사용자 저장 → 프로필 저장 순서 보장
+- ✅ **트랜잭션 롤백**: 체인 중 에러 발생 시 자동 롤백
+
 ## Spring Event 패턴 체크리스트
 
 **이벤트 기반 처리 구현 시 반드시 확인**:
 
+### 기본 이벤트 패턴
 - [ ] **이벤트 클래스**: data class로 정의, 필요한 최소 정보만 포함
 - [ ] **이벤트 발행**: `applicationEventPublisher.publishEvent()` 사용
 - [ ] **발행 시점**: 메인 트랜잭션 성공 시에만 발행 (`doOnSuccess`)
@@ -201,6 +303,13 @@ class AsyncConfig : AsyncConfigurerSupport() {
 - [ ] **장애 격리**: try-catch로 예외 삼킴, 로그만 남김
 - [ ] **Spring Async 설정**: `@EnableAsync` + ThreadPoolTaskExecutor 설정
 - [ ] **KDoc 작성**: 이벤트 목적, 처리 흐름, 장애 격리 방식 명시
+
+### R2DBC Reactive 패턴
+- [ ] **Reactive 반환 타입**: Repository 메서드는 `Mono<T>` 또는 `Flux<T>` 반환
+- [ ] **doOnSuccess 사용**: Reactive 체인 성공 시에만 이벤트 발행
+- [ ] **subscribe() 호출**: 이벤트 리스너에서 Reactive 체인 실행
+- [ ] **에러 핸들링**: subscribe()의 onError로 예외 처리
+- [ ] **트랜잭션 관리**: ReactiveTransactionManager 사용
 
 ## 주의사항
 
@@ -343,14 +452,31 @@ class UserInteractionEventListener(
 
 ## 정리
 
-### Spring Event 패턴 핵심
+### Spring Event 패턴 핵심 (R2DBC)
 
 1. **이벤트 클래스**: data class로 정의, 필요한 최소 정보만 포함
-2. **이벤트 발행**: `applicationEventPublisher.publishEvent()` + `doOnSuccess`
+2. **이벤트 발행**: `applicationEventPublisher.publishEvent()` + `doOnSuccess` (Reactive 체인 내)
 3. **이벤트 리스너**: `@TransactionalEventListener(AFTER_COMMIT)` + `@Async`
-4. **장애 격리**: try-catch로 예외 삼킴, 메인 트랜잭션과 독립성 보장
-5. **멱등성**: 중복 이벤트 처리 대비
-6. **로깅**: DEBUG/ERROR 레벨로 충실한 로깅
+4. **R2DBC Repository**: `Mono<T>` 또는 `Flux<T>` 반환, `.subscribe()`로 실행
+5. **장애 격리**: try-catch + subscribe()의 onError로 예외 처리
+6. **멱등성**: 중복 이벤트 처리 대비
+7. **로깅**: DEBUG/ERROR 레벨로 충실한 로깅
+
+### R2DBC와 Spring Event 통합
+
+```kotlin
+// 1. Service: Reactive 체인에서 이벤트 발행
+return repository.save(entity)
+    .doOnSuccess { event -> publishEvent(event) }
+    .then()
+
+// 2. Event Listener: 비동기로 R2DBC Repository 호출
+@Async
+@TransactionalEventListener(AFTER_COMMIT)
+fun handleEvent(event: MyEvent) {
+    repository.save(data).subscribe()  // ✅ subscribe()로 실행
+}
+```
 
 ### 언제 사용하는가?
 
@@ -358,3 +484,10 @@ class UserInteractionEventListener(
 - ✅ **실패해도 메인 요청에 영향 없는 작업**: 추천 시스템 업데이트, 로그 저장
 - ✅ **도메인 간 결합도 낮추기**: 주문 완료 후 재고 업데이트, 포인트 적립
 - ❌ **메인 트랜잭션에 영향을 주는 작업**: 결제 처리, 재고 차감 (동기 처리 필요)
+
+### R2DBC 주의사항
+
+- ✅ **Repository는 Mono/Flux 반환**: 절대 `.block()` 사용 금지 (Production 코드)
+- ✅ **subscribe() 호출 필수**: 이벤트 리스너에서 Reactive 체인 실행
+- ✅ **에러 핸들링**: subscribe(onNext, onError)로 예외 처리
+- ✅ **ReactiveTransactionManager**: R2DBC 트랜잭션 관리

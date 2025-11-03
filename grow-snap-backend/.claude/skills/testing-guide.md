@@ -149,7 +149,7 @@ class VideoControllerTest {
 - [ ] **REST Docs**: document()로 API 문서 생성
 - [ ] **Validation 테스트**: 잘못된 요청에 대한 400 응답 검증
 
-## Service 테스트 템플릿
+## Service 테스트 템플릿 (Reactive)
 
 ```kotlin
 @ExtendWith(MockKExtension::class)
@@ -173,15 +173,18 @@ class VideoServiceImplTest {
         @DisplayName("유효한 요청으로 생성 시, 비디오를 저장하고 응답을 반환한다")
         fun createVideo_WithValidRequest_SavesAndReturnsVideo() {
             // Given: 테스트 데이터
+            val userId = UUID.randomUUID()
             val request = VideoCreateRequest(/* ... */)
             val savedVideo = Video(/* ... */)
+
+            // ✅ GOOD: Repository 모킹은 반드시 Mono/Flux를 반환
             every { videoRepository.save(any()) } returns Mono.just(savedVideo)
             every { s3Service.generateUploadUrl(any()) } returns Mono.just("url")
 
             // When: 메서드 실행
-            val result = videoService.createVideo(request)
+            val result = videoService.createVideo(userId, request)
 
-            // Then: 결과 검증
+            // Then: StepVerifier로 Reactive 타입 검증
             StepVerifier.create(result)
                 .assertNext { response ->
                     assertThat(response.id).isEqualTo(savedVideo.id)
@@ -189,6 +192,7 @@ class VideoServiceImplTest {
                 }
                 .verifyComplete()
 
+            // MockK verify로 호출 검증
             verify(exactly = 1) { videoRepository.save(any()) }
             verify(exactly = 1) { s3Service.generateUploadUrl(any()) }
         }
@@ -197,29 +201,102 @@ class VideoServiceImplTest {
         @DisplayName("저장 실패 시, VideoCreationException을 발생시킨다")
         fun createVideo_WhenSaveFails_ThrowsException() {
             // Given: 저장 실패 상황
+            val userId = UUID.randomUUID()
+            val request = VideoCreateRequest(/* ... */)
+
+            // ✅ GOOD: 에러 모킹도 Mono.error()로 반환
             every { videoRepository.save(any()) } returns
                 Mono.error(RuntimeException("DB error"))
 
             // When: 메서드 실행
-            val result = videoService.createVideo(request)
+            val result = videoService.createVideo(userId, request)
 
-            // Then: 예외 검증
+            // Then: StepVerifier로 예외 검증
             StepVerifier.create(result)
                 .expectError(VideoException.VideoCreationException::class.java)
                 .verify()
+        }
+
+        @Test
+        @DisplayName("여러 Repository 호출 시, 모두 성공하면 결과를 반환한다")
+        fun createVideo_WithMultipleRepositoryCalls_ReturnsResult() {
+            // Given: 여러 Repository 모킹
+            val userId = UUID.randomUUID()
+            val video = Video(/* ... */)
+            val metadata = VideoMetadata(/* ... */)
+
+            // ✅ GOOD: 각 Repository 메서드를 Mono로 모킹
+            every { videoRepository.save(any()) } returns Mono.just(video)
+            every { metadataRepository.save(any()) } returns Mono.just(metadata)
+
+            // When: 메서드 실행
+            val result = videoService.createVideoWithMetadata(userId, request)
+
+            // Then: StepVerifier로 검증
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response.id).isNotNull()
+                }
+                .verifyComplete()
+
+            verify(exactly = 1) { videoRepository.save(any()) }
+            verify(exactly = 1) { metadataRepository.save(any()) }
         }
     }
 }
 ```
 
+### Service 단위 테스트 핵심 포인트
+
+#### 1. Repository 모킹은 항상 Reactive 타입 반환
+
+```kotlin
+// ✅ GOOD: Mono/Flux 반환
+every { userRepository.findById(userId) } returns Mono.just(user)
+every { contentRepository.findAll() } returns Flux.just(content1, content2)
+
+// ❌ BAD: 직접 객체 반환
+every { userRepository.findById(userId) } returns user
+```
+
+#### 2. StepVerifier로 Reactive 타입 검증
+
+```kotlin
+// ✅ GOOD: StepVerifier 사용
+StepVerifier.create(result)
+    .assertNext { /* 검증 */ }
+    .verifyComplete()
+
+// ✅ GOOD: 에러 검증
+StepVerifier.create(result)
+    .expectError(CustomException::class.java)
+    .verify()
+
+// ❌ BAD: .block() 사용
+val actual = result.block()
+assertThat(actual).isEqualTo(expected)
+```
+
+#### 3. 에러 케이스 모킹
+
+```kotlin
+// ✅ GOOD: Mono.error()로 에러 모킹
+every { repository.save(any()) } returns Mono.error(RuntimeException("Error"))
+
+// ✅ GOOD: Mono.empty()로 결과 없음 모킹
+every { repository.findById(any()) } returns Mono.empty()
+```
+
 ### Service 테스트 체크리스트
 
 - [ ] **MockK 사용**: @MockK, @InjectMockKs 어노테이션 활용
-- [ ] **StepVerifier**: Reactive 타입 검증
+- [ ] **Reactive 모킹**: Repository 모킹 시 `Mono.just()`, `Flux.just()` 반환
+- [ ] **StepVerifier**: Reactive 타입 검증에 StepVerifier 사용
 - [ ] **Given-When-Then**: 명확한 테스트 구조
 - [ ] **DisplayName**: 한글로 명확한 시나리오 설명
 - [ ] **예외 처리 테스트**: 실패 시나리오도 반드시 테스트
 - [ ] **Verify**: Mock 호출 횟수 검증
+- [ ] **block() 금지**: Service 테스트에서 `.block()` 사용하지 않기
 
 ## Repository 테스트 (통합 테스트)
 
@@ -385,26 +462,37 @@ class ContentInteractionRepositoryTest {
 #### 2. 실제 데이터베이스 검증
 
 - DSLContext를 사용하여 실제 데이터베이스 상태 확인
-- JOOQ 쿼리가 올바르게 실행되는지 검증
+- R2DBC + JOOQ 쿼리가 올바르게 실행되는지 검증
 - Soft Delete, Audit Trail 등 데이터베이스 레벨 패턴 검증
 
 #### 3. 헬퍼 메서드 활용
 
 ```kotlin
-// ✅ 테스트 데이터 삽입 헬퍼 메서드
-private fun insertContent(contentId: UUID, creatorId: UUID, title: String) { /* ... */ }
+// ✅ 테스트 데이터 삽입 헬퍼 메서드 (동기 실행)
+private fun insertContent(contentId: UUID, creatorId: UUID, title: String) {
+    // DSLContext.execute()는 동기로 실행됨
+    dslContext.insertInto(CONTENTS)
+        .set(CONTENTS.ID, contentId.toString())
+        .set(CONTENTS.CREATOR_ID, creatorId.toString())
+        .execute()
+}
 
-// ✅ 데이터베이스 상태 확인 헬퍼 메서드
-private fun getViewCount(contentId: UUID): Int { /* ... */ }
+// ✅ 데이터베이스 상태 확인 헬퍼 메서드 (동기 실행)
+private fun getViewCount(contentId: UUID): Int {
+    return dslContext.select(CONTENT_INTERACTIONS.VIEW_COUNT)
+        .from(CONTENT_INTERACTIONS)
+        .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
+        .fetchOne(CONTENT_INTERACTIONS.VIEW_COUNT) ?: 0
+}
 ```
 
-#### 4. Given-When-Then 패턴
+#### 4. Given-When-Then 패턴 (R2DBC)
 
 ```kotlin
 // Given: 테스트 데이터 준비 (BeforeEach 또는 테스트 메서드 내)
 val initialCount = getViewCount(testContentId)
 
-// When: Repository 메서드 실행
+// When: Repository 메서드 실행 (✅ .block()!!로 동기 변환)
 contentInteractionRepository.incrementViewCount(testContentId).block()
 
 // Then: 데이터베이스 상태 검증
@@ -412,16 +500,34 @@ val updatedCount = getViewCount(testContentId)
 assertEquals(initialCount + 1, updatedCount)
 ```
 
-#### 5. Reactive 타입 처리
+**중요**: Repository 통합 테스트에서는 `.block()!!`을 사용하여 Reactive 타입을 동기로 변환합니다.
+
+#### 5. Reactive 타입 처리 (Repository 테스트)
 
 ```kotlin
-// ✅ Mono/Flux는 .block() 또는 StepVerifier로 테스트
-repository.save(entity).block()
+// ✅ GOOD: Mono는 .block()!!로 동기 변환
+val user = userRepository.save(testUser).block()!!
+assertThat(user.id).isNotNull()
 
-// ✅ Flux는 .collectList().block()으로 변환
+// ✅ GOOD: Flux는 .collectList().block()!!으로 리스트 변환
 val results = repository.findAll().collectList().block()!!
 assertEquals(3, results.size)
+
+// ✅ GOOD: Mono<Void>는 .block()으로 완료 대기
+repository.delete(userId).block()
+
+// ✅ GOOD: 여러 결과를 순차 처리
+val user1 = repository.save(user1).block()!!
+val user2 = repository.save(user2).block()!!
+val user3 = repository.save(user3).block()!!
 ```
+
+**왜 Repository 테스트에서는 .block()을 사용하는가?**
+
+- Repository 통합 테스트는 **실제 데이터베이스 상태를 검증**하는 것이 목적
+- 테스트 코드의 가독성을 위해 동기 방식으로 작성
+- Given-When-Then 구조를 명확하게 표현하기 위함
+- **주의**: Production 코드 (Repository 구현체)에서는 절대 `.block()` 사용 금지!
 
 ### Repository 테스트 체크리스트
 
