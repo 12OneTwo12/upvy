@@ -126,12 +126,12 @@ class FollowServiceImpl(
                         }
                     }
             }
-            .flatMap {
+            .then(
                 // 팔로워/팔로잉 수 업데이트
                 userProfileService.decrementFollowingCount(followerId)
                     .zipWith(userProfileService.decrementFollowerCount(followingId))
                     .then()
-            }
+            )
     }
 
     /**

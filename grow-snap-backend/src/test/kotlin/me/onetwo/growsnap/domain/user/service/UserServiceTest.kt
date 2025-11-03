@@ -65,7 +65,7 @@ class UserServiceTest {
             userRepository.findByProviderAndProviderId(provider, providerId)
         } returns Mono.just(existingUser)
         // When
-        val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl)
+        val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl).block()!!
 
         // Then
         assertEquals(existingUser, result)
@@ -110,7 +110,7 @@ class UserServiceTest {
         every { userProfileRepository.existsByNickname(any()) } returns Mono.just(false)  // 닉네임 중복 없음
         every { userProfileRepository.save(any()) } returns Mono.just(mockProfile)
         // When
-        val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl)
+        val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl).block()!!
 
         // Then
         assertEquals(newUser, result)
@@ -136,7 +136,7 @@ class UserServiceTest {
 
         every { userRepository.findById(userId) } returns Mono.just(user)
         // When
-        val result = userService.getUserById(userId)
+        val result = userService.getUserById(userId).block()!!
 
         // Then
         assertEquals(user, result)
@@ -174,7 +174,7 @@ class UserServiceTest {
 
         every { userRepository.findByEmail(email) } returns Mono.just(user)
         // When
-        val result = userService.getUserByEmail(email)
+        val result = userService.getUserByEmail(email).block()!!
 
         // Then
         assertEquals(user, result)

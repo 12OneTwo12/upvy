@@ -10,10 +10,15 @@ import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import org.assertj.core.api.Assertions.assertThat
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -21,13 +26,11 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("콘텐츠 Repository 통합 테스트")
 class ContentRepositoryTest {
 
@@ -53,6 +56,14 @@ class ContentRepositoryTest {
                 role = UserRole.USER
             )
         ).block()!!
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested
@@ -452,10 +463,11 @@ class ContentRepositoryTest {
             insertContent(contentId, testUser.id!!)
 
             // When: 삭제
-            val result = contentRepository.delete(contentId, testUser.id!!).block()!!
+            val result = contentRepository.delete(contentId, testUser.id!!).block()
 
             // Then: 삭제 성공
-            assertThat(result).isTrue
+            assertThat(result).isNotNull
+            assertThat(result!!).isTrue
 
             // 데이터베이스에서 deleted_at 확인
             val dbContent = dslContext.selectFrom(CONTENTS)
@@ -476,10 +488,11 @@ class ContentRepositoryTest {
             val nonExistingId = UUID.randomUUID()
 
             // When: 삭제
-            val result = contentRepository.delete(nonExistingId, testUser.id!!).block()!!
+            val result = contentRepository.delete(nonExistingId, testUser.id!!).block()
 
             // Then: 실패
-            assertThat(result).isFalse
+            assertThat(result).isNotNull
+            assertThat(result!!).isFalse
         }
     }
 

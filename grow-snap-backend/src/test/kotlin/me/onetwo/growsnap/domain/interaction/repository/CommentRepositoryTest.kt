@@ -8,11 +8,18 @@ import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
+import me.onetwo.growsnap.jooq.generated.tables.UserCommentLikes.Companion.USER_COMMENT_LIKES
+import me.onetwo.growsnap.jooq.generated.tables.Comments.Companion.COMMENTS
 import me.onetwo.growsnap.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.ContentMetadata.Companion.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.ContentPhotos.Companion.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.Contents.Companion.CONTENTS
+import me.onetwo.growsnap.jooq.generated.tables.UserProfiles.Companion.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.Users.Companion.USERS
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -23,13 +30,11 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("댓글 Repository 통합 테스트")
 class CommentRepositoryTest {
 
@@ -82,6 +87,16 @@ class CommentRepositoryTest {
 
         testContentId = UUID.randomUUID()
         insertContent(testContentId, testUser.id!!, "Test Video")
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(USER_COMMENT_LIKES)).block()
+        Mono.from(dslContext.deleteFrom(COMMENTS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested

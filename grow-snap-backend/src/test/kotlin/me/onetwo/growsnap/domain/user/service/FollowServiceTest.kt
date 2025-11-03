@@ -117,7 +117,7 @@ class FollowServiceTest {
                 Mono.just(followingProfile.copy(followerCount = 1))
 
         // When
-        val result = followService.follow(followerId, followingId)
+        val result = followService.follow(followerId, followingId).block()!!
 
         // Then
         assertEquals(follow, result)
@@ -146,7 +146,7 @@ class FollowServiceTest {
 
         // When & Then
         assertThrows<CannotFollowSelfException> {
-            followService.follow(userId, userId)
+            followService.follow(userId, userId).block()!!
         }
 
         verify(exactly = 0) { userService.getUserById(any()) }
@@ -167,7 +167,7 @@ class FollowServiceTest {
         } returns Mono.just(true)
         // When & Then
         val exception = assertThrows<AlreadyFollowingException> {
-            followService.follow(followerId, followingId)
+            followService.follow(followerId, followingId).block()!!
         }
 
         assertEquals(followingId, exception.followingId)
@@ -191,14 +191,14 @@ class FollowServiceTest {
         every {
             followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
         } returns Mono.just(true)
-        every { followRepository.softDelete(followerId, followingId) } returns Mono.empty()
+        every { followRepository.softDelete(followerId, followingId) } returns Mono.empty<Void>()
         every { userProfileService.decrementFollowingCount(followerId) } returns
                 Mono.just(followerProfile.copy(followingCount = 0))
         every { userProfileService.decrementFollowerCount(followingId) } returns
                 Mono.just(followingProfile.copy(followerCount = 0))
 
         // When
-        followService.unfollow(followerId, followingId)
+        followService.unfollow(followerId, followingId).block()
 
         // Then
         verify(exactly = 1) { userService.getUserById(followerId) }
@@ -223,9 +223,11 @@ class FollowServiceTest {
         every {
             followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)
         } returns Mono.just(false)
+        every { userProfileService.decrementFollowingCount(any()) } returns Mono.just(followerProfile)
+        every { userProfileService.decrementFollowerCount(any()) } returns Mono.just(followingProfile)
         // When & Then
         val exception = assertThrows<NotFollowingException> {
-            followService.unfollow(followerId, followingId)
+            followService.unfollow(followerId, followingId).block()!!
         }
 
         assertEquals(followingId, exception.followingId)

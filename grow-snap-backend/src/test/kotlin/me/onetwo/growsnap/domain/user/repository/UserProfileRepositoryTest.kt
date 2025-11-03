@@ -6,6 +6,12 @@ import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserProfile
 import me.onetwo.growsnap.domain.user.model.UserRole
+import me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
+import org.jooq.DSLContext
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -13,14 +19,12 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 
 /**
  * UserProfileRepository 통합 테스트
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("사용자 프로필 Repository 테스트")
 class UserProfileRepositoryTest {
 
@@ -29,6 +33,9 @@ class UserProfileRepositoryTest {
 
     @Autowired
     private lateinit var userRepository: UserRepository
+
+    @Autowired
+    private lateinit var dslContext: DSLContext
 
     private lateinit var testUser: User
     private lateinit var testProfile: UserProfile
@@ -50,6 +57,14 @@ class UserProfileRepositoryTest {
             profileImageUrl = "https://example.com/profile.jpg",
             bio = "테스트 자기소개"
         )
+    }
+
+    @AfterEach
+    fun tearDown() {
+        // Delete in correct order to avoid FK constraint violations
+        Mono.from(dslContext.deleteFrom(FOLLOWS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Test

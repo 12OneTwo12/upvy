@@ -99,7 +99,7 @@ class UserProfileServiceTest {
         every { userProfileRepository.existsByNickname(nickname) } returns Mono.just(true)
         // When & Then
         val exception = assertThrows<DuplicateNicknameException> {
-            userProfileService.createProfile(userId, nickname)
+            userProfileService.createProfile(userId, nickname).block()!!
         }
 
         assertEquals(nickname, exception.nickname)
@@ -117,7 +117,7 @@ class UserProfileServiceTest {
 
         every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
         // When
-        val result = userProfileService.getProfileByUserId(userId)
+        val result = userProfileService.getProfileByUserId(userId).block()!!
 
         // Then
         assertEquals(testProfile, result)
@@ -148,7 +148,7 @@ class UserProfileServiceTest {
 
         every { userProfileRepository.findByNickname(nickname) } returns Mono.just(testProfile)
         // When
-        val result = userProfileService.getProfileByNickname(nickname)
+        val result = userProfileService.getProfileByNickname(nickname).block()!!
 
         // Then
         assertEquals(testProfile, result)
@@ -234,7 +234,7 @@ class UserProfileServiceTest {
         every { userProfileRepository.existsByNickname(newNickname) } returns Mono.just(true)
         // When & Then
         val exception = assertThrows<DuplicateNicknameException> {
-            userProfileService.updateProfile(userId, nickname = newNickname)
+            userProfileService.updateProfile(userId, nickname = newNickname).block()!!
         }
 
         assertEquals(newNickname, exception.nickname)

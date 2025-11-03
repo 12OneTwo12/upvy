@@ -7,11 +7,22 @@ import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
+import me.onetwo.growsnap.jooq.generated.tables.references.COMMENTS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_COMMENT_LIKES
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_CONTENT_INTERACTIONS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_LIKES
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_SAVES
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -20,7 +31,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -31,7 +41,6 @@ import java.util.UUID
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("콘텐츠 인터랙션 Repository 통합 테스트")
 class ContentInteractionRepositoryTest {
 
@@ -64,6 +73,21 @@ class ContentInteractionRepositoryTest {
         // 콘텐츠 생성
         testContentId = UUID.randomUUID()
         insertContent(testContentId, testUser.id!!, "Test Video")
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+        Mono.from(dslContext.deleteFrom(USER_CONTENT_INTERACTIONS)).block()
+        Mono.from(dslContext.deleteFrom(USER_VIEW_HISTORY)).block()
+        Mono.from(dslContext.deleteFrom(USER_SAVES)).block()
+        Mono.from(dslContext.deleteFrom(USER_LIKES)).block()
+        Mono.from(dslContext.deleteFrom(USER_COMMENT_LIKES)).block()
+        Mono.from(dslContext.deleteFrom(COMMENTS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested

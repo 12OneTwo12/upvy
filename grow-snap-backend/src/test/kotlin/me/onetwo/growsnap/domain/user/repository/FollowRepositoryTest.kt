@@ -4,6 +4,12 @@ import me.onetwo.growsnap.domain.user.model.Follow
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
+import me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
+import org.jooq.DSLContext
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -11,14 +17,12 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 
 /**
  * FollowRepository 통합 테스트
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("팔로우 Repository 테스트")
 class FollowRepositoryTest {
 
@@ -27,6 +31,9 @@ class FollowRepositoryTest {
 
     @Autowired
     private lateinit var userRepository: UserRepository
+
+    @Autowired
+    private lateinit var dslContext: DSLContext
 
     private lateinit var follower: User
     private lateinit var following: User
@@ -55,6 +62,14 @@ class FollowRepositoryTest {
                 providerId = "another-google-789",
                 role = UserRole.USER
             )).block()!!
+    }
+
+    @AfterEach
+    fun tearDown() {
+        // Delete in correct order to avoid FK constraint violations
+        Mono.from(dslContext.deleteFrom(FOLLOWS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Test
@@ -86,7 +101,7 @@ class FollowRepositoryTest {
         followRepository.save(follow).block()!!
 
         // When
-        followRepository.softDelete(follower.id!!, following.id!!).block()!!
+        followRepository.softDelete(follower.id!!, following.id!!).block()
 
         // Then
         val exists = followRepository.existsByFollowerIdAndFollowingId(follower.id!!, following.id!!).block()!!
@@ -196,7 +211,7 @@ class FollowRepositoryTest {
         followRepository.save(Follow(followerId = follower.id!!, followingId = anotherUser.id!!)).block()!!
 
         // When
-        followRepository.softDelete(follower.id!!, following.id!!).block()!!
+        followRepository.softDelete(follower.id!!, following.id!!).block()
         val countAfterDelete = followRepository.countByFollowerId(follower.id!!).block()!!
 
         // Then
@@ -208,7 +223,7 @@ class FollowRepositoryTest {
     fun delete_NonExistingFollow_NoError() {
         // When & Then (예외가 발생하지 않아야 함)
         assertDoesNotThrow {
-            followRepository.softDelete(follower.id!!, following.id!!).block()!!
+            followRepository.softDelete(follower.id!!, following.id!!).block()
         }
     }
 
@@ -260,7 +275,7 @@ class FollowRepositoryTest {
         followRepository.save(Follow(followerId = anotherUser.id!!, followingId = following.id!!)).block()!!
 
         // follower의 팔로우를 soft delete
-        followRepository.softDelete(follower.id!!, following.id!!).block()!!
+        followRepository.softDelete(follower.id!!, following.id!!).block()
 
         // When: following 사용자의 팔로워 목록 조회
         val followerUserIds = followRepository.findFollowerUserIds(following.id!!).collectList().block()!!
@@ -305,7 +320,7 @@ class FollowRepositoryTest {
         followRepository.save(Follow(followerId = follower.id!!, followingId = anotherUser.id!!)).block()!!
 
         // following에 대한 팔로우를 soft delete
-        followRepository.softDelete(follower.id!!, following.id!!).block()!!
+        followRepository.softDelete(follower.id!!, following.id!!).block()
 
         // When: follower 사용자의 팔로잉 목록 조회
         val followingUserIds = followRepository.findFollowingUserIds(follower.id!!).collectList().block()!!
