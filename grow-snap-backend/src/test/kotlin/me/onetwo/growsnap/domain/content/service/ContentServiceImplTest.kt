@@ -497,6 +497,7 @@ class ContentServiceImplTest {
 
             every { contentRepository.findById(contentId) } returns Mono.just(content)
             every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(metadata)
+            every { contentPhotoRepository.findByContentId(contentId) } returns emptyList()
 
             // When: 메서드 실행
             val result = contentService.getContent(contentId)

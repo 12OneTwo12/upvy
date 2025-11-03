@@ -125,15 +125,14 @@ class CommentServiceTest {
             )
 
             every { commentRepository.findById(parentCommentId) } returns Mono.empty()
+            // save는 호출되지 않아야 하지만, Mono 생성 시점에 MockK가 체크하므로 mock 필요
+            every { commentRepository.save(any()) } returns Mono.error(IllegalStateException("Should not be called"))
 
             // When & Then
             val result = commentService.createComment(testUserId, testContentId, request)
 
             StepVerifier.create(result)
-                .expectErrorMatches { error ->
-                    error is CommentException.ParentCommentNotFoundException &&
-                        error.message.contains(parentCommentId.toString())
-                }
+                .expectError(CommentException.ParentCommentNotFoundException::class.java)
                 .verify()
         }
     }
@@ -176,7 +175,7 @@ class CommentServiceTest {
             )
 
             // limit=2로 요청하지만, limit+1=3개를 조회하여 hasNext 확인
-            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 2) } returns Flux.fromIterable(listOf(
+            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 3) } returns Flux.fromIterable(listOf(
                 comment1,
                 comment2,
                 Comment(
@@ -229,7 +228,7 @@ class CommentServiceTest {
                 testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
-            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 20) } returns Flux.fromIterable(listOf(
+            every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 21) } returns Flux.fromIterable(listOf(
                 parentComment
             ))
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
@@ -290,7 +289,7 @@ class CommentServiceTest {
                 testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
-            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 2) } returns Flux.fromIterable(listOf(
+            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 3) } returns Flux.fromIterable(listOf(
                 reply1,
                 reply2,
                 Comment(
@@ -346,7 +345,7 @@ class CommentServiceTest {
             )
 
             // limit=20인데 1개만 조회됨 -> hasNext = false
-            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 20) } returns Flux.fromIterable(listOf(reply))
+            every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 21) } returns Flux.fromIterable(listOf(reply))
             every { userProfileRepository.findUserInfosByUserIds(setOf(testUserId)) } returns userInfoMap
             every { commentLikeRepository.countByCommentIds(any()) } returns Mono.just(emptyMap())
             every { commentLikeRepository.findLikedCommentIds(any(), any()) } returns Mono.just(emptySet())

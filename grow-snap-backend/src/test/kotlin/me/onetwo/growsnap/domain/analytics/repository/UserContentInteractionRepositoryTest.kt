@@ -397,7 +397,7 @@ class UserContentInteractionRepositoryTest {
         val now = LocalDateTime.now()
 
         // Contents 테이블
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -410,11 +410,11 @@ class UserContentInteractionRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString()))
+            .block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -424,11 +424,11 @@ class UserContentInteractionRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString()))
+            .block()
 
         // Content_Interactions 테이블
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, 0)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 0)
@@ -438,8 +438,8 @@ class UserContentInteractionRepositoryTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, now)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, now)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString()))
+            .block()
     }
 
     /**
@@ -453,12 +453,13 @@ class UserContentInteractionRepositoryTest {
      * 인터랙션 개수 조회 헬퍼 메서드
      */
     private fun countInteractions(userId: UUID, contentId: UUID, type: InteractionType): Int {
-        return dslContext.selectCount()
+        return Mono.from(dslContext.selectCount()
             .from(USER_CONTENT_INTERACTIONS)
             .where(USER_CONTENT_INTERACTIONS.USER_ID.eq(userId.toString()))
             .and(USER_CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
             .and(USER_CONTENT_INTERACTIONS.INTERACTION_TYPE.eq(type.name))
-            .and(USER_CONTENT_INTERACTIONS.DELETED_AT.isNull)
-            .fetchOne(0, Int::class.java) ?: 0
+            .and(USER_CONTENT_INTERACTIONS.DELETED_AT.isNull))
+            .map { it.value1() }
+            .block() ?: 0
     }
 }

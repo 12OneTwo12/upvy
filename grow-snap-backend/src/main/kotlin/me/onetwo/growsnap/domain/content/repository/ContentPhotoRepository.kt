@@ -6,6 +6,8 @@ import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 import java.util.UUID
 
 /**
@@ -29,7 +31,7 @@ class ContentPhotoRepository(
      */
     fun save(photo: ContentPhoto): Boolean {
         return try {
-            dslContext
+            Mono.from(dslContext
                 .insertInto(CONTENT_PHOTOS)
                 .set(CONTENT_PHOTOS.CONTENT_ID, photo.contentId.toString())
                 .set(CONTENT_PHOTOS.PHOTO_URL, photo.photoUrl)
@@ -39,8 +41,7 @@ class ContentPhotoRepository(
                 .set(CONTENT_PHOTOS.CREATED_AT, photo.createdAt)
                 .set(CONTENT_PHOTOS.CREATED_BY, photo.createdBy)
                 .set(CONTENT_PHOTOS.UPDATED_AT, photo.updatedAt)
-                .set(CONTENT_PHOTOS.UPDATED_BY, photo.updatedBy)
-                .execute()
+                .set(CONTENT_PHOTOS.UPDATED_BY, photo.updatedBy)).block()
 
             logger.debug("Content photo saved: contentId=${photo.contentId}, order=${photo.displayOrder}")
             true
@@ -57,7 +58,7 @@ class ContentPhotoRepository(
      * @return 사진 목록 (display_order 순으로 정렬)
      */
     fun findByContentId(contentId: UUID): List<ContentPhoto> {
-        return dslContext
+        return Flux.from(dslContext
             .select(
                 CONTENT_PHOTOS.ID,
                 CONTENT_PHOTOS.CONTENT_ID,
@@ -74,9 +75,9 @@ class ContentPhotoRepository(
             .from(CONTENT_PHOTOS)
             .where(CONTENT_PHOTOS.CONTENT_ID.eq(contentId.toString()))
             .and(CONTENT_PHOTOS.DELETED_AT.isNull)
-            .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc())
-            .fetch()
-            .map { mapRecordToContentPhoto(it) }
+            .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc()))
+            .collectList().block()
+            ?.map { mapRecordToContentPhoto(it) } ?: emptyList()
     }
 
     /**
@@ -87,13 +88,13 @@ class ContentPhotoRepository(
      * @return 삭제된 행 수
      */
     fun deleteByContentId(contentId: UUID, deletedBy: String): Int {
-        return dslContext
+        return Mono.from(dslContext
             .update(CONTENT_PHOTOS)
             .set(CONTENT_PHOTOS.DELETED_AT, java.time.LocalDateTime.now())
             .set(CONTENT_PHOTOS.UPDATED_BY, deletedBy)
             .where(CONTENT_PHOTOS.CONTENT_ID.eq(contentId.toString()))
-            .and(CONTENT_PHOTOS.DELETED_AT.isNull)
-            .execute()
+            .and(CONTENT_PHOTOS.DELETED_AT.isNull))
+            .map { it }.block() ?: 0
     }
 
     /**
@@ -107,7 +108,7 @@ class ContentPhotoRepository(
             return emptyMap()
         }
 
-        return dslContext
+        val records = Flux.from(dslContext
             .select(
                 CONTENT_PHOTOS.ID,
                 CONTENT_PHOTOS.CONTENT_ID,
@@ -124,8 +125,10 @@ class ContentPhotoRepository(
             .from(CONTENT_PHOTOS)
             .where(CONTENT_PHOTOS.CONTENT_ID.`in`(contentIds.map { it.toString() }))
             .and(CONTENT_PHOTOS.DELETED_AT.isNull)
-            .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc())
-            .fetch()
+            .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc()))
+            .collectList().block() ?: emptyList()
+
+        return records
             .groupBy { record -> UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)) }
             .mapValues { (_, records) ->
                 records.map { mapRecordToContentPhoto(it) }

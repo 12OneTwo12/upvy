@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 import java.util.UUID
 
 /**
@@ -136,18 +137,27 @@ class FeedRepositoryImpl(
         )
             .collectList()
             .flatMapMany { records ->
+                if (records.isEmpty()) {
+                    return@flatMapMany Flux.empty<FeedItemResponse>()
+                }
+
                 // 모든 콘텐츠 ID 추출
                 val contentIds = records.map { UUID.fromString(it.get(CONTENTS.ID)) }
 
                 // 자막 배치 조회 (N+1 문제 방지)
-                val subtitlesMap = findSubtitlesByContentIds(contentIds)
+                val subtitlesMono = findSubtitlesByContentIdsReactive(contentIds)
 
                 // 사진 배치 조회 (N+1 문제 방지)
-                val photosMap = contentPhotoRepository.findByContentIds(contentIds)
-                    .mapValues { (_, photos) -> photos.map { it.photoUrl } }
+                val photosMono = findPhotosByContentIdsReactive(contentIds)
 
-                // 레코드를 FeedItemResponse로 변환
-                Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
+                // 두 맵을 병렬로 조회한 후 결합
+                Mono.zip(subtitlesMono, photosMono)
+                    .flatMapMany { tuple ->
+                        val subtitlesMap = tuple.t1
+                        val photosMap = tuple.t2
+                        // 레코드를 FeedItemResponse로 변환
+                        Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
+                    }
             }
     }
 
@@ -238,18 +248,27 @@ class FeedRepositoryImpl(
         )
             .collectList()
             .flatMapMany { records ->
+                if (records.isEmpty()) {
+                    return@flatMapMany Flux.empty<FeedItemResponse>()
+                }
+
                 // 모든 콘텐츠 ID 추출
                 val contentIds = records.map { UUID.fromString(it.get(CONTENTS.ID)) }
 
                 // 자막 배치 조회 (N+1 문제 방지)
-                val subtitlesMap = findSubtitlesByContentIds(contentIds)
+                val subtitlesMono = findSubtitlesByContentIdsReactive(contentIds)
 
                 // 사진 배치 조회 (N+1 문제 방지)
-                val photosMap = contentPhotoRepository.findByContentIds(contentIds)
-                    .mapValues { (_, photos) -> photos.map { it.photoUrl } }
+                val photosMono = findPhotosByContentIdsReactive(contentIds)
 
-                // 레코드를 FeedItemResponse로 변환
-                Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
+                // 두 맵을 병렬로 조회한 후 결합
+                Mono.zip(subtitlesMono, photosMono)
+                    .flatMapMany { tuple ->
+                        val subtitlesMap = tuple.t1
+                        val photosMap = tuple.t2
+                        // 레코드를 FeedItemResponse로 변환
+                        Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
+                    }
             }
     }
 
@@ -518,20 +537,29 @@ class FeedRepositoryImpl(
         )
             .collectList()
             .flatMapMany { records ->
+                if (records.isEmpty()) {
+                    return@flatMapMany Flux.empty<FeedItemResponse>()
+                }
+
                 // 자막 배치 조회 (N+1 문제 방지)
-                val subtitlesMap = findSubtitlesByContentIds(contentIds)
+                val subtitlesMono = findSubtitlesByContentIdsReactive(contentIds)
 
                 // 사진 배치 조회 (N+1 문제 방지)
-                val photosMap = contentPhotoRepository.findByContentIds(contentIds)
-                    .mapValues { (_, photos) -> photos.map { it.photoUrl } }
+                val photosMono = findPhotosByContentIdsReactive(contentIds)
 
-                // 레코드를 FeedItemResponse로 변환
-                val feedItemsMap = records
-                    .map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
-                    .associateBy { it.contentId }
+                // 두 맵을 병렬로 조회한 후 결합
+                Mono.zip(subtitlesMono, photosMono)
+                    .flatMapMany { tuple ->
+                        val subtitlesMap = tuple.t1
+                        val photosMap = tuple.t2
+                        // 레코드를 FeedItemResponse로 변환
+                        val feedItemsMap = records
+                            .map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
+                            .associateBy { it.contentId }
 
-                // 입력된 ID 순서대로 정렬하여 반환
-                Flux.fromIterable(contentIds.mapNotNull { feedItemsMap[it] })
+                        // 입력된 ID 순서대로 정렬하여 반환
+                        Flux.fromIterable(contentIds.mapNotNull { feedItemsMap[it] })
+                    }
             }
     }
 
@@ -546,17 +574,20 @@ class FeedRepositoryImpl(
             return emptyMap()
         }
 
-        return dslContext
-            .select(
-                CONTENT_SUBTITLES.CONTENT_ID,
-                CONTENT_SUBTITLES.LANGUAGE,
-                CONTENT_SUBTITLES.SUBTITLE_URL
-            )
-            .from(CONTENT_SUBTITLES)
-            .where(CONTENT_SUBTITLES.CONTENT_ID.`in`(contentIds.map { it.toString() }))
-            .and(CONTENT_SUBTITLES.DELETED_AT.isNull)
-            .fetch()
-            .groupBy(
+        return Flux.from(
+            dslContext
+                .select(
+                    CONTENT_SUBTITLES.CONTENT_ID,
+                    CONTENT_SUBTITLES.LANGUAGE,
+                    CONTENT_SUBTITLES.SUBTITLE_URL
+                )
+                .from(CONTENT_SUBTITLES)
+                .where(CONTENT_SUBTITLES.CONTENT_ID.`in`(contentIds.map { it.toString() }))
+                .and(CONTENT_SUBTITLES.DELETED_AT.isNull)
+        )
+            .collectList()
+            .block()
+            ?.groupBy(
                 { UUID.fromString(it.get(CONTENT_SUBTITLES.CONTENT_ID)) },
                 { record ->
                     SubtitleInfoResponse(
@@ -564,7 +595,68 @@ class FeedRepositoryImpl(
                         subtitleUrl = record.get(CONTENT_SUBTITLES.SUBTITLE_URL)!!
                     )
                 }
-            )
+            ) ?: emptyMap()
+    }
+
+    /**
+     * 여러 콘텐츠의 자막 정보를 배치로 조회 (반응형 버전)
+     */
+    private fun findSubtitlesByContentIdsReactive(contentIds: List<UUID>): Mono<Map<UUID, List<SubtitleInfoResponse>>> {
+        if (contentIds.isEmpty()) {
+            return Mono.just(emptyMap())
+        }
+
+        return Flux.from(
+            dslContext
+                .select(
+                    CONTENT_SUBTITLES.CONTENT_ID,
+                    CONTENT_SUBTITLES.LANGUAGE,
+                    CONTENT_SUBTITLES.SUBTITLE_URL
+                )
+                .from(CONTENT_SUBTITLES)
+                .where(CONTENT_SUBTITLES.CONTENT_ID.`in`(contentIds.map { it.toString() }))
+                .and(CONTENT_SUBTITLES.DELETED_AT.isNull)
+        )
+            .collectList()
+            .map { records ->
+                records.groupBy(
+                    { UUID.fromString(it.get(CONTENT_SUBTITLES.CONTENT_ID)) },
+                    { record ->
+                        SubtitleInfoResponse(
+                            language = record.get(CONTENT_SUBTITLES.LANGUAGE)!!,
+                            subtitleUrl = record.get(CONTENT_SUBTITLES.SUBTITLE_URL)!!
+                        )
+                    }
+                )
+            }
+    }
+
+    /**
+     * 여러 콘텐츠의 사진 URL을 배치로 조회 (반응형 버전)
+     */
+    private fun findPhotosByContentIdsReactive(contentIds: List<UUID>): Mono<Map<UUID, List<String>>> {
+        if (contentIds.isEmpty()) {
+            return Mono.just(emptyMap())
+        }
+
+        return Flux.from(
+            dslContext
+                .select(
+                    me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.CONTENT_ID,
+                    me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.PHOTO_URL
+                )
+                .from(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS)
+                .where(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.CONTENT_ID.`in`(contentIds.map { it.toString() }))
+                .and(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.DELETED_AT.isNull)
+                .orderBy(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.DISPLAY_ORDER.asc())
+        )
+            .collectList()
+            .map { records ->
+                records.groupBy(
+                    { UUID.fromString(it.get(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.CONTENT_ID)) },
+                    { it.get(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.PHOTO_URL)!! }
+                )
+            }
     }
 
     /**

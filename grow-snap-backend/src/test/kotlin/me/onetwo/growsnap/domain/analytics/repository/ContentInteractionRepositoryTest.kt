@@ -102,7 +102,7 @@ class ContentInteractionRepositoryTest {
 
             // 콘텐츠 먼저 생성 (FK 제약조건)
             val now = LocalDateTime.now()
-            dslContext.insertInto(CONTENTS)
+            Mono.from(dslContext.insertInto(CONTENTS)
                 .set(CONTENTS.ID, newContentId.toString())
                 .set(CONTENTS.CREATOR_ID, testUser.id.toString())
                 .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -115,8 +115,8 @@ class ContentInteractionRepositoryTest {
                 .set(CONTENTS.CREATED_AT, now)
                 .set(CONTENTS.CREATED_BY, testUser.id.toString())
                 .set(CONTENTS.UPDATED_AT, now)
-                .set(CONTENTS.UPDATED_BY, testUser.id.toString())
-                .execute()
+                .set(CONTENTS.UPDATED_BY, testUser.id.toString()))
+                .block()
 
             val contentInteraction = me.onetwo.growsnap.domain.content.model.ContentInteraction(
                 contentId = newContentId,
@@ -135,9 +135,9 @@ class ContentInteractionRepositoryTest {
             contentInteractionRepository.create(contentInteraction).block()
 
             // Then: 데이터베이스에 저장되었는지 확인
-            val savedRecord = dslContext.selectFrom(CONTENT_INTERACTIONS)
-                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(newContentId.toString()))
-                .fetchOne()
+            val savedRecord = Mono.from(dslContext.selectFrom(CONTENT_INTERACTIONS)
+                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(newContentId.toString())))
+                .block()
 
             assertEquals(newContentId.toString(), savedRecord?.contentId)
             assertEquals(0, savedRecord?.likeCount)
@@ -157,7 +157,7 @@ class ContentInteractionRepositoryTest {
 
             // 콘텐츠 먼저 생성
             val now = LocalDateTime.now()
-            dslContext.insertInto(CONTENTS)
+            Mono.from(dslContext.insertInto(CONTENTS)
                 .set(CONTENTS.ID, newContentId.toString())
                 .set(CONTENTS.CREATOR_ID, testUser.id.toString())
                 .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -168,8 +168,8 @@ class ContentInteractionRepositoryTest {
                 .set(CONTENTS.HEIGHT, 1080)
                 .set(CONTENTS.STATUS, ContentStatus.PUBLISHED.name)
                 .set(CONTENTS.CREATED_AT, now)
-                .set(CONTENTS.UPDATED_AT, now)
-                .execute()
+                .set(CONTENTS.UPDATED_AT, now))
+                .block()
 
             val contentInteraction = me.onetwo.growsnap.domain.content.model.ContentInteraction(
                 contentId = newContentId,
@@ -188,9 +188,9 @@ class ContentInteractionRepositoryTest {
             contentInteractionRepository.create(contentInteraction).block()
 
             // Then: 데이터베이스에 저장되었는지 확인
-            val savedRecord = dslContext.selectFrom(CONTENT_INTERACTIONS)
-                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(newContentId.toString()))
-                .fetchOne()
+            val savedRecord = Mono.from(dslContext.selectFrom(CONTENT_INTERACTIONS)
+                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(newContentId.toString())))
+                .block()
 
             assertEquals(newContentId.toString(), savedRecord?.contentId)
             assertEquals(null, savedRecord?.createdBy)
@@ -236,10 +236,10 @@ class ContentInteractionRepositoryTest {
         @DisplayName("삭제된 콘텐츠는 업데이트되지 않는다")
         fun incrementViewCount_DeletedContent_DoesNotUpdate() {
             // Given: 콘텐츠 삭제 (Soft Delete)
-            dslContext.update(CONTENT_INTERACTIONS)
+            Mono.from(dslContext.update(CONTENT_INTERACTIONS)
                 .set(CONTENT_INTERACTIONS.DELETED_AT, LocalDateTime.now())
-                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(testContentId.toString()))
-                .execute()
+                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(testContentId.toString())))
+                .block()
 
             val initialCount = getViewCount(testContentId)
 
@@ -403,7 +403,7 @@ class ContentInteractionRepositoryTest {
         val now = LocalDateTime.now()
 
         // Contents 테이블
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -416,11 +416,11 @@ class ContentInteractionRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString()))
+            .block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -430,11 +430,11 @@ class ContentInteractionRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString()))
+            .block()
 
         // Content_Interactions 테이블 (초기값 0)
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, 0)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 0)
@@ -444,57 +444,57 @@ class ContentInteractionRepositoryTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, now)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, now)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString()))
+            .block()
     }
 
     /**
      * 조회수 조회 헬퍼 메서드
      */
     private fun getViewCount(contentId: UUID): Int {
-        return dslContext.select(CONTENT_INTERACTIONS.VIEW_COUNT)
+        return Mono.from(dslContext.select(CONTENT_INTERACTIONS.VIEW_COUNT)
             .from(CONTENT_INTERACTIONS)
-            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-            .fetchOne(CONTENT_INTERACTIONS.VIEW_COUNT) ?: 0
+            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString())))
+            .block()?.get(CONTENT_INTERACTIONS.VIEW_COUNT) ?: 0
     }
 
     /**
      * 좋아요 수 조회 헬퍼 메서드
      */
     private fun getLikeCount(contentId: UUID): Int {
-        return dslContext.select(CONTENT_INTERACTIONS.LIKE_COUNT)
+        return Mono.from(dslContext.select(CONTENT_INTERACTIONS.LIKE_COUNT)
             .from(CONTENT_INTERACTIONS)
-            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-            .fetchOne(CONTENT_INTERACTIONS.LIKE_COUNT) ?: 0
+            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString())))
+            .block()?.get(CONTENT_INTERACTIONS.LIKE_COUNT) ?: 0
     }
 
     /**
      * 저장 수 조회 헬퍼 메서드
      */
     private fun getSaveCount(contentId: UUID): Int {
-        return dslContext.select(CONTENT_INTERACTIONS.SAVE_COUNT)
+        return Mono.from(dslContext.select(CONTENT_INTERACTIONS.SAVE_COUNT)
             .from(CONTENT_INTERACTIONS)
-            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-            .fetchOne(CONTENT_INTERACTIONS.SAVE_COUNT) ?: 0
+            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString())))
+            .block()?.get(CONTENT_INTERACTIONS.SAVE_COUNT) ?: 0
     }
 
     /**
      * 공유 수 조회 헬퍼 메서드
      */
     private fun getShareCount(contentId: UUID): Int {
-        return dslContext.select(CONTENT_INTERACTIONS.SHARE_COUNT)
+        return Mono.from(dslContext.select(CONTENT_INTERACTIONS.SHARE_COUNT)
             .from(CONTENT_INTERACTIONS)
-            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-            .fetchOne(CONTENT_INTERACTIONS.SHARE_COUNT) ?: 0
+            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString())))
+            .block()?.get(CONTENT_INTERACTIONS.SHARE_COUNT) ?: 0
     }
 
     /**
      * 댓글 수 조회 헬퍼 메서드
      */
     private fun getCommentCount(contentId: UUID): Int {
-        return dslContext.select(CONTENT_INTERACTIONS.COMMENT_COUNT)
+        return Mono.from(dslContext.select(CONTENT_INTERACTIONS.COMMENT_COUNT)
             .from(CONTENT_INTERACTIONS)
-            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-            .fetchOne(CONTENT_INTERACTIONS.COMMENT_COUNT) ?: 0
+            .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString())))
+            .block()?.get(CONTENT_INTERACTIONS.COMMENT_COUNT) ?: 0
     }
 }

@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.analytics.repository
 import me.onetwo.growsnap.domain.content.model.ContentInteraction
 import me.onetwo.growsnap.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
 import org.jooq.DSLContext
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
 import java.time.LocalDateTime
@@ -217,7 +218,7 @@ class ContentInteractionRepositoryImpl(
         return Mono.from(
             dslContext
                 .update(CONTENT_INTERACTIONS)
-                .set(field, field.plus(1))
+                .set(field, DSL.field("{0} + 1", Int::class.java, field))
                 .set(CONTENT_INTERACTIONS.UPDATED_AT, LocalDateTime.now())
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
@@ -239,9 +240,7 @@ class ContentInteractionRepositoryImpl(
         return Mono.from(
             dslContext
                 .update(CONTENT_INTERACTIONS)
-                .set(field, org.jooq.impl.DSL.case_()
-                    .`when`(field.greaterThan(0), field.minus(1))
-                    .otherwise(0))
+                .set(field, DSL.field("CASE WHEN {0} > 0 THEN {0} - 1 ELSE 0 END", Int::class.java, field))
                 .set(CONTENT_INTERACTIONS.UPDATED_AT, LocalDateTime.now())
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)

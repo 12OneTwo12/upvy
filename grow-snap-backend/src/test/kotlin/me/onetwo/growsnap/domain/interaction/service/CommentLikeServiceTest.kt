@@ -76,7 +76,7 @@ class CommentLikeServiceTest {
         @DisplayName("이미 댓글 좋아요가 있으면, 중복 생성하지 않는다 (idempotent)")
         fun likeComment_AlreadyExists_Idempotent() {
             // Given
-            every { commentLikeRepository.save(testUserId, testCommentId) } throws DataAccessException("Duplicate key")
+            every { commentLikeRepository.save(testUserId, testCommentId) } returns Mono.error(DataAccessException("Duplicate key"))
             every { commentLikeRepository.countByCommentId(testCommentId) } returns Mono.just(1)
 
             // When

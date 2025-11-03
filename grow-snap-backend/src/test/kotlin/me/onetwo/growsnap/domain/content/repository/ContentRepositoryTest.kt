@@ -18,6 +18,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.jooq.DSLContext
 import org.jooq.JSON
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -101,9 +102,9 @@ class ContentRepositoryTest {
             assertThat(saved.contentType).isEqualTo(ContentType.VIDEO)
 
             // 데이터베이스에서 직접 확인
-            val dbContent = dslContext.selectFrom(CONTENTS)
-                .where(CONTENTS.ID.eq(contentId.toString()))
-                .fetchOne()
+            val dbContent = Mono.from(dslContext.selectFrom(CONTENTS)
+                .where(CONTENTS.ID.eq(contentId.toString())))
+                .block()
             assertThat(dbContent).isNotNull
             assertThat(dbContent!!.get(CONTENTS.CREATOR_ID)).isEqualTo(testUser.id.toString())
         }
@@ -411,10 +412,9 @@ class ContentRepositoryTest {
             insertMetadata(content2, testUser.id!!, "Content 2")
 
             // 메타데이터 삭제
-            dslContext.update(CONTENT_METADATA)
+            Mono.from(dslContext.update(CONTENT_METADATA)
                 .set(CONTENT_METADATA.DELETED_AT, LocalDateTime.now())
-                .where(CONTENT_METADATA.CONTENT_ID.eq(content2.toString()))
-                .execute()
+                .where(CONTENT_METADATA.CONTENT_ID.eq(content2.toString()))).block()
 
             // When: 조회
             val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!).collectList().block()!!
@@ -470,9 +470,9 @@ class ContentRepositoryTest {
             assertThat(result!!).isTrue
 
             // 데이터베이스에서 deleted_at 확인
-            val dbContent = dslContext.selectFrom(CONTENTS)
-                .where(CONTENTS.ID.eq(contentId.toString()))
-                .fetchOne()
+            val dbContent = Mono.from(dslContext.selectFrom(CONTENTS)
+                .where(CONTENTS.ID.eq(contentId.toString())))
+                .block()
             assertThat(dbContent).isNotNull
             assertThat(dbContent!!.get(CONTENTS.DELETED_AT)).isNotNull
 
@@ -515,7 +515,7 @@ class ContentRepositoryTest {
         creatorId: UUID,
         createdAt: LocalDateTime
     ) {
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -528,8 +528,7 @@ class ContentRepositoryTest {
             .set(CONTENTS.CREATED_AT, createdAt)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, createdAt)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -541,7 +540,7 @@ class ContentRepositoryTest {
         title: String
     ) {
         val now = LocalDateTime.now()
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -551,8 +550,7 @@ class ContentRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -562,11 +560,10 @@ class ContentRepositoryTest {
         contentId: UUID,
         userId: UUID
     ) {
-        dslContext.update(CONTENTS)
+        Mono.from(dslContext.update(CONTENTS)
             .set(CONTENTS.DELETED_AT, LocalDateTime.now())
             .set(CONTENTS.UPDATED_AT, LocalDateTime.now())
             .set(CONTENTS.UPDATED_BY, userId.toString())
-            .where(CONTENTS.ID.eq(contentId.toString()))
-            .execute()
+            .where(CONTENTS.ID.eq(contentId.toString()))).block()
     }
 }

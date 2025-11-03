@@ -18,6 +18,7 @@ import org.jooq.DSLContext
 import org.jooq.JSON
 import org.jooq.exception.DataAccessException
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -242,7 +243,7 @@ class CommentLikeRepositoryTest {
             // Given: 댓글에 좋아요가 없음
 
             // When: 좋아요 수 조회
-            val count = commentLikeRepository.countByCommentId(testCommentId)
+            val count = commentLikeRepository.countByCommentId(testCommentId).block()!!
 
             // Then: 0 반환
             assertEquals(0, count)
@@ -252,7 +253,7 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글에 좋아요가 있으면, 좋아요 수를 반환한다")
         fun countByCommentId_WhenLikesExist_ReturnsCount() {
             // Given: 댓글에 좋아요가 2개 있음
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()!!
 
             val user2 = userRepository.save(
                 me.onetwo.growsnap.domain.user.model.User(
@@ -262,10 +263,10 @@ class CommentLikeRepositoryTest {
                     role = UserRole.USER
                 )
             ).block()!!
-            commentLikeRepository.save(user2.id!!, testCommentId)
+            commentLikeRepository.save(user2.id!!, testCommentId).block()!!
 
             // When: 좋아요 수 조회
-            val count = commentLikeRepository.countByCommentId(testCommentId)
+            val count = commentLikeRepository.countByCommentId(testCommentId).block()!!
 
             // Then: 2 반환
             assertEquals(2, count)
@@ -275,7 +276,7 @@ class CommentLikeRepositoryTest {
         @DisplayName("삭제된 좋아요는 카운트에 포함되지 않는다")
         fun countByCommentId_ExcludesDeletedLikes() {
             // Given: 댓글에 좋아요가 2개 있고, 1개는 삭제됨
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()!!
 
             val user2 = userRepository.save(
                 me.onetwo.growsnap.domain.user.model.User(
@@ -285,11 +286,11 @@ class CommentLikeRepositoryTest {
                     role = UserRole.USER
                 )
             ).block()!!
-            commentLikeRepository.save(user2.id!!, testCommentId)
-            commentLikeRepository.delete(user2.id!!, testCommentId)
+            commentLikeRepository.save(user2.id!!, testCommentId).block()!!
+            commentLikeRepository.delete(user2.id!!, testCommentId).block()
 
             // When: 좋아요 수 조회
-            val count = commentLikeRepository.countByCommentId(testCommentId)
+            val count = commentLikeRepository.countByCommentId(testCommentId).block()!!
 
             // Then: 1 반환 (삭제된 것 제외)
             assertEquals(1, count)
@@ -307,7 +308,7 @@ class CommentLikeRepositoryTest {
         val now = LocalDateTime.now()
 
         // Contents 테이블 데이터 삽입
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -320,11 +321,10 @@ class CommentLikeRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test description")
@@ -335,11 +335,10 @@ class CommentLikeRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Interactions 테이블 (초기값 0)
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, 0)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 0)
@@ -349,7 +348,6 @@ class CommentLikeRepositoryTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, now)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, now)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
     }
 }

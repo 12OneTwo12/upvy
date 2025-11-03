@@ -19,6 +19,9 @@ import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_SUBTITLES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -27,7 +30,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -38,7 +40,6 @@ import java.util.UUID
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("피드 Repository 통합 테스트")
 class FeedRepositoryImplTest {
 
@@ -149,6 +150,20 @@ class FeedRepositoryImplTest {
             title = "Test Video 3",
             createdAt = LocalDateTime.now().minusHours(3)
         )
+    }
+
+    @AfterEach
+    fun tearDown() {
+        // Delete in correct order to avoid FK constraint violations
+        Mono.from(dslContext.deleteFrom(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_SUBTITLES)).block()
+        Mono.from(dslContext.deleteFrom(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(USER_VIEW_HISTORY)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS)).block()
+        Mono.from(dslContext.deleteFrom(me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(me.onetwo.growsnap.jooq.generated.tables.references.USERS)).block()
     }
 
     @Nested
@@ -544,9 +559,9 @@ class FeedRepositoryImplTest {
         @DisplayName("인기도 순으로 콘텐츠 ID를 반환한다")
         fun findPopularContentIds_ReturnsOrderedByPopularity() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 인기도가 다른 3개의 콘텐츠
             val highPopularityId = UUID.randomUUID()
@@ -576,9 +591,9 @@ class FeedRepositoryImplTest {
         @DisplayName("제외할 콘텐츠 ID가 주어지면, 해당 콘텐츠를 제외하고 반환한다")
         fun findPopularContentIds_WithExcludeIds_ExcludesSpecifiedContent() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 3개의 콘텐츠
             val id1 = UUID.randomUUID()
@@ -605,9 +620,9 @@ class FeedRepositoryImplTest {
         @DisplayName("limit보다 적은 콘텐츠가 있으면, 있는 만큼만 반환한다")
         fun findPopularContentIds_WithLimitGreaterThanAvailable_ReturnsAllAvailable() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 2개의 콘텐츠
             val id1 = UUID.randomUUID()
@@ -629,9 +644,9 @@ class FeedRepositoryImplTest {
         @DisplayName("삭제된 콘텐츠는 조회되지 않는다")
         fun findPopularContentIds_ExcludesDeletedContent() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 정상 콘텐츠 1개, 삭제된 콘텐츠 1개
             val activeId = UUID.randomUUID()
@@ -641,10 +656,9 @@ class FeedRepositoryImplTest {
             insertContentWithInteractions(deletedId, creator1.id!!, "Deleted Content", 3000, 300, 300, 300, 300)
 
             // 콘텐츠 삭제 (Soft Delete)
-            dslContext.update(CONTENTS)
+            Mono.from(dslContext.update(CONTENTS)
                 .set(CONTENTS.DELETED_AT, LocalDateTime.now())
-                .where(CONTENTS.ID.eq(deletedId.toString()))
-                .execute()
+                .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 인기 콘텐츠 조회
             val result = feedRepository.findPopularContentIds(10, emptyList())
@@ -665,9 +679,9 @@ class FeedRepositoryImplTest {
         @DisplayName("최신순으로 콘텐츠 ID를 반환한다")
         fun findNewContentIds_ReturnsOrderedByCreatedAtDesc() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 생성 시각이 다른 3개의 콘텐츠
             val now = LocalDateTime.now()
@@ -695,9 +709,9 @@ class FeedRepositoryImplTest {
         @DisplayName("제외할 콘텐츠 ID가 주어지면, 해당 콘텐츠를 제외하고 반환한다")
         fun findNewContentIds_WithExcludeIds_ExcludesSpecifiedContent() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 3개의 콘텐츠
             val now = LocalDateTime.now()
@@ -725,9 +739,9 @@ class FeedRepositoryImplTest {
         @DisplayName("limit만큼만 콘텐츠를 반환한다")
         fun findNewContentIds_ReturnsUpToLimit() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 5개의 콘텐츠
             val now = LocalDateTime.now()
@@ -748,9 +762,9 @@ class FeedRepositoryImplTest {
         @DisplayName("삭제된 콘텐츠는 조회되지 않는다")
         fun findNewContentIds_ExcludesDeletedContent() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 정상 콘텐츠 1개, 삭제된 콘텐츠 1개
             val now = LocalDateTime.now()
@@ -761,10 +775,9 @@ class FeedRepositoryImplTest {
             insertContent(deletedId, creator1.id!!, "Deleted Content", now)
 
             // 콘텐츠 삭제 (Soft Delete)
-            dslContext.update(CONTENTS)
+            Mono.from(dslContext.update(CONTENTS)
                 .set(CONTENTS.DELETED_AT, LocalDateTime.now())
-                .where(CONTENTS.ID.eq(deletedId.toString()))
-                .execute()
+                .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 신규 콘텐츠 조회
             val result = feedRepository.findNewContentIds(10, emptyList())
@@ -785,9 +798,9 @@ class FeedRepositoryImplTest {
         @DisplayName("랜덤 순서로 콘텐츠 ID를 반환한다")
         fun findRandomContentIds_ReturnsRandomOrder() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 여러 개의 콘텐츠
             val contentIds = (1..10).map { UUID.randomUUID() }
@@ -816,9 +829,9 @@ class FeedRepositoryImplTest {
         @DisplayName("제외할 콘텐츠 ID가 주어지면, 해당 콘텐츠를 제외하고 반환한다")
         fun findRandomContentIds_WithExcludeIds_ExcludesSpecifiedContent() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 5개의 콘텐츠
             val ids = (1..5).map { UUID.randomUUID() }
@@ -840,9 +853,9 @@ class FeedRepositoryImplTest {
         @DisplayName("limit만큼만 콘텐츠를 반환한다")
         fun findRandomContentIds_ReturnsUpToLimit() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 10개의 콘텐츠
             repeat(10) { index ->
@@ -862,9 +875,9 @@ class FeedRepositoryImplTest {
         @DisplayName("삭제된 콘텐츠는 조회되지 않는다")
         fun findRandomContentIds_ExcludesDeletedContent() {
             // Given: setUp()의 기존 콘텐츠 삭제
-            dslContext.deleteFrom(CONTENT_INTERACTIONS).execute()
-            dslContext.deleteFrom(CONTENT_METADATA).execute()
-            dslContext.deleteFrom(CONTENTS).execute()
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 정상 콘텐츠 3개, 삭제된 콘텐츠 1개
             val activeIds = (1..3).map { UUID.randomUUID() }
@@ -876,10 +889,9 @@ class FeedRepositoryImplTest {
             insertContent(deletedId, creator1.id!!, "Deleted Content", LocalDateTime.now())
 
             // 콘텐츠 삭제 (Soft Delete)
-            dslContext.update(CONTENTS)
+            Mono.from(dslContext.update(CONTENTS)
                 .set(CONTENTS.DELETED_AT, LocalDateTime.now())
-                .where(CONTENTS.ID.eq(deletedId.toString()))
-                .execute()
+                .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 랜덤 콘텐츠 조회
             val result = feedRepository.findRandomContentIds(10, emptyList())
@@ -1061,7 +1073,7 @@ class FeedRepositoryImplTest {
         createdAt: LocalDateTime = LocalDateTime.now()
     ) {
         // Contents 테이블
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -1074,11 +1086,10 @@ class FeedRepositoryImplTest {
             .set(CONTENTS.CREATED_AT, createdAt)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, createdAt)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -1088,11 +1099,10 @@ class FeedRepositoryImplTest {
             .set(CONTENT_METADATA.CREATED_AT, createdAt)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, createdAt)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Interactions 테이블 (커스텀 인터랙션 수)
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, interactions.viewCount)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, interactions.likeCount)
@@ -1102,8 +1112,7 @@ class FeedRepositoryImplTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, createdAt)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, createdAt)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -1116,7 +1125,7 @@ class FeedRepositoryImplTest {
         createdAt: LocalDateTime
     ) {
         // Contents 테이블
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -1129,11 +1138,10 @@ class FeedRepositoryImplTest {
             .set(CONTENTS.CREATED_AT, createdAt)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, createdAt)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -1143,11 +1151,10 @@ class FeedRepositoryImplTest {
             .set(CONTENT_METADATA.CREATED_AT, createdAt)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, createdAt)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Interactions 테이블
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 100)
             .set(CONTENT_INTERACTIONS.COMMENT_COUNT, 50)
@@ -1157,8 +1164,7 @@ class FeedRepositoryImplTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, createdAt)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, createdAt)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -1169,13 +1175,12 @@ class FeedRepositoryImplTest {
         language: String,
         subtitleUrl: String
     ) {
-        dslContext.insertInto(CONTENT_SUBTITLES)
+        Mono.from(dslContext.insertInto(CONTENT_SUBTITLES)
             .set(CONTENT_SUBTITLES.CONTENT_ID, contentId.toString())
             .set(CONTENT_SUBTITLES.LANGUAGE, language)
             .set(CONTENT_SUBTITLES.SUBTITLE_URL, subtitleUrl)
             .set(CONTENT_SUBTITLES.CREATED_AT, LocalDateTime.now())
-            .set(CONTENT_SUBTITLES.UPDATED_AT, LocalDateTime.now())
-            .execute()
+            .set(CONTENT_SUBTITLES.UPDATED_AT, LocalDateTime.now())).block()
     }
 
     /**
@@ -1186,7 +1191,7 @@ class FeedRepositoryImplTest {
         contentId: UUID,
         watchedAt: LocalDateTime
     ) {
-        dslContext.insertInto(USER_VIEW_HISTORY)
+        Mono.from(dslContext.insertInto(USER_VIEW_HISTORY)
             .set(USER_VIEW_HISTORY.USER_ID, userId.toString())
             .set(USER_VIEW_HISTORY.CONTENT_ID, contentId.toString())
             .set(USER_VIEW_HISTORY.WATCHED_AT, watchedAt)
@@ -1194,8 +1199,7 @@ class FeedRepositoryImplTest {
             .set(USER_VIEW_HISTORY.CREATED_AT, watchedAt)
             .set(USER_VIEW_HISTORY.CREATED_BY, userId.toString())
             .set(USER_VIEW_HISTORY.UPDATED_AT, watchedAt)
-            .set(USER_VIEW_HISTORY.UPDATED_BY, userId.toString())
-            .execute()
+            .set(USER_VIEW_HISTORY.UPDATED_BY, userId.toString())).block()
     }
 
     /**
@@ -1208,7 +1212,7 @@ class FeedRepositoryImplTest {
         createdAt: LocalDateTime
     ) {
         // Contents 테이블 (PHOTO 타입)
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.PHOTO.name)
@@ -1221,11 +1225,10 @@ class FeedRepositoryImplTest {
             .set(CONTENTS.CREATED_AT, createdAt)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, createdAt)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Photo Description")
@@ -1235,11 +1238,10 @@ class FeedRepositoryImplTest {
             .set(CONTENT_METADATA.CREATED_AT, createdAt)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, createdAt)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Interactions 테이블
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 100)
             .set(CONTENT_INTERACTIONS.COMMENT_COUNT, 50)
@@ -1249,8 +1251,7 @@ class FeedRepositoryImplTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, createdAt)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, createdAt)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -1262,7 +1263,7 @@ class FeedRepositoryImplTest {
         displayOrder: Int,
         createdBy: UUID
     ) {
-        dslContext.insertInto(CONTENT_PHOTOS)
+        Mono.from(dslContext.insertInto(CONTENT_PHOTOS)
             .set(CONTENT_PHOTOS.CONTENT_ID, contentId.toString())
             .set(CONTENT_PHOTOS.PHOTO_URL, photoUrl)
             .set(CONTENT_PHOTOS.DISPLAY_ORDER, displayOrder)
@@ -1271,7 +1272,6 @@ class FeedRepositoryImplTest {
             .set(CONTENT_PHOTOS.CREATED_AT, LocalDateTime.now())
             .set(CONTENT_PHOTOS.CREATED_BY, createdBy.toString())
             .set(CONTENT_PHOTOS.UPDATED_AT, LocalDateTime.now())
-            .set(CONTENT_PHOTOS.UPDATED_BY, createdBy.toString())
-            .execute()
+            .set(CONTENT_PHOTOS.UPDATED_BY, createdBy.toString())).block()
     }
 }
