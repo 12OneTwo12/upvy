@@ -56,7 +56,7 @@ class ContentInteractionServiceImpl(
             .doOnError { error ->
                 logger.error("Failed to create ContentInteraction: contentId=$contentId", error)
             }
-            .subscribe()
+            .block()
     }
 
     @Transactional

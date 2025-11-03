@@ -2,10 +2,8 @@ package me.onetwo.growsnap.domain.analytics.event
 
 import me.onetwo.growsnap.domain.analytics.service.UserContentInteractionService
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Async
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
-import org.springframework.transaction.event.TransactionPhase
-import org.springframework.transaction.event.TransactionalEventListener
 
 /**
  * 사용자 인터랙션 이벤트 리스너
@@ -55,17 +53,13 @@ class UserInteractionEventListener(
      *
      * 비동기로 user_content_interactions 테이블에 저장합니다.
      *
-     * ### EventListener
+         * ### EventListener
      * - 이벤트 발행 즉시 실행됨
      * - WebFlux 환경에서는 TransactionalEventListener 대신 EventListener 사용
      *
-     * ### Async 처리
-     * - 별도 스레드에서 실행되어 메인 응답 시간에 영향을 주지 않음
-     *
      * @param event 사용자 인터랙션 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleUserInteractionEvent(event: UserInteractionEvent) {
         try {
             logger.debug(

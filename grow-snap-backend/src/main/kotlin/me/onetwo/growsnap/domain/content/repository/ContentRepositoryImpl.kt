@@ -276,7 +276,14 @@ class ContentRepositoryImpl(
                 .set(CONTENTS.UPDATED_BY, content.updatedBy?.toString())
                 .where(CONTENTS.ID.eq(content.id.toString()))
                 .and(CONTENTS.DELETED_AT.isNull)
-        ).map { rowsAffected -> rowsAffected > 0 }
+        ).map { rowsAffected: Any ->
+            val count: Boolean = when (rowsAffected) {
+                is Long -> rowsAffected > 0L
+                is Int -> rowsAffected > 0
+                else -> rowsAffected.toString().toLongOrNull()?.let { it > 0L } ?: false
+            }
+            count
+        }
             .defaultIfEmpty(false)
     }
 
@@ -296,7 +303,14 @@ class ContentRepositoryImpl(
                 .set(CONTENTS.UPDATED_BY, deletedBy.toString())
                 .where(CONTENTS.ID.eq(contentId.toString()))
                 .and(CONTENTS.DELETED_AT.isNull)
-        ).map { rowsAffected -> rowsAffected > 0 }
+        ).map { rowsAffected: Any ->
+            val count: Boolean = when (rowsAffected) {
+                is Long -> rowsAffected > 0L
+                is Int -> rowsAffected > 0
+                else -> rowsAffected.toString().toLongOrNull()?.let { it > 0L } ?: false
+            }
+            count
+        }
             .defaultIfEmpty(false)
     }
 
@@ -406,7 +420,14 @@ class ContentRepositoryImpl(
                 .set(CONTENT_METADATA.UPDATED_BY, metadata.updatedBy?.toString())
                 .where(CONTENT_METADATA.CONTENT_ID.eq(metadata.contentId.toString()))
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
-        ).map { rowsAffected -> rowsAffected > 0 }
+        ).map { rowsAffected: Any ->
+            val count: Boolean = when (rowsAffected) {
+                is Long -> rowsAffected > 0L
+                is Int -> rowsAffected > 0
+                else -> rowsAffected.toString().toLongOrNull()?.let { it > 0L } ?: false
+            }
+            count
+        }
             .defaultIfEmpty(false)
     }
 }

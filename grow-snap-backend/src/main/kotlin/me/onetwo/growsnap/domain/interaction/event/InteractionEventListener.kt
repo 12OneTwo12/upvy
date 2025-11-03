@@ -4,10 +4,8 @@ import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 import me.onetwo.growsnap.domain.analytics.service.UserContentInteractionService
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Async
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
-import org.springframework.transaction.event.TransactionPhase
-import org.springframework.transaction.event.TransactionalEventListener
 
 /**
  * 인터랙션 이벤트 리스너
@@ -42,8 +40,7 @@ class InteractionEventListener(
      *
      * @param event 좋아요 생성 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleLikeCreated(event: LikeCreatedEvent) {
         try {
             logger.debug(
@@ -52,13 +49,7 @@ class InteractionEventListener(
                 event.contentId
             )
 
-            // 1. like_count 증가
-            contentInteractionService.incrementLikeCount(event.contentId).subscribe(
-                { logger.debug("Like count incremented successfully") },
-                { error -> logger.error("Failed to increment like count", error) }
-            )
-
-            // 2. user_content_interactions 저장
+            // user_content_interactions 저장 (협업 필터링용)
             userContentInteractionService.saveUserInteraction(
                 event.userId,
                 event.contentId,
@@ -80,8 +71,7 @@ class InteractionEventListener(
      *
      * @param event 좋아요 삭제 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleLikeDeleted(event: LikeDeletedEvent) {
         try {
             logger.debug(
@@ -90,11 +80,7 @@ class InteractionEventListener(
                 event.contentId
             )
 
-            // like_count 감소
-            contentInteractionService.decrementLikeCount(event.contentId).subscribe(
-                { logger.debug("Like count decremented successfully") },
-                { error -> logger.error("Failed to decrement like count", error) }
-            )
+            // Note: like_count는 service layer에서 이미 감소시켰음
 
             logger.debug("LikeDeletedEvent handled successfully")
         } catch (e: Exception) {
@@ -111,8 +97,7 @@ class InteractionEventListener(
      *
      * @param event 저장 생성 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleSaveCreated(event: SaveCreatedEvent) {
         try {
             logger.debug(
@@ -121,13 +106,7 @@ class InteractionEventListener(
                 event.contentId
             )
 
-            // 1. save_count 증가
-            contentInteractionService.incrementSaveCount(event.contentId).subscribe(
-                { logger.debug("Save count incremented successfully") },
-                { error -> logger.error("Failed to increment save count", error) }
-            )
-
-            // 2. user_content_interactions 저장
+            // user_content_interactions 저장 (협업 필터링용)
             userContentInteractionService.saveUserInteraction(
                 event.userId,
                 event.contentId,
@@ -149,8 +128,7 @@ class InteractionEventListener(
      *
      * @param event 저장 삭제 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleSaveDeleted(event: SaveDeletedEvent) {
         try {
             logger.debug(
@@ -159,11 +137,7 @@ class InteractionEventListener(
                 event.contentId
             )
 
-            // save_count 감소
-            contentInteractionService.decrementSaveCount(event.contentId).subscribe(
-                { logger.debug("Save count decremented successfully") },
-                { error -> logger.error("Failed to decrement save count", error) }
-            )
+            // Note: save_count는 service layer에서 이미 감소시켰음
 
             logger.debug("SaveDeletedEvent handled successfully")
         } catch (e: Exception) {
@@ -180,8 +154,7 @@ class InteractionEventListener(
      *
      * @param event 댓글 생성 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleCommentCreated(event: CommentCreatedEvent) {
         try {
             logger.debug(
@@ -190,13 +163,7 @@ class InteractionEventListener(
                 event.contentId
             )
 
-            // 1. comment_count 증가
-            contentInteractionService.incrementCommentCount(event.contentId).subscribe(
-                { logger.debug("Comment count incremented successfully") },
-                { error -> logger.error("Failed to increment comment count", error) }
-            )
-
-            // 2. user_content_interactions 저장
+            // user_content_interactions 저장 (협업 필터링용)
             userContentInteractionService.saveUserInteraction(
                 event.userId,
                 event.contentId,
@@ -218,8 +185,7 @@ class InteractionEventListener(
      *
      * @param event 댓글 삭제 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleCommentDeleted(event: CommentDeletedEvent) {
         try {
             logger.debug(
@@ -228,11 +194,7 @@ class InteractionEventListener(
                 event.contentId
             )
 
-            // comment_count 감소
-            contentInteractionService.decrementCommentCount(event.contentId).subscribe(
-                { logger.debug("Comment count decremented successfully") },
-                { error -> logger.error("Failed to decrement comment count", error) }
-            )
+            // Note: comment_count는 service layer에서 이미 감소시켰음
 
             logger.debug("CommentDeletedEvent handled successfully")
         } catch (e: Exception) {

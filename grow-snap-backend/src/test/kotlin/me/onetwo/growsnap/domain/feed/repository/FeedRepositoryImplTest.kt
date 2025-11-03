@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import java.time.LocalDateTime
 import java.util.UUID
@@ -39,6 +40,7 @@ import java.util.UUID
  * 실제 데이터베이스(H2)를 사용하여 피드 조회 기능을 검증합니다.
  */
 @SpringBootTest
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @ActiveProfiles("test")
 @DisplayName("피드 Repository 통합 테스트")
 class FeedRepositoryImplTest {
@@ -104,7 +106,7 @@ class FeedRepositoryImplTest {
                 nickname = "Viewer",
                 createdBy = viewer.id.toString()!!
             )
-        )
+        ).block()
 
         userProfileRepository.save(
             UserProfile(
@@ -112,7 +114,7 @@ class FeedRepositoryImplTest {
                 nickname = "Creator1",
                 createdBy = creator1.id.toString()!!
             )
-        )
+        ).block()
 
         userProfileRepository.save(
             UserProfile(
@@ -120,7 +122,7 @@ class FeedRepositoryImplTest {
                 nickname = "Creator2",
                 createdBy = creator2.id.toString()!!
             )
-        )
+        ).block()
 
         // 콘텐츠 3개 생성
         content1Id = UUID.randomUUID()
@@ -366,7 +368,7 @@ class FeedRepositoryImplTest {
                     followingId = creator1.id!!,
                     createdBy = viewer.id.toString()!!
                 )
-            )
+            ).block()
 
             // When
             val result = feedRepository.findFollowingFeed(
@@ -405,14 +407,14 @@ class FeedRepositoryImplTest {
                     followingId = creator1.id!!,
                     createdBy = viewer.id.toString()!!
                 )
-            )
+            ).block()
             followRepository.save(
                 Follow(
                     followerId = viewer.id!!,
                     followingId = creator2.id!!,
                     createdBy = viewer.id.toString()!!
                 )
-            )
+            ).block()
 
             // When
             val result = feedRepository.findFollowingFeed(
@@ -435,7 +437,7 @@ class FeedRepositoryImplTest {
                     followingId = creator1.id!!,
                     createdBy = viewer.id.toString()!!
                 )
-            )
+            ).block()
 
             // Given: PHOTO 타입 콘텐츠 생성
             val photoContentId = UUID.randomUUID()

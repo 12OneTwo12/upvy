@@ -2,10 +2,8 @@ package me.onetwo.growsnap.domain.content.event
 
 import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Async
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
-import org.springframework.transaction.event.TransactionPhase
-import org.springframework.transaction.event.TransactionalEventListener
 
 /**
  * 콘텐츠 이벤트 핸들러
@@ -25,12 +23,10 @@ class ContentEventHandler(
      * 콘텐츠 생성 이벤트 처리
      *
      * 새로운 콘텐츠가 생성되면 ContentInteraction 레코드를 초기화합니다.
-     * 비동기로 처리되어 메인 요청에 영향을 주지 않습니다.
      *
      * @param event 콘텐츠 생성 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleContentCreated(event: ContentCreatedEvent) {
         logger.info("Handling ContentCreatedEvent: contentId=${event.contentId}")
 

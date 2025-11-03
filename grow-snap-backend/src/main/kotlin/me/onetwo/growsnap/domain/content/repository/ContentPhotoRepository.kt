@@ -94,7 +94,16 @@ class ContentPhotoRepository(
             .set(CONTENT_PHOTOS.UPDATED_BY, deletedBy)
             .where(CONTENT_PHOTOS.CONTENT_ID.eq(contentId.toString()))
             .and(CONTENT_PHOTOS.DELETED_AT.isNull))
-            .map { it }.block() ?: 0
+            .map { rowsAffected: Any ->
+                val count: Int = when (rowsAffected) {
+                    is Long -> rowsAffected.toInt()
+                    is Int -> rowsAffected
+                    else -> rowsAffected.toString().toIntOrNull() ?: 0
+                }
+                count
+            }
+            .defaultIfEmpty(0)
+            .block() ?: 0
     }
 
     /**

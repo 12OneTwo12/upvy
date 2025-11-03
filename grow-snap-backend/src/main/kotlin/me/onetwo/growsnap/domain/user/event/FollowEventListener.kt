@@ -1,10 +1,8 @@
 package me.onetwo.growsnap.domain.user.event
 
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Async
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
-import org.springframework.transaction.event.TransactionPhase
-import org.springframework.transaction.event.TransactionalEventListener
 
 /**
  * 팔로우 이벤트 리스너
@@ -36,8 +34,7 @@ class FollowEventListener {
      *
      * @param event 팔로우 이벤트
      */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @EventListener
     fun handleFollowEvent(event: FollowEvent) {
         @Suppress("TooGenericExceptionCaught")
         try {
