@@ -325,8 +325,8 @@ class UserContentInteractionRepositoryTest {
             assertEquals(3, result.size)
 
             // contentId와 interactionType 매핑 확인
-            val contentIds = result.map { it.first }
-            val types = result.map { it.second }
+            val contentIds = result.map { it.contentId }
+            val types = result.map { it.interactionType }
 
             assertTrue(contentIds.contains(testContent1Id))
             assertTrue(contentIds.contains(testContent2Id))

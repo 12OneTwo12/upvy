@@ -192,7 +192,7 @@ class UserSaveRepositoryTest {
             insertContent(contentId2, testUserId, "Content 2")
 
             userSaveRepository.save(testUserId, contentId1)
-            Thread.sleep(10) // 생성 시간 차이를 위해 대기
+            // created_at은 millisecond 단위이므로 시간 차이 자동 보장
             userSaveRepository.save(testUserId, contentId2)
 
             // When: 저장 목록 조회

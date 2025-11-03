@@ -54,6 +54,9 @@ dependencies {
     // ArchUnit for architecture testing
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
 
+    // Awaitility for async testing (replaces Thread.sleep)
+    testImplementation("org.awaitility:awaitility-kotlin:4.2.0")
+
     // OAuth2 Client
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
 

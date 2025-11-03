@@ -9,6 +9,7 @@ import me.onetwo.growsnap.domain.analytics.repository.UserViewHistoryRepository
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 import java.util.UUID
 
@@ -32,6 +33,7 @@ import java.util.UUID
  * @property applicationEventPublisher Spring 이벤트 발행자
  */
 @Service
+@Transactional(readOnly = true)
 class AnalyticsServiceImpl(
     private val userViewHistoryRepository: UserViewHistoryRepository,
     private val contentInteractionRepository: ContentInteractionRepository,
@@ -53,6 +55,7 @@ class AnalyticsServiceImpl(
      * @param request 시청 이벤트 요청
      * @return 처리 완료 신호
      */
+    @Transactional
     override fun trackViewEvent(userId: UUID, request: ViewEventRequest): Mono<Void> {
         logger.debug(
             "Tracking view event: userId={}, contentId={}, duration={}, completion={}, skipped={}",
@@ -108,6 +111,7 @@ class AnalyticsServiceImpl(
      * @param request 인터랙션 이벤트 요청
      * @return 처리 완료 신호
      */
+    @Transactional
     override fun trackInteractionEvent(userId: UUID, request: InteractionEventRequest): Mono<Void> {
         logger.debug(
             "Tracking interaction event: userId={}, contentId={}, type={}",

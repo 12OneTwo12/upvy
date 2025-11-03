@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.user.repository
 
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.domain.user.dto.UserInfo
 import me.onetwo.growsnap.domain.user.model.UserProfile
 import me.onetwo.growsnap.jooq.generated.tables.records.UserProfilesRecord
 import org.jooq.DSLContext
@@ -100,9 +101,9 @@ class UserProfileRepository(
      * N+1 쿼리 문제를 방지하기 위해 IN 절을 사용하여 한 번에 조회합니다.
      *
      * @param userIds 조회할 사용자 ID 목록
-     * @return 사용자 ID를 키로 하는 (닉네임, 프로필 이미지 URL) Map
+     * @return 사용자 ID를 키로 하는 UserInfo Map
      */
-    fun findUserInfosByUserIds(userIds: Set<UUID>): Map<UUID, Pair<String, String?>> {
+    fun findUserInfosByUserIds(userIds: Set<UUID>): Map<UUID, UserInfo> {
         if (userIds.isEmpty()) {
             return emptyMap()
         }
@@ -115,9 +116,9 @@ class UserProfileRepository(
             .fetch()
             .associate {
                 UUID.fromString(it.getValue(USER_PROFILES.USER_ID)) to
-                    Pair(
-                        it.getValue(USER_PROFILES.NICKNAME) ?: "Unknown",
-                        it.getValue(USER_PROFILES.PROFILE_IMAGE_URL)
+                    UserInfo(
+                        nickname = it.getValue(USER_PROFILES.NICKNAME) ?: "Unknown",
+                        profileImageUrl = it.getValue(USER_PROFILES.PROFILE_IMAGE_URL)
                     )
             }
     }

@@ -32,6 +32,7 @@ class ContentInteractionServiceImpl(
      * @param contentId 콘텐츠 ID
      * @param creatorId 생성자 ID
      */
+    @Transactional
     override fun createContentInteraction(contentId: UUID, creatorId: UUID) {
         logger.info("Creating ContentInteraction: contentId=$contentId, creatorId=$creatorId")
 

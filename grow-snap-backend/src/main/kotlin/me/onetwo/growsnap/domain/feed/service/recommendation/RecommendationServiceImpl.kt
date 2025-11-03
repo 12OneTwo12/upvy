@@ -4,6 +4,7 @@ import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.feed.service.collaborative.CollaborativeFilteringService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -21,6 +22,7 @@ import java.util.UUID
  * @property collaborativeFilteringService Item-based 협업 필터링 서비스
  */
 @Service
+@Transactional(readOnly = true)
 class RecommendationServiceImpl(
     private val feedRepository: FeedRepository,
     private val collaborativeFilteringService: CollaborativeFilteringService

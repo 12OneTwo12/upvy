@@ -41,6 +41,7 @@ import java.util.UUID
  * @property contentMetadataRepository 콘텐츠 메타데이터 레포지토리
  */
 @Service
+@Transactional(readOnly = true)
 class SaveServiceImpl(
     private val userSaveRepository: UserSaveRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,

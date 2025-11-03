@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.analytics.repository
 
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
+import me.onetwo.growsnap.domain.analytics.dto.UserInteraction
 import me.onetwo.growsnap.jooq.generated.tables.UserContentInteractions.Companion.USER_CONTENT_INTERACTIONS
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
@@ -96,7 +97,7 @@ class UserContentInteractionRepositoryImpl(
     override fun findAllInteractionsByUser(
         userId: UUID,
         limit: Int
-    ): Flux<Pair<UUID, InteractionType>> {
+    ): Flux<UserInteraction> {
         return Flux.defer {
             Flux.fromIterable(
                 dslContext
@@ -111,9 +112,9 @@ class UserContentInteractionRepositoryImpl(
                     .limit(limit)
                     .fetch()
                     .map {
-                        Pair(
-                            UUID.fromString(it.value1()),
-                            InteractionType.valueOf(it.value2()!!)
+                        UserInteraction(
+                            contentId = UUID.fromString(it.value1()),
+                            interactionType = InteractionType.valueOf(it.value2()!!)
                         )
                     }
             )

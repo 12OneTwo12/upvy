@@ -5,6 +5,7 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
+import me.onetwo.growsnap.domain.analytics.dto.UserInteraction
 import me.onetwo.growsnap.domain.analytics.repository.UserContentInteractionRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -67,8 +68,8 @@ class CollaborativeFilteringServiceTest {
         fun getRecommendedContents_WithSimilarUsers_ReturnsRecommendedContents() {
             // Given: 나는 Content1을 좋아요, Content2를 저장
             val myInteractions = listOf(
-                contentId1 to InteractionType.LIKE,
-                contentId2 to InteractionType.SAVE
+                UserInteraction(contentId1, InteractionType.LIKE),
+                UserInteraction(contentId2, InteractionType.SAVE)
             )
 
             every {
@@ -89,16 +90,16 @@ class CollaborativeFilteringServiceTest {
             every {
                 userContentInteractionRepository.findAllInteractionsByUser(similarUser1, any())
             } returns Flux.just(
-                contentId3 to InteractionType.LIKE,    // 1.0
-                contentId4 to InteractionType.SHARE    // 2.0
+                UserInteraction(contentId3, InteractionType.LIKE),    // 1.0
+                UserInteraction(contentId4, InteractionType.SHARE)    // 2.0
             )
 
             // similarUser2가 좋아한 콘텐츠: Content3(저장), Content5(좋아요)
             every {
                 userContentInteractionRepository.findAllInteractionsByUser(similarUser2, any())
             } returns Flux.just(
-                contentId3 to InteractionType.SAVE,    // 1.5
-                contentId5 to InteractionType.LIKE     // 1.0
+                UserInteraction(contentId3, InteractionType.SAVE),    // 1.5
+                UserInteraction(contentId5, InteractionType.LIKE)     // 1.0
             )
 
             // When: 추천 콘텐츠 조회
@@ -132,7 +133,7 @@ class CollaborativeFilteringServiceTest {
         @DisplayName("가중치 테스트: SHARE > SAVE > LIKE 순으로 높은 점수를 받는다")
         fun getRecommendedContents_AppliesWeightsByInteractionType() {
             // Given: 나는 Content1을 좋아요
-            val myInteractions = listOf(contentId1 to InteractionType.LIKE)
+            val myInteractions = listOf(UserInteraction(contentId1, InteractionType.LIKE))
 
             every {
                 userContentInteractionRepository.findAllInteractionsByUser(userId, any())
@@ -147,9 +148,9 @@ class CollaborativeFilteringServiceTest {
             every {
                 userContentInteractionRepository.findAllInteractionsByUser(similarUser1, any())
             } returns Flux.just(
-                contentId2 to InteractionType.LIKE,    // 1.0
-                contentId3 to InteractionType.SAVE,    // 1.5
-                contentId4 to InteractionType.SHARE    // 2.0
+                UserInteraction(contentId2, InteractionType.LIKE),    // 1.0
+                UserInteraction(contentId3, InteractionType.SAVE),    // 1.5
+                UserInteraction(contentId4, InteractionType.SHARE)    // 2.0
             )
 
             // When: 추천 콘텐츠 조회
@@ -171,8 +172,8 @@ class CollaborativeFilteringServiceTest {
         fun getRecommendedContents_ExcludesAlreadyInteractedContents() {
             // Given: 나는 Content1, Content2를 좋아요
             val myInteractions = listOf(
-                contentId1 to InteractionType.LIKE,
-                contentId2 to InteractionType.LIKE
+                UserInteraction(contentId1, InteractionType.LIKE),
+                UserInteraction(contentId2, InteractionType.LIKE)
             )
 
             every {
@@ -192,8 +193,8 @@ class CollaborativeFilteringServiceTest {
             every {
                 userContentInteractionRepository.findAllInteractionsByUser(similarUser1, any())
             } returns Flux.just(
-                contentId2 to InteractionType.LIKE,    // 이미 내가 봄 → 제외
-                contentId3 to InteractionType.LIKE     // 신규 → 추천
+                UserInteraction(contentId2, InteractionType.LIKE),    // 이미 내가 봄 → 제외
+                UserInteraction(contentId3, InteractionType.LIKE)     // 신규 → 추천
             )
 
             // When: 추천 콘텐츠 조회
@@ -232,7 +233,7 @@ class CollaborativeFilteringServiceTest {
         @DisplayName("엣지 케이스: 유사 사용자가 없으면 빈 결과를 반환한다")
         fun getRecommendedContents_WithNoSimilarUsers_ReturnsEmpty() {
             // Given: 나는 Content1을 좋아요
-            val myInteractions = listOf(contentId1 to InteractionType.LIKE)
+            val myInteractions = listOf(UserInteraction(contentId1, InteractionType.LIKE))
 
             every {
                 userContentInteractionRepository.findAllInteractionsByUser(userId, any())
@@ -255,7 +256,7 @@ class CollaborativeFilteringServiceTest {
         @DisplayName("COMMENT 인터랙션은 점수 계산에 포함되지 않는다")
         fun getRecommendedContents_ExcludesCommentInteractions() {
             // Given: 나는 Content1을 좋아요
-            val myInteractions = listOf(contentId1 to InteractionType.LIKE)
+            val myInteractions = listOf(UserInteraction(contentId1, InteractionType.LIKE))
 
             every {
                 userContentInteractionRepository.findAllInteractionsByUser(userId, any())
@@ -270,8 +271,8 @@ class CollaborativeFilteringServiceTest {
             every {
                 userContentInteractionRepository.findAllInteractionsByUser(similarUser1, any())
             } returns Flux.just(
-                contentId2 to InteractionType.COMMENT,  // 점수 0.0 → 제외
-                contentId3 to InteractionType.LIKE       // 점수 1.0
+                UserInteraction(contentId2, InteractionType.COMMENT),  // 점수 0.0 → 제외
+                UserInteraction(contentId3, InteractionType.LIKE)       // 점수 1.0
             )
 
             // When: 추천 콘텐츠 조회

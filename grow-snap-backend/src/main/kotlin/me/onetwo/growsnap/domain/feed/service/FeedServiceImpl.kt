@@ -7,6 +7,7 @@ import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import java.util.UUID
@@ -26,6 +27,7 @@ import java.util.UUID
  * @property feedCacheService 피드 캐시 서비스
  */
 @Service
+@Transactional(readOnly = true)
 class FeedServiceImpl(
     private val feedRepository: FeedRepository,
     private val recommendationService: RecommendationService,

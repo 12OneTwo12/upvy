@@ -197,7 +197,7 @@ class CommentRepositoryTest {
                 )
             )
 
-            Thread.sleep(10) // 생성 시간 차이를 위해 대기
+            // created_at은 millisecond 단위이므로 시간 차이 자동 보장
 
             commentRepository.save(
                 Comment(
@@ -208,7 +208,6 @@ class CommentRepositoryTest {
                 )
             )
 
-            Thread.sleep(10)
 
             commentRepository.save(
                 Comment(
@@ -342,7 +341,7 @@ class CommentRepositoryTest {
                         parentCommentId = null
                     )
                 )
-                Thread.sleep(10) // 생성 시간 차이를 위해 대기
+                // created_at은 millisecond 단위이므로 시간 차이 자동 보장
             }
 
             // When: limit 3으로 조회
@@ -370,7 +369,6 @@ class CommentRepositoryTest {
                     )
                 )
                 savedComments.add(saved!!)
-                Thread.sleep(10)
             }
 
             // When: 두 번째 댓글을 cursor로 설정하고 조회
@@ -427,7 +425,6 @@ class CommentRepositoryTest {
                     parentCommentId = null
                 )
             )!!
-            Thread.sleep(10)
 
             val comment2 = commentRepository.save(
                 Comment(
@@ -437,7 +434,6 @@ class CommentRepositoryTest {
                     parentCommentId = null
                 )
             )!!
-            Thread.sleep(10)
 
             commentRepository.save(
                 Comment(
@@ -488,7 +484,7 @@ class CommentRepositoryTest {
                     parentCommentId = null
                 )
             )!!
-            Thread.sleep(100) // 생성 시간 차이를 위해 대기
+            // created_at은 millisecond 단위이므로 시간 차이 자동 보장
 
             val newerComment = commentRepository.save(
                 Comment(
@@ -540,7 +536,6 @@ class CommentRepositoryTest {
                         parentCommentId = parentComment!!.id
                     )
                 )
-                Thread.sleep(10)
             }
 
             // When: limit 3으로 조회
@@ -578,7 +573,6 @@ class CommentRepositoryTest {
                     )
                 )
                 savedReplies.add(saved!!)
-                Thread.sleep(10)
             }
 
             // When: 두 번째 대댓글을 cursor로 설정하고 조회

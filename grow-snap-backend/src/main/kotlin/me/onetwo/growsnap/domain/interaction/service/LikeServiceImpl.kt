@@ -38,6 +38,7 @@ import java.util.UUID
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
  */
 @Service
+@Transactional(readOnly = true)
 class LikeServiceImpl(
     private val userLikeRepository: UserLikeRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,

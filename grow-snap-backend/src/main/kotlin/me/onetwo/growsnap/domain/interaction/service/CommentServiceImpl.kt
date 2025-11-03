@@ -10,6 +10,7 @@ import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.growsnap.domain.interaction.repository.CommentRepository
+import me.onetwo.growsnap.domain.user.dto.UserInfo
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
@@ -44,6 +45,7 @@ import java.util.UUID
  * @property userProfileRepository 사용자 프로필 레포지토리
  */
 @Service
+@Transactional(readOnly = true)
 class CommentServiceImpl(
     private val commentRepository: CommentRepository,
     private val commentLikeRepository: CommentLikeRepository,
@@ -106,13 +108,13 @@ class CommentServiceImpl(
                 Mono.fromCallable {
                     userProfileRepository.findUserInfosByUserIds(setOf(userId))
                 }.map { userInfoMap ->
-                    val (nickname, profileImageUrl) = userInfoMap[userId] ?: Pair("Unknown", null)
+                    val userInfo = userInfoMap[userId] ?: UserInfo("Unknown", null)
                     CommentResponse(
                         id = savedComment.id!!.toString(),
                         contentId = savedComment.contentId.toString(),
                         userId = savedComment.userId.toString(),
-                        userNickname = nickname,
-                        userProfileImageUrl = profileImageUrl,
+                        userNickname = userInfo.nickname,
+                        userProfileImageUrl = userInfo.profileImageUrl,
                         content = savedComment.content,
                         parentCommentId = savedComment.parentCommentId?.toString(),
                         createdAt = savedComment.createdAt.toString()
@@ -179,7 +181,7 @@ class CommentServiceImpl(
             }
 
             val responseList = actualComments.map { comment ->
-                val userInfo = userInfoMap[comment.userId] ?: Pair("Unknown", null)
+                val userInfo = userInfoMap[comment.userId] ?: UserInfo("Unknown", null)
                 val replyCount = replyCountMap[comment.id] ?: 0
                 val likeCount = likeCountMap[comment.id] ?: 0
                 val isLiked = comment.id in likedCommentIds
@@ -237,7 +239,7 @@ class CommentServiceImpl(
             }
 
             val responseList = actualReplies.map { reply ->
-                val userInfo = userInfoMap[reply.userId] ?: Pair("Unknown", null)
+                val userInfo = userInfoMap[reply.userId] ?: UserInfo("Unknown", null)
                 val likeCount = likeCountMap[reply.id] ?: 0
                 val isLiked = reply.id in likedReplyIds
                 mapToCommentResponse(reply, userInfo, 0, likeCount, isLiked)
@@ -288,7 +290,7 @@ class CommentServiceImpl(
 
                     Flux.fromIterable(parentComments)
                         .map { parentComment ->
-                            val userInfo = userInfoMap[parentComment.userId] ?: Pair("Unknown", null)
+                            val userInfo = userInfoMap[parentComment.userId] ?: UserInfo("Unknown", null)
                             val replyCount = repliesByParentId[parentComment.id!!]?.size ?: 0
 
                             mapToCommentResponse(parentComment, userInfo, replyCount)
@@ -352,13 +354,13 @@ class CommentServiceImpl(
      * Comment 엔티티를 CommentResponse DTO로 변환
      *
      * @param comment 댓글 엔티티
-     * @param userInfo 사용자 정보 (닉네임, 프로필 이미지 URL)
+     * @param userInfo 사용자 정보
      * @param replyCount 대댓글 개수
      * @return CommentResponse DTO
      */
     private fun mapToCommentResponse(
         comment: Comment,
-        userInfo: Pair<String, String?>,
+        userInfo: UserInfo,
         replyCount: Int = 0,
         likeCount: Int = 0,
         isLiked: Boolean = false
@@ -367,8 +369,8 @@ class CommentServiceImpl(
             id = comment.id!!.toString(),
             contentId = comment.contentId.toString(),
             userId = comment.userId.toString(),
-            userNickname = userInfo.first,
-            userProfileImageUrl = userInfo.second,
+            userNickname = userInfo.nickname,
+            userProfileImageUrl = userInfo.profileImageUrl,
             content = comment.content,
             parentCommentId = comment.parentCommentId?.toString(),
             createdAt = comment.createdAt.toString(),

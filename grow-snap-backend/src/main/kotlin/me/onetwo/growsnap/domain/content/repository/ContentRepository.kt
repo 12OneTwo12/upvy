@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.content.repository
 
+import me.onetwo.growsnap.domain.content.dto.ContentWithMetadata
 import me.onetwo.growsnap.domain.content.model.Content
 import me.onetwo.growsnap.domain.content.model.ContentMetadata
 import java.util.UUID
@@ -41,9 +42,9 @@ interface ContentRepository {
      * JOIN을 사용하여 N+1 쿼리 문제를 방지합니다.
      *
      * @param creatorId 크리에이터 ID
-     * @return 콘텐츠와 메타데이터 쌍의 목록
+     * @return 콘텐츠와 메타데이터의 목록
      */
-    fun findWithMetadataByCreatorId(creatorId: UUID): List<Pair<Content, ContentMetadata>>
+    fun findWithMetadataByCreatorId(creatorId: UUID): List<ContentWithMetadata>
 
     /**
      * 콘텐츠를 수정합니다.

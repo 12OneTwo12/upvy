@@ -2,9 +2,10 @@ package me.onetwo.growsnap.domain.analytics.event
 
 import me.onetwo.growsnap.domain.analytics.service.UserContentInteractionService
 import org.slf4j.LoggerFactory
-import org.springframework.context.event.EventListener
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
 
 /**
  * 사용자 인터랙션 이벤트 리스너
@@ -63,8 +64,8 @@ class UserInteractionEventListener(
      *
      * @param event 사용자 인터랙션 이벤트
      */
-    @EventListener
     @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun handleUserInteractionEvent(event: UserInteractionEvent) {
         try {
             logger.debug(

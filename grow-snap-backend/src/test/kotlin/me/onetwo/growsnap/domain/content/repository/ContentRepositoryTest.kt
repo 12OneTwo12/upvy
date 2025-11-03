@@ -336,12 +336,12 @@ class ContentRepositoryTest {
 
             // Then: 3개의 콘텐츠와 메타데이터 쌍이 반환됨
             assertThat(found).hasSize(3)
-            assertThat(found.map { it.first.id }).containsExactlyInAnyOrder(content1, content2, content3)
-            assertThat(found.map { it.second.title }).containsExactlyInAnyOrder("Content 1", "Content 2", "Content 3")
+            assertThat(found.map { it.content.id }).containsExactlyInAnyOrder(content1, content2, content3)
+            assertThat(found.map { it.metadata.title }).containsExactlyInAnyOrder("Content 1", "Content 2", "Content 3")
 
             // 각 쌍의 contentId가 일치하는지 확인
-            found.forEach { (content, metadata) ->
-                assertThat(metadata.contentId).isEqualTo(content.id)
+            found.forEach { contentWithMetadata ->
+                assertThat(contentWithMetadata.metadata.contentId).isEqualTo(contentWithMetadata.content.id)
             }
         }
 
@@ -385,7 +385,7 @@ class ContentRepositoryTest {
 
             // Then: 2개만 조회 (삭제된 것 제외)
             assertThat(found).hasSize(2)
-            assertThat(found.map { it.first.id }).containsExactlyInAnyOrder(content1, content3)
+            assertThat(found.map { it.content.id }).containsExactlyInAnyOrder(content1, content3)
         }
 
         @Test
@@ -410,7 +410,7 @@ class ContentRepositoryTest {
 
             // Then: 메타데이터가 삭제되지 않은 것만 조회
             assertThat(found).hasSize(1)
-            assertThat(found[0].first.id).isEqualTo(content1)
+            assertThat(found[0].content.id).isEqualTo(content1)
         }
 
         @Test
@@ -434,9 +434,9 @@ class ContentRepositoryTest {
 
             // Then: 최신순 정렬
             assertThat(found).hasSize(3)
-            assertThat(found[0].first.id).isEqualTo(content3)
-            assertThat(found[1].first.id).isEqualTo(content2)
-            assertThat(found[2].first.id).isEqualTo(content1)
+            assertThat(found[0].content.id).isEqualTo(content3)
+            assertThat(found[1].content.id).isEqualTo(content2)
+            assertThat(found[2].content.id).isEqualTo(content1)
         }
     }
 

@@ -36,6 +36,7 @@ import java.util.UUID
  * @property contentRepository 콘텐츠 레포지토리
  */
 @Service
+@Transactional(readOnly = true)
 class ContentServiceImpl(
     private val contentUploadService: ContentUploadService,
     private val contentRepository: ContentRepository,
@@ -250,7 +251,7 @@ class ContentServiceImpl(
             val metadata = contentRepository.findMetadataByContentId(contentId)
                 ?: throw NoSuchElementException("Content metadata not found: $contentId")
 
-            Pair(content, metadata)
+            content to metadata
         }.map { (content, metadata) ->
             // PHOTO 타입인 경우 사진 목록 조회
             val photoUrls = if (content.contentType == ContentType.PHOTO) {
@@ -296,8 +297,8 @@ class ContentServiceImpl(
 
             // N+1 방지: PHOTO 타입 콘텐츠의 사진 목록을 일괄 조회
             val photoContentIds = contentWithMetadataList
-                .filter { it.first.contentType == ContentType.PHOTO }
-                .mapNotNull { it.first.id }
+                .filter { it.content.contentType == ContentType.PHOTO }
+                .mapNotNull { it.content.id }
 
             val photoUrlsMap = if (photoContentIds.isNotEmpty()) {
                 contentPhotoRepository.findByContentIds(photoContentIds)
@@ -306,9 +307,11 @@ class ContentServiceImpl(
                 emptyMap()
             }
 
-            Pair(contentWithMetadataList, photoUrlsMap)
+            contentWithMetadataList to photoUrlsMap
         }.flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
-            Flux.fromIterable(contentWithMetadataList).map { (content, metadata) ->
+            Flux.fromIterable(contentWithMetadataList).map { contentWithMetadata ->
+                val content = contentWithMetadata.content
+                val metadata = contentWithMetadata.metadata
                 val photoUrls = if (content.contentType == ContentType.PHOTO) {
                     photoUrlsMap[content.id]
                 } else {
@@ -406,7 +409,8 @@ class ContentServiceImpl(
             }
 
             Triple(content, updatedMetadata, request.photoUrls)
-        }.map { (content, metadata, updatedPhotoUrls) ->
+        }.map { triple ->
+            val (content, metadata, updatedPhotoUrls) = triple
             // PHOTO 타입인 경우 사진 목록 조회 (수정되었으면 수정된 것, 아니면 기존 것)
             val photoUrls = if (content.contentType == ContentType.PHOTO) {
                 updatedPhotoUrls ?: contentPhotoRepository.findByContentId(content.id!!)

@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.analytics.repository
 
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
+import me.onetwo.growsnap.domain.analytics.dto.UserInteraction
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -70,10 +71,10 @@ interface UserContentInteractionRepository {
      *
      * @param userId 사용자 ID
      * @param limit 조회할 최대 개수
-     * @return 사용자 인터랙션 목록 (contentId, interactionType)
+     * @return 사용자 인터랙션 목록
      */
     fun findAllInteractionsByUser(
         userId: UUID,
         limit: Int
-    ): Flux<Pair<UUID, InteractionType>>
+    ): Flux<UserInteraction>
 }

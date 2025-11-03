@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.content.repository
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import me.onetwo.growsnap.domain.content.dto.ContentWithMetadata
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.Content
 import me.onetwo.growsnap.domain.content.model.ContentMetadata
@@ -168,9 +169,9 @@ class ContentRepositoryImpl(
      * JOIN을 사용하여 N+1 쿼리 문제를 방지합니다.
      *
      * @param creatorId 크리에이터 ID
-     * @return 콘텐츠와 메타데이터 쌍의 목록
+     * @return 콘텐츠와 메타데이터의 목록
      */
-    override fun findWithMetadataByCreatorId(creatorId: UUID): List<Pair<Content, ContentMetadata>> {
+    override fun findWithMetadataByCreatorId(creatorId: UUID): List<ContentWithMetadata> {
         return dslContext
             .select(
                 CONTENTS.ID,
@@ -250,7 +251,7 @@ class ContentRepositoryImpl(
                     deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
                 )
 
-                Pair(content, metadata)
+                ContentWithMetadata(content, metadata)
             }
     }
 

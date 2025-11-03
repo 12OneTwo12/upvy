@@ -24,6 +24,7 @@ import java.util.UUID
  * @property commentLikeRepository 댓글 좋아요 레포지토리
  */
 @Service
+@Transactional(readOnly = true)
 class CommentLikeServiceImpl(
     private val commentLikeRepository: CommentLikeRepository
 ) : CommentLikeService {

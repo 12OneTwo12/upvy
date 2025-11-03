@@ -139,7 +139,7 @@ class UserViewHistoryRepositoryTest {
                 completionRate = 50
             ).block()
 
-            Thread.sleep(10)  // 시간 차이 보장
+            // created_at은 millisecond 단위이므로 시간 차이 자동 보장
 
             userViewHistoryRepository.save(
                 testUser.id!!,

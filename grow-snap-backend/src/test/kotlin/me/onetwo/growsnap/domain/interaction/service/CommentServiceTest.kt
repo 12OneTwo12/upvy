@@ -14,6 +14,7 @@ import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.growsnap.domain.interaction.repository.CommentRepository
+import me.onetwo.growsnap.domain.user.dto.UserInfo
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -84,7 +85,7 @@ class CommentServiceTest {
             )
 
             val userInfoMap = mapOf(
-                testUserId to Pair("TestUser", "https://example.com/profile.jpg")
+                testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
             every { commentRepository.save(any()) } returns savedComment
@@ -170,7 +171,7 @@ class CommentServiceTest {
             )
 
             val userInfoMap = mapOf(
-                testUserId to Pair("TestUser", "https://example.com/profile.jpg")
+                testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
             // limit=2로 요청하지만, limit+1=3개를 조회하여 hasNext 확인
@@ -224,7 +225,7 @@ class CommentServiceTest {
             )
 
             val userInfoMap = mapOf(
-                testUserId to Pair("TestUser", "https://example.com/profile.jpg")
+                testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
             every { commentRepository.findTopLevelCommentsByContentId(testContentId, null, 20) } returns listOf(
@@ -285,7 +286,7 @@ class CommentServiceTest {
             )
 
             val userInfoMap = mapOf(
-                testUserId to Pair("TestUser", "https://example.com/profile.jpg")
+                testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
             every { commentRepository.findRepliesByParentCommentId(parentCommentId, null, 2) } returns listOf(
@@ -340,7 +341,7 @@ class CommentServiceTest {
             )
 
             val userInfoMap = mapOf(
-                testUserId to Pair("TestUser", "https://example.com/profile.jpg")
+                testUserId to UserInfo("TestUser", "https://example.com/profile.jpg")
             )
 
             // limit=20인데 1개만 조회됨 -> hasNext = false

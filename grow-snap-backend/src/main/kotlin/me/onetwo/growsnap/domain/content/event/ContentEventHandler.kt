@@ -2,9 +2,10 @@ package me.onetwo.growsnap.domain.content.event
 
 import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 import org.slf4j.LoggerFactory
-import org.springframework.context.event.EventListener
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
 
 /**
  * 콘텐츠 이벤트 핸들러
@@ -29,7 +30,7 @@ class ContentEventHandler(
      * @param event 콘텐츠 생성 이벤트
      */
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun handleContentCreated(event: ContentCreatedEvent) {
         logger.info("Handling ContentCreatedEvent: contentId=${event.contentId}")
 
