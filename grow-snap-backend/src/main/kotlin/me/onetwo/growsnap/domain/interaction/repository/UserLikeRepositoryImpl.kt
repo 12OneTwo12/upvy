@@ -4,17 +4,19 @@ import me.onetwo.growsnap.domain.interaction.model.UserLike
 import me.onetwo.growsnap.jooq.generated.tables.UserLikes.Companion.USER_LIKES
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
+import reactor.core.publisher.Mono
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
 /**
- * 사용자 좋아요 레포지토리 구현체
+ * 사용자 좋아요 레포지토리 구현체 (Reactive with JOOQ R2DBC)
  *
- * JOOQ를 사용하여 user_likes 테이블에 접근합니다.
- * Reactive 변환은 Service 계층에서 처리합니다.
+ * JOOQ 3.17+의 R2DBC 지원을 사용합니다.
+ * JOOQ의 type-safe API로 SQL을 생성하고 R2DBC로 실행합니다.
+ * 완전한 Non-blocking 처리를 지원합니다.
  *
- * @property dslContext JOOQ DSLContext
+ * @property dslContext JOOQ DSLContext (R2DBC 기반)
  */
 @Repository
 class UserLikeRepositoryImpl(
@@ -35,34 +37,46 @@ class UserLikeRepositoryImpl(
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
-     * @return 생성된 좋아요
+     * @return 생성된 좋아요 (Mono)
      */
-    override fun save(userId: UUID, contentId: UUID): UserLike? {
+    override fun save(userId: UUID, contentId: UUID): Mono<UserLike> {
         val now = LocalDateTime.now()
+        val userIdStr = userId.toString()
+        val contentIdStr = contentId.toString()
 
-        return dslContext
-            .insertInto(USER_LIKES)
-            .set(USER_LIKES.USER_ID, userId.toString())
-            .set(USER_LIKES.CONTENT_ID, contentId.toString())
-            .set(USER_LIKES.CREATED_AT, now)
-            .set(USER_LIKES.CREATED_BY, userId.toString())
-            .set(USER_LIKES.UPDATED_AT, now)
-            .set(USER_LIKES.UPDATED_BY, userId.toString())
-            .set(USER_LIKES.DELETED_AT_UNIX, 0L)
-            .returning()
-            .fetchOne()
-            ?.let {
-                UserLike(
-                    id = it.getValue(USER_LIKES.ID),
-                    userId = UUID.fromString(it.getValue(USER_LIKES.USER_ID)),
-                    contentId = UUID.fromString(it.getValue(USER_LIKES.CONTENT_ID)),
-                    createdAt = it.getValue(USER_LIKES.CREATED_AT)!!,
-                    createdBy = it.getValue(USER_LIKES.CREATED_BY),
-                    updatedAt = it.getValue(USER_LIKES.UPDATED_AT)!!,
-                    updatedBy = it.getValue(USER_LIKES.UPDATED_BY),
-                    deletedAt = it.getValue(USER_LIKES.DELETED_AT)
+        // JOOQ의 type-safe API로 INSERT 쿼리 생성
+        return Mono.from(
+            dslContext
+                .insertInto(USER_LIKES)
+                .set(USER_LIKES.USER_ID, userIdStr)
+                .set(USER_LIKES.CONTENT_ID, contentIdStr)
+                .set(USER_LIKES.CREATED_AT, now)
+                .set(USER_LIKES.CREATED_BY, userIdStr)
+                .set(USER_LIKES.UPDATED_AT, now)
+                .set(USER_LIKES.UPDATED_BY, userIdStr)
+                .set(USER_LIKES.DELETED_AT_UNIX, 0L)
+                .returningResult(
+                    USER_LIKES.ID,
+                    USER_LIKES.USER_ID,
+                    USER_LIKES.CONTENT_ID,
+                    USER_LIKES.CREATED_AT,
+                    USER_LIKES.CREATED_BY,
+                    USER_LIKES.UPDATED_AT,
+                    USER_LIKES.UPDATED_BY,
+                    USER_LIKES.DELETED_AT
                 )
-            }
+        ).map { record ->
+            UserLike(
+                id = record.getValue(USER_LIKES.ID),
+                userId = UUID.fromString(record.getValue(USER_LIKES.USER_ID)),
+                contentId = UUID.fromString(record.getValue(USER_LIKES.CONTENT_ID)),
+                createdAt = record.getValue(USER_LIKES.CREATED_AT)!!,
+                createdBy = record.getValue(USER_LIKES.CREATED_BY),
+                updatedAt = record.getValue(USER_LIKES.UPDATED_AT)!!,
+                updatedBy = record.getValue(USER_LIKES.UPDATED_BY),
+                deletedAt = record.getValue(USER_LIKES.DELETED_AT)
+            )
+        }
     }
 
     /**
@@ -79,21 +93,24 @@ class UserLikeRepositoryImpl(
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
+     * @return 삭제 완료 시그널 (Mono<Void>)
      */
-    override fun delete(userId: UUID, contentId: UUID) {
+    override fun delete(userId: UUID, contentId: UUID): Mono<Void> {
         val now = LocalDateTime.now()
         val nowUnix = now.toEpochSecond(ZoneOffset.UTC)
 
-        dslContext
-            .update(USER_LIKES)
-            .set(USER_LIKES.DELETED_AT, now)
-            .set(USER_LIKES.DELETED_AT_UNIX, nowUnix)
-            .set(USER_LIKES.UPDATED_AT, now)
-            .set(USER_LIKES.UPDATED_BY, userId.toString())
-            .where(USER_LIKES.USER_ID.eq(userId.toString()))
-            .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
-            .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
-            .execute()
+        // JOOQ의 type-safe API로 UPDATE 쿼리 생성
+        return Mono.from(
+            dslContext
+                .update(USER_LIKES)
+                .set(USER_LIKES.DELETED_AT, now)
+                .set(USER_LIKES.DELETED_AT_UNIX, nowUnix)
+                .set(USER_LIKES.UPDATED_AT, now)
+                .set(USER_LIKES.UPDATED_BY, userId.toString())
+                .where(USER_LIKES.USER_ID.eq(userId.toString()))
+                .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
+                .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
+        ).then()
     }
 
     /**
@@ -103,16 +120,19 @@ class UserLikeRepositoryImpl(
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
-     * @return 좋아요 여부
+     * @return 좋아요 여부 (Mono<Boolean>)
      */
-    override fun exists(userId: UUID, contentId: UUID): Boolean {
-        return dslContext
-            .selectCount()
-            .from(USER_LIKES)
-            .where(USER_LIKES.USER_ID.eq(userId.toString()))
-            .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
-            .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
-            .fetchOne(0, Int::class.java) ?: 0 > 0
+    override fun exists(userId: UUID, contentId: UUID): Mono<Boolean> {
+        // JOOQ의 type-safe API로 SELECT COUNT 쿼리 생성
+        return Mono.from(
+            dslContext
+                .selectCount()
+                .from(USER_LIKES)
+                .where(USER_LIKES.USER_ID.eq(userId.toString()))
+                .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
+                .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
+        ).map { record -> record.value1() > 0 }
+            .defaultIfEmpty(false)
     }
 
     /**
@@ -122,36 +142,37 @@ class UserLikeRepositoryImpl(
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
-     * @return 좋아요 (없으면 null)
+     * @return 좋아요 (없으면 empty Mono)
      */
-    override fun findByUserIdAndContentId(userId: UUID, contentId: UUID): UserLike? {
-        return dslContext
-            .select(
-                USER_LIKES.ID,
-                USER_LIKES.USER_ID,
-                USER_LIKES.CONTENT_ID,
-                USER_LIKES.CREATED_AT,
-                USER_LIKES.CREATED_BY,
-                USER_LIKES.UPDATED_AT,
-                USER_LIKES.UPDATED_BY,
-                USER_LIKES.DELETED_AT
-            )
-            .from(USER_LIKES)
-            .where(USER_LIKES.USER_ID.eq(userId.toString()))
-            .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
-            .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
-            .fetchOne()
-            ?.let {
-                UserLike(
-                    id = it.getValue(USER_LIKES.ID),
-                    userId = UUID.fromString(it.getValue(USER_LIKES.USER_ID)),
-                    contentId = UUID.fromString(it.getValue(USER_LIKES.CONTENT_ID)),
-                    createdAt = it.getValue(USER_LIKES.CREATED_AT)!!,
-                    createdBy = it.getValue(USER_LIKES.CREATED_BY),
-                    updatedAt = it.getValue(USER_LIKES.UPDATED_AT)!!,
-                    updatedBy = it.getValue(USER_LIKES.UPDATED_BY),
-                    deletedAt = it.getValue(USER_LIKES.DELETED_AT)
+    override fun findByUserIdAndContentId(userId: UUID, contentId: UUID): Mono<UserLike> {
+        // JOOQ의 type-safe API로 SELECT 쿼리 생성
+        return Mono.from(
+            dslContext
+                .select(
+                    USER_LIKES.ID,
+                    USER_LIKES.USER_ID,
+                    USER_LIKES.CONTENT_ID,
+                    USER_LIKES.CREATED_AT,
+                    USER_LIKES.CREATED_BY,
+                    USER_LIKES.UPDATED_AT,
+                    USER_LIKES.UPDATED_BY,
+                    USER_LIKES.DELETED_AT
                 )
-            }
+                .from(USER_LIKES)
+                .where(USER_LIKES.USER_ID.eq(userId.toString()))
+                .and(USER_LIKES.CONTENT_ID.eq(contentId.toString()))
+                .and(USER_LIKES.DELETED_AT_UNIX.eq(0L))
+        ).map { record ->
+            UserLike(
+                id = record.getValue(USER_LIKES.ID),
+                userId = UUID.fromString(record.getValue(USER_LIKES.USER_ID)),
+                contentId = UUID.fromString(record.getValue(USER_LIKES.CONTENT_ID)),
+                createdAt = record.getValue(USER_LIKES.CREATED_AT)!!,
+                createdBy = record.getValue(USER_LIKES.CREATED_BY),
+                updatedAt = record.getValue(USER_LIKES.UPDATED_AT)!!,
+                updatedBy = record.getValue(USER_LIKES.UPDATED_BY),
+                deletedAt = record.getValue(USER_LIKES.DELETED_AT)
+            )
+        }
     }
 }

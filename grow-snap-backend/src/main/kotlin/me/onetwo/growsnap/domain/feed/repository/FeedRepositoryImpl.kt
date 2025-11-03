@@ -62,9 +62,8 @@ class FeedRepositoryImpl(
         limit: Int,
         excludeContentIds: List<UUID>
     ): Flux<FeedItemResponse> {
-        return Mono.fromCallable {
-            var query = dslContext
-                .select(
+        var query = dslContext
+            .select(
                     // CONTENTS 필요 컬럼만 명시적으로 선택
                     CONTENTS.ID,
                     CONTENTS.CONTENT_TYPE,
@@ -115,40 +114,41 @@ class FeedRepositoryImpl(
                 .and(USERS.DELETED_AT.isNull)
                 .and(USER_PROFILES.DELETED_AT.isNull)
 
-            // 제외할 콘텐츠 필터링
-            if (excludeContentIds.isNotEmpty()) {
-                query = query.and(CONTENTS.ID.notIn(excludeContentIds.map { it.toString() }))
-            }
+        // 제외할 콘텐츠 필터링
+        if (excludeContentIds.isNotEmpty()) {
+            query = query.and(CONTENTS.ID.notIn(excludeContentIds.map { it.toString() }))
+        }
 
-            // 커서 기반 페이지네이션
-            if (cursor != null) {
-                query = query.and(CONTENTS.CREATED_AT.lt(
-                    dslContext.select(CONTENTS.CREATED_AT)
-                        .from(CONTENTS)
-                        .where(CONTENTS.ID.eq(cursor.toString()))
-                        .asField()
-                ))
-            }
+        // 커서 기반 페이지네이션
+        if (cursor != null) {
+            query = query.and(CONTENTS.CREATED_AT.lt(
+                dslContext.select(CONTENTS.CREATED_AT)
+                    .from(CONTENTS)
+                    .where(CONTENTS.ID.eq(cursor.toString()))
+                    .asField()
+            ))
+        }
 
-            val records = query
+        // Execute query and collect contentIds first
+        return Flux.from(query
                 .orderBy(CONTENTS.CREATED_AT.desc())
                 .limit(limit)
-                .fetch()
+        )
+            .collectList()
+            .flatMapMany { records ->
+                // 모든 콘텐츠 ID 추출
+                val contentIds = records.map { UUID.fromString(it.get(CONTENTS.ID)) }
 
-            // 모든 콘텐츠 ID 추출
-            val contentIds = records.map { UUID.fromString(it.get(CONTENTS.ID)) }
+                // 자막 배치 조회 (N+1 문제 방지)
+                val subtitlesMap = findSubtitlesByContentIds(contentIds)
 
-            // 자막 배치 조회 (N+1 문제 방지)
-            val subtitlesMap = findSubtitlesByContentIds(contentIds)
+                // 사진 배치 조회 (N+1 문제 방지)
+                val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+                    .mapValues { (_, photos) -> photos.map { it.photoUrl } }
 
-            // 사진 배치 조회 (N+1 문제 방지)
-            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
-                .mapValues { (_, photos) -> photos.map { it.photoUrl } }
-
-            // 레코드를 FeedItemResponse로 변환
-            records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+                // 레코드를 FeedItemResponse로 변환
+                Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
+            }
     }
 
     /**
@@ -166,9 +166,8 @@ class FeedRepositoryImpl(
         cursor: UUID?,
         limit: Int
     ): Flux<FeedItemResponse> {
-        return Mono.fromCallable {
-            var query = dslContext
-                .select(
+        var query = dslContext
+            .select(
                     // CONTENTS 필요 컬럼만 명시적으로 선택
                     CONTENTS.ID,
                     CONTENTS.CONTENT_TYPE,
@@ -222,35 +221,36 @@ class FeedRepositoryImpl(
                 .and(USERS.DELETED_AT.isNull)
                 .and(USER_PROFILES.DELETED_AT.isNull)
 
-            // 커서 기반 페이지네이션
-            if (cursor != null) {
-                query = query.and(CONTENTS.CREATED_AT.lt(
-                    dslContext.select(CONTENTS.CREATED_AT)
-                        .from(CONTENTS)
-                        .where(CONTENTS.ID.eq(cursor.toString()))
-                        .asField()
-                ))
-            }
+        // 커서 기반 페이지네이션
+        if (cursor != null) {
+            query = query.and(CONTENTS.CREATED_AT.lt(
+                dslContext.select(CONTENTS.CREATED_AT)
+                    .from(CONTENTS)
+                    .where(CONTENTS.ID.eq(cursor.toString()))
+                    .asField()
+            ))
+        }
 
-            val records = query
+        // Execute query and collect contentIds first
+        return Flux.from(query
                 .orderBy(CONTENTS.CREATED_AT.desc())
                 .limit(limit)
-                .fetch()
+        )
+            .collectList()
+            .flatMapMany { records ->
+                // 모든 콘텐츠 ID 추출
+                val contentIds = records.map { UUID.fromString(it.get(CONTENTS.ID)) }
 
-            // 모든 콘텐츠 ID 추출
-            val contentIds = records.map { UUID.fromString(it.get(CONTENTS.ID)) }
+                // 자막 배치 조회 (N+1 문제 방지)
+                val subtitlesMap = findSubtitlesByContentIds(contentIds)
 
-            // 자막 배치 조회 (N+1 문제 방지)
-            val subtitlesMap = findSubtitlesByContentIds(contentIds)
+                // 사진 배치 조회 (N+1 문제 방지)
+                val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+                    .mapValues { (_, photos) -> photos.map { it.photoUrl } }
 
-            // 사진 배치 조회 (N+1 문제 방지)
-            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
-                .mapValues { (_, photos) -> photos.map { it.photoUrl } }
-
-            // 레코드를 FeedItemResponse로 변환
-            records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+                // 레코드를 FeedItemResponse로 변환
+                Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
+            }
     }
 
     /**
@@ -263,7 +263,7 @@ class FeedRepositoryImpl(
      * @return 최근 본 콘텐츠 ID 목록
      */
     override fun findRecentlyViewedContentIds(userId: UUID, limit: Int): Flux<UUID> {
-        return Mono.fromCallable {
+        return Flux.from(
             dslContext
                 .select(USER_VIEW_HISTORY.CONTENT_ID)
                 .from(USER_VIEW_HISTORY)
@@ -271,10 +271,7 @@ class FeedRepositoryImpl(
                 .and(USER_VIEW_HISTORY.DELETED_AT.isNull)
                 .orderBy(USER_VIEW_HISTORY.WATCHED_AT.desc())
                 .limit(limit)
-                .fetch()
-                .map { UUID.fromString(it.get(USER_VIEW_HISTORY.CONTENT_ID)) }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+        ).map { record -> UUID.fromString(record.get(USER_VIEW_HISTORY.CONTENT_ID)) }
     }
 
     /**
@@ -363,35 +360,32 @@ class FeedRepositoryImpl(
      * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
      */
     override fun findPopularContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID> {
-        return Mono.fromCallable {
-            // 인기도 점수 계산식 (부동소수점 연산)
-            val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
-                .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
-                .plus(CONTENT_INTERACTIONS.COMMENT_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_COMMENT))
-                .plus(CONTENT_INTERACTIONS.SAVE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SAVE))
-                .plus(CONTENT_INTERACTIONS.SHARE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SHARE))
+        // 인기도 점수 계산식 (부동소수점 연산)
+        val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
+            .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
+            .plus(CONTENT_INTERACTIONS.COMMENT_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_COMMENT))
+            .plus(CONTENT_INTERACTIONS.SAVE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SAVE))
+            .plus(CONTENT_INTERACTIONS.SHARE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SHARE))
 
-            var query = dslContext
-                .select(CONTENTS.ID)
-                .from(CONTENTS)
-                .join(CONTENT_INTERACTIONS).on(CONTENT_INTERACTIONS.CONTENT_ID.eq(CONTENTS.ID))
-                .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
-                .where(CONTENTS.STATUS.eq("PUBLISHED"))
-                .and(CONTENTS.DELETED_AT.isNull)
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
+        var query = dslContext
+            .select(CONTENTS.ID)
+            .from(CONTENTS)
+            .join(CONTENT_INTERACTIONS).on(CONTENT_INTERACTIONS.CONTENT_ID.eq(CONTENTS.ID))
+            .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
+            .where(CONTENTS.STATUS.eq("PUBLISHED"))
+            .and(CONTENTS.DELETED_AT.isNull)
+            .and(CONTENT_METADATA.DELETED_AT.isNull)
 
-            // 제외할 콘텐츠 필터링
-            if (excludeIds.isNotEmpty()) {
-                query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
-            }
+        // 제외할 콘텐츠 필터링
+        if (excludeIds.isNotEmpty()) {
+            query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
+        }
 
+        return Flux.from(
             query
                 .orderBy(popularityScore.desc())
                 .limit(limit)
-                .fetch()
-                .map { UUID.fromString(it.get(CONTENTS.ID)) }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+        ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
 
     /**
@@ -404,27 +398,24 @@ class FeedRepositoryImpl(
      * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
      */
     override fun findNewContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID> {
-        return Mono.fromCallable {
-            var query = dslContext
-                .select(CONTENTS.ID)
-                .from(CONTENTS)
-                .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
-                .where(CONTENTS.STATUS.eq("PUBLISHED"))
-                .and(CONTENTS.DELETED_AT.isNull)
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
+        var query = dslContext
+            .select(CONTENTS.ID)
+            .from(CONTENTS)
+            .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
+            .where(CONTENTS.STATUS.eq("PUBLISHED"))
+            .and(CONTENTS.DELETED_AT.isNull)
+            .and(CONTENT_METADATA.DELETED_AT.isNull)
 
-            // 제외할 콘텐츠 필터링
-            if (excludeIds.isNotEmpty()) {
-                query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
-            }
+        // 제외할 콘텐츠 필터링
+        if (excludeIds.isNotEmpty()) {
+            query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
+        }
 
+        return Flux.from(
             query
                 .orderBy(CONTENTS.CREATED_AT.desc())
                 .limit(limit)
-                .fetch()
-                .map { UUID.fromString(it.get(CONTENTS.ID)) }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+        ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
 
     /**
@@ -437,27 +428,24 @@ class FeedRepositoryImpl(
      * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
      */
     override fun findRandomContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID> {
-        return Mono.fromCallable {
-            var query = dslContext
-                .select(CONTENTS.ID)
-                .from(CONTENTS)
-                .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
-                .where(CONTENTS.STATUS.eq("PUBLISHED"))
-                .and(CONTENTS.DELETED_AT.isNull)
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
+        var query = dslContext
+            .select(CONTENTS.ID)
+            .from(CONTENTS)
+            .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
+            .where(CONTENTS.STATUS.eq("PUBLISHED"))
+            .and(CONTENTS.DELETED_AT.isNull)
+            .and(CONTENT_METADATA.DELETED_AT.isNull)
 
-            // 제외할 콘텐츠 필터링
-            if (excludeIds.isNotEmpty()) {
-                query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
-            }
+        // 제외할 콘텐츠 필터링
+        if (excludeIds.isNotEmpty()) {
+            query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
+        }
 
+        return Flux.from(
             query
                 .orderBy(DSL.rand())
                 .limit(limit)
-                .fetch()
-                .map { UUID.fromString(it.get(CONTENTS.ID)) }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+        ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
 
     /**
@@ -474,8 +462,8 @@ class FeedRepositoryImpl(
             return Flux.empty()
         }
 
-        return Mono.fromCallable {
-            val records = dslContext
+        return Flux.from(
+            dslContext
                 .select(
                     // CONTENTS 필요 컬럼만 명시적으로 선택
                     CONTENTS.ID,
@@ -527,24 +515,24 @@ class FeedRepositoryImpl(
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
                 .and(USERS.DELETED_AT.isNull)
                 .and(USER_PROFILES.DELETED_AT.isNull)
-                .fetch()
+        )
+            .collectList()
+            .flatMapMany { records ->
+                // 자막 배치 조회 (N+1 문제 방지)
+                val subtitlesMap = findSubtitlesByContentIds(contentIds)
 
-            // 자막 배치 조회 (N+1 문제 방지)
-            val subtitlesMap = findSubtitlesByContentIds(contentIds)
+                // 사진 배치 조회 (N+1 문제 방지)
+                val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+                    .mapValues { (_, photos) -> photos.map { it.photoUrl } }
 
-            // 사진 배치 조회 (N+1 문제 방지)
-            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
-                .mapValues { (_, photos) -> photos.map { it.photoUrl } }
+                // 레코드를 FeedItemResponse로 변환
+                val feedItemsMap = records
+                    .map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
+                    .associateBy { it.contentId }
 
-            // 레코드를 FeedItemResponse로 변환
-            val feedItemsMap = records
-                .map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
-                .associateBy { it.contentId }
-
-            // 입력된 ID 순서대로 정렬하여 반환
-            contentIds.mapNotNull { feedItemsMap[it] }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+                // 입력된 ID 순서대로 정렬하여 반환
+                Flux.fromIterable(contentIds.mapNotNull { feedItemsMap[it] })
+            }
     }
 
     /**
@@ -590,16 +578,13 @@ class FeedRepositoryImpl(
             return Flux.empty()
         }
 
-        return Mono.fromCallable {
+        return Flux.from(
             dslContext
                 .select(CONTENT_METADATA.CATEGORY)
                 .from(CONTENT_METADATA)
                 .where(CONTENT_METADATA.CONTENT_ID.`in`(contentIds.map { it.toString() }))
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
-                .fetch()
-                .map { it.get(CONTENT_METADATA.CATEGORY)!! }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+        ).map { record -> record.get(CONTENT_METADATA.CATEGORY)!! }
     }
 
     /**
@@ -619,39 +604,36 @@ class FeedRepositoryImpl(
             return Flux.empty()
         }
 
-        return Mono.fromCallable {
-            // 인기도 점수 계산
-            val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
-                .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
-                .plus(CONTENT_INTERACTIONS.COMMENT_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_COMMENT))
-                .plus(CONTENT_INTERACTIONS.SAVE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SAVE))
-                .plus(CONTENT_INTERACTIONS.SHARE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SHARE))
+        // 인기도 점수 계산
+        val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
+            .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
+            .plus(CONTENT_INTERACTIONS.COMMENT_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_COMMENT))
+            .plus(CONTENT_INTERACTIONS.SAVE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SAVE))
+            .plus(CONTENT_INTERACTIONS.SHARE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SHARE))
 
-            val query = dslContext
-                .select(CONTENTS.ID)
-                .from(CONTENTS)
-                .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
-                .join(CONTENT_INTERACTIONS).on(CONTENT_INTERACTIONS.CONTENT_ID.eq(CONTENTS.ID))
-                .where(CONTENT_METADATA.CATEGORY.`in`(categories))
-                .and(CONTENTS.STATUS.eq("PUBLISHED"))
-                .and(CONTENTS.DELETED_AT.isNull)
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
-                .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
+        val query = dslContext
+            .select(CONTENTS.ID)
+            .from(CONTENTS)
+            .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
+            .join(CONTENT_INTERACTIONS).on(CONTENT_INTERACTIONS.CONTENT_ID.eq(CONTENTS.ID))
+            .where(CONTENT_METADATA.CATEGORY.`in`(categories))
+            .and(CONTENTS.STATUS.eq("PUBLISHED"))
+            .and(CONTENTS.DELETED_AT.isNull)
+            .and(CONTENT_METADATA.DELETED_AT.isNull)
+            .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
 
-            // 제외할 ID 추가
-            val finalQuery = if (excludeIds.isNotEmpty()) {
-                query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
-            } else {
-                query
-            }
+        // 제외할 ID 추가
+        val finalQuery = if (excludeIds.isNotEmpty()) {
+            query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
+        } else {
+            query
+        }
 
+        return Flux.from(
             finalQuery
                 .orderBy(popularityScore.desc())
                 .limit(limit)
-                .fetch()
-                .map { UUID.fromString(it.get(CONTENTS.ID)) }
-        }
-            .flatMapMany { Flux.fromIterable(it) }
+        ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
 
     companion object {

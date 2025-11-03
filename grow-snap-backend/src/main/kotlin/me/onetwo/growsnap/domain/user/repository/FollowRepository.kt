@@ -4,6 +4,8 @@ import me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS
 import me.onetwo.growsnap.domain.user.model.Follow
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -14,14 +16,15 @@ import java.util.UUID
 class FollowRepository(
     private val dsl: DSLContext
 ) {
-    fun save(follow: Follow): Follow {
-        val record = dsl.insertInto(FOLLOWS)
-            .set(FOLLOWS.FOLLOWER_ID, follow.followerId.toString())
-            .set(FOLLOWS.FOLLOWING_ID, follow.followingId.toString())
-            .returning()
-            .fetchOne()!!
-
-        return follow.copy(id = record.id)
+    fun save(follow: Follow): Mono<Follow> {
+        return Mono.from(
+            dsl.insertInto(FOLLOWS)
+                .set(FOLLOWS.FOLLOWER_ID, follow.followerId.toString())
+                .set(FOLLOWS.FOLLOWING_ID, follow.followingId.toString())
+                .returningResult(FOLLOWS.ID)
+        ).map { record ->
+            follow.copy(id = record.getValue(FOLLOWS.ID))
+        }
     }
 
     /**
@@ -30,41 +33,47 @@ class FollowRepository(
      * @param followerId 팔로워 ID
      * @param followingId 팔로잉 ID
      */
-    fun softDelete(followerId: UUID, followingId: UUID) {
-        dsl.update(FOLLOWS)
-            .set(FOLLOWS.DELETED_AT, LocalDateTime.now())
-            .set(FOLLOWS.UPDATED_AT, LocalDateTime.now())
-            .set(FOLLOWS.UPDATED_BY, followerId.toString())  // 언팔로우를 수행한 사용자
-            .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
-            .and(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
-            .and(FOLLOWS.DELETED_AT.isNull)  // 이미 삭제된 데이터는 제외
-            .execute()
+    fun softDelete(followerId: UUID, followingId: UUID): Mono<Void> {
+        return Mono.from(
+            dsl.update(FOLLOWS)
+                .set(FOLLOWS.DELETED_AT, LocalDateTime.now())
+                .set(FOLLOWS.UPDATED_AT, LocalDateTime.now())
+                .set(FOLLOWS.UPDATED_BY, followerId.toString())  // 언팔로우를 수행한 사용자
+                .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
+                .and(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
+                .and(FOLLOWS.DELETED_AT.isNull)  // 이미 삭제된 데이터는 제외
+        ).then()
     }
 
-    fun existsByFollowerIdAndFollowingId(followerId: UUID, followingId: UUID): Boolean {
-        return dsl.fetchExists(
-            dsl.select(FOLLOWS.ID)
+    fun existsByFollowerIdAndFollowingId(followerId: UUID, followingId: UUID): Mono<Boolean> {
+        return Mono.from(
+            dsl.selectCount()
                 .from(FOLLOWS)
                 .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
                 .and(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
                 .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
-        )
+        ).map { record -> record.value1() > 0 }
+            .defaultIfEmpty(false)
     }
 
-    fun countByFollowerId(followerId: UUID): Int {
-        return dsl.selectCount()
-            .from(FOLLOWS)
-            .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
-            .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
-            .fetchOne(0, Int::class.java) ?: 0
+    fun countByFollowerId(followerId: UUID): Mono<Int> {
+        return Mono.from(
+            dsl.selectCount()
+                .from(FOLLOWS)
+                .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
+                .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
+        ).map { record -> record.value1() }
+            .defaultIfEmpty(0)
     }
 
-    fun countByFollowingId(followingId: UUID): Int {
-        return dsl.selectCount()
-            .from(FOLLOWS)
-            .where(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
-            .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
-            .fetchOne(0, Int::class.java) ?: 0
+    fun countByFollowingId(followingId: UUID): Mono<Int> {
+        return Mono.from(
+            dsl.selectCount()
+                .from(FOLLOWS)
+                .where(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
+                .and(FOLLOWS.DELETED_AT.isNull)  // Soft delete 필터링
+        ).map { record -> record.value1() }
+            .defaultIfEmpty(0)
     }
 
     /**
@@ -75,26 +84,30 @@ class FollowRepository(
      * @param userId 사용자 ID
      * @param deletedBy 삭제한 사용자 ID
      */
-    fun softDeleteAllByUserId(userId: UUID, deletedBy: UUID) {
+    fun softDeleteAllByUserId(userId: UUID, deletedBy: UUID): Mono<Void> {
         val now = LocalDateTime.now()
 
         // 사용자가 팔로우한 관계 삭제
-        dsl.update(FOLLOWS)
-            .set(FOLLOWS.DELETED_AT, now)
-            .set(FOLLOWS.UPDATED_AT, now)
-            .set(FOLLOWS.UPDATED_BY, deletedBy.toString())
-            .where(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
-            .and(FOLLOWS.DELETED_AT.isNull)
-            .execute()
+        val deleteFollowing = Mono.from(
+            dsl.update(FOLLOWS)
+                .set(FOLLOWS.DELETED_AT, now)
+                .set(FOLLOWS.UPDATED_AT, now)
+                .set(FOLLOWS.UPDATED_BY, deletedBy.toString())
+                .where(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
+                .and(FOLLOWS.DELETED_AT.isNull)
+        )
 
         // 사용자를 팔로우한 관계 삭제
-        dsl.update(FOLLOWS)
-            .set(FOLLOWS.DELETED_AT, now)
-            .set(FOLLOWS.UPDATED_AT, now)
-            .set(FOLLOWS.UPDATED_BY, deletedBy.toString())
-            .where(FOLLOWS.FOLLOWING_ID.eq(userId.toString()))
-            .and(FOLLOWS.DELETED_AT.isNull)
-            .execute()
+        val deleteFollowers = Mono.from(
+            dsl.update(FOLLOWS)
+                .set(FOLLOWS.DELETED_AT, now)
+                .set(FOLLOWS.UPDATED_AT, now)
+                .set(FOLLOWS.UPDATED_BY, deletedBy.toString())
+                .where(FOLLOWS.FOLLOWING_ID.eq(userId.toString()))
+                .and(FOLLOWS.DELETED_AT.isNull)
+        )
+
+        return deleteFollowing.then(deleteFollowers).then()
     }
 
     /**
@@ -106,15 +119,13 @@ class FollowRepository(
      * @param userId 사용자 ID
      * @return 팔로워 사용자 ID 목록 (Set)
      */
-    fun findFollowerUserIds(userId: UUID): Set<UUID> {
-        return dsl
-            .select(FOLLOWS.FOLLOWER_ID)
-            .from(FOLLOWS)
-            .where(FOLLOWS.FOLLOWING_ID.eq(userId.toString()))
-            .and(FOLLOWS.DELETED_AT.isNull)
-            .fetch()
-            .map { UUID.fromString(it.getValue(FOLLOWS.FOLLOWER_ID)) }
-            .toSet()
+    fun findFollowerUserIds(userId: UUID): Flux<UUID> {
+        return Flux.from(
+            dsl.select(FOLLOWS.FOLLOWER_ID)
+                .from(FOLLOWS)
+                .where(FOLLOWS.FOLLOWING_ID.eq(userId.toString()))
+                .and(FOLLOWS.DELETED_AT.isNull)
+        ).map { record -> UUID.fromString(record.getValue(FOLLOWS.FOLLOWER_ID)) }
     }
 
     /**
@@ -126,14 +137,12 @@ class FollowRepository(
      * @param userId 사용자 ID
      * @return 팔로잉 사용자 ID 목록 (Set)
      */
-    fun findFollowingUserIds(userId: UUID): Set<UUID> {
-        return dsl
-            .select(FOLLOWS.FOLLOWING_ID)
-            .from(FOLLOWS)
-            .where(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
-            .and(FOLLOWS.DELETED_AT.isNull)
-            .fetch()
-            .map { UUID.fromString(it.getValue(FOLLOWS.FOLLOWING_ID)) }
-            .toSet()
+    fun findFollowingUserIds(userId: UUID): Flux<UUID> {
+        return Flux.from(
+            dsl.select(FOLLOWS.FOLLOWING_ID)
+                .from(FOLLOWS)
+                .where(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
+                .and(FOLLOWS.DELETED_AT.isNull)
+        ).map { record -> UUID.fromString(record.getValue(FOLLOWS.FOLLOWING_ID)) }
     }
 }
