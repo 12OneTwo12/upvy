@@ -46,8 +46,10 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("com.ninja-squad:springmockk:4.0.2")
 
-    // Embedded Redis for testing
-    testImplementation("com.github.kstyrc:embedded-redis:0.6")
+    // Testcontainers for integration testing with Redis
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers:1.19.3")
+    testImplementation("org.testcontainers:junit-jupiter:1.19.3")
 
     // ArchUnit for architecture testing
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")

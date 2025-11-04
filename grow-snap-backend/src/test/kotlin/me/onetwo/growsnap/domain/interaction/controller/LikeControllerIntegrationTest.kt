@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.interaction.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.infrastructure.config.TestRedisConfig
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.interaction.repository.UserLikeRepository
@@ -28,7 +29,7 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(TestSecurityConfig::class)
+@Import(TestSecurityConfig::class, TestRedisConfig::class)
 @ActiveProfiles("test")
 @DisplayName("좋아요 Controller 통합 테스트")
 class LikeControllerIntegrationTest {

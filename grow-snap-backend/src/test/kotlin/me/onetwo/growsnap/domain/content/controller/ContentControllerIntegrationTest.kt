@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.content.controller
 import io.mockk.every
 import io.mockk.mockk
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.infrastructure.config.TestRedisConfig
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
@@ -47,7 +48,7 @@ import java.util.function.Consumer
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(TestSecurityConfig::class, ContentControllerIntegrationTest.TestConfig::class)
+@Import(TestSecurityConfig::class, TestRedisConfig::class, ContentControllerIntegrationTest.TestConfig::class)
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 Controller 통합 테스트")
 class ContentControllerIntegrationTest {

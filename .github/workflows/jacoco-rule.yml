@@ -21,11 +21,27 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Check Docker status
+        run: |
+          echo "Checking Docker status..."
+          docker --version
+          docker info
+          echo "Docker is running"
+
+      - name: Pull Redis image for Testcontainers
+        run: |
+          echo "Pre-pulling Redis image for faster tests..."
+          docker pull redis:7-alpine
+          echo "Redis image ready"
+
       - name: Grant execute permission for gradlew
         run: chmod +x grow-snap-backend/gradlew
 
       - name: Run tests with Gradle
         run: cd grow-snap-backend && ./gradlew test
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: false
+          TESTCONTAINERS_CHECKS_DISABLE: false
 
       - name: Verify Jacoco Test Reports
         run: |
