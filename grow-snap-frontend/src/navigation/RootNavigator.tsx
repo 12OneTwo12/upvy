@@ -10,6 +10,7 @@ import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
 import UserProfileScreen from '@/screens/profile/UserProfileScreen';
 import FollowListScreen from '@/screens/profile/FollowListScreen';
+import ContentViewerScreen from '@/screens/content/ContentViewerScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -50,6 +51,11 @@ export default function RootNavigator() {
             />
             <Stack.Screen name="UserProfile" component={UserProfileScreen} />
             <Stack.Screen name="FollowList" component={FollowListScreen} />
+            <Stack.Screen
+              name="ContentViewer"
+              component={ContentViewerScreen}
+              options={{ presentation: 'fullScreenModal' }}
+            />
           </>
         )}
       </Stack.Navigator>

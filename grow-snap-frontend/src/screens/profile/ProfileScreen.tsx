@@ -13,13 +13,15 @@ import { useNavigation, CompositeNavigationProp, useFocusEffect } from '@react-n
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
-import { ProfileHeader } from '@/components/profile';
+import { ProfileHeader, ContentGrid } from '@/components/profile';
 import { Button, LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
 import { getMyProfile } from '@/api/auth.api';
+import { getMyContents } from '@/api/content.api';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
+import type { ContentResponse } from '@/types/content.types';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Profile'>,
@@ -121,6 +123,8 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState(storeProfile);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [contents, setContents] = useState<ContentResponse[]>([]);
+  const [contentsLoading, setContentsLoading] = useState(false);
 
   // 프로필 데이터 로드
   const loadProfile = async (showLoading = true) => {
@@ -144,18 +148,40 @@ export default function ProfileScreen() {
     return result;
   };
 
+  // 콘텐츠 목록 로드
+  const loadContents = async (showLoading = true) => {
+    if (showLoading) setContentsLoading(true);
+
+    const result = await withErrorHandling(
+      async () => {
+        const data = await getMyContents();
+        setContents(data);
+        return data;
+      },
+      {
+        showAlert: true,
+        alertTitle: '콘텐츠 조회 실패',
+        logContext: 'ProfileScreen.loadContents',
+      }
+    );
+
+    if (showLoading) setContentsLoading(false);
+    return result;
+  };
+
   // 새로고침
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadProfile(false);
+    await Promise.all([loadProfile(false), loadContents(false)]);
     setRefreshing(false);
   };
 
-  // 화면이 포커스될 때마다 프로필 리로드
+  // 화면이 포커스될 때마다 프로필 및 콘텐츠 리로드
   useFocusEffect(
     useCallback(() => {
-      // 화면에 진입할 때 프로필 새로고침
+      // 화면에 진입할 때 프로필 및 콘텐츠 새로고침
       loadProfile(false);
+      loadContents(false);
     }, [])
   );
 
@@ -164,6 +190,8 @@ export default function ProfileScreen() {
     if (!profile) {
       loadProfile();
     }
+    // 콘텐츠는 항상 로드
+    loadContents();
   }, []);
 
   // 프로필 수정 화면으로 이동
@@ -193,6 +221,11 @@ export default function ProfileScreen() {
       userId: user.id,
       initialTab: 'following',
     });
+  };
+
+  // 콘텐츠 클릭 핸들러
+  const handleContentPress = (content: ContentResponse) => {
+    navigation.navigate('ContentViewer', { contentId: content.id });
   };
 
 
@@ -242,21 +275,18 @@ export default function ProfileScreen() {
 
         </View>
 
-        {/* 콘텐츠 그리드 (추후 구현) */}
+        {/* 콘텐츠 그리드 */}
         <View style={styles.contentSection}>
           <View style={styles.contentHeader}>
             <Ionicons name="grid-outline" size={24} color={theme.colors.text.primary} />
           </View>
-          <View style={styles.emptyContent}>
-            <Ionicons
-              name="images-outline"
-              size={64}
-              color={theme.colors.gray[300]}
-              style={styles.emptyIcon}
-            />
-            <Text style={styles.emptyText}>아직 업로드한 콘텐츠가 없습니다</Text>
-            <Text style={styles.emptySubtext}>첫 콘텐츠를 업로드해보세요!</Text>
-          </View>
+          {contentsLoading ? (
+            <View style={styles.emptyContent}>
+              <LoadingSpinner />
+            </View>
+          ) : (
+            <ContentGrid contents={contents} onContentPress={handleContentPress} />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

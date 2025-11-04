@@ -10,6 +10,7 @@ export type RootStackParamList = {
   EditProfile: undefined;
   UserProfile: { userId: string };
   FollowList: { userId: string; initialTab?: 'followers' | 'following' };
+  ContentViewer: { contentId: string };
 };
 
 /**
