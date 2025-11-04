@@ -20,7 +20,6 @@ import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
 import org.jooq.DSLContext
 import org.jooq.JSON
 import reactor.core.publisher.Mono
-import reactor.core.publisher.Flux
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach

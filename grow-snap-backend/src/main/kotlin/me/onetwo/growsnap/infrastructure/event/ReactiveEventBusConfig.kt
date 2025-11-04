@@ -10,7 +10,7 @@ import reactor.core.publisher.Sinks
  *
  * Reactor Sinks API 기반 Non-blocking Event Bus
  * - multicast: 여러 Subscriber에게 이벤트 브로드캐스트
- * - onBackpressureBuffer(1000): 시스템 과부하 방지
+ * - onBackpressureBuffer: 시스템 과부하 방지
  * - Hot Stream: 구독 시점과 관계없이 실시간 이벤트 수신
  *
  * ## 사용 예시
@@ -31,7 +31,7 @@ class ReactiveEventBusConfig {
     fun domainEventSink(): Sinks.Many<DomainEvent> =
         Sinks.many()
             .multicast()
-            .onBackpressureBuffer(1000)
+            .onBackpressureBuffer(EVENT_BUFFER_SIZE)
 
     /**
      * 도메인 이벤트 Flux
@@ -42,4 +42,9 @@ class ReactiveEventBusConfig {
     fun domainEventFlux(sink: Sinks.Many<DomainEvent>): Flux<DomainEvent> =
         sink.asFlux()
             .share()  // Hot stream으로 변환
+
+    companion object {
+        /** 이벤트 버퍼 크기 (시스템 과부하 방지) */
+        private const val EVENT_BUFFER_SIZE = 1000
+    }
 }

@@ -1,7 +1,6 @@
 package me.onetwo.growsnap.domain.user.service
 
 import io.mockk.every
-import io.mockk.justRun
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify

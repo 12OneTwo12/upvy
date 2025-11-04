@@ -2,15 +2,9 @@ package me.onetwo.growsnap.domain.interaction.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.content.model.Content
-import me.onetwo.growsnap.domain.content.model.ContentStatus
-import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
-import me.onetwo.growsnap.domain.user.model.OAuthProvider
-import me.onetwo.growsnap.domain.user.model.User
-import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths

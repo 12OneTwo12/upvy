@@ -1,21 +1,14 @@
 package me.onetwo.growsnap.domain.user.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
-import me.onetwo.growsnap.domain.user.model.OAuthProvider
-import me.onetwo.growsnap.domain.user.model.User
-import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.util.createUserWithProfile
 import me.onetwo.growsnap.util.mockUser
-import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.kotlin.await
-import org.awaitility.kotlin.untilAsserted
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
@@ -23,8 +16,6 @@ import org.springframework.context.annotation.Import
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
-import reactor.core.publisher.Mono
-import reactor.core.publisher.Flux
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient

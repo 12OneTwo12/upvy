@@ -2,15 +2,8 @@ package me.onetwo.growsnap.domain.interaction.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.content.model.Category
-import me.onetwo.growsnap.domain.content.model.Content
-import me.onetwo.growsnap.domain.content.model.ContentStatus
-import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.interaction.repository.UserLikeRepository
-import me.onetwo.growsnap.domain.user.model.OAuthProvider
-import me.onetwo.growsnap.domain.user.model.User
-import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
@@ -30,8 +23,6 @@ import org.springframework.context.annotation.Import
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
-import java.time.LocalDateTime
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

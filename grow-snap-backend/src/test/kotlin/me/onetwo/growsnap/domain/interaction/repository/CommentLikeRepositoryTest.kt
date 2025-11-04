@@ -18,7 +18,6 @@ import org.jooq.DSLContext
 import org.jooq.JSON
 import org.jooq.exception.DataAccessException
 import reactor.core.publisher.Mono
-import reactor.core.publisher.Flux
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

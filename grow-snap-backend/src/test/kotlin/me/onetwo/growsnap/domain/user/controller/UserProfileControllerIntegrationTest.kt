@@ -2,9 +2,6 @@ package me.onetwo.growsnap.domain.user.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.user.dto.UpdateProfileRequest
-import me.onetwo.growsnap.domain.user.model.OAuthProvider
-import me.onetwo.growsnap.domain.user.model.User
-import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
@@ -22,8 +19,6 @@ import org.springframework.http.MediaType
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
-import reactor.core.publisher.Mono
-import reactor.core.publisher.Flux
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient

@@ -18,7 +18,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.jooq.DSLContext
 import org.jooq.JSON
 import reactor.core.publisher.Mono
-import reactor.core.publisher.Flux
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
