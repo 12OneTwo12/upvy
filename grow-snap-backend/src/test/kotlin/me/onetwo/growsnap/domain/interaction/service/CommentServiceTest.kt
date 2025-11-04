@@ -7,22 +7,21 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
-import me.onetwo.growsnap.domain.interaction.event.CommentCreatedEvent
-import me.onetwo.growsnap.domain.interaction.event.CommentDeletedEvent
 import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.growsnap.domain.interaction.repository.CommentRepository
 import me.onetwo.growsnap.domain.user.dto.UserInfo
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.context.ApplicationEventPublisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -45,13 +44,16 @@ class CommentServiceTest {
     private lateinit var commentLikeRepository: CommentLikeRepository
 
     @MockK
-    private lateinit var applicationEventPublisher: ApplicationEventPublisher
+    private lateinit var contentInteractionService: ContentInteractionService
 
     @MockK
     private lateinit var contentInteractionRepository: ContentInteractionRepository
 
     @MockK
     private lateinit var userProfileRepository: UserProfileRepository
+
+    @MockK
+    private lateinit var eventPublisher: ReactiveEventPublisher
 
     @InjectMockKs
     private lateinit var commentService: CommentServiceImpl
@@ -90,7 +92,8 @@ class CommentServiceTest {
             )
 
             every { commentRepository.save(any()) } returns Mono.just(savedComment)
-            justRun { applicationEventPublisher.publishEvent(any<CommentCreatedEvent>()) }
+            every { contentInteractionService.incrementCommentCount(testContentId) } returns Mono.empty()
+            justRun { eventPublisher.publish(any()) }
             every { userProfileRepository.findUserInfosByUserIds(any()) } returns Mono.just(userInfoMap)
 
             // When
@@ -107,11 +110,8 @@ class CommentServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { commentRepository.save(any()) }
-            verify(exactly = 1) {
-                applicationEventPublisher.publishEvent(
-                    CommentCreatedEvent(testUserId, testContentId)
-                )
-            }
+            verify(exactly = 1) { contentInteractionService.incrementCommentCount(testContentId) }
+            verify(exactly = 1) { eventPublisher.publish(any()) }
         }
 
         @Test
@@ -386,7 +386,7 @@ class CommentServiceTest {
 
             every { commentRepository.findById(testCommentId) } returns Mono.just(comment)
             every { commentRepository.delete(testCommentId, testUserId) } returns Mono.empty()
-            justRun { applicationEventPublisher.publishEvent(any<CommentDeletedEvent>()) }
+            every { contentInteractionService.decrementCommentCount(testContentId) } returns Mono.empty()
 
             // When
             val result = commentService.deleteComment(testUserId, testCommentId)
@@ -396,11 +396,7 @@ class CommentServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { commentRepository.delete(testCommentId, testUserId) }
-            verify(exactly = 1) {
-                applicationEventPublisher.publishEvent(
-                    CommentDeletedEvent(testUserId, testContentId)
-                )
-            }
+            verify(exactly = 1) { contentInteractionService.decrementCommentCount(testContentId) }
         }
 
         @Test

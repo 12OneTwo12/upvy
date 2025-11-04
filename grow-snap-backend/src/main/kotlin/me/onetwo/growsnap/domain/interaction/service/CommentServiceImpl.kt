@@ -1,70 +1,53 @@
 package me.onetwo.growsnap.domain.interaction.service
 
+import me.onetwo.growsnap.domain.analytics.dto.InteractionType
+import me.onetwo.growsnap.domain.analytics.event.UserInteractionEvent
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 import me.onetwo.growsnap.domain.interaction.dto.CommentListResponse
 import me.onetwo.growsnap.domain.interaction.dto.CommentRequest
 import me.onetwo.growsnap.domain.interaction.dto.CommentResponse
-import me.onetwo.growsnap.domain.interaction.event.CommentCreatedEvent
-import me.onetwo.growsnap.domain.interaction.event.CommentDeletedEvent
 import me.onetwo.growsnap.domain.interaction.exception.CommentException
 import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.growsnap.domain.interaction.repository.CommentRepository
 import me.onetwo.growsnap.domain.user.dto.UserInfo
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
  * 댓글 서비스 구현체
  *
- * 댓글 작성, 조회, 삭제 비즈니스 로직을 처리합니다.
- *
- * ### 처리 흐름 (이벤트 기반)
- * 1. 댓글 작성 (comments 테이블)
- * 2. Spring Event 발행 (CommentCreatedEvent / CommentDeletedEvent)
- * 3. 응답 반환 (사용자는 즉시 성공 확인)
- * 4. [비동기] InteractionEventListener가 처리:
- *    - content_interactions의 comment_count 증가/감소
- *    - user_content_interactions 저장 (협업 필터링용)
- *
- * ### 장점
- * - 카운트 증가 실패해도 사용자 경험에 영향 없음
- * - 빠른 응답 시간
- * - 높은 가용성
+ * ## 처리 흐름
+ * 1. comments 저장 (트랜잭션)
+ * 2. content_interactions.comment_count 증가 (메인 체인, 즉시 반영)
+ * 3. UserInteractionEvent 발행 (협업 필터링용, 비동기)
+ * 4. 응답 반환
  *
  * @property commentRepository 댓글 레포지토리
  * @property commentLikeRepository 댓글 좋아요 레포지토리
- * @property applicationEventPublisher Spring 이벤트 발행자
+ * @property contentInteractionService 콘텐츠 인터랙션 서비스
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
  * @property userProfileRepository 사용자 프로필 레포지토리
+ * @property eventPublisher Reactive 이벤트 발행자
  */
 @Service
 @Transactional(readOnly = true)
 class CommentServiceImpl(
     private val commentRepository: CommentRepository,
     private val commentLikeRepository: CommentLikeRepository,
-    private val applicationEventPublisher: ApplicationEventPublisher,
-    private val contentInteractionRepository: ContentInteractionRepository,
-    private val userProfileRepository: UserProfileRepository
+    private val contentInteractionService: ContentInteractionService,
+    private val userProfileRepository: UserProfileRepository,
+    private val eventPublisher: ReactiveEventPublisher
 ) : CommentService {
 
     /**
      * 댓글 작성
-     *
-     * ### 처리 흐름 (이벤트 기반)
-     * 1. 부모 댓글 존재 여부 확인 (대댓글인 경우)
-     * 2. comments 테이블에 댓글 저장
-     * 3. CommentCreatedEvent 발행
-     * 4. 응답 반환 (사용자는 즉시 성공 확인)
-     * 5. [비동기] InteractionEventListener가 처리:
-     *    - content_interactions의 comment_count 증가
-     *    - user_content_interactions 저장 (협업 필터링용)
      *
      * @param userId 작성자 ID
      * @param contentId 콘텐츠 ID
@@ -95,10 +78,21 @@ class CommentServiceImpl(
                     )
                 ).switchIfEmpty(Mono.error(IllegalStateException("Failed to create comment")))
             )
+            .flatMap { savedComment ->
+                // 카운트 증가를 메인 체인에 포함 ← 즉시 반영
+                logger.debug("Incrementing comment count for contentId={}", contentId)
+                contentInteractionService.incrementCommentCount(contentId)
+                    .thenReturn(savedComment)
+            }
             .doOnSuccess { savedComment ->
-                logger.debug("Publishing CommentCreatedEvent: userId={}, contentId={}", userId, contentId)
-                applicationEventPublisher.publishEvent(
-                    CommentCreatedEvent(userId, contentId)
+                logger.debug("Publishing UserInteractionEvent: userId={}, contentId={}", userId, contentId)
+                // 협업 필터링만 이벤트로 처리 (실패해도 OK)
+                eventPublisher.publish(
+                    UserInteractionEvent(
+                        userId = userId,
+                        contentId = contentId,
+                        interactionType = InteractionType.COMMENT
+                    )
                 )
             }
             .flatMap { savedComment: Comment ->
@@ -267,66 +261,7 @@ class CommentServiceImpl(
     }
 
     /**
-     * 콘텐츠의 댓글 목록 조회 (기존 방식, 하위 호환성)
-     *
-     * N+1 쿼리 문제를 방지하기 위해 모든 사용자 정보를 한 번에 조회합니다.
-     *
-     * ### 처리 흐름
-     * 1. comments 테이블에서 해당 콘텐츠의 모든 댓글 조회
-     * 2. 모든 작성자 ID를 수집
-     * 3. UserProfileRepository로 사용자 정보 일괄 조회 (N+1 문제 해결)
-     * 4. 메모리에서 데이터 조합하여 계층 구조 생성 (부모 댓글 - 대댓글)
-     *
-     * @param contentId 콘텐츠 ID
-     * @return 댓글 목록 (계층 구조)
-     */
-    @Deprecated("Use getComments(contentId, cursor, limit) instead")
-    @Transactional(readOnly = true)
-    override fun getCommentsLegacy(contentId: UUID): Flux<CommentResponse> {
-        logger.debug("Getting comments: contentId={}", contentId)
-
-        return commentRepository.findByContentId(contentId)
-            .collectList()
-            .flatMapMany { comments ->
-                if (comments.isEmpty()) {
-                    return@flatMapMany Flux.empty()
-                }
-
-                val userIds = comments.map { it.userId }.toSet()
-
-                userProfileRepository.findUserInfosByUserIds(userIds)
-                    .flatMapMany { userInfoMap ->
-                        val repliesByParentId = comments.filter { it.parentCommentId != null }
-                            .groupBy { it.parentCommentId!! }
-
-                        val parentComments = comments.filter { it.parentCommentId == null }
-
-                        Flux.fromIterable(parentComments)
-                            .map { parentComment ->
-                                val userInfo = userInfoMap[parentComment.userId] ?: UserInfo("Unknown", null)
-                                val replyCount = repliesByParentId[parentComment.id!!]?.size ?: 0
-
-                                mapToCommentResponse(parentComment, userInfo, replyCount)
-                            }
-                    }
-            }
-            .doOnComplete { logger.debug("Comments retrieved successfully: contentId={}", contentId) }
-    }
-
-    /**
      * 댓글 삭제
-     *
-     * ### 처리 흐름 (이벤트 기반)
-     * 1. 댓글 존재 여부 및 소유권 확인
-     * 2. comments 테이블에서 Soft Delete
-     * 3. CommentDeletedEvent 발행
-     * 4. 응답 반환
-     * 5. [비동기] InteractionEventListener가 처리:
-     *    - content_interactions의 comment_count 감소
-     *
-     * ### 비즈니스 규칙
-     * - 자신의 댓글만 삭제 가능 (소유권 검증)
-     * - user_content_interactions는 삭제하지 않음 (협업 필터링 데이터 보존)
      *
      * @param userId 요청한 사용자 ID
      * @param commentId 댓글 ID
@@ -344,12 +279,8 @@ class CommentServiceImpl(
                 }
 
                 commentRepository.delete(commentId, userId)
-                    .doOnSuccess {
-                        logger.debug("Publishing CommentDeletedEvent: userId={}, contentId={}", userId, comment.contentId)
-                        applicationEventPublisher.publishEvent(
-                            CommentDeletedEvent(userId, comment.contentId)
-                        )
-                    }
+                    .doOnSuccess { logger.debug("Decrementing comment count for contentId={}", comment.contentId) }
+                    .then(contentInteractionService.decrementCommentCount(comment.contentId))
             }
             .doOnSuccess { logger.debug("Comment deleted successfully: commentId={}", commentId) }
             .doOnError { error ->

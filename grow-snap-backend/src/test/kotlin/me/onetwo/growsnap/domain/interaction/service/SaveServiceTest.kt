@@ -7,17 +7,16 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 import me.onetwo.growsnap.domain.content.repository.ContentMetadataRepository
-import me.onetwo.growsnap.domain.interaction.event.SaveCreatedEvent
-import me.onetwo.growsnap.domain.interaction.event.SaveDeletedEvent
 import me.onetwo.growsnap.domain.interaction.model.UserSave
 import me.onetwo.growsnap.domain.interaction.repository.UserSaveRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.context.ApplicationEventPublisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -37,13 +36,16 @@ class SaveServiceTest {
     private lateinit var userSaveRepository: UserSaveRepository
 
     @MockK
-    private lateinit var applicationEventPublisher: ApplicationEventPublisher
+    private lateinit var contentInteractionService: ContentInteractionService
 
     @MockK
     private lateinit var contentInteractionRepository: ContentInteractionRepository
 
     @MockK
     private lateinit var contentMetadataRepository: ContentMetadataRepository
+
+    @MockK
+    private lateinit var eventPublisher: ReactiveEventPublisher
 
     @InjectMockKs
     private lateinit var saveService: SaveServiceImpl
@@ -71,7 +73,8 @@ class SaveServiceTest {
 
             every { userSaveRepository.exists(testUserId, testContentId) } returns Mono.just(false)
             every { userSaveRepository.save(testUserId, testContentId) } returns Mono.just(userSave)
-            justRun { applicationEventPublisher.publishEvent(any<SaveCreatedEvent>()) }
+            every { contentInteractionService.incrementSaveCount(testContentId) } returns Mono.empty()
+            justRun { eventPublisher.publish(any()) }
             every { contentInteractionRepository.getSaveCount(testContentId) } returns Mono.just(1)
 
             // When
@@ -87,11 +90,8 @@ class SaveServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { userSaveRepository.save(testUserId, testContentId) }
-            verify(exactly = 1) {
-                applicationEventPublisher.publishEvent(
-                    SaveCreatedEvent(testUserId, testContentId)
-                )
-            }
+            verify(exactly = 1) { contentInteractionService.incrementSaveCount(testContentId) }
+            verify(exactly = 1) { eventPublisher.publish(any()) }
         }
 
         @Test
@@ -114,7 +114,8 @@ class SaveServiceTest {
                 .verifyComplete()
 
             verify(exactly = 0) { userSaveRepository.save(any(), any()) }
-            verify(exactly = 0) { applicationEventPublisher.publishEvent(any<SaveCreatedEvent>()) }
+            verify(exactly = 0) { contentInteractionService.incrementSaveCount(any()) }
+            verify(exactly = 0) { eventPublisher.publish(any()) }
         }
     }
 
@@ -128,7 +129,7 @@ class SaveServiceTest {
             // Given
             every { userSaveRepository.exists(testUserId, testContentId) } returns Mono.just(true)
             every { userSaveRepository.delete(testUserId, testContentId) } returns Mono.empty()
-            justRun { applicationEventPublisher.publishEvent(any<SaveDeletedEvent>()) }
+            every { contentInteractionService.decrementSaveCount(testContentId) } returns Mono.empty()
             every { contentInteractionRepository.getSaveCount(testContentId) } returns Mono.just(0)
 
             // When
@@ -144,11 +145,7 @@ class SaveServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { userSaveRepository.delete(testUserId, testContentId) }
-            verify(exactly = 1) {
-                applicationEventPublisher.publishEvent(
-                    SaveDeletedEvent(testUserId, testContentId)
-                )
-            }
+            verify(exactly = 1) { contentInteractionService.decrementSaveCount(testContentId) }
         }
 
         @Test
@@ -171,7 +168,7 @@ class SaveServiceTest {
                 .verifyComplete()
 
             verify(exactly = 0) { userSaveRepository.delete(any(), any()) }
-            verify(exactly = 0) { applicationEventPublisher.publishEvent(any<SaveDeletedEvent>()) }
+            verify(exactly = 0) { contentInteractionService.decrementSaveCount(any()) }
         }
     }
 
