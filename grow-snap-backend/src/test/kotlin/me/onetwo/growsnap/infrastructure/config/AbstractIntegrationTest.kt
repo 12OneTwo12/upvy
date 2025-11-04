@@ -18,6 +18,7 @@ import java.time.Duration
  * - static container: 모든 테스트에서 동일한 컨테이너 재사용 (성능 향상)
  * - @DynamicPropertySource: 동적 포트를 확실하게 전달
  * - companion object: Kotlin에서 static 멤버를 정의하는 방법
+ * - 즉시 초기화: @DynamicPropertySource 호출 전에 컨테이너 시작 보장
  */
 @Suppress("UtilityClassWithPublicConstructor")
 abstract class AbstractIntegrationTest {
@@ -30,19 +31,21 @@ abstract class AbstractIntegrationTest {
          * Redis Testcontainer (모든 테스트에서 공유)
          *
          * static으로 정의하여 테스트 클래스 간에 재사용됩니다.
-         * 첫 번째 테스트 실행 시 한 번만 시작되고, 모든 테스트가 끝날 때 종료됩니다.
+         * 클래스 로드 시 즉시 초기화되어 @DynamicPropertySource에서 사용 가능합니다.
          *
-         * lazy를 사용하여 @DynamicPropertySource가 실행되기 전에 확실히 초기화됩니다.
+         * GitHub Actions 환경에서의 안정성을 위해 lazy 대신 즉시 초기화 사용.
          */
         @JvmStatic
-        val redisContainer: GenericContainer<*> by lazy {
+        val redisContainer: GenericContainer<*> = run {
+            logger.info("Initializing Redis Testcontainer...")
             GenericContainer(DockerImageName.parse("redis:7-alpine"))
                 .withExposedPorts(REDIS_PORT)
+                .withReuse(true)
                 .waitingFor(Wait.forListeningPort())
                 .withStartupTimeout(Duration.ofSeconds(60))
-                .apply {
-                    start()
-                    logger.info("Redis container started on {}:{}", host, getMappedPort(REDIS_PORT))
+                .also {
+                    it.start()
+                    logger.info("Redis container started successfully on {}:{}", it.host, it.getMappedPort(REDIS_PORT))
                 }
         }
 
@@ -50,17 +53,21 @@ abstract class AbstractIntegrationTest {
          * Redis 연결 정보를 Spring 설정에 동적으로 주입
          *
          * Testcontainers가 할당한 동적 포트를 Spring Boot에 전달합니다.
-         * 이 방법은 @ServiceConnection보다 더 명시적이고 안정적입니다.
+         * 컨테이너는 이미 시작된 상태이므로 즉시 host/port를 가져올 수 있습니다.
          */
         @JvmStatic
         @DynamicPropertySource
         fun registerRedisProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.data.redis.host") { redisContainer.host }
-            registry.add("spring.data.redis.port") { redisContainer.getMappedPort(REDIS_PORT) }
+            val host = redisContainer.host
+            val port = redisContainer.getMappedPort(REDIS_PORT)
+
+            registry.add("spring.data.redis.host") { host }
+            registry.add("spring.data.redis.port") { port }
+
             logger.info(
                 "Redis connection properties registered: host={}, port={}",
-                redisContainer.host,
-                redisContainer.getMappedPort(REDIS_PORT)
+                host,
+                port
             )
         }
     }

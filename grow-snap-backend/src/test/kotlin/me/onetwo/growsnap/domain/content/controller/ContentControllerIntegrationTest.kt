@@ -66,6 +66,27 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
             every { mockClient.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
             return mockClient
         }
+
+        /**
+         * 테스트용 S3Presigner Mock
+         *
+         * Presigned URL 생성을 위한 S3Presigner Mock입니다.
+         * S3Client와 별도의 Bean이므로 따로 Mock이 필요합니다.
+         */
+        @Bean
+        @Primary
+        fun s3Presigner(): software.amazon.awssdk.services.s3.presigner.S3Presigner {
+            val mockPresigner = mockk<software.amazon.awssdk.services.s3.presigner.S3Presigner>(relaxed = true)
+
+            // presignPutObject 호출 시 Mock 응답 반환
+            every { mockPresigner.presignPutObject(any<software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest>()) } answers {
+                val mockPresignedRequest = mockk<software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest>(relaxed = true)
+                every { mockPresignedRequest.url() } returns java.net.URL("https://mock-s3-url.example.com/test-upload")
+                mockPresignedRequest
+            }
+
+            return mockPresigner
+        }
     }
 
     @Autowired
