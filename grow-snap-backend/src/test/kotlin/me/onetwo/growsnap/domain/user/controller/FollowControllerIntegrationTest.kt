@@ -1,7 +1,7 @@
 package me.onetwo.growsnap.domain.user.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
-import me.onetwo.growsnap.infrastructure.config.TestRedisConfig
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
@@ -25,10 +25,10 @@ import java.util.concurrent.TimeUnit
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(TestSecurityConfig::class, TestRedisConfig::class)
+@Import(TestSecurityConfig::class)
 @ActiveProfiles("test")
 @DisplayName("팔로우 Controller 통합 테스트")
-class FollowControllerIntegrationTest {
+class FollowControllerIntegrationTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

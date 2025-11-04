@@ -4,7 +4,6 @@ import io.mockk.every
 import io.mockk.mockk
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
@@ -15,13 +14,12 @@ import me.onetwo.growsnap.domain.content.model.ContentMetadata
 import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
-import me.onetwo.growsnap.domain.content.model.UploadSession
 import me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
-import me.onetwo.growsnap.infrastructure.config.TestRedisConfig
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 import me.onetwo.growsnap.util.createContent
 import me.onetwo.growsnap.util.createUserWithProfile
 import me.onetwo.growsnap.util.mockUser
@@ -49,15 +47,17 @@ import java.util.function.Consumer
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(TestSecurityConfig::class, TestRedisConfig::class, ContentControllerIntegrationTest.TestConfig::class)
+@Import(TestSecurityConfig::class, ContentControllerIntegrationTest.TestConfig::class)
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 Controller 통합 테스트")
-class ContentControllerIntegrationTest {
+class ContentControllerIntegrationTest : AbstractIntegrationTest() {
 
     @TestConfiguration
     class TestConfig {
         /**
-         * 테스트용 S3Client Mock (이 테스트 클래스에서만 사용)
+         * 테스트용 S3Client Mock
+         *
+         * S3는 외부 서비스이므로 통합 테스트에서도 mock을 사용합니다.
          */
         @Bean
         @Primary
@@ -65,34 +65,6 @@ class ContentControllerIntegrationTest {
             val mockClient = mockk<S3Client>(relaxed = true)
             every { mockClient.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
             return mockClient
-        }
-
-        /**
-         * 테스트용 UploadSessionRepository (In-Memory 구현체, 이 테스트 클래스에서만 사용)
-         */
-        @Bean
-        @Primary
-        fun uploadSessionRepository(): UploadSessionRepository {
-            val storage = mutableMapOf<String, UploadSession>()
-            val mockRepo = mockk<UploadSessionRepository>()
-
-            every { mockRepo.save(any()) } answers {
-                val session = firstArg<UploadSession>()
-                storage[session.contentId] = session
-                session
-            }
-
-            every { mockRepo.findById(any<String>()) } answers {
-                val id = firstArg<String>()
-                java.util.Optional.ofNullable(storage[id])
-            }
-
-            every { mockRepo.deleteById(any<String>()) } answers {
-                val id = firstArg<String>()
-                storage.remove(id)
-            }
-
-            return mockRepo
         }
     }
 

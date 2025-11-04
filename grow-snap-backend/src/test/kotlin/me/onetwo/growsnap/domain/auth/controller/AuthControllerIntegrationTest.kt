@@ -1,7 +1,7 @@
 package me.onetwo.growsnap.domain.auth.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
-import me.onetwo.growsnap.infrastructure.config.TestRedisConfig
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 import me.onetwo.growsnap.domain.auth.dto.LogoutRequest
 import me.onetwo.growsnap.domain.auth.dto.RefreshTokenRequest
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
@@ -19,10 +19,10 @@ import org.springframework.test.web.reactive.server.WebTestClient
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(TestSecurityConfig::class, TestRedisConfig::class)
+@Import(TestSecurityConfig::class)
 @ActiveProfiles("test")
 @DisplayName("인증 Controller 통합 테스트")
-class AuthControllerIntegrationTest {
+class AuthControllerIntegrationTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient
