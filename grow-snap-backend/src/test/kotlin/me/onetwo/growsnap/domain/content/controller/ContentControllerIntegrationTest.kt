@@ -7,8 +7,12 @@ import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.Content
+import me.onetwo.growsnap.domain.content.model.ContentInteraction
+import me.onetwo.growsnap.domain.content.model.ContentMetadata
+import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
@@ -52,6 +56,9 @@ class ContentControllerIntegrationTest {
 
     @Autowired
     private lateinit var contentInteractionRepository: ContentInteractionRepository
+
+    @Autowired
+    private lateinit var contentPhotoRepository: ContentPhotoRepository
 
     @Nested
     @DisplayName("POST /api/v1/contents/upload-url - Presigned URL 생성")
@@ -220,26 +227,45 @@ class ContentControllerIntegrationTest {
                 providerId = "google-123"
             )
 
+            // PHOTO 타입 콘텐츠 생성
             val photoContent = Content(
+                id = java.util.UUID.randomUUID(),
                 creatorId = user.id!!,
                 contentType = ContentType.PHOTO,
                 url = "https://example.com/photo1.jpg",
-                photoUrls = listOf("https://example.com/photo1.jpg"),
                 thumbnailUrl = "https://example.com/photo-thumbnail.jpg",
                 duration = null,
                 width = 1080,
                 height = 1080,
-                status = ContentStatus.PUBLISHED,
-                title = "Original Title",
-                description = "Original Description",
-                category = Category.ART,
-                tags = listOf("original"),
-                language = "ko"
+                status = ContentStatus.PUBLISHED
             )
             val savedContent = contentRepository.save(photoContent).block()!!
 
+            // ContentMetadata 저장
+            contentRepository.saveMetadata(
+                ContentMetadata(
+                    contentId = savedContent.id!!,
+                    title = "Original Title",
+                    description = "Original Description",
+                    category = Category.ART,
+                    tags = listOf("original"),
+                    language = "ko"
+                )
+            ).block()
+
+            // ContentPhoto 저장
+            contentPhotoRepository.save(
+                ContentPhoto(
+                    contentId = savedContent.id!!,
+                    photoUrl = "https://example.com/photo1.jpg",
+                    displayOrder = 0,
+                    width = 1080,
+                    height = 1080
+                )
+            ).then().block()
+
             // ContentInteraction 초기화
-            contentInteractionRepository.save(
+            contentInteractionRepository.create(
                 ContentInteraction(
                     contentId = savedContent.id!!,
                     likeCount = 0,

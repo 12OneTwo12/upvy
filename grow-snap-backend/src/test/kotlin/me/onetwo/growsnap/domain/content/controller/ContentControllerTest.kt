@@ -80,7 +80,7 @@ class ContentControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
-                .expectStatus().isOk
+                .expectStatus().isCreated
                 .expectBody()
                 .jsonPath("$.contentId").isNotEmpty
                 .jsonPath("$.uploadUrl").isEqualTo(response.uploadUrl)

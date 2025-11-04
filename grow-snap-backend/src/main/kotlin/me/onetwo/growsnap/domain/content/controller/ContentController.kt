@@ -61,7 +61,7 @@ class ContentController(
             .flatMap { userId ->
                 contentService.generateUploadUrl(userId, request)
             }
-            .map { ResponseEntity.ok(it) }
+            .map { ResponseEntity.status(HttpStatus.CREATED).body(it) }
     }
 
     /**

@@ -41,7 +41,7 @@ class ContentPhotoRepository(
             .set(CONTENT_PHOTOS.CREATED_BY, photo.createdBy)
             .set(CONTENT_PHOTOS.UPDATED_AT, photo.updatedAt)
             .set(CONTENT_PHOTOS.UPDATED_BY, photo.updatedBy))
-            .doOnSuccess {
+            .doOnSuccess { _: Any? ->
                 logger.debug("Content photo saved: contentId=${photo.contentId}, order=${photo.displayOrder}")
             }
             .doOnError { e ->

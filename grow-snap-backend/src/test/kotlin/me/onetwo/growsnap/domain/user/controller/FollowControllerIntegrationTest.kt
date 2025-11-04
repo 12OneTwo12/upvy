@@ -210,7 +210,7 @@ class FollowControllerIntegrationTest {
             .delete()
             .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", notFollowing.id!!.toString())
             .exchange()
-            .expectStatus().isNotFound
+            .expectStatus().isBadRequest
     }
 
     @Test

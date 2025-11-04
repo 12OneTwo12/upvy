@@ -1,12 +1,15 @@
 package me.onetwo.growsnap.domain.feed.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
-import me.onetwo.growsnap.domain.analytics.model.ContentInteraction
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.Content
+import me.onetwo.growsnap.domain.content.model.ContentInteraction
+import me.onetwo.growsnap.domain.content.model.ContentMetadata
+import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.user.model.Follow
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
@@ -50,6 +53,9 @@ class FeedControllerIntegrationTest {
 
     @Autowired
     private lateinit var contentInteractionRepository: ContentInteractionRepository
+
+    @Autowired
+    private lateinit var contentPhotoRepository: ContentPhotoRepository
 
     @Autowired
     private lateinit var followRepository: FollowRepository
@@ -146,30 +152,55 @@ class FeedControllerIntegrationTest {
                 providerId = "google-123"
             )
 
+            // PHOTO 타입 콘텐츠 생성
             val photoContent = Content(
+                id = java.util.UUID.randomUUID(),
                 creatorId = user.id!!,
                 contentType = ContentType.PHOTO,
                 url = "https://example.com/photo1.jpg",
-                photoUrls = listOf(
-                    "https://example.com/photo1.jpg",
-                    "https://example.com/photo2.jpg",
-                    "https://example.com/photo3.jpg"
-                ),
                 thumbnailUrl = "https://example.com/photo-thumbnail.jpg",
                 duration = null,
                 width = 1080,
                 height = 1080,
-                status = ContentStatus.PUBLISHED,
-                title = "Test Photo Content",
-                description = "Test Photo Description",
-                category = Category.ART,
-                tags = listOf("test", "photo"),
-                language = "ko"
+                status = ContentStatus.PUBLISHED
             )
             val savedPhotoContent = contentRepository.save(photoContent).block()!!
 
+            // ContentMetadata 저장
+            contentRepository.saveMetadata(
+                ContentMetadata(
+                    contentId = savedPhotoContent.id!!,
+                    title = "Test Photo Content",
+                    description = "Test Photo Description",
+                    category = Category.ART,
+                    tags = listOf("test", "photo"),
+                    language = "ko"
+                )
+            ).block()
+
+            // ContentPhoto 저장 (여러 사진)
+            val photoUrls = listOf(
+                "https://example.com/photo1.jpg",
+                "https://example.com/photo2.jpg",
+                "https://example.com/photo3.jpg"
+            )
+            reactor.core.publisher.Flux.fromIterable(photoUrls.withIndex())
+                .flatMap { (index, photoUrl) ->
+                    contentPhotoRepository.save(
+                        ContentPhoto(
+                            contentId = savedPhotoContent.id!!,
+                            photoUrl = photoUrl,
+                            displayOrder = index,
+                            width = 1080,
+                            height = 1080
+                        )
+                    )
+                }
+                .then()
+                .block()
+
             // ContentInteraction 초기화
-            contentInteractionRepository.save(
+            contentInteractionRepository.create(
                 ContentInteraction(
                     contentId = savedPhotoContent.id!!,
                     likeCount = 0,
@@ -194,9 +225,9 @@ class FeedControllerIntegrationTest {
                 .expectStatus().isOk
                 .expectBody()
                 .jsonPath("$.content").isArray
-                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].contentType").isEqualTo("PHOTO")
-                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].photoUrls").isArray
-                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].photoUrls.length()").isEqualTo(3)
+                .jsonPath("$.content[0].contentType").isEqualTo("PHOTO")
+                .jsonPath("$.content[0].photoUrls").isArray
+                .jsonPath("$.content[0].photoUrls.length()").isEqualTo(3)
         }
     }
 
@@ -272,30 +303,54 @@ class FeedControllerIntegrationTest {
 
             // PHOTO 타입 콘텐츠 생성 (팔로잉한 사용자가 작성)
             val photoContent = Content(
+                id = java.util.UUID.randomUUID(),
                 creatorId = following.id!!,
                 contentType = ContentType.PHOTO,
                 url = "https://example.com/photo1.jpg",
-                photoUrls = listOf(
-                    "https://example.com/photo1.jpg",
-                    "https://example.com/photo2.jpg",
-                    "https://example.com/photo3.jpg",
-                    "https://example.com/photo4.jpg"
-                ),
                 thumbnailUrl = "https://example.com/photo-thumbnail.jpg",
                 duration = null,
                 width = 1080,
                 height = 1350,
-                status = ContentStatus.PUBLISHED,
-                title = "Test Photo Content",
-                description = "Test Photo Description",
-                category = Category.PHOTOGRAPHY,
-                tags = listOf("test", "photo", "following"),
-                language = "ko"
+                status = ContentStatus.PUBLISHED
             )
             val savedPhotoContent = contentRepository.save(photoContent).block()!!
 
+            // ContentMetadata 저장
+            contentRepository.saveMetadata(
+                ContentMetadata(
+                    contentId = savedPhotoContent.id!!,
+                    title = "Test Photo Content",
+                    description = "Test Photo Description",
+                    category = Category.ART,
+                    tags = listOf("test", "photo", "following"),
+                    language = "ko"
+                )
+            ).block()
+
+            // ContentPhoto 저장 (여러 사진)
+            val photoUrls = listOf(
+                "https://example.com/photo1.jpg",
+                "https://example.com/photo2.jpg",
+                "https://example.com/photo3.jpg",
+                "https://example.com/photo4.jpg"
+            )
+            reactor.core.publisher.Flux.fromIterable(photoUrls.withIndex())
+                .flatMap { (index, photoUrl) ->
+                    contentPhotoRepository.save(
+                        ContentPhoto(
+                            contentId = savedPhotoContent.id!!,
+                            photoUrl = photoUrl,
+                            displayOrder = index,
+                            width = 1080,
+                            height = 1350
+                        )
+                    )
+                }
+                .then()
+                .block()
+
             // ContentInteraction 초기화
-            contentInteractionRepository.save(
+            contentInteractionRepository.create(
                 ContentInteraction(
                     contentId = savedPhotoContent.id!!,
                     likeCount = 0,
@@ -320,9 +375,9 @@ class FeedControllerIntegrationTest {
                 .expectStatus().isOk
                 .expectBody()
                 .jsonPath("$.content").isArray
-                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].contentType").isEqualTo("PHOTO")
-                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].photoUrls").isArray
-                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].photoUrls.length()").isEqualTo(4)
+                .jsonPath("$.content[0].contentType").isEqualTo("PHOTO")
+                .jsonPath("$.content[0].photoUrls").isArray
+                .jsonPath("$.content[0].photoUrls.length()").isEqualTo(4)
         }
     }
 
