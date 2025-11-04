@@ -16,6 +16,7 @@ import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
+import me.onetwo.growsnap.infrastructure.config.EmbeddedRedisConfig
 import me.onetwo.growsnap.util.createContent
 import me.onetwo.growsnap.util.createUserWithProfile
 import me.onetwo.growsnap.util.mockUser
@@ -34,7 +35,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(TestSecurityConfig::class)
+@Import(TestSecurityConfig::class, EmbeddedRedisConfig::class)
 @ActiveProfiles("test")
 @DisplayName("피드 Controller 통합 테스트")
 class FeedControllerIntegrationTest {
