@@ -62,12 +62,18 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // 드래그 상태
+  const [isDraggingStart, setIsDraggingStart] = useState(false);
+  const [isDraggingEnd, setIsDraggingEnd] = useState(false);
+
   // 실제 파일 URI 로드
   React.useEffect(() => {
     const loadVideoUri = async () => {
       try {
+        console.log('📹 Loading video URI for asset:', asset.id);
         const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
         const uri = assetInfo.localUri || assetInfo.uri;
+        console.log('📹 Video URI loaded:', uri);
         setVideoUri(uri);
       } catch (error) {
         console.error('Failed to load video URI:', error);
@@ -77,15 +83,26 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     loadVideoUri();
   }, [asset.id]);
 
+  // videoUri가 로드되고 duration이 있으면 썸네일 생성
+  React.useEffect(() => {
+    if (videoUri && duration > 0 && thumbnails.length === 0) {
+      console.log('🖼️ Generating thumbnails - videoUri:', videoUri, 'duration:', duration);
+      generateThumbnails(videoUri, duration);
+    }
+  }, [videoUri, duration]);
+
   const handleVideoLoad = (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
       const durationMs = status.durationMillis || 0;
       const durationSec = durationMs / 1000;
+      console.log('📹 Video loaded - duration:', durationSec.toFixed(2), 'seconds');
       setDuration(durationSec);
       setTrimEnd(Math.min(durationSec, MAX_VIDEO_DURATION));
 
-      // 자동으로 썸네일 생성 (임시 구현)
-      generateThumbnails(durationSec);
+      // 자동으로 썸네일 생성 (videoUri가 있을 때만)
+      if (videoUri) {
+        generateThumbnails(videoUri, durationSec);
+      }
     }
   };
 
@@ -108,13 +125,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   };
 
-  const generateThumbnails = async (durationSec: number) => {
+  const generateThumbnails = async (uri: string, durationSec: number) => {
+    console.log('🖼️ generateThumbnails called - uri:', uri, 'duration:', durationSec);
     setIsGeneratingThumbnails(true);
     try {
-      if (!videoUri) {
-        throw new Error('Video URI not loaded');
-      }
-
       // 실제 구현에서는 expo-video-thumbnails 사용
       // 임시로 3개 타임스탬프만 생성
       const times = [
@@ -127,20 +141,19 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       // import * as VideoThumbnails from 'expo-video-thumbnails';
       // const thumbnailUris = await Promise.all(
       //   times.map(time =>
-      //     VideoThumbnails.getThumbnailAsync(videoUri, { time: time * 1000 })
+      //     VideoThumbnails.getThumbnailAsync(uri, { time: time * 1000 })
       //   )
       // );
 
       // 임시로 비디오 자체를 썸네일로 사용
-      setThumbnails([videoUri, videoUri, videoUri]);
-      setSelectedThumbnail(videoUri);
+      console.log('🖼️ Setting thumbnails (using video URI as fallback)');
+      setThumbnails([uri, uri, uri]);
+      setSelectedThumbnail(uri);
     } catch (error) {
       console.error('Failed to generate thumbnails:', error);
       // fallback: 비디오 자체를 썸네일로
-      if (videoUri) {
-        setThumbnails([videoUri, videoUri, videoUri]);
-        setSelectedThumbnail(videoUri);
-      }
+      setThumbnails([uri, uri, uri]);
+      setSelectedThumbnail(uri);
     } finally {
       setIsGeneratingThumbnails(false);
     }
@@ -167,8 +180,12 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderGrant: () => {
+        console.log('🟢 Trim start handle - drag started');
         initialTrimStart.current = trimStart;
+        setIsDraggingStart(true);
       },
       onPanResponderMove: (_, gestureState) => {
         if (duration === 0) return;
@@ -178,9 +195,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         const deltaTime = (gestureState.dx / timelineWidth) * duration;
         const newStart = Math.max(0, Math.min(trimEnd - 1, initialTrimStart.current + deltaTime));
 
+        console.log('🟢 Trim start dragging:', newStart.toFixed(2));
         setTrimStart(newStart);
       },
       onPanResponderRelease: async () => {
+        setIsDraggingStart(false);
         // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
         if (position < trimStart || position >= trimEnd) {
           await videoRef.current?.setPositionAsync(trimStart * 1000);
@@ -194,8 +213,12 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderGrant: () => {
+        console.log('🔵 Trim end handle - drag started');
         initialTrimEnd.current = trimEnd;
+        setIsDraggingEnd(true);
       },
       onPanResponderMove: (_, gestureState) => {
         if (duration === 0) return;
@@ -207,9 +230,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           Math.min(duration, Math.min(trimStart + MAX_VIDEO_DURATION, initialTrimEnd.current + deltaTime))
         );
 
+        console.log('🔵 Trim end dragging:', newEnd.toFixed(2));
         setTrimEnd(newEnd);
       },
       onPanResponderRelease: async () => {
+        setIsDraggingEnd(false);
         // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
         if (position < trimStart || position >= trimEnd) {
           await videoRef.current?.setPositionAsync(trimStart * 1000);
@@ -372,7 +397,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           </Text>
 
           {/* 타임라인 트리밍 UI */}
-          <View style={styles.timelineContainer}>
+          <View
+            style={styles.timelineContainer}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+          >
             {/* 진행 바 */}
             <View style={styles.timelineTrack}>
               {/* 선택된 범위 */}
@@ -398,30 +427,46 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
               {/* 트리밍 시작 핸들 */}
               {duration > 0 && (
-                <View
+                <TouchableOpacity
+                  activeOpacity={1}
                   {...trimStartPanResponder.panHandlers}
                   style={[
                     styles.trimHandle,
                     styles.trimHandleLeft,
                     { left: `${(trimStart / duration) * 100}%` },
+                    isDraggingStart && { transform: [{ scale: 1.2 }] },
                   ]}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
-                  <View style={styles.trimHandleBar} />
-                </View>
+                  <View style={[
+                    styles.trimHandleBar,
+                    isDraggingStart && styles.trimHandleActive,
+                  ]}>
+                    <View style={styles.trimHandleGrip} />
+                  </View>
+                </TouchableOpacity>
               )}
 
               {/* 트리밍 끝 핸들 */}
               {duration > 0 && (
-                <View
+                <TouchableOpacity
+                  activeOpacity={1}
                   {...trimEndPanResponder.panHandlers}
                   style={[
                     styles.trimHandle,
                     styles.trimHandleRight,
                     { left: `${(trimEnd / duration) * 100}%` },
+                    isDraggingEnd && { transform: [{ scale: 1.2 }] },
                   ]}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
-                  <View style={styles.trimHandleBar} />
-                </View>
+                  <View style={[
+                    styles.trimHandleBar,
+                    isDraggingEnd && styles.trimHandleActive,
+                  ]}>
+                    <View style={styles.trimHandleGrip} />
+                  </View>
+                </TouchableOpacity>
               )}
             </View>
 
@@ -471,7 +516,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     styles.thumbnailItem,
                     selectedThumbnail === thumbnail && styles.thumbnailSelected,
                   ]}
-                  onPress={() => setSelectedThumbnail(thumbnail)}
+                  onPress={() => {
+                    console.log('📸 Thumbnail selected:', index);
+                    setSelectedThumbnail(thumbnail);
+                  }}
                 >
                   <Image
                     source={{ uri: thumbnail }}
@@ -659,24 +707,44 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -10,
     bottom: -10,
-    width: 30,
+    width: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 20,
+    zIndex: 100,
   },
   trimHandleLeft: {
-    marginLeft: -15,
+    marginLeft: -20,
   },
   trimHandleRight: {
-    marginLeft: -15,
+    marginLeft: -20,
   },
   trimHandleBar: {
-    width: 6,
+    width: 12,
     height: '100%',
-    backgroundColor: theme.colors.text.inverse,
-    borderRadius: 3,
+    backgroundColor: theme.colors.primary[500],
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: theme.colors.primary[500],
+    borderColor: theme.colors.text.inverse,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  trimHandleActive: {
+    backgroundColor: theme.colors.primary[600],
+    borderWidth: 3,
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  trimHandleGrip: {
+    width: 3,
+    height: 30,
+    backgroundColor: theme.colors.text.inverse,
+    borderRadius: 2,
   },
   timeLabels: {
     flexDirection: 'row',
