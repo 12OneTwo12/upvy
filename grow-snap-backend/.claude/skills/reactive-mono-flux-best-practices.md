@@ -260,8 +260,13 @@ fun likeContent(userId: UUID, contentId: UUID): Mono<LikeResponse> {
             val (user, content) = tuple
             userLikeRepository.save(UserLike(user.id, content.id))
         }
+        .flatMap { like ->
+            // Critical: 카운트는 메인 체인에서 동기 처리
+            contentInteractionService.incrementLikeCount(contentId)
+        }
         .doOnSuccess { like ->
-            applicationEventPublisher.publishEvent(LikeCreatedEvent(like))
+            // Non-Critical: 협업 필터링은 이벤트로 비동기 처리
+            eventPublisher.publish(UserInteractionEvent(userId, contentId, "LIKE"))
         }
         .map { LikeResponse.from(it) }
 }
@@ -392,11 +397,15 @@ userRepository.findById(userId)
 
 ### 고급 패턴 구현 현황
 
-#### ✅ 이벤트 기반 비동기 처리
+#### ✅ 이벤트 기반 비동기 처리 (Reactor Sinks API)
 ```kotlin
-// LikeServiceImpl.kt:75
-applicationEventPublisher.publishEvent(LikeCreatedEvent(userId, contentId))
+// Critical Path: 카운트는 메인 체인에서 동기 처리
+.flatMap { contentInteractionService.incrementLikeCount(contentId) }
+
+// Non-Critical Path: 협업 필터링은 이벤트로 비동기 처리
+.doOnSuccess { eventPublisher.publish(UserInteractionEvent(...)) }
 ```
+자세한 내용은 `.claude/skills/reactor-sinks-event.md`를 참고하세요.
 
 #### ✅ N+1 쿼리 최적화
 ```kotlin

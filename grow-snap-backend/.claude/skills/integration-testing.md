@@ -276,18 +276,40 @@ inner class CreateContent {
 }
 ```
 
-### 4. JOOQ 리포지토리 주의사항
+### 4. 리포지토리 테스트 주의사항 (JOOQ + R2DBC)
 
-이 프로젝트는 R2DBC가 아닌 **JOOQ**를 사용합니다. 따라서 `.block()`을 호출할 필요가 없습니다.
+이 프로젝트는 **JOOQ와 R2DBC를 함께 사용**합니다.
+
+**중요**: JOOQ와 R2DBC 모두 **리액티브 방식**으로 구현되어 있습니다!
+
+#### JOOQ 리포지토리 (Mono로 감싼 리액티브)
+- JOOQ DSL을 `Mono.from()`으로 감싸서 **리액티브하게** 동작합니다
+- 반환 타입: `Mono<T>`, `Flux<T>`
+- 테스트에서는 `.block()` 호출이 **필요**합니다
 
 ```kotlin
-// ✅ 올바른 사용법 (JOOQ)
-val user = userRepository.save(User(...))
-val content = contentRepository.save(Content(...))
+// UserRepository (JOOQ 기반이지만 리액티브!)
+fun save(user: User): Mono<User> {
+    return Mono.from(dsl.insertInto(USERS)...)  // Mono.from()으로 감쌈
+}
 
-// ❌ 잘못된 사용법 (R2DBC 스타일)
-val user = userRepository.save(User(...)).block()!!  // 불필요
+// ✅ 올바른 사용법 (테스트)
+val user = userRepository.save(User(...)).block()!!  // .block() 필요!
+val profile = userProfileRepository.save(Profile(...)).block()!!
 ```
+
+#### R2DBC 리포지토리 (네이티브 리액티브)
+- R2DBC를 사용하여 **네이티브하게 리액티브** 동작합니다
+- 반환 타입: `Mono<T>`, `Flux<T>`
+- 테스트에서는 `.block()` 호출이 **필요**합니다
+
+```kotlin
+// ✅ 올바른 사용법 (테스트)
+val interaction = contentInteractionRepository.incrementViewCount(contentId).block()!!
+val count = contentInteractionRepository.getViewCount(contentId).block()!!
+```
+
+**핵심**: JOOQ든 R2DBC든 **모든 레포지토리가 리액티브**이므로 테스트에서는 **반드시 `.block()` 필요**!
 
 ## 테스트 실행
 
@@ -302,11 +324,42 @@ val user = userRepository.save(User(...)).block()!!  // 불필요
 ./gradlew test --tests "*.UserControllerIntegrationTest.getMe_Success"
 ```
 
-## Spring 이벤트 테스트
+## Reactor Sinks 이벤트 테스트
 
 통합 테스트에서는 실제 이벤트가 발행되고 처리되므로, 이벤트 처리 결과를 검증할 수 있습니다.
 
-### Awaitility를 사용한 비동기 이벤트 테스트
+이 프로젝트는 WebFlux 환경에서 **Reactor Sinks API**를 사용하여 이벤트를 처리합니다.
+
+### Critical Path (동기) vs Non-Critical Path (비동기)
+
+#### Critical Path - 즉시 검증 (Awaitility 불필요)
+좋아요 카운트 증가와 같은 중요한 로직은 메인 리액티브 체인에서 동기적으로 처리됩니다.
+
+```kotlin
+@Test
+fun `좋아요 추가 시 카운트가 즉시 증가한다`() {
+    // Given
+    val (user, _) = createUserWithProfile(userRepository, userProfileRepository)
+    val content = contentRepository.save(Content(...))
+
+    // When: API 호출
+    val response = webTestClient
+        .mutateWith(mockUser(user.id!!))
+        .post()
+        .uri("/api/v1/contents/${content.id}/like")
+        .exchange()
+        .expectStatus().isOk
+        .expectBody<LikeResponse>()
+        .returnResult()
+        .responseBody!!
+
+    // Then: 즉시 검증 (Awaitility 불필요!)
+    assertThat(response.likeCount).isEqualTo(1)
+}
+```
+
+#### Non-Critical Path - Awaitility 검증 (비동기)
+협업 필터링 데이터 생성과 같은 부가 기능은 이벤트로 비동기 처리됩니다.
 
 ```kotlin
 import org.awaitility.kotlin.await
@@ -314,7 +367,7 @@ import org.awaitility.kotlin.untilAsserted
 import java.util.concurrent.TimeUnit
 
 @Test
-fun `좋아요 시 이벤트가 처리되는지 확인`() {
+fun `좋아요 시 협업 필터링 데이터가 생성된다`() {
     // Given
     val (user, _) = createUserWithProfile(userRepository, userProfileRepository)
     val content = contentRepository.save(Content(...))
@@ -329,17 +382,13 @@ fun `좋아요 시 이벤트가 처리되는지 확인`() {
 
     // Then: 이벤트 처리 대기 및 검증 (비동기)
     await.atMost(2, TimeUnit.SECONDS).untilAsserted {
-        val like = userLikeRepository.findByUserIdAndContentId(user.id!!, content.id!!)
-        assertThat(like).isNotNull
+        val interaction = userContentInteractionRepository
+            .findByUserIdAndContentId(user.id!!, content.id!!)
+        assertThat(interaction).isNotNull
+        assertThat(interaction?.interactionType).isEqualTo("LIKE")
     }
 }
 ```
-
-### 동기 vs 비동기 이벤트
-
-- **@EventListener**: 동기 처리 (즉시 실행)
-- **@EventListener + @Async**: 비동기 처리 (Awaitility 필요)
-- **@TransactionalEventListener**: 트랜잭션 커밋 후 처리 (Awaitility 필요)
 
 ### Awaitility 타임아웃 설정
 
@@ -354,7 +403,7 @@ await.atMost(100, TimeUnit.MILLISECONDS).untilAsserted { ... }
 await.atMost(30, TimeUnit.SECONDS).untilAsserted { ... }
 ```
 
-자세한 내용은 `Skills/spring-event-testing.md`를 참고하세요.
+자세한 내용은 `.claude/skills/reactor-sinks-event-testing.md`를 참고하세요.
 
 ## 주의사항
 
