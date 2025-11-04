@@ -45,6 +45,7 @@ class UserLikeRepositoryImpl(
         val contentIdStr = contentId.toString()
 
         // JOOQ의 type-safe API로 INSERT 쿼리 생성
+        // MySQL R2DBC는 단일 자동 생성 값만 지원하므로, ID만 반환하고 나머지는 메모리에서 구성
         return Mono.from(
             dslContext
                 .insertInto(USER_LIKES)
@@ -55,26 +56,17 @@ class UserLikeRepositoryImpl(
                 .set(USER_LIKES.UPDATED_AT, now)
                 .set(USER_LIKES.UPDATED_BY, userIdStr)
                 .set(USER_LIKES.DELETED_AT_UNIX, 0L)
-                .returningResult(
-                    USER_LIKES.ID,
-                    USER_LIKES.USER_ID,
-                    USER_LIKES.CONTENT_ID,
-                    USER_LIKES.CREATED_AT,
-                    USER_LIKES.CREATED_BY,
-                    USER_LIKES.UPDATED_AT,
-                    USER_LIKES.UPDATED_BY,
-                    USER_LIKES.DELETED_AT
-                )
+                .returningResult(USER_LIKES.ID)
         ).map { record ->
             UserLike(
                 id = record.getValue(USER_LIKES.ID),
-                userId = UUID.fromString(record.getValue(USER_LIKES.USER_ID)),
-                contentId = UUID.fromString(record.getValue(USER_LIKES.CONTENT_ID)),
-                createdAt = record.getValue(USER_LIKES.CREATED_AT)!!,
-                createdBy = record.getValue(USER_LIKES.CREATED_BY),
-                updatedAt = record.getValue(USER_LIKES.UPDATED_AT)!!,
-                updatedBy = record.getValue(USER_LIKES.UPDATED_BY),
-                deletedAt = record.getValue(USER_LIKES.DELETED_AT)
+                userId = userId,
+                contentId = contentId,
+                createdAt = now,
+                createdBy = userIdStr,
+                updatedAt = now,
+                updatedBy = userIdStr,
+                deletedAt = null
             )
         }
     }

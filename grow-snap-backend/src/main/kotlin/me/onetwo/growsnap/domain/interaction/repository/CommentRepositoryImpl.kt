@@ -29,6 +29,8 @@ class CommentRepositoryImpl(
         val now = LocalDateTime.now()
         val commentId = comment.id ?: UUID.randomUUID()
 
+        // MySQL R2DBC는 단일 자동 생성 값만 지원하므로, returningResult()를 제거하고
+        // ID를 미리 생성하여 메모리에서 Comment 객체 구성
         return Mono.from(
             dslContext
                 .insertInto(COMMENTS)
@@ -41,19 +43,20 @@ class CommentRepositoryImpl(
                 .set(COMMENTS.CREATED_BY, comment.userId.toString())
                 .set(COMMENTS.UPDATED_AT, now)
                 .set(COMMENTS.UPDATED_BY, comment.userId.toString())
-                .returningResult(
-                    COMMENTS.ID,
-                    COMMENTS.CONTENT_ID,
-                    COMMENTS.USER_ID,
-                    COMMENTS.PARENT_COMMENT_ID,
-                    COMMENTS.CONTENT,
-                    COMMENTS.CREATED_AT,
-                    COMMENTS.CREATED_BY,
-                    COMMENTS.UPDATED_AT,
-                    COMMENTS.UPDATED_BY,
-                    COMMENTS.DELETED_AT
-                )
-        ).map { record -> recordToComment(record) }
+        ).thenReturn(
+            Comment(
+                id = commentId,
+                contentId = comment.contentId,
+                userId = comment.userId,
+                parentCommentId = comment.parentCommentId,
+                content = comment.content,
+                createdAt = now,
+                createdBy = comment.userId.toString(),
+                updatedAt = now,
+                updatedBy = comment.userId.toString(),
+                deletedAt = null
+            )
+        )
     }
 
     override fun findById(commentId: UUID): Mono<Comment> {

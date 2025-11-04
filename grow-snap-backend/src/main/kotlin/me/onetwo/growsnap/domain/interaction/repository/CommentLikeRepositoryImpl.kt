@@ -46,6 +46,7 @@ class CommentLikeRepositoryImpl(
         val commentIdStr = commentId.toString()
 
         // JOOQ의 type-safe API로 INSERT 쿼리 생성
+        // MySQL R2DBC는 단일 자동 생성 값만 지원하므로, ID만 반환하고 나머지는 메모리에서 구성
         return Mono.from(
             dslContext
                 .insertInto(USER_COMMENT_LIKES)
@@ -56,26 +57,17 @@ class CommentLikeRepositoryImpl(
                 .set(USER_COMMENT_LIKES.UPDATED_AT, now)
                 .set(USER_COMMENT_LIKES.UPDATED_BY, userIdStr)
                 .set(USER_COMMENT_LIKES.DELETED_AT_UNIX, 0L)
-                .returningResult(
-                    USER_COMMENT_LIKES.ID,
-                    USER_COMMENT_LIKES.USER_ID,
-                    USER_COMMENT_LIKES.COMMENT_ID,
-                    USER_COMMENT_LIKES.CREATED_AT,
-                    USER_COMMENT_LIKES.CREATED_BY,
-                    USER_COMMENT_LIKES.UPDATED_AT,
-                    USER_COMMENT_LIKES.UPDATED_BY,
-                    USER_COMMENT_LIKES.DELETED_AT
-                )
+                .returningResult(USER_COMMENT_LIKES.ID)
         ).map { record ->
             CommentLike(
                 id = record.getValue(USER_COMMENT_LIKES.ID),
-                userId = UUID.fromString(record.getValue(USER_COMMENT_LIKES.USER_ID)),
-                commentId = UUID.fromString(record.getValue(USER_COMMENT_LIKES.COMMENT_ID)),
-                createdAt = record.getValue(USER_COMMENT_LIKES.CREATED_AT)!!,
-                createdBy = record.getValue(USER_COMMENT_LIKES.CREATED_BY),
-                updatedAt = record.getValue(USER_COMMENT_LIKES.UPDATED_AT)!!,
-                updatedBy = record.getValue(USER_COMMENT_LIKES.UPDATED_BY),
-                deletedAt = record.getValue(USER_COMMENT_LIKES.DELETED_AT)
+                userId = userId,
+                commentId = commentId,
+                createdAt = now,
+                createdBy = userIdStr,
+                updatedAt = now,
+                updatedBy = userIdStr,
+                deletedAt = null
             )
         }
     }

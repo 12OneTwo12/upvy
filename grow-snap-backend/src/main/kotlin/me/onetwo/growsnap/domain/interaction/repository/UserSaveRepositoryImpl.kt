@@ -46,6 +46,7 @@ class UserSaveRepositoryImpl(
         val contentIdStr = contentId.toString()
 
         // JOOQ의 type-safe API로 INSERT 쿼리 생성
+        // MySQL R2DBC는 단일 자동 생성 값만 지원하므로, ID만 반환하고 나머지는 메모리에서 구성
         return Mono.from(
             dslContext
                 .insertInto(USER_SAVES)
@@ -56,26 +57,17 @@ class UserSaveRepositoryImpl(
                 .set(USER_SAVES.UPDATED_AT, now)
                 .set(USER_SAVES.UPDATED_BY, userIdStr)
                 .set(USER_SAVES.DELETED_AT_UNIX, 0L)
-                .returningResult(
-                    USER_SAVES.ID,
-                    USER_SAVES.USER_ID,
-                    USER_SAVES.CONTENT_ID,
-                    USER_SAVES.CREATED_AT,
-                    USER_SAVES.CREATED_BY,
-                    USER_SAVES.UPDATED_AT,
-                    USER_SAVES.UPDATED_BY,
-                    USER_SAVES.DELETED_AT
-                )
+                .returningResult(USER_SAVES.ID)
         ).map { record ->
             UserSave(
                 id = record.getValue(USER_SAVES.ID),
-                userId = UUID.fromString(record.getValue(USER_SAVES.USER_ID)),
-                contentId = UUID.fromString(record.getValue(USER_SAVES.CONTENT_ID)),
-                createdAt = record.getValue(USER_SAVES.CREATED_AT)!!,
-                createdBy = record.getValue(USER_SAVES.CREATED_BY),
-                updatedAt = record.getValue(USER_SAVES.UPDATED_AT)!!,
-                updatedBy = record.getValue(USER_SAVES.UPDATED_BY),
-                deletedAt = record.getValue(USER_SAVES.DELETED_AT)
+                userId = userId,
+                contentId = contentId,
+                createdAt = now,
+                createdBy = userIdStr,
+                updatedAt = now,
+                updatedBy = userIdStr,
+                deletedAt = null
             )
         }
     }
