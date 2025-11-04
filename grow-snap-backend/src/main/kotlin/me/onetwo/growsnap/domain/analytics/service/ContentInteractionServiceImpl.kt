@@ -88,4 +88,14 @@ class ContentInteractionServiceImpl(
     override fun decrementCommentCount(contentId: UUID): Mono<Void> {
         return contentInteractionRepository.decrementCommentCount(contentId)
     }
+
+    @Transactional
+    override fun incrementShareCount(contentId: UUID): Mono<Void> {
+        return contentInteractionRepository.incrementShareCount(contentId)
+    }
+
+    @Transactional
+    override fun decrementShareCount(contentId: UUID): Mono<Void> {
+        return contentInteractionRepository.decrementShareCount(contentId)
+    }
 }

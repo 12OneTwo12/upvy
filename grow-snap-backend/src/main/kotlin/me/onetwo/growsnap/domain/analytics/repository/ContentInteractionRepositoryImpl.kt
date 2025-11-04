@@ -152,6 +152,19 @@ class ContentInteractionRepositoryImpl(
     }
 
     /**
+     * 공유 수 감소
+     *
+     * share_count를 1 감소시키고, updated_at을 갱신합니다.
+     * 0 미만으로 내려가지 않도록 보장합니다.
+     *
+     * @param contentId 콘텐츠 ID
+     * @return 업데이트 완료 신호
+     */
+    override fun decrementShareCount(contentId: UUID): Mono<Void> {
+        return decrementCount(contentId, CONTENT_INTERACTIONS.SHARE_COUNT)
+    }
+
+    /**
      * 좋아요 수 조회
      *
      * @param contentId 콘텐츠 ID

@@ -67,4 +67,20 @@ interface ContentInteractionService {
      * @return Void
      */
     fun decrementCommentCount(contentId: UUID): Mono<Void>
+
+    /**
+     * 공유 카운트 증가
+     *
+     * @param contentId 콘텐츠 ID
+     * @return Void
+     */
+    fun incrementShareCount(contentId: UUID): Mono<Void>
+
+    /**
+     * 공유 카운트 감소
+     *
+     * @param contentId 콘텐츠 ID
+     * @return Void
+     */
+    fun decrementShareCount(contentId: UUID): Mono<Void>
 }

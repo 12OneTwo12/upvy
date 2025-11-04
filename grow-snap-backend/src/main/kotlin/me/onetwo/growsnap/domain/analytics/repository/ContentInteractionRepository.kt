@@ -87,6 +87,14 @@ interface ContentInteractionRepository {
     fun decrementCommentCount(contentId: UUID): Mono<Void>
 
     /**
+     * 공유 수 감소
+     *
+     * @param contentId 콘텐츠 ID
+     * @return 업데이트 완료 신호
+     */
+    fun decrementShareCount(contentId: UUID): Mono<Void>
+
+    /**
      * 좋아요 수 조회
      *
      * @param contentId 콘텐츠 ID
