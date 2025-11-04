@@ -45,6 +45,7 @@ class ContentServiceImpl(
     private val uploadSessionRepository: me.onetwo.growsnap.domain.content.repository.UploadSessionRepository,
     private val s3Client: software.amazon.awssdk.services.s3.S3Client,
     private val eventPublisher: ReactiveEventPublisher,
+    private val contentInteractionService: me.onetwo.growsnap.domain.analytics.service.ContentInteractionService,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -196,19 +197,21 @@ class ContentServiceImpl(
                 Mono.empty()
             }
 
-            photoSaveMono.then(
-                Mono.fromCallable {
-                    // 7. Redis에서 업로드 세션 삭제 (1회성 토큰)
-                    uploadSessionRepository.deleteById(request.contentId)
-                    logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
+            photoSaveMono
+                .then(contentInteractionService.createContentInteraction(savedContent.id!!, userId))
+                .then(
+                    Mono.fromCallable {
+                        // 7. Redis에서 업로드 세션 삭제 (1회성 토큰)
+                        uploadSessionRepository.deleteById(request.contentId)
+                        logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
 
-                    ContentCreationResult(
-                        content = savedContent,
-                        metadata = savedMetadata,
-                        contentId = savedContent.id!!
-                    )
-                }
-            )
+                        ContentCreationResult(
+                            content = savedContent,
+                            metadata = savedMetadata,
+                            contentId = savedContent.id!!
+                        )
+                    }
+                )
         }.map { result ->
             // PHOTO 타입인 경우 사진 목록 (이미 저장된 request.photoUrls 사용)
             val photoUrls = if (result.content.contentType == ContentType.PHOTO) {

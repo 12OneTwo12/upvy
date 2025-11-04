@@ -61,6 +61,9 @@ class ContentServiceImplTest {
     @MockK
     private lateinit var eventPublisher: ReactiveEventPublisher
 
+    @MockK
+    private lateinit var contentInteractionService: me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
+
     private lateinit var contentService: ContentServiceImpl
 
     @BeforeEach
@@ -71,9 +74,10 @@ class ContentServiceImplTest {
             contentPhotoRepository = contentPhotoRepository,
             uploadSessionRepository = uploadSessionRepository,
             s3Client = s3Client,
+            eventPublisher = eventPublisher,
+            contentInteractionService = contentInteractionService,
             bucketName = "test-bucket",
-            region = "ap-northeast-2",
-            eventPublisher = eventPublisher
+            region = "ap-northeast-2"
         )
     }
 
@@ -197,6 +201,9 @@ class ContentServiceImplTest {
             // Mock Redis: 세션 삭제
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
 
+            // Mock ContentInteractionService
+            every { contentInteractionService.createContentInteraction(contentId, userId) } returns Mono.empty()
+
             // Mock Event Publisher
             justRun { eventPublisher.publish(any()) }
 
@@ -293,6 +300,7 @@ class ContentServiceImplTest {
             every { contentRepository.save(any()) } returns Mono.just(savedContent)
             every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
             every { contentPhotoRepository.save(any()) } returns Mono.empty()
+            every { contentInteractionService.createContentInteraction(contentId, userId) } returns Mono.empty()
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
             justRun { eventPublisher.publish(any()) }
 
