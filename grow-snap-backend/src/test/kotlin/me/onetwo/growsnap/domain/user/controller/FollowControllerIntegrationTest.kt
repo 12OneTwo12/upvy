@@ -85,6 +85,63 @@ class FollowControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("자기 자신 팔로우 시, 400 Bad Request를 반환한다")
+    fun follow_SelfFollow_ThrowsException() {
+        // Given: 사용자 생성
+        val (user, _) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "test@example.com",
+            providerId = "google-123"
+        )
+
+        // When & Then: 자기 자신 팔로우 시도
+        webTestClient
+            .mutateWith(mockUser(user.id!!))
+            .post()
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", user.id!!.toString())
+            .exchange()
+            .expectStatus().isBadRequest
+    }
+
+    @Test
+    @DisplayName("이미 팔로우 중인 사용자를 다시 팔로우 시, 409 Conflict를 반환한다")
+    fun follow_AlreadyFollowing_ThrowsException() {
+        // Given: 두 사용자 생성 및 팔로우
+        val (follower, _) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "follower@example.com",
+            providerId = "google-follower",
+            nickname = "follower${System.currentTimeMillis() % 100000}"
+        )
+
+        val (following, _) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "following@example.com",
+            providerId = "google-following",
+            nickname = "following${System.currentTimeMillis() % 100000}"
+        )
+
+        // 첫 번째 팔로우
+        webTestClient
+            .mutateWith(mockUser(follower.id!!))
+            .post()
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", following.id!!.toString())
+            .exchange()
+            .expectStatus().isCreated
+
+        // When & Then: 이미 팔로우 중인 사용자를 다시 팔로우 시도
+        webTestClient
+            .mutateWith(mockUser(follower.id!!))
+            .post()
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", following.id!!.toString())
+            .exchange()
+            .expectStatus().is4xxClientError // 409 Conflict
+    }
+
+    @Test
     @DisplayName("언팔로우 성공")
     fun unfollow_Success() {
         // Given: 두 사용자 생성 및 팔로우
@@ -125,6 +182,35 @@ class FollowControllerIntegrationTest {
             val exists = followRepository.existsByFollowerIdAndFollowingId(follower.id!!, following.id!!).block()!!
             assertThat(exists).isFalse
         }
+    }
+
+    @Test
+    @DisplayName("팔로우하지 않은 사용자를 언팔로우 시, 404 Not Found를 반환한다")
+    fun unfollow_NotFollowing_ThrowsException() {
+        // Given: 두 사용자 생성 (팔로우 관계 없음)
+        val (follower, _) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "follower@example.com",
+            providerId = "google-follower",
+            nickname = "follower${System.currentTimeMillis() % 100000}"
+        )
+
+        val (notFollowing, _) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "notfollowing@example.com",
+            providerId = "google-notfollowing",
+            nickname = "notfollowing${System.currentTimeMillis() % 100000}"
+        )
+
+        // When & Then: 팔로우하지 않은 사용자 언팔로우 시도
+        webTestClient
+            .mutateWith(mockUser(follower.id!!))
+            .delete()
+            .uri("${ApiPaths.API_V1_FOLLOWS}/{followingId}", notFollowing.id!!.toString())
+            .exchange()
+            .expectStatus().isNotFound
     }
 
     @Test
@@ -269,6 +355,28 @@ class FollowControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("팔로워가 없으면, 빈 배열을 반환한다")
+    fun getFollowers_NoFollowers_ReturnsEmptyList() {
+        // Given: 팔로워가 없는 사용자 생성
+        val (user, _) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "test@example.com",
+            providerId = "google-123"
+        )
+
+        // When & Then: 팔로워 목록 조회 - 빈 배열 반환
+        webTestClient
+            .mutateWith(mockUser(user.id!!))
+            .get()
+            .uri("${ApiPaths.API_V1_FOLLOWS}/followers/{userId}", user.id!!.toString())
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .json("[]")
+    }
+
+    @Test
     @DisplayName("팔로잉 목록 조회")
     fun getFollowing_Success() {
         // Given: 사용자 생성
@@ -288,5 +396,27 @@ class FollowControllerIntegrationTest {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$").isArray
+    }
+
+    @Test
+    @DisplayName("팔로잉이 없으면, 빈 배열을 반환한다")
+    fun getFollowing_NoFollowing_ReturnsEmptyList() {
+        // Given: 팔로잉이 없는 사용자 생성
+        val (user, _) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "test@example.com",
+            providerId = "google-123"
+        )
+
+        // When & Then: 팔로잉 목록 조회 - 빈 배열 반환
+        webTestClient
+            .mutateWith(mockUser(user.id!!))
+            .get()
+            .uri("${ApiPaths.API_V1_FOLLOWS}/following/{userId}", user.id!!.toString())
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .json("[]")
     }
 }

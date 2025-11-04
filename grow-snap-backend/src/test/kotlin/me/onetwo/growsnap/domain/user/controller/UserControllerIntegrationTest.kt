@@ -14,6 +14,7 @@ import org.awaitility.kotlin.await
 import org.awaitility.kotlin.untilAsserted
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
@@ -85,6 +86,20 @@ class UserControllerIntegrationTest {
             .expectBody()
             .jsonPath("$.id").isEqualTo(user.id!!.toString())
             .jsonPath("$.email").isEqualTo("test@example.com")
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사용자 조회 시, 404 Not Found를 반환한다")
+    fun getUserById_NotFound() {
+        // Given: 존재하지 않는 사용자 ID
+        val nonExistentUserId = UUID.randomUUID()
+
+        // When & Then: 존재하지 않는 사용자 조회 시도
+        webTestClient
+            .get()
+            .uri("${ApiPaths.API_V1_USERS}/{targetUserId}", nonExistentUserId.toString())
+            .exchange()
+            .expectStatus().isNotFound
     }
 
     @Test

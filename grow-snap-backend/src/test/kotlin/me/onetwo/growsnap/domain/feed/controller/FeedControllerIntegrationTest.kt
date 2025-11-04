@@ -1,7 +1,15 @@
 package me.onetwo.growsnap.domain.feed.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.domain.analytics.model.ContentInteraction
+import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.growsnap.domain.content.model.Category
+import me.onetwo.growsnap.domain.content.model.Content
+import me.onetwo.growsnap.domain.content.model.ContentStatus
+import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
+import me.onetwo.growsnap.domain.user.model.Follow
+import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
@@ -39,6 +47,12 @@ class FeedControllerIntegrationTest {
 
     @Autowired
     private lateinit var contentRepository: ContentRepository
+
+    @Autowired
+    private lateinit var contentInteractionRepository: ContentInteractionRepository
+
+    @Autowired
+    private lateinit var followRepository: FollowRepository
 
     @Nested
     @DisplayName("GET /api/v1/feed - 메인 피드 조회")
@@ -120,6 +134,70 @@ class FeedControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isUnauthorized
         }
+
+        @Test
+        @DisplayName("PHOTO 타입 콘텐츠 조회 시, photoUrls가 응답에 포함된다")
+        fun getMainFeed_WithPhotoContent_ReturnsPhotoUrls() {
+            // Given: 사용자와 PHOTO 타입 콘텐츠 생성
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            val photoContent = Content(
+                creatorId = user.id!!,
+                contentType = ContentType.PHOTO,
+                url = "https://example.com/photo1.jpg",
+                photoUrls = listOf(
+                    "https://example.com/photo1.jpg",
+                    "https://example.com/photo2.jpg",
+                    "https://example.com/photo3.jpg"
+                ),
+                thumbnailUrl = "https://example.com/photo-thumbnail.jpg",
+                duration = null,
+                width = 1080,
+                height = 1080,
+                status = ContentStatus.PUBLISHED,
+                title = "Test Photo Content",
+                description = "Test Photo Description",
+                category = Category.ART,
+                tags = listOf("test", "photo"),
+                language = "ko"
+            )
+            val savedPhotoContent = contentRepository.save(photoContent).block()!!
+
+            // ContentInteraction 초기화
+            contentInteractionRepository.save(
+                ContentInteraction(
+                    contentId = savedPhotoContent.id!!,
+                    likeCount = 0,
+                    commentCount = 0,
+                    shareCount = 0,
+                    saveCount = 0,
+                    viewCount = 0
+                )
+            ).block()
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .get()
+                .uri { uriBuilder ->
+                    uriBuilder.path(ApiPaths.API_V1_FEED)
+                        .queryParam("limit", 10)
+                        .build()
+                }
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].contentType").isEqualTo("PHOTO")
+                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].photoUrls").isArray
+                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].photoUrls.length()").isEqualTo(3)
+        }
     }
 
     @Nested
@@ -164,6 +242,87 @@ class FeedControllerIntegrationTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isUnauthorized
+        }
+
+        @Test
+        @DisplayName("팔로잉 피드에서 PHOTO 타입 콘텐츠 조회 시, photoUrls가 응답에 포함된다")
+        fun getFollowingFeed_WithPhotoContent_ReturnsPhotoUrls() {
+            // Given: 팔로워와 팔로잉 사용자 생성
+            val (follower, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "follower@example.com",
+                providerId = "google-follower"
+            )
+
+            val (following, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "following@example.com",
+                providerId = "google-following"
+            )
+
+            // 팔로우 관계 생성
+            followRepository.save(
+                Follow(
+                    followerId = follower.id!!,
+                    followingId = following.id!!
+                )
+            ).block()
+
+            // PHOTO 타입 콘텐츠 생성 (팔로잉한 사용자가 작성)
+            val photoContent = Content(
+                creatorId = following.id!!,
+                contentType = ContentType.PHOTO,
+                url = "https://example.com/photo1.jpg",
+                photoUrls = listOf(
+                    "https://example.com/photo1.jpg",
+                    "https://example.com/photo2.jpg",
+                    "https://example.com/photo3.jpg",
+                    "https://example.com/photo4.jpg"
+                ),
+                thumbnailUrl = "https://example.com/photo-thumbnail.jpg",
+                duration = null,
+                width = 1080,
+                height = 1350,
+                status = ContentStatus.PUBLISHED,
+                title = "Test Photo Content",
+                description = "Test Photo Description",
+                category = Category.PHOTOGRAPHY,
+                tags = listOf("test", "photo", "following"),
+                language = "ko"
+            )
+            val savedPhotoContent = contentRepository.save(photoContent).block()!!
+
+            // ContentInteraction 초기화
+            contentInteractionRepository.save(
+                ContentInteraction(
+                    contentId = savedPhotoContent.id!!,
+                    likeCount = 0,
+                    commentCount = 0,
+                    shareCount = 0,
+                    saveCount = 0,
+                    viewCount = 0
+                )
+            ).block()
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(follower.id!!))
+                .get()
+                .uri { uriBuilder ->
+                    uriBuilder.path("${ApiPaths.API_V1_FEED}/following")
+                        .queryParam("limit", 10)
+                        .build()
+                }
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].contentType").isEqualTo("PHOTO")
+                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].photoUrls").isArray
+                .jsonPath("$.content[?(@.contentId == '${savedPhotoContent.id}')].photoUrls.length()").isEqualTo(4)
         }
     }
 

@@ -13,6 +13,7 @@ import me.onetwo.growsnap.util.mockUser
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import java.util.UUID
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
@@ -107,6 +108,20 @@ class UserProfileControllerIntegrationTest {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.nickname").isEqualTo(profile.nickname)
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 프로필 조회 시, 404 Not Found를 반환한다")
+    fun getProfile_NotFound() {
+        // Given: 존재하지 않는 사용자 ID
+        val nonExistentUserId = UUID.randomUUID()
+
+        // When & Then: 존재하지 않는 프로필 조회 시도
+        webTestClient
+            .get()
+            .uri("${ApiPaths.API_V1_PROFILES}/{targetUserId}", nonExistentUserId.toString())
+            .exchange()
+            .expectStatus().isNotFound
     }
 
     @Test

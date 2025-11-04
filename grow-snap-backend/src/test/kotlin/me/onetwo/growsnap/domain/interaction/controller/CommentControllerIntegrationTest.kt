@@ -274,6 +274,134 @@ class CommentControllerIntegrationTest {
     }
 
     @Nested
+    @DisplayName("GET /api/v1/comments/{commentId}/replies - 대댓글 목록 조회")
+    inner class GetReplies {
+
+        @Test
+        @DisplayName("대댓글 목록을 페이징하여 조회하면, 대댓글 목록이 반환된다")
+        fun getReplies_WithPagination_ReturnsCommentListResponse() {
+            // Given: 사용자, 콘텐츠, 부모 댓글, 대댓글 생성
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            val content = createContent(
+                contentRepository,
+                creatorId = user.id!!,
+                contentInteractionRepository = contentInteractionRepository
+            )
+
+            // 부모 댓글 작성
+            val parentRequest = CommentRequest(
+                content = "Parent comment",
+                parentCommentId = null
+            )
+
+            val parentCommentId = webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .post()
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/comments", content.id!!.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(parentRequest)
+                .exchange()
+                .expectStatus().isCreated
+                .expectBody()
+                .jsonPath("$.id").exists()
+                .returnResult()
+                .responseBody?.let { String(it) }
+                ?.let { it.substringAfter("\"id\":\"").substringBefore("\"") }
+
+            // 대댓글 여러 개 작성
+            for (i in 1..3) {
+                val replyRequest = CommentRequest(
+                    content = "Reply comment $i",
+                    parentCommentId = parentCommentId
+                )
+
+                webTestClient
+                    .mutateWith(mockUser(user.id!!))
+                    .post()
+                    .uri("${ApiPaths.API_V1}/contents/{contentId}/comments", content.id!!.toString())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(replyRequest)
+                    .exchange()
+                    .expectStatus().isCreated
+            }
+
+            // When & Then: 대댓글 목록 조회
+            webTestClient
+                .get()
+                .uri { uriBuilder ->
+                    uriBuilder.path("${ApiPaths.API_V1}/comments/{commentId}/replies")
+                        .queryParam("limit", 10)
+                        .build(parentCommentId)
+                }
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.comments").isArray
+                .jsonPath("$.comments.length()").isEqualTo(3)
+                .jsonPath("$.hasNext").isBoolean
+        }
+
+        @Test
+        @DisplayName("대댓글이 없으면, 빈 comments 배열을 반환한다")
+        fun getReplies_WithNoReplies_ReturnsEmptyList() {
+            // Given: 사용자, 콘텐츠, 부모 댓글만 생성 (대댓글 없음)
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            val content = createContent(
+                contentRepository,
+                creatorId = user.id!!,
+                contentInteractionRepository = contentInteractionRepository
+            )
+
+            // 부모 댓글만 작성
+            val parentRequest = CommentRequest(
+                content = "Parent comment",
+                parentCommentId = null
+            )
+
+            val parentCommentId = webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .post()
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/comments", content.id!!.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(parentRequest)
+                .exchange()
+                .expectStatus().isCreated
+                .expectBody()
+                .jsonPath("$.id").exists()
+                .returnResult()
+                .responseBody?.let { String(it) }
+                ?.let { it.substringAfter("\"id\":\"").substringBefore("\"") }
+
+            // When & Then: 대댓글 목록 조회 - 빈 배열 반환
+            webTestClient
+                .get()
+                .uri { uriBuilder ->
+                    uriBuilder.path("${ApiPaths.API_V1}/comments/{commentId}/replies")
+                        .queryParam("limit", 10)
+                        .build(parentCommentId)
+                }
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.comments").isArray
+                .jsonPath("$.comments.length()").isEqualTo(0)
+                .jsonPath("$.hasNext").isEqualTo(false)
+        }
+    }
+
+    @Nested
     @DisplayName("DELETE /api/v1/comments/{commentId} - 댓글 삭제")
     inner class DeleteComment {
 
@@ -320,6 +448,81 @@ class CommentControllerIntegrationTest {
                 .uri("${ApiPaths.API_V1}/comments/{commentId}", commentId)
                 .exchange()
                 .expectStatus().isNoContent
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 댓글 삭제 시, 404 Not Found를 반환한다")
+        fun deleteComment_NonExistentComment_ReturnsNotFound() {
+            // Given: 사용자만 생성 (댓글 없음)
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            val nonExistentCommentId = UUID.randomUUID().toString()
+
+            // When & Then: 존재하지 않는 댓글 삭제 시도
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .delete()
+                .uri("${ApiPaths.API_V1}/comments/{commentId}", nonExistentCommentId)
+                .exchange()
+                .expectStatus().isNotFound
+        }
+
+        @Test
+        @DisplayName("다른 사용자의 댓글 삭제 시, 403 Forbidden을 반환한다")
+        fun deleteComment_OthersComment_ReturnsForbidden() {
+            // Given: 두 명의 사용자와 콘텐츠 생성
+            val (commentAuthor, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "author@example.com",
+                providerId = "google-author"
+            )
+
+            val (otherUser, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "other@example.com",
+                providerId = "google-other"
+            )
+
+            val content = createContent(
+                contentRepository,
+                creatorId = commentAuthor.id!!,
+                contentInteractionRepository = contentInteractionRepository
+            )
+
+            // 첫 번째 사용자가 댓글 작성
+            val request = CommentRequest(
+                content = "Test comment",
+                parentCommentId = null
+            )
+
+            val commentId = webTestClient
+                .mutateWith(mockUser(commentAuthor.id!!))
+                .post()
+                .uri("${ApiPaths.API_V1}/contents/{contentId}/comments", content.id!!.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isCreated
+                .expectBody()
+                .jsonPath("$.id").exists()
+                .returnResult()
+                .responseBody?.let { String(it) }
+                ?.let { it.substringAfter("\"id\":\"").substringBefore("\"") }
+
+            // When & Then: 다른 사용자가 댓글 삭제 시도
+            webTestClient
+                .mutateWith(mockUser(otherUser.id!!))
+                .delete()
+                .uri("${ApiPaths.API_V1}/comments/{commentId}", commentId)
+                .exchange()
+                .expectStatus().isForbidden
         }
     }
 }
