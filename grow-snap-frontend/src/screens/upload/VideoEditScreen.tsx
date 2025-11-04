@@ -273,7 +273,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const trimStartPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // 최소 1px만 움직여도 드래그로 인식
+        return Math.abs(gestureState.dx) > 0 || Math.abs(gestureState.dy) > 0;
+      },
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderTerminationRequest: () => false,
@@ -299,6 +302,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         const newStart = Math.max(0, Math.min(trimEndRef.current - 1, initialTrimStart.current + deltaTime));
 
         setTrimStart(newStart);
+        console.log('🟢 Dragging - dx:', gestureState.dx.toFixed(1), 'newStart:', newStart.toFixed(2));
 
         // Throttle: 100ms마다 한 번만 seek
         const now = Date.now();
@@ -324,7 +328,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const trimEndPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // 최소 1px만 움직여도 드래그로 인식
+        return Math.abs(gestureState.dx) > 0 || Math.abs(gestureState.dy) > 0;
+      },
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderTerminationRequest: () => false,
@@ -353,6 +360,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         );
 
         setTrimEnd(newEnd);
+        console.log('🔵 Dragging - dx:', gestureState.dx.toFixed(1), 'newEnd:', newEnd.toFixed(2));
 
         // Throttle: 100ms마다 한 번만 seek
         const now = Date.now();
@@ -612,11 +620,12 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     {
                       left: `${(trimStart / duration) * 100}%`,
                       transform: [
-                        { translateX: -30 }, // 핸들 중앙 정렬 (width의 절반)
-                        ...(isDraggingStart ? [{ scale: 1.3 }] : []),
+                        { translateX: -40 }, // 핸들 중앙 정렬 (width 80의 절반)
+                        ...(isDraggingStart ? [{ scale: 1.2 }] : []),
                       ],
                     },
                   ]}
+                  pointerEvents="box-only"
                 >
                   <View style={[
                     styles.trimHandleBar,
@@ -636,11 +645,12 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     {
                       left: `${(trimEnd / duration) * 100}%`,
                       transform: [
-                        { translateX: -30 }, // 핸들 중앙 정렬 (width의 절반)
-                        ...(isDraggingEnd ? [{ scale: 1.3 }] : []),
+                        { translateX: -40 }, // 핸들 중앙 정렬 (width 80의 절반)
+                        ...(isDraggingEnd ? [{ scale: 1.2 }] : []),
                       ],
                     },
                   ]}
+                  pointerEvents="box-only"
                 >
                   <View style={[
                     styles.trimHandleBar,
@@ -908,27 +918,27 @@ const styles = StyleSheet.create({
   },
   trimHandle: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 60,
+    top: -10,
+    bottom: -10,
+    width: 80,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
   },
   trimHandleBar: {
-    width: 16,
+    width: 20,
     height: '100%',
     backgroundColor: theme.colors.primary[500],
-    borderRadius: 8,
-    borderWidth: 3,
+    borderRadius: 10,
+    borderWidth: 4,
     borderColor: theme.colors.text.inverse,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 15,
   },
   trimHandleActive: {
     backgroundColor: theme.colors.primary[600],
