@@ -19,11 +19,8 @@ spring:
       initial-size: 5
       max-size: 10
 
-  # Redis Configuration (Embedded Redis or TestContainers)
-  data:
-    redis:
-      host: localhost
-      port: 6379
+  # Redis Configuration is provided by @ServiceConnection in TestRedisConfig
+  # No explicit configuration needed - Testcontainers will provide dynamic host/port
 
   # SQL Initialization
   sql:

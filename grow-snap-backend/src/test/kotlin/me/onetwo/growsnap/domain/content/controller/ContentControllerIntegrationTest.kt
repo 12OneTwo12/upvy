@@ -3,7 +3,6 @@ package me.onetwo.growsnap.domain.content.controller
 import io.mockk.every
 import io.mockk.mockk
 import me.onetwo.growsnap.config.TestSecurityConfig
-import me.onetwo.growsnap.infrastructure.config.TestRedisConfig
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
@@ -16,11 +15,13 @@ import me.onetwo.growsnap.domain.content.model.ContentMetadata
 import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.content.model.UploadSession
 import me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
+import me.onetwo.growsnap.infrastructure.config.TestRedisConfig
 import me.onetwo.growsnap.util.createContent
 import me.onetwo.growsnap.util.createUserWithProfile
 import me.onetwo.growsnap.util.mockUser
@@ -72,11 +73,11 @@ class ContentControllerIntegrationTest {
         @Bean
         @Primary
         fun uploadSessionRepository(): UploadSessionRepository {
-            val storage = mutableMapOf<String, me.onetwo.growsnap.domain.content.model.UploadSession>()
+            val storage = mutableMapOf<String, UploadSession>()
             val mockRepo = mockk<UploadSessionRepository>()
 
             every { mockRepo.save(any()) } answers {
-                val session = firstArg<me.onetwo.growsnap.domain.content.model.UploadSession>()
+                val session = firstArg<UploadSession>()
                 storage[session.contentId] = session
                 session
             }
