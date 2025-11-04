@@ -379,7 +379,7 @@ import java.util.UUID
  *
  * ## 처리 흐름
  * 1. user_likes 저장 (트랜잭션 내)
- * 2. content_interactions 카운트 증가 (트랜잭션 내, 메인 체인) ← 즉시 반영!
+ * 2. content_interactions 카운트 증가 (트랜잭션 내, 메인 체인) ← 즉시 반영
  * 3. 이벤트 발행 (협업 필터링용)
  * 4. 응답 반환 (정확한 카운트 포함)
  * 5. [비동기] user_content_interactions 저장 (실패해도 OK)
@@ -420,7 +420,7 @@ class LikeServiceImpl(
                 } else {
                     userLikeRepository.save(userId, contentId)
                         .flatMap {
-                            // 카운트 증가를 메인 체인에 포함 ← 즉시 반영!
+                            // 카운트 증가를 메인 체인에 포함 ← 즉시 반영
                             contentInteractionService.incrementLikeCount(contentId)
                         }
                         .doOnSuccess {

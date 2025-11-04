@@ -110,7 +110,7 @@ class LikeServiceImpl(
     override fun likeContent(userId: UUID, contentId: UUID): Mono<LikeResponse> {
         return userLikeRepository.save(userId, contentId)
             .flatMap {
-                // 카운트 증가를 메인 체인에 포함 ← 즉시 반영!
+                // 카운트 증가를 메인 체인에 포함 ← 즉시 반영
                 contentInteractionService.incrementLikeCount(contentId)
             }
             .doOnSuccess {
