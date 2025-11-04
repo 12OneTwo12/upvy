@@ -19,6 +19,7 @@ import java.time.Duration
  * - @DynamicPropertySource: 동적 포트를 확실하게 전달
  * - companion object: Kotlin에서 static 멤버를 정의하는 방법
  */
+@Suppress("UtilityClassWithPublicConstructor")
 abstract class AbstractIntegrationTest {
 
     companion object {
@@ -30,16 +31,20 @@ abstract class AbstractIntegrationTest {
          *
          * static으로 정의하여 테스트 클래스 간에 재사용됩니다.
          * 첫 번째 테스트 실행 시 한 번만 시작되고, 모든 테스트가 끝날 때 종료됩니다.
+         *
+         * lazy를 사용하여 @DynamicPropertySource가 실행되기 전에 확실히 초기화됩니다.
          */
         @JvmStatic
-        val redisContainer: GenericContainer<*> = GenericContainer(DockerImageName.parse("redis:7.4.1-alpine3.20"))
-            .withExposedPorts(REDIS_PORT)
-            .waitingFor(Wait.forListeningPort())
-            .withStartupTimeout(Duration.ofSeconds(60))
-            .apply {
-                start()
-                logger.info("Redis container started on {}:{}", host, getMappedPort(REDIS_PORT))
-            }
+        val redisContainer: GenericContainer<*> by lazy {
+            GenericContainer(DockerImageName.parse("redis:7.4.1-alpine3.20"))
+                .withExposedPorts(REDIS_PORT)
+                .waitingFor(Wait.forListeningPort())
+                .withStartupTimeout(Duration.ofSeconds(60))
+                .apply {
+                    start()
+                    logger.info("Redis container started on {}:{}", host, getMappedPort(REDIS_PORT))
+                }
+        }
 
         /**
          * Redis 연결 정보를 Spring 설정에 동적으로 주입
