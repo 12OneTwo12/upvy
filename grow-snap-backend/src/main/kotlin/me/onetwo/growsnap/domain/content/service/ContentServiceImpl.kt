@@ -17,9 +17,9 @@ import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
@@ -44,7 +44,7 @@ class ContentServiceImpl(
     private val contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository,
     private val uploadSessionRepository: me.onetwo.growsnap.domain.content.repository.UploadSessionRepository,
     private val s3Client: software.amazon.awssdk.services.s3.S3Client,
-    private val eventPublisher: ApplicationEventPublisher,
+    private val eventPublisher: ReactiveEventPublisher,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -244,8 +244,12 @@ class ContentServiceImpl(
         }.doOnSuccess { result ->
             logger.info("Content created successfully: contentId=${result.response.id}")
 
-            // ContentCreatedEvent 발행 - 전체 작업이 성공한 후에만 발행
-            eventPublisher.publishEvent(ContentCreatedEvent(result.contentId, userId))
+            eventPublisher.publish(
+                ContentCreatedEvent(
+                    contentId = result.contentId,
+                    creatorId = userId
+                )
+            )
             logger.info("ContentCreatedEvent published: contentId=${result.contentId}")
         }.map { result ->
             result.response

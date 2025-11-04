@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.justRun
 import io.mockk.verify
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
@@ -20,6 +21,7 @@ import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.model.UploadSession
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -57,7 +59,7 @@ class ContentServiceImplTest {
     private lateinit var s3Client: S3Client
 
     @MockK
-    private lateinit var eventPublisher: org.springframework.context.ApplicationEventPublisher
+    private lateinit var eventPublisher: ReactiveEventPublisher
 
     private lateinit var contentService: ContentServiceImpl
 
@@ -196,7 +198,7 @@ class ContentServiceImplTest {
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
 
             // Mock Event Publisher
-            every { eventPublisher.publishEvent(any<ContentCreatedEvent>()) } returns Unit
+            justRun { eventPublisher.publish(any()) }
 
             // When: 메서드 실행
             val result = contentService.createContent(userId, request)
@@ -216,7 +218,7 @@ class ContentServiceImplTest {
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
             verify(exactly = 1) { uploadSessionRepository.deleteById(contentId.toString()) }
-            verify(exactly = 1) { eventPublisher.publishEvent(any<ContentCreatedEvent>()) }
+            verify(exactly = 1) { eventPublisher.publish(any()) }
         }
 
         @Test
@@ -292,7 +294,7 @@ class ContentServiceImplTest {
             every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
             every { contentPhotoRepository.save(any()) } returns Mono.empty()
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
-            every { eventPublisher.publishEvent(any<ContentCreatedEvent>()) } returns Unit
+            justRun { eventPublisher.publish(any()) }
 
             // When: 메서드 실행
             val result = contentService.createContent(userId, request)
@@ -313,7 +315,7 @@ class ContentServiceImplTest {
             verify(exactly = 3) { contentPhotoRepository.save(any()) }
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
-            verify(exactly = 1) { eventPublisher.publishEvent(any<ContentCreatedEvent>()) }
+            verify(exactly = 1) { eventPublisher.publish(any()) }
         }
 
         @Test

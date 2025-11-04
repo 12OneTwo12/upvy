@@ -8,8 +8,8 @@ import me.onetwo.growsnap.domain.user.exception.NotFollowingException
 import me.onetwo.growsnap.domain.user.model.Follow
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
@@ -19,14 +19,11 @@ import java.util.UUID
 /**
  * 팔로우 관리 서비스 구현체
  *
- * 사용자 간 팔로우/언팔로우 관계를 관리하고, 팔로워/팔로잉 수를 업데이트합니다.
- * 팔로우 성공 시 Spring Event를 발행하여 비동기 알림 처리를 수행합니다.
- *
  * @property followRepository 팔로우 Repository
- * @property userService 사용자 서비스 (사용자 존재 여부 확인용)
- * @property userProfileService 사용자 프로필 서비스 (팔로워/팔로잉 수 업데이트용)
- * @property userProfileRepository 사용자 프로필 Repository (프로필 정보 조회용)
- * @property applicationEventPublisher Spring Event 발행자 (비동기 알림 처리용)
+ * @property userService 사용자 서비스
+ * @property userProfileService 사용자 프로필 서비스
+ * @property userProfileRepository 사용자 프로필 Repository
+ * @property eventPublisher Reactive 이벤트 발행자
  */
 @Service
 @Transactional(readOnly = true)
@@ -35,7 +32,7 @@ class FollowServiceImpl(
     private val userService: UserService,
     private val userProfileService: UserProfileService,
     private val userProfileRepository: UserProfileRepository,
-    private val applicationEventPublisher: ApplicationEventPublisher
+    private val eventPublisher: ReactiveEventPublisher
 ) : FollowService {
 
     /**
@@ -84,13 +81,12 @@ class FollowServiceImpl(
                     .thenReturn(savedFollow)
             }
             .doOnSuccess { savedFollow ->
-                // 팔로우 이벤트 발행 (트랜잭션 커밋 후 비동기 알림 처리)
                 logger.debug(
                     "Publishing FollowEvent: follower={}, following={}",
                     followerId,
                     followingId
                 )
-                applicationEventPublisher.publishEvent(
+                eventPublisher.publish(
                     FollowEvent(
                         followerId = followerId,
                         followingId = followingId

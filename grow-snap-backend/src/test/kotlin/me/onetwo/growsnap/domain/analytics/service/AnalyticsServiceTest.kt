@@ -11,13 +11,13 @@ import me.onetwo.growsnap.domain.analytics.dto.ViewEventRequest
 import me.onetwo.growsnap.domain.analytics.event.UserInteractionEvent
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.growsnap.domain.analytics.repository.UserViewHistoryRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.context.ApplicationEventPublisher
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.UUID
@@ -34,7 +34,7 @@ class AnalyticsServiceTest {
 
     private lateinit var userViewHistoryRepository: UserViewHistoryRepository
     private lateinit var contentInteractionRepository: ContentInteractionRepository
-    private lateinit var applicationEventPublisher: ApplicationEventPublisher
+    private lateinit var eventPublisher: ReactiveEventPublisher
     private lateinit var analyticsService: AnalyticsService
 
     private val userId = UUID.randomUUID()
@@ -44,11 +44,11 @@ class AnalyticsServiceTest {
     fun setUp() {
         userViewHistoryRepository = mockk()
         contentInteractionRepository = mockk()
-        applicationEventPublisher = mockk(relaxed = true)
+        eventPublisher = mockk(relaxed = true)
         analyticsService = AnalyticsServiceImpl(
             userViewHistoryRepository,
             contentInteractionRepository,
-            applicationEventPublisher
+            eventPublisher
         )
     }
 
@@ -175,7 +175,7 @@ class AnalyticsServiceTest {
             } returns Mono.empty()
 
             every {
-                applicationEventPublisher.publishEvent(capture(eventSlot))
+                eventPublisher.publish(capture(eventSlot))
             } returns Unit
 
             // When: 좋아요 이벤트 추적
@@ -190,7 +190,7 @@ class AnalyticsServiceTest {
             }
 
             verify(exactly = 1) {
-                applicationEventPublisher.publishEvent(any<UserInteractionEvent>())
+                eventPublisher.publish(any<UserInteractionEvent>())
             }
 
             assertThat(eventSlot.captured.userId).isEqualTo(userId)
@@ -214,7 +214,7 @@ class AnalyticsServiceTest {
             } returns Mono.empty()
 
             every {
-                applicationEventPublisher.publishEvent(capture(eventSlot))
+                eventPublisher.publish(capture(eventSlot))
             } returns Unit
 
             // When: 저장 이벤트 추적
@@ -229,7 +229,7 @@ class AnalyticsServiceTest {
             }
 
             verify(exactly = 1) {
-                applicationEventPublisher.publishEvent(any<UserInteractionEvent>())
+                eventPublisher.publish(any<UserInteractionEvent>())
             }
 
             assertThat(eventSlot.captured.userId).isEqualTo(userId)
@@ -253,7 +253,7 @@ class AnalyticsServiceTest {
             } returns Mono.empty()
 
             every {
-                applicationEventPublisher.publishEvent(capture(eventSlot))
+                eventPublisher.publish(capture(eventSlot))
             } returns Unit
 
             // When: 공유 이벤트 추적
@@ -268,7 +268,7 @@ class AnalyticsServiceTest {
             }
 
             verify(exactly = 1) {
-                applicationEventPublisher.publishEvent(any<UserInteractionEvent>())
+                eventPublisher.publish(any<UserInteractionEvent>())
             }
 
             assertThat(eventSlot.captured.userId).isEqualTo(userId)
@@ -301,7 +301,7 @@ class AnalyticsServiceTest {
             }
 
             verify(exactly = 0) {
-                applicationEventPublisher.publishEvent(any<UserInteractionEvent>())
+                eventPublisher.publish(any<UserInteractionEvent>())
             }
         }
     }

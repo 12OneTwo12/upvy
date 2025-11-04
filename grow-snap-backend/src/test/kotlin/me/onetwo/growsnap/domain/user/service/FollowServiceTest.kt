@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.user.service
 
 import io.mockk.every
+import io.mockk.justRun
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
@@ -17,13 +18,13 @@ import me.onetwo.growsnap.domain.user.model.UserProfile
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.context.ApplicationEventPublisher
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Flux
 
@@ -38,7 +39,7 @@ class FollowServiceTest {
     private lateinit var userService: UserService
     private lateinit var userProfileService: UserProfileService
     private lateinit var userProfileRepository: UserProfileRepository
-    private lateinit var applicationEventPublisher: ApplicationEventPublisher
+    private lateinit var eventPublisher: ReactiveEventPublisher
     private lateinit var followService: FollowService
 
     private lateinit var followerUser: User
@@ -52,13 +53,13 @@ class FollowServiceTest {
         userService = mockk()
         userProfileService = mockk()
         userProfileRepository = mockk()
-        applicationEventPublisher = mockk(relaxed = true)
+        eventPublisher = mockk(relaxed = true)
         followService = FollowServiceImpl(
             followRepository,
             userService,
             userProfileService,
             userProfileRepository,
-            applicationEventPublisher
+            eventPublisher
         )
 
         followerUser = User(
@@ -130,7 +131,7 @@ class FollowServiceTest {
         verify(exactly = 1) { userProfileService.incrementFollowingCount(followerId) }
         verify(exactly = 1) { userProfileService.incrementFollowerCount(followingId) }
         verify(exactly = 1) {
-            applicationEventPublisher.publishEvent(
+            eventPublisher.publish(
                 match<FollowEvent> { event ->
                     event.followerId == followerId && event.followingId == followingId
                 }
