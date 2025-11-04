@@ -1,7 +1,10 @@
 package me.onetwo.growsnap.domain.content.controller
 
+import io.mockk.every
+import io.mockk.mockk
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
@@ -27,20 +30,69 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse
 import java.util.UUID
+import java.util.function.Consumer
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(TestSecurityConfig::class)
+@Import(TestSecurityConfig::class, ContentControllerIntegrationTest.TestConfig::class)
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 Controller 통합 테스트")
 class ContentControllerIntegrationTest {
+
+    @TestConfiguration
+    class TestConfig {
+        /**
+         * 테스트용 S3Client Mock (이 테스트 클래스에서만 사용)
+         */
+        @Bean
+        @Primary
+        fun s3Client(): S3Client {
+            val mockClient = mockk<S3Client>(relaxed = true)
+            every { mockClient.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
+            return mockClient
+        }
+
+        /**
+         * 테스트용 UploadSessionRepository (In-Memory 구현체, 이 테스트 클래스에서만 사용)
+         */
+        @Bean
+        @Primary
+        fun uploadSessionRepository(): UploadSessionRepository {
+            val storage = mutableMapOf<String, me.onetwo.growsnap.domain.content.model.UploadSession>()
+            val mockRepo = mockk<UploadSessionRepository>()
+
+            every { mockRepo.save(any()) } answers {
+                val session = firstArg<me.onetwo.growsnap.domain.content.model.UploadSession>()
+                storage[session.contentId] = session
+                session
+            }
+
+            every { mockRepo.findById(any<String>()) } answers {
+                val id = firstArg<String>()
+                java.util.Optional.ofNullable(storage[id])
+            }
+
+            every { mockRepo.deleteById(any<String>()) } answers {
+                val id = firstArg<String>()
+                storage.remove(id)
+            }
+
+            return mockRepo
+        }
+    }
 
     @Autowired
     private lateinit var webTestClient: WebTestClient
@@ -89,7 +141,7 @@ class ContentControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
-                .expectStatus().isOk
+                .expectStatus().isCreated
                 .expectBody()
                 .jsonPath("$.contentId").isNotEmpty
                 .jsonPath("$.uploadUrl").isNotEmpty
@@ -126,7 +178,7 @@ class ContentControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(uploadUrlRequest)
                 .exchange()
-                .expectStatus().isOk
+                .expectStatus().isCreated
                 .expectBody()
                 .jsonPath("$.contentId").exists()
                 .returnResult()

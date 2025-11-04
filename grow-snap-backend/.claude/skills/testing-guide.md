@@ -71,7 +71,33 @@ webTestClient
     .expectStatus().isCreated
 ```
 
-## Controller 테스트 템플릿
+## Controller 테스트 개요
+
+**Controller는 단위 테스트(Unit Test)와 통합 테스트(Integration Test) 모두 작성해야 합니다.**
+
+### 단위 테스트 vs 통합 테스트
+
+| 구분 | 단위 테스트 | 통합 테스트 |
+|------|-----------|-----------|
+| **목적** | HTTP 요청/응답, Validation 검증 | 전체 스택 통합 검증 (Controller → Service → Repository → DB) |
+| **어노테이션** | `@WebFluxTest` | `@SpringBootTest` |
+| **Service 처리** | `@MockkBean`으로 모킹 | 실제 Service 사용 |
+| **데이터베이스** | 사용 안 함 | 실제 H2 DB 사용 |
+| **REST Docs** | ✅ **작성 필수** | ❌ 작성 안 함 |
+| **테스트 속도** | 빠름 | 상대적으로 느림 |
+| **검증 범위** | Controller 계층만 | Controller → Repository 전체 플로우 |
+
+### 왜 둘 다 작성하는가?
+
+1. **단위 테스트**: API 스펙, Validation, HTTP 상태 코드, REST Docs 생성
+2. **통합 테스트**: 실제 DB 연동, 트랜잭션, 전체 플로우 검증, 에러 핸들링
+
+**중요**:
+- ✅ **동일한 테스트 케이스**를 단위/통합 테스트 모두 작성 (테스트 시나리오 일관성)
+- ✅ **Spring REST Docs는 단위 테스트에만 작성** (빠른 문서 생성, 통합 테스트는 속도 저하)
+- ✅ **통합 테스트는 실제 DB를 사용**하여 전체 플로우 검증
+
+## Controller 단위 테스트 템플릿
 
 ```kotlin
 @WebFluxTest(VideoController::class)
@@ -139,7 +165,7 @@ class VideoControllerTest {
 }
 ```
 
-### Controller 테스트 체크리스트
+### Controller 단위 테스트 체크리스트
 
 - [ ] **@WebFluxTest**: 특정 Controller만 로드
 - [ ] **mockUser() 사용**: 인증된 사용자 모킹
@@ -148,6 +174,390 @@ class VideoControllerTest {
 - [ ] **DisplayName**: 한글로 명확한 시나리오 설명
 - [ ] **REST Docs**: document()로 API 문서 생성
 - [ ] **Validation 테스트**: 잘못된 요청에 대한 400 응답 검증
+
+## Controller 통합 테스트 템플릿
+
+**Controller 통합 테스트는 실제 데이터베이스를 사용하여 전체 플로우를 검증합니다.**
+
+### 템플릿 코드
+
+```kotlin
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureWebTestClient
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@Import(TestSecurityConfig::class, ContentControllerIntegrationTest.TestConfig::class)
+@ActiveProfiles("test")
+@DisplayName("콘텐츠 Controller 통합 테스트")
+class ContentControllerIntegrationTest {
+
+    @TestConfiguration
+    class TestConfig {
+        /**
+         * 테스트용 S3Client Mock (이 테스트 클래스에서만 사용)
+         */
+        @Bean
+        @Primary
+        fun s3Client(): S3Client {
+            val mockClient = mockk<S3Client>(relaxed = true)
+            every { mockClient.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns
+                HeadObjectResponse.builder().build()
+            return mockClient
+        }
+    }
+
+    @Autowired
+    private lateinit var webTestClient: WebTestClient
+
+    @Autowired
+    private lateinit var userRepository: UserRepository
+
+    @Autowired
+    private lateinit var userProfileRepository: UserProfileRepository
+
+    @Autowired
+    private lateinit var contentRepository: ContentRepository
+
+    @Nested
+    @DisplayName("POST /api/v1/contents - 콘텐츠 생성")
+    inner class CreateContent {
+
+        @Test
+        @DisplayName("유효한 요청으로 콘텐츠 생성 시, 201과 콘텐츠 정보를 반환한다")
+        fun createContent_WithValidRequest_Returns201AndContentInfo() {
+            // Given: 사용자 생성 (실제 DB에 저장)
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            // 콘텐츠 생성 요청
+            val request = ContentCreateRequest(
+                contentId = UUID.randomUUID().toString(),
+                title = "Test Video",
+                description = "Test Description",
+                category = Category.PROGRAMMING,
+                tags = listOf("test", "video"),
+                language = "ko",
+                thumbnailUrl = "https://example.com/thumbnail.jpg",
+                duration = 60,
+                width = 1920,
+                height = 1080
+            )
+
+            // When & Then: 콘텐츠 생성 및 검증
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .post()
+                .uri(ApiPaths.API_V1_CONTENTS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isCreated
+                .expectBody()
+                .jsonPath("$.id").isNotEmpty
+                .jsonPath("$.creatorId").isEqualTo(user.id!!.toString())
+                .jsonPath("$.title").isEqualTo("Test Video")
+                .jsonPath("$.contentType").isEqualTo("VIDEO")
+                .jsonPath("$.status").isEqualTo("PUBLISHED")
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/contents/{contentId} - 콘텐츠 조회")
+    inner class GetContent {
+
+        @Test
+        @DisplayName("존재하는 콘텐츠 조회 시, 200과 콘텐츠 정보를 반환한다")
+        fun getContent_WhenContentExists_Returns200AndContentInfo() {
+            // Given: 사용자와 콘텐츠 생성 (실제 DB)
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            val content = createContent(
+                contentRepository,
+                creatorId = user.id!!,
+                contentInteractionRepository = contentInteractionRepository
+            )
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .get()
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", content.id!!.toString())
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.id").isEqualTo(content.id!!.toString())
+                .jsonPath("$.creatorId").isEqualTo(user.id!!.toString())
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 콘텐츠 조회 시, 404를 반환한다")
+        fun getContent_WhenContentNotExists_Returns404() {
+            // Given: 존재하지 않는 contentId
+            val nonExistentId = UUID.randomUUID()
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .get()
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", nonExistentId.toString())
+                .exchange()
+                .expectStatus().isNotFound
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/v1/contents/{contentId} - 콘텐츠 삭제")
+    inner class DeleteContent {
+
+        @Test
+        @DisplayName("본인이 작성한 콘텐츠 삭제 시, 204를 반환한다")
+        fun deleteContent_WhenOwner_Returns204() {
+            // Given: 사용자와 콘텐츠 생성
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            val content = createContent(
+                contentRepository,
+                creatorId = user.id!!,
+                contentInteractionRepository = contentInteractionRepository
+            )
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .delete()
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", content.id!!.toString())
+                .exchange()
+                .expectStatus().isNoContent
+
+            // Then: 소프트 삭제 확인 (findById는 삭제된 콘텐츠를 반환하지 않음)
+            val deletedContent = contentRepository.findById(content.id!!).block()
+            assertThat(deletedContent).isNull()
+        }
+
+        @Test
+        @DisplayName("다른 사용자의 콘텐츠 삭제 시, 403을 반환한다")
+        fun deleteContent_WhenNotOwner_Returns403() {
+            // Given: 두 명의 사용자 생성
+            val (contentOwner, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "owner@example.com",
+                providerId = "google-owner"
+            )
+
+            val (otherUser, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "other@example.com",
+                providerId = "google-other"
+            )
+
+            // 첫 번째 사용자가 콘텐츠 생성
+            val content = createContent(
+                contentRepository,
+                creatorId = contentOwner.id!!,
+                contentInteractionRepository = contentInteractionRepository
+            )
+
+            // When & Then: 다른 사용자가 콘텐츠 삭제 시도
+            webTestClient
+                .mutateWith(mockUser(otherUser.id!!))
+                .delete()
+                .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", content.id!!.toString())
+                .exchange()
+                .expectStatus().isForbidden
+        }
+    }
+}
+```
+
+### Controller 통합 테스트 핵심 원칙
+
+#### 1. SpringBootTest 사용
+
+```kotlin
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureWebTestClient
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+```
+
+- `@SpringBootTest`: 전체 Spring 컨텍스트 로드 (실제 Service, Repository 사용)
+- `webEnvironment = RANDOM_PORT`: 랜덤 포트로 실제 서버 시작
+- `@AutoConfigureWebTestClient`: WebTestClient 자동 구성
+- `@DirtiesContext`: 각 테스트 후 컨텍스트 초기화 (테스트 격리)
+
+#### 2. 실제 데이터베이스 사용
+
+```kotlin
+// ✅ GOOD: 실제 Repository 주입 및 사용
+@Autowired
+private lateinit var userRepository: UserRepository
+
+@Autowired
+private lateinit var contentRepository: ContentRepository
+
+// Given: 실제 DB에 데이터 저장
+val user = userRepository.save(testUser).block()!!
+val content = contentRepository.save(testContent).block()!!
+```
+
+**주의**:
+- ❌ Service 모킹 금지 (`@MockkBean` 사용 안 함)
+- ✅ 실제 Repository 사용하여 데이터 준비
+- ✅ 전체 플로우 검증 (Controller → Service → Repository → DB)
+
+#### 3. REST Docs 작성 금지
+
+```kotlin
+// ❌ BAD: 통합 테스트에서 REST Docs 작성 금지
+webTestClient
+    .post()
+    .uri("/api/v1/contents")
+    .exchange()
+    .expectStatus().isCreated
+    .consumeWith(
+        document("content-create")  // ❌ 통합 테스트에서는 작성하지 않음
+    )
+
+// ✅ GOOD: 통합 테스트는 응답 검증만
+webTestClient
+    .post()
+    .uri("/api/v1/contents")
+    .exchange()
+    .expectStatus().isCreated
+    .expectBody()
+    .jsonPath("$.id").isNotEmpty
+```
+
+**왜 통합 테스트에서는 REST Docs를 작성하지 않는가?**
+- 통합 테스트는 실제 DB를 사용하므로 속도가 느림
+- REST Docs는 단위 테스트에서 빠르게 생성하는 것이 효율적
+- 중복 문서 생성 방지
+
+#### 4. 테스트 데이터 준비 헬퍼 함수
+
+```kotlin
+// ✅ GOOD: 헬퍼 함수로 테스트 데이터 생성
+val (user, profile) = createUserWithProfile(
+    userRepository,
+    userProfileRepository,
+    email = "test@example.com",
+    providerId = "google-123"
+)
+
+val content = createContent(
+    contentRepository,
+    creatorId = user.id!!,
+    contentInteractionRepository = contentInteractionRepository
+)
+```
+
+**위치**: `src/test/kotlin/me/onetwo/growsnap/util/TestDataHelpers.kt`
+
+#### 5. 동일한 테스트 케이스 작성
+
+**단위 테스트 (ContentControllerTest.kt)**와 **통합 테스트 (ContentControllerIntegrationTest.kt)**는 동일한 테스트 케이스를 포함해야 합니다.
+
+| 테스트 케이스 | 단위 테스트 | 통합 테스트 |
+|--------------|-----------|-----------|
+| POST /api/v1/contents - 유효한 요청 | ✅ | ✅ |
+| GET /api/v1/contents/{id} - 존재하는 콘텐츠 | ✅ | ✅ |
+| GET /api/v1/contents/{id} - 존재하지 않는 콘텐츠 | ✅ | ✅ |
+| DELETE /api/v1/contents/{id} - 본인 삭제 | ✅ | ✅ |
+| DELETE /api/v1/contents/{id} - 타인 삭제 (403) | ✅ | ✅ |
+
+**예시**:
+
+**단위 테스트 (ContentControllerTest.kt)**:
+```kotlin
+@Test
+@DisplayName("존재하는 콘텐츠 조회 시, 200과 콘텐츠 정보를 반환한다")
+fun getContent_WhenContentExists_Returns200AndContentInfo() {
+    // Given: Service 모킹
+    val contentId = UUID.randomUUID()
+    val response = ContentResponse(/* ... */)
+    every { contentService.getContent(contentId) } returns Mono.just(response)
+
+    // When & Then: API 호출 및 REST Docs 생성
+    webTestClient
+        .get()
+        .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", contentId)
+        .exchange()
+        .expectStatus().isOk
+        .expectBody()
+        .jsonPath("$.id").isEqualTo(contentId.toString())
+        .consumeWith(
+            document("content-get",
+                pathParameters(
+                    parameterWithName("contentId").description("콘텐츠 ID")
+                ),
+                responseFields(/* ... */)
+            )
+        )
+}
+```
+
+**통합 테스트 (ContentControllerIntegrationTest.kt)**:
+```kotlin
+@Test
+@DisplayName("존재하는 콘텐츠 조회 시, 200과 콘텐츠 정보를 반환한다")
+fun getContent_WhenContentExists_Returns200AndContentInfo() {
+    // Given: 실제 DB에 데이터 생성
+    val (user, _) = createUserWithProfile(
+        userRepository,
+        userProfileRepository,
+        email = "test@example.com",
+        providerId = "google-123"
+    )
+
+    val content = createContent(
+        contentRepository,
+        creatorId = user.id!!,
+        contentInteractionRepository = contentInteractionRepository
+    )
+
+    // When & Then: API 호출 및 검증 (REST Docs 없음)
+    webTestClient
+        .get()
+        .uri("${ApiPaths.API_V1_CONTENTS}/{contentId}", content.id!!.toString())
+        .exchange()
+        .expectStatus().isOk
+        .expectBody()
+        .jsonPath("$.id").isEqualTo(content.id!!.toString())
+        .jsonPath("$.creatorId").isEqualTo(user.id!!.toString())
+}
+```
+
+**차이점**:
+- **단위 테스트**: Service 모킹, REST Docs 생성
+- **통합 테스트**: 실제 DB 사용, REST Docs 없음
+- **공통점**: 동일한 테스트 시나리오, 동일한 DisplayName
+
+### Controller 통합 테스트 체크리스트
+
+**모든 Controller는 반드시 다음을 통합 테스트해야 합니다:**
+
+- [ ] **@SpringBootTest**: 전체 Spring 컨텍스트 로드
+- [ ] **실제 DB 사용**: Service, Repository 모킹 금지
+- [ ] **@DirtiesContext**: 각 테스트 후 컨텍스트 초기화
+- [ ] **mockUser() 사용**: 인증된 사용자 모킹
+- [ ] **Given-When-Then**: 명확한 테스트 구조
+- [ ] **DisplayName**: 한글로 명확한 시나리오 설명
+- [ ] **REST Docs 작성 금지**: 단위 테스트에서만 작성
+- [ ] **동일한 테스트 케이스**: 단위 테스트와 동일한 시나리오
+- [ ] **헬퍼 함수 활용**: createUserWithProfile(), createContent() 등 사용
+- [ ] **전체 플로우 검증**: Controller → Service → Repository → DB
 
 ## Service 테스트 템플릿 (Reactive)
 
@@ -544,9 +954,11 @@ val user3 = repository.save(user3).block()!!
 
 ### 모든 기능 구현 시 필수
 
-- [ ] **Controller 테스트**: HTTP 요청/응답, Validation, REST Docs
-- [ ] **Service 테스트**: 비즈니스 로직, 예외 처리
+- [ ] **Controller 단위 테스트**: HTTP 요청/응답, Validation, REST Docs, Service 모킹
+- [ ] **Controller 통합 테스트**: 전체 플로우 검증, 실제 DB 사용, REST Docs 없음
+- [ ] **Service 테스트**: 비즈니스 로직, 예외 처리, Repository 모킹
 - [ ] **Repository 테스트**: 데이터베이스 CRUD, Soft Delete, Audit Trail
+- [ ] **동일한 테스트 케이스**: Controller 단위/통합 테스트는 동일한 시나리오 포함
 - [ ] **Given-When-Then**: 모든 테스트에 명시적으로 작성
 - [ ] **DisplayName**: 한글로 명확한 시나리오 설명
 - [ ] **빌드/테스트 통과**: 모든 테스트가 통과해야 작업 완료

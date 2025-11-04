@@ -5,19 +5,15 @@ import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.infrastructure.redis.RefreshTokenRepository
 import me.onetwo.growsnap.infrastructure.security.config.PublicApiPaths
 import me.onetwo.growsnap.infrastructure.security.jwt.JwtTokenProvider
-import me.onetwo.growsnap.infrastructure.security.jwt.UuidJwtAuthenticationToken
 import me.onetwo.growsnap.infrastructure.security.oauth2.CustomReactiveOAuth2UserService
 import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthenticationFailureHandler
 import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
-import org.springframework.core.convert.converter.Converter
 import org.springframework.scheduling.annotation.EnableAsync
-import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
-import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder
 import org.springframework.security.web.server.SecurityWebFilterChain
 import reactor.core.publisher.Mono
@@ -55,7 +51,7 @@ class TestSecurityConfig {
     @Bean
     @Primary
     fun reactiveJwtDecoder(): ReactiveJwtDecoder {
-        return ReactiveJwtDecoder { token ->
+        return ReactiveJwtDecoder { _ ->
             Mono.error(IllegalStateException("JWT decoder should not be called in tests. Use mockJwt() instead."))
         }
     }

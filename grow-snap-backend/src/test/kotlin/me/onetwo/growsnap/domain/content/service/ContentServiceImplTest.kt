@@ -31,9 +31,11 @@ import reactor.test.StepVerifier
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import java.time.LocalDateTime
 import java.util.Optional
 import java.util.UUID
+import java.util.function.Consumer
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 Service 테스트")
@@ -184,7 +186,7 @@ class ContentServiceImplTest {
             every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
 
             // Mock S3: 파일 존재 확인
-            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
+            every { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
 
             // Mock Repository: 저장
             every { contentRepository.save(any()) } returns Mono.just(savedContent)
@@ -210,7 +212,7 @@ class ContentServiceImplTest {
                 .verifyComplete()
 
             verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
-            verify(exactly = 1) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 1) { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) }
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
             verify(exactly = 1) { uploadSessionRepository.deleteById(contentId.toString()) }
@@ -285,7 +287,7 @@ class ContentServiceImplTest {
 
             // Mock 설정
             every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
-            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
+            every { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
             every { contentRepository.save(any()) } returns Mono.just(savedContent)
             every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
             every { contentPhotoRepository.save(any()) } returns Mono.empty()
@@ -348,7 +350,7 @@ class ContentServiceImplTest {
                 .verify()
 
             verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
-            verify(exactly = 0) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 0) { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) }
         }
 
         @Test
@@ -396,7 +398,7 @@ class ContentServiceImplTest {
                 .verify()
 
             verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
-            verify(exactly = 0) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 0) { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) }
         }
 
         @Test
@@ -433,8 +435,8 @@ class ContentServiceImplTest {
             every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
 
             // Mock S3: 파일 없음 (NoSuchKeyException)
-            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } throws
-                software.amazon.awssdk.services.s3.model.NoSuchKeyException.builder()
+            every { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } throws
+                NoSuchKeyException.builder()
                     .message("The specified key does not exist.")
                     .build()
 
@@ -449,7 +451,7 @@ class ContentServiceImplTest {
                 .verify()
 
             verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
-            verify(exactly = 1) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 1) { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) }
             verify(exactly = 0) { contentRepository.save(any()) }
         }
     }

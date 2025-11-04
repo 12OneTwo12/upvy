@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -549,7 +550,7 @@ class ContentServiceImpl(
                 it.key(s3Key)
             }
             true
-        } catch (e: software.amazon.awssdk.services.s3.model.NoSuchKeyException) {
+        } catch (e: NoSuchKeyException) {
             logger.warn("S3 object not found: s3Key=$s3Key")
             false
         } catch (e: Exception) {
