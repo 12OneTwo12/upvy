@@ -144,7 +144,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         times.map(async (time) => {
           try {
             const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(uri, {
-              time: time * 1000, // 밀리초 단위
+              time: Math.floor(time * 1000), // 밀리초 단위 (정수로 변환)
               quality: 0.8,
             });
             console.log('🖼️ Thumbnail generated for time', time.toFixed(2), ':', thumbnailUri);
