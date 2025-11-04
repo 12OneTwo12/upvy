@@ -123,8 +123,8 @@ class ContentControllerIntegrationTest {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test-presigned-${UUID.randomUUID()}@example.com",
+                providerId = "google-presigned-${UUID.randomUUID()}"
             )
 
             val request = ContentUploadUrlRequest(
@@ -160,8 +160,8 @@ class ContentControllerIntegrationTest {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test-create-${UUID.randomUUID()}@example.com",
+                providerId = "google-create-${UUID.randomUUID()}"
             )
 
             // Presigned URL 생성 (콘텐츠 ID 얻기)
