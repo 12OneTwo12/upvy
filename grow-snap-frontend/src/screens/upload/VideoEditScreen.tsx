@@ -203,79 +203,88 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const initialTrimStart = useRef(0);
   const initialTrimEnd = useRef(0);
 
-  // 트리밍 시작 핸들 드래그
-  const trimStartPanResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
-        onMoveShouldSetPanResponderCapture: () => true,
-        onPanResponderTerminationRequest: () => false, // 다른 제스처가 제어권 가져가지 못하게
-        onShouldBlockNativeResponder: () => true, // 네이티브 이벤트 차단
-        onPanResponderGrant: () => {
-          console.log('🟢 Trim start handle - drag started');
-          initialTrimStart.current = trimStart;
-          setIsDraggingStart(true);
-        },
-        onPanResponderMove: (_, gestureState) => {
-          if (duration === 0) return;
+  // 최신 상태 값을 ref로 유지 (PanResponder 내에서 참조)
+  const trimStartRef = useRef(trimStart);
+  const trimEndRef = useRef(trimEnd);
+  const durationRef = useRef(duration);
+  const timelineWidthRef = useRef(timelineWidth);
 
-          // 타임라인 너비 기준으로 계산
-          const deltaTime = (gestureState.dx / timelineWidth) * duration;
-          const newStart = Math.max(0, Math.min(trimEnd - 1, initialTrimStart.current + deltaTime));
+  React.useEffect(() => {
+    trimStartRef.current = trimStart;
+  }, [trimStart]);
 
-          setTrimStart(newStart);
-        },
-        onPanResponderRelease: async () => {
-          console.log('🟢 Trim start handle - drag released');
-          setIsDraggingStart(false);
-          // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
-          if (position < trimStart || position >= trimEnd) {
-            await videoRef.current?.setPositionAsync(trimStart * 1000);
-          }
-        },
-      }),
-    [duration, trimEnd, trimStart, position, timelineWidth]
-  );
+  React.useEffect(() => {
+    trimEndRef.current = trimEnd;
+  }, [trimEnd]);
 
-  // 트리밍 끝 핸들 드래그
-  const trimEndPanResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
-        onMoveShouldSetPanResponderCapture: () => true,
-        onPanResponderTerminationRequest: () => false, // 다른 제스처가 제어권 가져가지 못하게
-        onShouldBlockNativeResponder: () => true, // 네이티브 이벤트 차단
-        onPanResponderGrant: () => {
-          console.log('🔵 Trim end handle - drag started');
-          initialTrimEnd.current = trimEnd;
-          setIsDraggingEnd(true);
-        },
-        onPanResponderMove: (_, gestureState) => {
-          if (duration === 0) return;
+  React.useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
 
-          const deltaTime = (gestureState.dx / timelineWidth) * duration;
-          const newEnd = Math.max(
-            trimStart + 1,
-            Math.min(duration, Math.min(trimStart + MAX_VIDEO_DURATION, initialTrimEnd.current + deltaTime))
-          );
+  React.useEffect(() => {
+    timelineWidthRef.current = timelineWidth;
+  }, [timelineWidth]);
 
-          setTrimEnd(newEnd);
-        },
-        onPanResponderRelease: async () => {
-          console.log('🔵 Trim end handle - drag released');
-          setIsDraggingEnd(false);
-          // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
-          if (position < trimStart || position >= trimEnd) {
-            await videoRef.current?.setPositionAsync(trimStart * 1000);
-          }
-        },
-      }),
-    [duration, trimStart, trimEnd, position, timelineWidth]
-  );
+  // 트리밍 시작 핸들 드래그 (의존성 없이 한 번만 생성)
+  const trimStartPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: () => {
+        console.log('🟢 Trim start handle - drag started');
+        initialTrimStart.current = trimStartRef.current;
+        setIsDraggingStart(true);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (durationRef.current === 0) return;
+
+        const deltaTime = (gestureState.dx / timelineWidthRef.current) * durationRef.current;
+        const newStart = Math.max(0, Math.min(trimEndRef.current - 1, initialTrimStart.current + deltaTime));
+
+        setTrimStart(newStart);
+      },
+      onPanResponderRelease: async () => {
+        console.log('🟢 Trim start handle - drag released');
+        setIsDraggingStart(false);
+      },
+    })
+  ).current;
+
+  // 트리밍 끝 핸들 드래그 (의존성 없이 한 번만 생성)
+  const trimEndPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: () => {
+        console.log('🔵 Trim end handle - drag started');
+        initialTrimEnd.current = trimEndRef.current;
+        setIsDraggingEnd(true);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (durationRef.current === 0) return;
+
+        const deltaTime = (gestureState.dx / timelineWidthRef.current) * durationRef.current;
+        const newEnd = Math.max(
+          trimStartRef.current + 1,
+          Math.min(durationRef.current, Math.min(trimStartRef.current + MAX_VIDEO_DURATION, initialTrimEnd.current + deltaTime))
+        );
+
+        setTrimEnd(newEnd);
+      },
+      onPanResponderRelease: async () => {
+        console.log('🔵 Trim end handle - drag released');
+        setIsDraggingEnd(false);
+      },
+    })
+  ).current;
 
   const handleNext = async () => {
     if (!selectedThumbnail) {
