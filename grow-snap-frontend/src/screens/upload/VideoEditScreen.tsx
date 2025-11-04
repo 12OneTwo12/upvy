@@ -249,6 +249,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const durationRef = useRef(duration);
   const timelineWidthRef = useRef(timelineWidth);
 
+  // seek throttle을 위한 ref
+  const lastSeekTime = useRef(0);
+  const SEEK_THROTTLE_MS = 100; // 100ms마다 한 번만 seek
+
   React.useEffect(() => {
     trimStartRef.current = trimStart;
   }, [trimStart]);
@@ -274,12 +278,21 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
-      onPanResponderGrant: () => {
+      onPanResponderGrant: async () => {
         console.log('🟢 Trim start handle - drag started');
         initialTrimStart.current = trimStartRef.current;
         setIsDraggingStart(true);
+
+        // 드래그 시작 시 비디오 일시정지
+        if (videoRef.current) {
+          try {
+            await videoRef.current.pauseAsync();
+          } catch (error) {
+            // 무시
+          }
+        }
       },
-      onPanResponderMove: async (_, gestureState) => {
+      onPanResponderMove: (_, gestureState) => {
         if (durationRef.current === 0) return;
 
         const deltaTime = (gestureState.dx / timelineWidthRef.current) * durationRef.current;
@@ -287,16 +300,20 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
         setTrimStart(newStart);
 
-        // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
-        if (videoRef.current) {
-          try {
-            await videoRef.current.setPositionAsync(Math.floor(newStart * 1000));
-          } catch (error) {
-            // seek 에러 무시
+        // Throttle: 100ms마다 한 번만 seek
+        const now = Date.now();
+        if (now - lastSeekTime.current > SEEK_THROTTLE_MS) {
+          lastSeekTime.current = now;
+
+          // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
+          if (videoRef.current) {
+            videoRef.current.setPositionAsync(Math.floor(newStart * 1000)).catch(() => {
+              // seek 에러 무시
+            });
           }
         }
       },
-      onPanResponderRelease: async () => {
+      onPanResponderRelease: () => {
         console.log('🟢 Trim start handle - drag released');
         setIsDraggingStart(false);
       },
@@ -312,12 +329,21 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
-      onPanResponderGrant: () => {
+      onPanResponderGrant: async () => {
         console.log('🔵 Trim end handle - drag started');
         initialTrimEnd.current = trimEndRef.current;
         setIsDraggingEnd(true);
+
+        // 드래그 시작 시 비디오 일시정지
+        if (videoRef.current) {
+          try {
+            await videoRef.current.pauseAsync();
+          } catch (error) {
+            // 무시
+          }
+        }
       },
-      onPanResponderMove: async (_, gestureState) => {
+      onPanResponderMove: (_, gestureState) => {
         if (durationRef.current === 0) return;
 
         const deltaTime = (gestureState.dx / timelineWidthRef.current) * durationRef.current;
@@ -328,16 +354,20 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
         setTrimEnd(newEnd);
 
-        // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
-        if (videoRef.current) {
-          try {
-            await videoRef.current.setPositionAsync(Math.floor(newEnd * 1000));
-          } catch (error) {
-            // seek 에러 무시
+        // Throttle: 100ms마다 한 번만 seek
+        const now = Date.now();
+        if (now - lastSeekTime.current > SEEK_THROTTLE_MS) {
+          lastSeekTime.current = now;
+
+          // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
+          if (videoRef.current) {
+            videoRef.current.setPositionAsync(Math.floor(newEnd * 1000)).catch(() => {
+              // seek 에러 무시
+            });
           }
         }
       },
-      onPanResponderRelease: async () => {
+      onPanResponderRelease: () => {
         console.log('🔵 Trim end handle - drag released');
         setIsDraggingEnd(false);
       },
