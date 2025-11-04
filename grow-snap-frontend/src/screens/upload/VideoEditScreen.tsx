@@ -7,7 +7,7 @@
  * - 썸네일 자동 생성
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -194,72 +194,78 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const initialTrimEnd = useRef(0);
 
   // 트리밍 시작 핸들 드래그
-  const trimStartPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-      onPanResponderGrant: () => {
-        console.log('🟢 Trim start handle - drag started');
-        initialTrimStart.current = trimStart;
-        setIsDraggingStart(true);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (duration === 0) return;
+  const trimStartPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
+        onPanResponderGrant: () => {
+          console.log('🟢 Trim start handle - drag started');
+          initialTrimStart.current = trimStart;
+          setIsDraggingStart(true);
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (duration === 0) return;
 
-        // 타임라인 너비 기준으로 계산
-        const timelineWidth = SCREEN_WIDTH - 32; // padding 제외
-        const deltaTime = (gestureState.dx / timelineWidth) * duration;
-        const newStart = Math.max(0, Math.min(trimEnd - 1, initialTrimStart.current + deltaTime));
+          // 타임라인 너비 기준으로 계산
+          const timelineWidth = SCREEN_WIDTH - 32; // padding 제외
+          const deltaTime = (gestureState.dx / timelineWidth) * duration;
+          const newStart = Math.max(0, Math.min(trimEnd - 1, initialTrimStart.current + deltaTime));
 
-        console.log('🟢 Trim start dragging:', newStart.toFixed(2));
-        setTrimStart(newStart);
-      },
-      onPanResponderRelease: async () => {
-        setIsDraggingStart(false);
-        // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
-        if (position < trimStart || position >= trimEnd) {
-          await videoRef.current?.setPositionAsync(trimStart * 1000);
-        }
-      },
-    })
-  ).current;
+          console.log('🟢 Trim start dragging:', newStart.toFixed(2));
+          setTrimStart(newStart);
+        },
+        onPanResponderRelease: async () => {
+          console.log('🟢 Trim start handle - drag released');
+          setIsDraggingStart(false);
+          // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
+          if (position < trimStart || position >= trimEnd) {
+            await videoRef.current?.setPositionAsync(trimStart * 1000);
+          }
+        },
+      }),
+    [duration, trimEnd, trimStart, position]
+  );
 
   // 트리밍 끝 핸들 드래그
-  const trimEndPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-      onPanResponderGrant: () => {
-        console.log('🔵 Trim end handle - drag started');
-        initialTrimEnd.current = trimEnd;
-        setIsDraggingEnd(true);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (duration === 0) return;
+  const trimEndPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
+        onPanResponderGrant: () => {
+          console.log('🔵 Trim end handle - drag started');
+          initialTrimEnd.current = trimEnd;
+          setIsDraggingEnd(true);
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (duration === 0) return;
 
-        const timelineWidth = SCREEN_WIDTH - 32;
-        const deltaTime = (gestureState.dx / timelineWidth) * duration;
-        const newEnd = Math.max(
-          trimStart + 1,
-          Math.min(duration, Math.min(trimStart + MAX_VIDEO_DURATION, initialTrimEnd.current + deltaTime))
-        );
+          const timelineWidth = SCREEN_WIDTH - 32;
+          const deltaTime = (gestureState.dx / timelineWidth) * duration;
+          const newEnd = Math.max(
+            trimStart + 1,
+            Math.min(duration, Math.min(trimStart + MAX_VIDEO_DURATION, initialTrimEnd.current + deltaTime))
+          );
 
-        console.log('🔵 Trim end dragging:', newEnd.toFixed(2));
-        setTrimEnd(newEnd);
-      },
-      onPanResponderRelease: async () => {
-        setIsDraggingEnd(false);
-        // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
-        if (position < trimStart || position >= trimEnd) {
-          await videoRef.current?.setPositionAsync(trimStart * 1000);
-        }
-      },
-    })
-  ).current;
+          console.log('🔵 Trim end dragging:', newEnd.toFixed(2));
+          setTrimEnd(newEnd);
+        },
+        onPanResponderRelease: async () => {
+          console.log('🔵 Trim end handle - drag released');
+          setIsDraggingEnd(false);
+          // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
+          if (position < trimStart || position >= trimEnd) {
+            await videoRef.current?.setPositionAsync(trimStart * 1000);
+          }
+        },
+      }),
+    [duration, trimStart, trimEnd, position]
+  );
 
   const handleNext = async () => {
     if (!selectedThumbnail) {
@@ -445,8 +451,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
               {/* 트리밍 시작 핸들 */}
               {duration > 0 && (
-                <TouchableOpacity
-                  activeOpacity={1}
+                <View
                   {...trimStartPanResponder.panHandlers}
                   style={[
                     styles.trimHandle,
@@ -454,7 +459,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     { left: `${(trimStart / duration) * 100}%` },
                     isDraggingStart && { transform: [{ scale: 1.3 }] },
                   ]}
-                  hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
                 >
                   <View style={[
                     styles.trimHandleBar,
@@ -462,13 +466,12 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                   ]}>
                     <View style={styles.trimHandleGrip} />
                   </View>
-                </TouchableOpacity>
+                </View>
               )}
 
               {/* 트리밍 끝 핸들 */}
               {duration > 0 && (
-                <TouchableOpacity
-                  activeOpacity={1}
+                <View
                   {...trimEndPanResponder.panHandlers}
                   style={[
                     styles.trimHandle,
@@ -476,7 +479,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     { left: `${(trimEnd / duration) * 100}%` },
                     isDraggingEnd && { transform: [{ scale: 1.3 }] },
                   ]}
-                  hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
                 >
                   <View style={[
                     styles.trimHandleBar,
@@ -484,7 +486,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                   ]}>
                     <View style={styles.trimHandleGrip} />
                   </View>
-                </TouchableOpacity>
+                </View>
               )}
             </View>
 
