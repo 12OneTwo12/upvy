@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import * as MediaLibrary from 'expo-media-library';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/theme';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
@@ -129,30 +130,47 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     console.log('🖼️ generateThumbnails called - uri:', uri, 'duration:', durationSec);
     setIsGeneratingThumbnails(true);
     try {
-      // 실제 구현에서는 expo-video-thumbnails 사용
-      // 임시로 3개 타임스탬프만 생성
+      // 3개의 타임스탬프에서 썸네일 생성
       const times = [
         Math.max(0, durationSec * 0.1),
         durationSec * 0.5,
         Math.min(durationSec * 0.9, durationSec - 1),
       ];
 
-      // TODO: 실제 썸네일 생성 로직
-      // import * as VideoThumbnails from 'expo-video-thumbnails';
-      // const thumbnailUris = await Promise.all(
-      //   times.map(time =>
-      //     VideoThumbnails.getThumbnailAsync(uri, { time: time * 1000 })
-      //   )
-      // );
+      console.log('🖼️ Generating thumbnails at times:', times);
 
-      // 임시로 비디오 자체를 썸네일로 사용
-      console.log('🖼️ Setting thumbnails (using video URI as fallback)');
-      setThumbnails([uri, uri, uri]);
-      setSelectedThumbnail(uri);
+      // expo-video-thumbnails로 실제 썸네일 생성
+      const thumbnailResults = await Promise.all(
+        times.map(async (time) => {
+          try {
+            const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(uri, {
+              time: time * 1000, // 밀리초 단위
+              quality: 0.8,
+            });
+            console.log('🖼️ Thumbnail generated for time', time.toFixed(2), ':', thumbnailUri);
+            return thumbnailUri;
+          } catch (err) {
+            console.error('Failed to generate thumbnail at time', time, ':', err);
+            return null;
+          }
+        })
+      );
+
+      // null이 아닌 썸네일만 필터링
+      const validThumbnails = thumbnailResults.filter((uri): uri is string => uri !== null);
+
+      if (validThumbnails.length > 0) {
+        console.log('🖼️ Successfully generated', validThumbnails.length, 'thumbnails');
+        setThumbnails(validThumbnails);
+        setSelectedThumbnail(validThumbnails[0]);
+      } else {
+        throw new Error('No thumbnails generated');
+      }
     } catch (error) {
       console.error('Failed to generate thumbnails:', error);
+      Alert.alert('알림', '썸네일 생성에 실패했습니다. 기본 썸네일을 사용합니다.');
       // fallback: 비디오 자체를 썸네일로
-      setThumbnails([uri, uri, uri]);
+      setThumbnails([uri]);
       setSelectedThumbnail(uri);
     } finally {
       setIsGeneratingThumbnails(false);
@@ -343,7 +361,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={!isDraggingStart && !isDraggingEnd}
+      >
         {/* 비디오 미리보기 */}
         <View style={styles.videoContainer}>
           {videoUri ? (
@@ -397,11 +419,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           </Text>
 
           {/* 타임라인 트리밍 UI */}
-          <View
-            style={styles.timelineContainer}
-            onStartShouldSetResponder={() => true}
-            onMoveShouldSetResponder={() => true}
-          >
+          <View style={styles.timelineContainer}>
             {/* 진행 바 */}
             <View style={styles.timelineTrack}>
               {/* 선택된 범위 */}
@@ -434,9 +452,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     styles.trimHandle,
                     styles.trimHandleLeft,
                     { left: `${(trimStart / duration) * 100}%` },
-                    isDraggingStart && { transform: [{ scale: 1.2 }] },
+                    isDraggingStart && { transform: [{ scale: 1.3 }] },
                   ]}
-                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                  hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
                 >
                   <View style={[
                     styles.trimHandleBar,
@@ -456,9 +474,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     styles.trimHandle,
                     styles.trimHandleRight,
                     { left: `${(trimEnd / duration) * 100}%` },
-                    isDraggingEnd && { transform: [{ scale: 1.2 }] },
+                    isDraggingEnd && { transform: [{ scale: 1.3 }] },
                   ]}
-                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                  hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
                 >
                   <View style={[
                     styles.trimHandleBar,
@@ -682,11 +700,11 @@ const styles = StyleSheet.create({
     marginVertical: theme.spacing[4],
   },
   timelineTrack: {
-    height: 60,
+    height: 80,
     backgroundColor: theme.colors.gray[200],
     borderRadius: theme.borderRadius.base,
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   timelineSelected: {
     position: 'absolute',
@@ -705,33 +723,33 @@ const styles = StyleSheet.create({
   },
   trimHandle: {
     position: 'absolute',
-    top: -10,
-    bottom: -10,
-    width: 40,
+    top: -15,
+    bottom: -15,
+    width: 60,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
   },
   trimHandleLeft: {
-    marginLeft: -20,
+    marginLeft: -30,
   },
   trimHandleRight: {
-    marginLeft: -20,
+    marginLeft: -30,
   },
   trimHandleBar: {
-    width: 12,
+    width: 16,
     height: '100%',
     backgroundColor: theme.colors.primary[500],
-    borderRadius: 6,
-    borderWidth: 2,
+    borderRadius: 8,
+    borderWidth: 3,
     borderColor: theme.colors.text.inverse,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 10,
   },
   trimHandleActive: {
     backgroundColor: theme.colors.primary[600],
@@ -741,8 +759,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   trimHandleGrip: {
-    width: 3,
-    height: 30,
+    width: 4,
+    height: 40,
     backgroundColor: theme.colors.text.inverse,
     borderRadius: 2,
   },
