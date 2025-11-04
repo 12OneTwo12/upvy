@@ -126,7 +126,7 @@ class FollowControllerTest {
     @DisplayName("언팔로우 성공")
     fun unfollow_Success() {
         // Given
-        justRun { followService.unfollow(testUserId, testFollowingId) }
+        every { followService.unfollow(testUserId, testFollowingId) } returns Mono.empty()
 
         // When & Then
         webTestClient

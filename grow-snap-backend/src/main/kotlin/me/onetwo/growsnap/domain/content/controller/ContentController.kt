@@ -104,6 +104,9 @@ class ContentController(
     ): Mono<ResponseEntity<ContentResponse>> {
         return contentService.getContent(contentId)
             .map { ResponseEntity.ok(it) }
+            .onErrorResume(NoSuchElementException::class.java) {
+                Mono.just(ResponseEntity.notFound().build())
+            }
             .defaultIfEmpty(ResponseEntity.notFound().build())
     }
 

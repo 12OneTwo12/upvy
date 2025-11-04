@@ -108,26 +108,29 @@ class UserProfileRepository(
      * N+1 쿼리 문제를 방지하기 위해 IN 절을 사용하여 한 번에 조회합니다.
      *
      * @param userIds 조회할 사용자 ID 목록
-     * @return 사용자 ID를 키로 하는 UserInfo Map
+     * @return 사용자 ID를 키로 하는 UserInfo Map을 담은 Mono
      */
-    fun findUserInfosByUserIds(userIds: Set<UUID>): Map<UUID, UserInfo> {
+    fun findUserInfosByUserIds(userIds: Set<UUID>): Mono<Map<UUID, UserInfo>> {
         if (userIds.isEmpty()) {
-            return emptyMap()
+            return Mono.just(emptyMap())
         }
 
-        return dsl
-            .select(USER_PROFILES.USER_ID, USER_PROFILES.NICKNAME, USER_PROFILES.PROFILE_IMAGE_URL)
-            .from(USER_PROFILES)
-            .where(USER_PROFILES.USER_ID.`in`(userIds.map { it.toString() }))
-            .and(USER_PROFILES.DELETED_AT.isNull)
-            .fetch()
-            .associate {
-                UUID.fromString(it.getValue(USER_PROFILES.USER_ID)) to
+        return Flux.from(
+            dsl
+                .select(USER_PROFILES.USER_ID, USER_PROFILES.NICKNAME, USER_PROFILES.PROFILE_IMAGE_URL)
+                .from(USER_PROFILES)
+                .where(USER_PROFILES.USER_ID.`in`(userIds.map { it.toString() }))
+                .and(USER_PROFILES.DELETED_AT.isNull)
+        )
+            .collectMap(
+                { UUID.fromString(it.getValue(USER_PROFILES.USER_ID)) },
+                {
                     UserInfo(
                         nickname = it.getValue(USER_PROFILES.NICKNAME) ?: "Unknown",
                         profileImageUrl = it.getValue(USER_PROFILES.PROFILE_IMAGE_URL)
                     )
-            }
+                }
+            )
     }
 
     /**

@@ -62,7 +62,7 @@ class FollowController(
         return principal
             .toUserId()
             .flatMap { userId -> followService.unfollow(userId, followingId) }
-            .map { ResponseEntity.noContent().build<Void>() }
+            .thenReturn(ResponseEntity.noContent().build())
     }
 
     /**

@@ -108,20 +108,19 @@ class SaveServiceImpl(
 
                 val contentIds = userSaves.map { it.contentId }.toSet()
 
-                Mono.fromCallable {
-                    contentMetadataRepository.findContentInfosByContentIds(contentIds)
-                }.flatMapMany { contentInfoMap ->
-                    Flux.fromIterable(userSaves).mapNotNull { userSave ->
-                        contentInfoMap[userSave.contentId]?.let { (title, thumbnailUrl) ->
-                            SavedContentResponse(
-                                contentId = userSave.contentId.toString(),
-                                title = title,
-                                thumbnailUrl = thumbnailUrl,
-                                savedAt = userSave.createdAt.toString()
-                            )
+                contentMetadataRepository.findContentInfosByContentIds(contentIds)
+                    .flatMapMany { contentInfoMap ->
+                        Flux.fromIterable(userSaves).mapNotNull { userSave ->
+                            contentInfoMap[userSave.contentId]?.let { (title, thumbnailUrl) ->
+                                SavedContentResponse(
+                                    contentId = userSave.contentId.toString(),
+                                    title = title,
+                                    thumbnailUrl = thumbnailUrl,
+                                    savedAt = userSave.createdAt.toString()
+                                )
+                            }
                         }
                     }
-                }
             }
     }
 

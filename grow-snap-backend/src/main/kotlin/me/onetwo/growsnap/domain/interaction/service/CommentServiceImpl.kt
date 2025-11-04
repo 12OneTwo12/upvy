@@ -102,21 +102,20 @@ class CommentServiceImpl(
                 )
             }
             .flatMap { savedComment: Comment ->
-                Mono.fromCallable {
-                    userProfileRepository.findUserInfosByUserIds(setOf(userId))
-                }.map { userInfoMap ->
-                    val userInfo = userInfoMap[userId] ?: UserInfo("Unknown", null)
-                    CommentResponse(
-                        id = savedComment.id!!.toString(),
-                        contentId = savedComment.contentId.toString(),
-                        userId = savedComment.userId.toString(),
-                        userNickname = userInfo.nickname,
-                        userProfileImageUrl = userInfo.profileImageUrl,
-                        content = savedComment.content,
-                        parentCommentId = savedComment.parentCommentId?.toString(),
-                        createdAt = savedComment.createdAt.toString()
-                    )
-                }
+                userProfileRepository.findUserInfosByUserIds(setOf(userId))
+                    .map { userInfoMap ->
+                        val userInfo = userInfoMap[userId] ?: UserInfo("Unknown", null)
+                        CommentResponse(
+                            id = savedComment.id!!.toString(),
+                            contentId = savedComment.contentId.toString(),
+                            userId = savedComment.userId.toString(),
+                            userNickname = userInfo.nickname,
+                            userProfileImageUrl = userInfo.profileImageUrl,
+                            content = savedComment.content,
+                            parentCommentId = savedComment.parentCommentId?.toString(),
+                            createdAt = savedComment.createdAt.toString()
+                        )
+                    }
             }
             .doOnSuccess { response -> logger.debug("Comment created successfully: commentId={}", response.id) }
             .doOnError { error ->
@@ -152,9 +151,7 @@ class CommentServiceImpl(
 
                 val userIds = actualComments.map { it.userId }.toSet()
                 val userInfoMapMono = if (userIds.isNotEmpty()) {
-                    Mono.fromCallable {
-                        userProfileRepository.findUserInfosByUserIds(userIds)
-                    }
+                    userProfileRepository.findUserInfosByUserIds(userIds)
                 } else {
                     Mono.just(emptyMap())
                 }
@@ -228,9 +225,7 @@ class CommentServiceImpl(
 
                 val userIds = actualReplies.map { it.userId }.toSet()
                 val userInfoMapMono = if (userIds.isNotEmpty()) {
-                    Mono.fromCallable {
-                        userProfileRepository.findUserInfosByUserIds(userIds)
-                    }
+                    userProfileRepository.findUserInfosByUserIds(userIds)
                 } else {
                     Mono.just(emptyMap())
                 }
@@ -299,22 +294,21 @@ class CommentServiceImpl(
 
                 val userIds = comments.map { it.userId }.toSet()
 
-                Mono.fromCallable {
-                    userProfileRepository.findUserInfosByUserIds(userIds)
-                }.flatMapMany { userInfoMap ->
-                    val repliesByParentId = comments.filter { it.parentCommentId != null }
-                        .groupBy { it.parentCommentId!! }
+                userProfileRepository.findUserInfosByUserIds(userIds)
+                    .flatMapMany { userInfoMap ->
+                        val repliesByParentId = comments.filter { it.parentCommentId != null }
+                            .groupBy { it.parentCommentId!! }
 
-                    val parentComments = comments.filter { it.parentCommentId == null }
+                        val parentComments = comments.filter { it.parentCommentId == null }
 
-                    Flux.fromIterable(parentComments)
-                        .map { parentComment ->
-                            val userInfo = userInfoMap[parentComment.userId] ?: UserInfo("Unknown", null)
-                            val replyCount = repliesByParentId[parentComment.id!!]?.size ?: 0
+                        Flux.fromIterable(parentComments)
+                            .map { parentComment ->
+                                val userInfo = userInfoMap[parentComment.userId] ?: UserInfo("Unknown", null)
+                                val replyCount = repliesByParentId[parentComment.id!!]?.size ?: 0
 
-                            mapToCommentResponse(parentComment, userInfo, replyCount)
-                        }
-                }
+                                mapToCommentResponse(parentComment, userInfo, replyCount)
+                            }
+                    }
             }
             .doOnComplete { logger.debug("Comments retrieved successfully: contentId={}", contentId) }
     }

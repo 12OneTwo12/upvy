@@ -267,35 +267,35 @@ class ContentServiceImpl(
                     .map { metadata -> content to metadata }
             }
             .flatMap { (content, metadata) ->
-                // PHOTO 타입인 경우 사진 목록 조회
-                val photoUrlsMono: Mono<List<String>?> = if (content.contentType == ContentType.PHOTO) {
+                // PHOTO 타입인 경우 사진 목록 조회, 아니면 null 반환
+                if (content.contentType == ContentType.PHOTO) {
                     Mono.fromCallable {
                         contentPhotoRepository.findByContentId(content.id!!)
                             .map { it.photoUrl }
-                    }
+                    }.subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                        .map { photoUrls -> Pair(photoUrls as List<String>?, Pair(content, metadata)) }
                 } else {
-                    Mono.justOrEmpty(null)
-                }
-
-                photoUrlsMono.map { photoUrls ->
+                    Mono.just(Pair(null as List<String>?, Pair(content, metadata)))
+                }.map { (photoUrls, contentAndMetadata) ->
+                    val (c, m) = contentAndMetadata
                     ContentResponse(
-                        id = content.id.toString(),
-                        creatorId = content.creatorId.toString(),
-                        contentType = content.contentType,
-                        url = content.url,
+                        id = c.id.toString(),
+                        creatorId = c.creatorId.toString(),
+                        contentType = c.contentType,
+                        url = c.url,
                         photoUrls = photoUrls,
-                        thumbnailUrl = content.thumbnailUrl,
-                        duration = content.duration,
-                        width = content.width,
-                        height = content.height,
-                        status = content.status,
-                        title = metadata.title,
-                        description = metadata.description,
-                        category = metadata.category,
-                        tags = metadata.tags,
-                        language = metadata.language,
-                        createdAt = content.createdAt,
-                        updatedAt = content.updatedAt
+                        thumbnailUrl = c.thumbnailUrl,
+                        duration = c.duration,
+                        width = c.width,
+                        height = c.height,
+                        status = c.status,
+                        title = m.title,
+                        description = m.description,
+                        category = m.category,
+                        tags = m.tags,
+                        language = m.language,
+                        createdAt = c.createdAt,
+                        updatedAt = c.updatedAt
                     )
                 }
             }

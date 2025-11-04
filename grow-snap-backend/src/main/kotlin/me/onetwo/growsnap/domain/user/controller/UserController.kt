@@ -67,6 +67,6 @@ class UserController(
         return principal
             .toUserId()
             .flatMap { userId -> userService.withdrawUser(userId) }
-            .map { ResponseEntity.noContent().build<Void>() }
+            .thenReturn(ResponseEntity.noContent().build())
     }
 }

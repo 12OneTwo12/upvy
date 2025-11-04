@@ -113,7 +113,7 @@ class CommentLikeControllerIntegrationTest {
 
             // Then: 이벤트가 처리되어 DB에 좋아요가 저장되었는지 확인
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {
-                val like = commentLikeRepository.findByUserIdAndCommentId(user.id!!, commentId!!)
+                val like = commentLikeRepository.findByUserIdAndCommentId(user.id!!, commentId!!).block()
                 assertThat(like).isNotNull
             }
         }
@@ -180,7 +180,7 @@ class CommentLikeControllerIntegrationTest {
 
             // Then: 이벤트가 처리되어 DB에서 좋아요가 삭제되었는지 확인
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {
-                val like = commentLikeRepository.findByUserIdAndCommentId(user.id!!, commentId!!)
+                val like = commentLikeRepository.findByUserIdAndCommentId(user.id!!, commentId!!).block()
                 assertThat(like).isNull()
             }
         }

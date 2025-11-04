@@ -212,7 +212,7 @@ class SaveServiceTest {
             )
 
             every { userSaveRepository.findByUserId(testUserId) } returns Flux.fromIterable(listOf(userSave1, userSave2))
-            every { contentMetadataRepository.findContentInfosByContentIds(setOf(contentId1, contentId2)) } returns contentInfoMap
+            every { contentMetadataRepository.findContentInfosByContentIds(setOf(contentId1, contentId2)) } returns Mono.just(contentInfoMap)
 
             // When
             val result = saveService.getSavedContents(testUserId)
