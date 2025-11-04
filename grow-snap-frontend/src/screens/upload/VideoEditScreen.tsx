@@ -455,9 +455,13 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                   {...trimStartPanResponder.panHandlers}
                   style={[
                     styles.trimHandle,
-                    styles.trimHandleLeft,
-                    { left: `${(trimStart / duration) * 100}%` },
-                    isDraggingStart && { transform: [{ scale: 1.3 }] },
+                    {
+                      left: `${(trimStart / duration) * 100}%`,
+                      transform: [
+                        { translateX: -30 }, // 핸들 중앙 정렬 (width의 절반)
+                        ...(isDraggingStart ? [{ scale: 1.3 }] : []),
+                      ],
+                    },
                   ]}
                 >
                   <View style={[
@@ -475,9 +479,13 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                   {...trimEndPanResponder.panHandlers}
                   style={[
                     styles.trimHandle,
-                    styles.trimHandleRight,
-                    { left: `${(trimEnd / duration) * 100}%` },
-                    isDraggingEnd && { transform: [{ scale: 1.3 }] },
+                    {
+                      left: `${(trimEnd / duration) * 100}%`,
+                      transform: [
+                        { translateX: -30 }, // 핸들 중앙 정렬 (width의 절반)
+                        ...(isDraggingEnd ? [{ scale: 1.3 }] : []),
+                      ],
+                    },
                   ]}
                 >
                   <View style={[
@@ -731,12 +739,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
-  },
-  trimHandleLeft: {
-    marginLeft: -30,
-  },
-  trimHandleRight: {
-    marginLeft: -30,
   },
   trimHandleBar: {
     width: 16,
