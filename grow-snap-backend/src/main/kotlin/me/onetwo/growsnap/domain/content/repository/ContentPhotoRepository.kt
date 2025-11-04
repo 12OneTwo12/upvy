@@ -29,26 +29,25 @@ class ContentPhotoRepository(
      * @param photo 저장할 사진
      * @return 저장 성공 여부
      */
-    fun save(photo: ContentPhoto): Boolean {
-        return try {
-            Mono.from(dslContext
-                .insertInto(CONTENT_PHOTOS)
-                .set(CONTENT_PHOTOS.CONTENT_ID, photo.contentId.toString())
-                .set(CONTENT_PHOTOS.PHOTO_URL, photo.photoUrl)
-                .set(CONTENT_PHOTOS.DISPLAY_ORDER, photo.displayOrder)
-                .set(CONTENT_PHOTOS.WIDTH, photo.width)
-                .set(CONTENT_PHOTOS.HEIGHT, photo.height)
-                .set(CONTENT_PHOTOS.CREATED_AT, photo.createdAt)
-                .set(CONTENT_PHOTOS.CREATED_BY, photo.createdBy)
-                .set(CONTENT_PHOTOS.UPDATED_AT, photo.updatedAt)
-                .set(CONTENT_PHOTOS.UPDATED_BY, photo.updatedBy)).block()
-
-            logger.debug("Content photo saved: contentId=${photo.contentId}, order=${photo.displayOrder}")
-            true
-        } catch (e: DataAccessException) {
-            logger.error("Failed to save content photo: contentId=${photo.contentId}", e)
-            false
-        }
+    fun save(photo: ContentPhoto): Mono<Void> {
+        return Mono.from(dslContext
+            .insertInto(CONTENT_PHOTOS)
+            .set(CONTENT_PHOTOS.CONTENT_ID, photo.contentId.toString())
+            .set(CONTENT_PHOTOS.PHOTO_URL, photo.photoUrl)
+            .set(CONTENT_PHOTOS.DISPLAY_ORDER, photo.displayOrder)
+            .set(CONTENT_PHOTOS.WIDTH, photo.width)
+            .set(CONTENT_PHOTOS.HEIGHT, photo.height)
+            .set(CONTENT_PHOTOS.CREATED_AT, photo.createdAt)
+            .set(CONTENT_PHOTOS.CREATED_BY, photo.createdBy)
+            .set(CONTENT_PHOTOS.UPDATED_AT, photo.updatedAt)
+            .set(CONTENT_PHOTOS.UPDATED_BY, photo.updatedBy))
+            .doOnSuccess {
+                logger.debug("Content photo saved: contentId=${photo.contentId}, order=${photo.displayOrder}")
+            }
+            .doOnError { e ->
+                logger.error("Failed to save content photo: contentId=${photo.contentId}", e)
+            }
+            .then()
     }
 
     /**
@@ -57,7 +56,7 @@ class ContentPhotoRepository(
      * @param contentId 콘텐츠 ID
      * @return 사진 목록 (display_order 순으로 정렬)
      */
-    fun findByContentId(contentId: UUID): List<ContentPhoto> {
+    fun findByContentId(contentId: UUID): Mono<List<ContentPhoto>> {
         return Flux.from(dslContext
             .select(
                 CONTENT_PHOTOS.ID,
@@ -76,8 +75,8 @@ class ContentPhotoRepository(
             .where(CONTENT_PHOTOS.CONTENT_ID.eq(contentId.toString()))
             .and(CONTENT_PHOTOS.DELETED_AT.isNull)
             .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc()))
-            .collectList().block()
-            ?.map { mapRecordToContentPhoto(it) } ?: emptyList()
+            .map { mapRecordToContentPhoto(it) }
+            .collectList()
     }
 
     /**
@@ -87,7 +86,7 @@ class ContentPhotoRepository(
      * @param deletedBy 삭제한 사용자 ID
      * @return 삭제된 행 수
      */
-    fun deleteByContentId(contentId: UUID, deletedBy: String): Int {
+    fun deleteByContentId(contentId: UUID, deletedBy: String): Mono<Int> {
         return Mono.from(dslContext
             .update(CONTENT_PHOTOS)
             .set(CONTENT_PHOTOS.DELETED_AT, java.time.LocalDateTime.now())
@@ -103,7 +102,6 @@ class ContentPhotoRepository(
                 count
             }
             .defaultIfEmpty(0)
-            .block() ?: 0
     }
 
     /**
@@ -112,12 +110,12 @@ class ContentPhotoRepository(
      * @param contentIds 콘텐츠 ID 목록
      * @return 콘텐츠 ID별로 그룹화된 사진 목록 Map
      */
-    fun findByContentIds(contentIds: List<UUID>): Map<UUID, List<ContentPhoto>> {
+    fun findByContentIds(contentIds: List<UUID>): Mono<Map<UUID, List<ContentPhoto>>> {
         if (contentIds.isEmpty()) {
-            return emptyMap()
+            return Mono.just(emptyMap())
         }
 
-        val records = Flux.from(dslContext
+        return Flux.from(dslContext
             .select(
                 CONTENT_PHOTOS.ID,
                 CONTENT_PHOTOS.CONTENT_ID,
@@ -135,12 +133,13 @@ class ContentPhotoRepository(
             .where(CONTENT_PHOTOS.CONTENT_ID.`in`(contentIds.map { it.toString() }))
             .and(CONTENT_PHOTOS.DELETED_AT.isNull)
             .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc()))
-            .collectList().block() ?: emptyList()
-
-        return records
-            .groupBy { record -> UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)) }
-            .mapValues { (_, records) ->
-                records.map { mapRecordToContentPhoto(it) }
+            .collectList()
+            .map { records ->
+                records
+                    .groupBy { record -> UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)) }
+                    .mapValues { (_, recs) ->
+                        recs.map { mapRecordToContentPhoto(it) }
+                    }
             }
     }
 

@@ -87,11 +87,8 @@ class ContentPhotoRepositoryTest {
                 updatedBy = testUser.id!!.toString()
             )
 
-            // When: 저장
-            val result = contentPhotoRepository.save(photo)
-
-            // Then: 저장 성공
-            assertThat(result).isTrue
+            // When: 저장 (Mono<Void>이므로 예외가 없으면 성공)
+            contentPhotoRepository.save(photo).block()
 
             // 데이터베이스에서 직접 확인
             val dbPhoto = Mono.from(dslContext.selectFrom(CONTENT_PHOTOS)
@@ -142,9 +139,9 @@ class ContentPhotoRepositoryTest {
             )
 
             // When: 저장
-            contentPhotoRepository.save(photo1)
-            contentPhotoRepository.save(photo2)
-            contentPhotoRepository.save(photo3)
+            contentPhotoRepository.save(photo1).block()
+            contentPhotoRepository.save(photo2).block()
+            contentPhotoRepository.save(photo3).block()
 
             // Then: 3개 모두 저장됨
             val dbPhotos = Flux.from(dslContext.selectFrom(CONTENT_PHOTOS)
@@ -176,7 +173,7 @@ class ContentPhotoRepositoryTest {
             )
 
             // When: 저장
-            contentPhotoRepository.save(photo)
+            contentPhotoRepository.save(photo).block()
 
             // Then: Audit Trail 확인
             val dbPhoto = Mono.from(dslContext.selectFrom(CONTENT_PHOTOS)
@@ -205,7 +202,7 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo2.jpg", 1)
 
             // When: 조회
-            val photos = contentPhotoRepository.findByContentId(testContentId)
+            val photos = contentPhotoRepository.findByContentId(testContentId).block()!!
 
             // Then: display_order 순으로 정렬되어 반환
             assertThat(photos).hasSize(3)
@@ -225,7 +222,7 @@ class ContentPhotoRepositoryTest {
             insertContent(emptyContentId, testUser.id!!, "Empty Content")
 
             // When: 조회
-            val photos = contentPhotoRepository.findByContentId(emptyContentId)
+            val photos = contentPhotoRepository.findByContentId(emptyContentId).block()!!
 
             // Then: 빈 목록
             assertThat(photos).isEmpty()
@@ -247,7 +244,7 @@ class ContentPhotoRepositoryTest {
                 .and(CONTENT_PHOTOS.DISPLAY_ORDER.eq(1))).block()
 
             // When: 조회
-            val photos = contentPhotoRepository.findByContentId(testContentId)
+            val photos = contentPhotoRepository.findByContentId(testContentId).block()!!
 
             // Then: 2장만 조회 (삭제된 것 제외)
             assertThat(photos).hasSize(2)
@@ -268,7 +265,7 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo3.jpg", 2)
 
             // When: 삭제
-            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
+            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString()).block()!!
 
             // Then: 3개 삭제됨
             assertThat(deletedCount).isEqualTo(3)
@@ -284,7 +281,7 @@ class ContentPhotoRepositoryTest {
             }
 
             // findByContentId로 조회 시 빈 목록 (Soft Delete)
-            val photos = contentPhotoRepository.findByContentId(testContentId)
+            val photos = contentPhotoRepository.findByContentId(testContentId).block()!!
             assertThat(photos).isEmpty()
         }
 
@@ -296,7 +293,7 @@ class ContentPhotoRepositoryTest {
             insertContent(emptyContentId, testUser.id!!, "Empty Content")
 
             // When: 삭제
-            val deletedCount = contentPhotoRepository.deleteByContentId(emptyContentId, testUser.id!!.toString())
+            val deletedCount = contentPhotoRepository.deleteByContentId(emptyContentId, testUser.id!!.toString()).block()!!
 
             // Then: 0 반환
             assertThat(deletedCount).isEqualTo(0)
@@ -309,10 +306,10 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo1.jpg", 0)
             insertPhoto(testContentId, testUser.id!!, "photo2.jpg", 1)
             insertPhoto(testContentId, testUser.id!!, "photo3.jpg", 2)
-            contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
+            contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString()).block()
 
             // When: 다시 삭제 시도
-            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
+            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString()).block()!!
 
             // Then: 0 반환 (이미 삭제되었으므로)
             assertThat(deletedCount).isEqualTo(0)
@@ -339,7 +336,7 @@ class ContentPhotoRepositoryTest {
 
             // When: 일괄 조회
             val contentIds = listOf(content1, content2)
-            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds).block()!!
 
             // Then: Map으로 그룹화
             assertThat(photosMap).hasSize(2)
@@ -366,7 +363,7 @@ class ContentPhotoRepositoryTest {
 
             // When: 일괄 조회
             val contentIds = listOf(content1, content2)
-            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds).block()!!
 
             // Then: 사진이 있는 콘텐츠만 Map에 포함
             assertThat(photosMap).hasSize(1)

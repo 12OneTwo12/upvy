@@ -41,10 +41,8 @@ class AuthController(
     fun refreshToken(
         @Valid @RequestBody request: RefreshTokenRequest
     ): Mono<ResponseEntity<RefreshTokenResponse>> {
-        return Mono.fromCallable {
-            val response = authService.refreshAccessToken(request.refreshToken)
-            ResponseEntity.ok(response)
-        }
+        return authService.refreshAccessToken(request.refreshToken)
+            .map { response -> ResponseEntity.ok(response) }
     }
 
     /**

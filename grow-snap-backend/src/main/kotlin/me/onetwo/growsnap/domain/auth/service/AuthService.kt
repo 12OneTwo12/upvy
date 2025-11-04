@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.auth.service
 
 import me.onetwo.growsnap.domain.auth.dto.RefreshTokenResponse
+import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
@@ -19,7 +20,7 @@ interface AuthService {
      * @return RefreshTokenResponse 새로운 Access Token
      * @throws IllegalArgumentException Refresh Token이 유효하지 않은 경우
      */
-    fun refreshAccessToken(refreshToken: String): RefreshTokenResponse
+    fun refreshAccessToken(refreshToken: String): Mono<RefreshTokenResponse>
 
     /**
      * 로그아웃

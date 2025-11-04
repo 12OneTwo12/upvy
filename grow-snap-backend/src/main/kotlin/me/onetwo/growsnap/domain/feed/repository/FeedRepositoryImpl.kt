@@ -20,6 +20,7 @@ import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_SAVES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
 import org.jooq.DSLContext
+import org.jooq.Record
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
@@ -302,7 +303,7 @@ class FeedRepositoryImpl(
      * @return FeedItemResponse
      */
     private fun mapRecordToFeedItem(
-        record: org.jooq.Record,
+        record: Record,
         subtitlesMap: Map<UUID, List<SubtitleInfoResponse>>,
         photosMap: Map<UUID, List<String>>
     ): FeedItemResponse {
@@ -563,40 +564,6 @@ class FeedRepositoryImpl(
             }
     }
 
-    /**
-     * 여러 콘텐츠의 자막 정보를 배치로 조회 (N+1 문제 방지)
-     *
-     * @param contentIds 콘텐츠 ID 목록
-     * @return 콘텐츠 ID를 키로 하는 자막 정보 맵
-     */
-    private fun findSubtitlesByContentIds(contentIds: List<UUID>): Map<UUID, List<SubtitleInfoResponse>> {
-        if (contentIds.isEmpty()) {
-            return emptyMap()
-        }
-
-        return Flux.from(
-            dslContext
-                .select(
-                    CONTENT_SUBTITLES.CONTENT_ID,
-                    CONTENT_SUBTITLES.LANGUAGE,
-                    CONTENT_SUBTITLES.SUBTITLE_URL
-                )
-                .from(CONTENT_SUBTITLES)
-                .where(CONTENT_SUBTITLES.CONTENT_ID.`in`(contentIds.map { it.toString() }))
-                .and(CONTENT_SUBTITLES.DELETED_AT.isNull)
-        )
-            .collectList()
-            .block()
-            ?.groupBy(
-                { UUID.fromString(it.get(CONTENT_SUBTITLES.CONTENT_ID)) },
-                { record ->
-                    SubtitleInfoResponse(
-                        language = record.get(CONTENT_SUBTITLES.LANGUAGE)!!,
-                        subtitleUrl = record.get(CONTENT_SUBTITLES.SUBTITLE_URL)!!
-                    )
-                }
-            ) ?: emptyMap()
-    }
 
     /**
      * 여러 콘텐츠의 자막 정보를 배치로 조회 (반응형 버전)

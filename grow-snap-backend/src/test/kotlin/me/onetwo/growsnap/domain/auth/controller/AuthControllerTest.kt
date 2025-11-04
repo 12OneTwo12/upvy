@@ -50,7 +50,7 @@ class AuthControllerTest {
             accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ..."
         )
 
-        every { authService.refreshAccessToken(request.refreshToken) } returns response
+        every { authService.refreshAccessToken(request.refreshToken) } returns reactor.core.publisher.Mono.just(response)
 
         // When & Then
         webTestClient.post()
@@ -85,7 +85,7 @@ class AuthControllerTest {
 
         every {
             authService.refreshAccessToken(request.refreshToken)
-        } throws IllegalArgumentException("유효하지 않은 Refresh Token입니다")
+        } returns reactor.core.publisher.Mono.error(IllegalArgumentException("유효하지 않은 Refresh Token입니다"))
 
         // When & Then
         webTestClient.post()

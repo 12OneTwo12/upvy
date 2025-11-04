@@ -1,5 +1,7 @@
 package me.onetwo.growsnap.domain.content.repository
 
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import me.onetwo.growsnap.domain.content.dto.ContentWithMetadata
 import me.onetwo.growsnap.domain.content.model.Category
@@ -7,7 +9,6 @@ import me.onetwo.growsnap.domain.content.model.Content
 import me.onetwo.growsnap.domain.content.model.ContentMetadata
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
-import me.onetwo.growsnap.domain.content.model.DifficultyLevel
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
 import org.jooq.DSLContext
@@ -227,12 +228,16 @@ class ContentRepositoryImpl(
                 deletedAt = record.getValue(CONTENTS.DELETED_AT)
             )
 
-            val tagsJson = record.getValue(CONTENT_METADATA.TAGS)
-            val tags = if (tagsJson != null) {
-                // tagsJson.data()가 문자열을 반환하므로, 먼저 String으로 읽고 다시 JSON으로 파싱
-                val jsonString = objectMapper.readValue(tagsJson.data(), String::class.java)
-                @Suppress("UNCHECKED_CAST")
-                objectMapper.readValue(jsonString, List::class.java) as List<String>
+            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
+            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
+            val tags = if (tagsString != null && tagsString.isNotBlank()) {
+                try {
+                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
+                } catch (e: JsonProcessingException) {
+                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
+                    logger.warn("Failed to parse tags JSON for content ${content.id}: ${e.message}", e)
+                    emptyList()
+                }
             } else {
                 emptyList()
             }
@@ -372,12 +377,16 @@ class ContentRepositoryImpl(
                 .where(CONTENT_METADATA.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
         ).map { record ->
-            val tagsJson = record.getValue(CONTENT_METADATA.TAGS)
-            val tags = if (tagsJson != null) {
-                // tagsJson.data()가 문자열을 반환하므로, 먼저 String으로 읽고 다시 JSON으로 파싱
-                val jsonString = objectMapper.readValue(tagsJson.data(), String::class.java)
-                @Suppress("UNCHECKED_CAST")
-                objectMapper.readValue(jsonString, List::class.java) as List<String>
+            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
+            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
+            val tags = if (tagsString != null && tagsString.isNotBlank()) {
+                try {
+                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
+                } catch (e: JsonProcessingException) {
+                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
+                    logger.warn("Failed to parse tags JSON for content $contentId: ${e.message}", e)
+                    emptyList()
+                }
             } else {
                 emptyList()
             }

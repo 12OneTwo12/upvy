@@ -170,22 +170,25 @@ class ContentServiceImpl(
         }.flatMap { (savedContent, savedMetadata, contentType) ->
             // 6. PHOTO 타입인 경우 사진 목록 저장
             val photoSaveMono = if (contentType == ContentType.PHOTO && !request.photoUrls.isNullOrEmpty()) {
-                Mono.fromCallable {
-                    request.photoUrls.forEachIndexed { index, photoUrl ->
-                        val photo = ContentPhoto(
-                            contentId = savedContent.id!!,
-                            photoUrl = photoUrl,
-                            displayOrder = index,
-                            width = request.width,
-                            height = request.height,
-                            createdAt = savedContent.createdAt,
-                            createdBy = userId.toString(),
-                            updatedAt = savedContent.updatedAt,
-                            updatedBy = userId.toString()
-                        )
-                        val saved = contentPhotoRepository.save(photo)
-                        check(saved) { "Failed to save content photo" }
-                    }
+                Flux.fromIterable(request.photoUrls.mapIndexed { index, photoUrl ->
+                    ContentPhoto(
+                        contentId = savedContent.id!!,
+                        photoUrl = photoUrl,
+                        displayOrder = index,
+                        width = request.width,
+                        height = request.height,
+                        createdAt = savedContent.createdAt,
+                        createdBy = userId.toString(),
+                        updatedAt = savedContent.updatedAt,
+                        updatedBy = userId.toString()
+                    )
+                })
+                .flatMap { photo ->
+                    contentPhotoRepository.save(photo)
+                        .onErrorMap { IllegalStateException("Failed to save content photo: ${it.message}") }
+                }
+                .then()
+                .doOnSuccess {
                     logger.info("Content photos saved: contentId=${savedContent.id}, count=${request.photoUrls.size}")
                 }
             } else {
@@ -269,10 +272,8 @@ class ContentServiceImpl(
             .flatMap { (content, metadata) ->
                 // PHOTO 타입인 경우 사진 목록 조회, 아니면 null 반환
                 if (content.contentType == ContentType.PHOTO) {
-                    Mono.fromCallable {
-                        contentPhotoRepository.findByContentId(content.id!!)
-                            .map { it.photoUrl }
-                    }.subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                    contentPhotoRepository.findByContentId(content.id!!)
+                        .map { photos -> photos.map { it.photoUrl } }
                         .map { photoUrls -> Pair(photoUrls as List<String>?, Pair(content, metadata)) }
                 } else {
                     Mono.just(Pair(null as List<String>?, Pair(content, metadata)))
@@ -319,10 +320,10 @@ class ContentServiceImpl(
                     .mapNotNull { it.content.id }
 
                 val photoUrlsMapMono = if (photoContentIds.isNotEmpty()) {
-                    Mono.fromCallable {
-                        contentPhotoRepository.findByContentIds(photoContentIds)
-                            .mapValues { (_, photos) -> photos.map { it.photoUrl } }
-                    }
+                    contentPhotoRepository.findByContentIds(photoContentIds)
+                        .map { photoMap ->
+                            photoMap.mapValues { (_, photos) -> photos.map { it.photoUrl } }
+                        }
                 } else {
                     Mono.just(emptyMap())
                 }
@@ -417,29 +418,35 @@ class ContentServiceImpl(
             .flatMap { (content, updatedMetadata, photoUrls) ->
                 // PHOTO 타입 콘텐츠의 사진 목록 수정
                 val photoUpdateMono = if (content.contentType == ContentType.PHOTO && photoUrls != null) {
-                    Mono.fromCallable {
-                        // 기존 사진 삭제 (Soft Delete)
-                        contentPhotoRepository.deleteByContentId(contentId, userId.toString())
-                        logger.info("Deleted existing photos: contentId=$contentId")
-
-                        // 새 사진 저장
-                        photoUrls.forEachIndexed { index, photoUrl ->
-                            val photo = ContentPhoto(
-                                contentId = contentId,
-                                photoUrl = photoUrl,
-                                displayOrder = index,
-                                width = content.width,
-                                height = content.height,
-                                createdAt = LocalDateTime.now(),
-                                createdBy = userId.toString(),
-                                updatedAt = LocalDateTime.now(),
-                                updatedBy = userId.toString()
-                            )
-                            val saved = contentPhotoRepository.save(photo)
-                            check(saved) { "Failed to save content photo during update" }
+                    // 기존 사진 삭제 (Soft Delete)
+                    contentPhotoRepository.deleteByContentId(contentId, userId.toString())
+                        .doOnSuccess {
+                            logger.info("Deleted existing photos: contentId=$contentId")
                         }
-                        logger.info("Updated photos: contentId=$contentId, count=${photoUrls.size}")
-                    }
+                        .then(
+                            // 새 사진 저장
+                            Flux.fromIterable(photoUrls.mapIndexed { index, photoUrl ->
+                                ContentPhoto(
+                                    contentId = contentId,
+                                    photoUrl = photoUrl,
+                                    displayOrder = index,
+                                    width = content.width,
+                                    height = content.height,
+                                    createdAt = LocalDateTime.now(),
+                                    createdBy = userId.toString(),
+                                    updatedAt = LocalDateTime.now(),
+                                    updatedBy = userId.toString()
+                                )
+                            })
+                            .flatMap { photo ->
+                                contentPhotoRepository.save(photo)
+                                    .onErrorMap { IllegalStateException("Failed to save content photo during update: ${it.message}") }
+                            }
+                            .then()
+                            .doOnSuccess {
+                                logger.info("Updated photos: contentId=$contentId, count=${photoUrls.size}")
+                            }
+                        )
                 } else {
                     Mono.empty()
                 }
@@ -453,10 +460,8 @@ class ContentServiceImpl(
                     if (updatedPhotoUrls != null) {
                         Mono.just(updatedPhotoUrls)
                     } else {
-                        Mono.fromCallable {
-                            contentPhotoRepository.findByContentId(content.id!!)
-                                .map { it.photoUrl }
-                        }
+                        contentPhotoRepository.findByContentId(content.id!!)
+                            .map { photos -> photos.map { it.photoUrl } }
                     }
                 } else {
                     Mono.justOrEmpty(null)

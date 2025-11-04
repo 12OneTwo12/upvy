@@ -69,7 +69,7 @@ class AuthServiceTest {
         } returns newAccessToken
 
         // When
-        val result = authService.refreshAccessToken(refreshToken)
+        val result = authService.refreshAccessToken(refreshToken).block()!!
 
         // Then
         assertNotNull(result)
@@ -94,7 +94,7 @@ class AuthServiceTest {
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
-            authService.refreshAccessToken(invalidToken)
+            authService.refreshAccessToken(invalidToken).block()
         }
 
         assertEquals("유효하지 않은 Refresh Token입니다", exception.message)
@@ -114,7 +114,7 @@ class AuthServiceTest {
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
-            authService.refreshAccessToken(refreshToken)
+            authService.refreshAccessToken(refreshToken).block()
         }
 
         assertEquals("Refresh Token을 찾을 수 없습니다", exception.message)
@@ -136,7 +136,7 @@ class AuthServiceTest {
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
-            authService.refreshAccessToken(requestToken)
+            authService.refreshAccessToken(requestToken).block()
         }
 
         assertEquals("Refresh Token이 일치하지 않습니다", exception.message)

@@ -33,7 +33,7 @@ class ContentInteractionServiceImpl(
      * @param creatorId 생성자 ID
      */
     @Transactional
-    override fun createContentInteraction(contentId: UUID, creatorId: UUID) {
+    override fun createContentInteraction(contentId: UUID, creatorId: UUID): Mono<Void> {
         logger.info("Creating ContentInteraction: contentId=$contentId, creatorId=$creatorId")
 
         val contentInteraction = ContentInteraction(
@@ -49,14 +49,14 @@ class ContentInteractionServiceImpl(
             updatedBy = creatorId.toString()
         )
 
-        contentInteractionRepository.create(contentInteraction)
+        return contentInteractionRepository.create(contentInteraction)
             .doOnSuccess {
                 logger.info("ContentInteraction created successfully: contentId=$contentId")
             }
             .doOnError { error ->
                 logger.error("Failed to create ContentInteraction: contentId=$contentId", error)
             }
-            .block()
+            .then()
     }
 
     @Transactional

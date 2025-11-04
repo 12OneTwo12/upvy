@@ -28,12 +28,14 @@ class ContentEventHandler(
      */
     @EventListener
     fun handleContentCreated(event: ContentCreatedEvent) {
-        try {
-            logger.info("Handling ContentCreatedEvent: contentId=${event.contentId}")
-            contentInteractionService.createContentInteraction(event.contentId, event.creatorId)
-            logger.info("ContentCreatedEvent handled successfully: contentId=${event.contentId}")
-        } catch (e: Exception) {
-            logger.error("Failed to handle ContentCreatedEvent: contentId=${event.contentId}", e)
-        }
+        logger.info("Handling ContentCreatedEvent: contentId=${event.contentId}")
+        contentInteractionService.createContentInteraction(event.contentId, event.creatorId)
+            .doOnSuccess {
+                logger.info("ContentCreatedEvent handled successfully: contentId=${event.contentId}")
+            }
+            .doOnError { e ->
+                logger.error("Failed to handle ContentCreatedEvent: contentId=${event.contentId}", e)
+            }
+            .subscribe()
     }
 }

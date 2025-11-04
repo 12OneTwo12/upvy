@@ -18,7 +18,7 @@ interface ContentInteractionService {
      * @param contentId 콘텐츠 ID
      * @param creatorId 생성자 ID
      */
-    fun createContentInteraction(contentId: UUID, creatorId: UUID)
+    fun createContentInteraction(contentId: UUID, creatorId: UUID): Mono<Void>
 
     /**
      * 좋아요 카운트 증가
