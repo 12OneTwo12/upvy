@@ -35,7 +35,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(TestSecurityConfig::class, EmbeddedRedisConfig::class)
+@Import(TestSecurityConfig::class)
 @ActiveProfiles("test")
 @DisplayName("피드 Controller 통합 테스트")
 class FeedControllerIntegrationTest {
