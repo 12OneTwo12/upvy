@@ -59,6 +59,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const [selectedThumbnail, setSelectedThumbnail] = useState<string>('');
   const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
 
+  // 타임라인 프레임 썸네일 (편집용)
+  const [timelineFrames, setTimelineFrames] = useState<string[]>([]);
+  const [isGeneratingFrames, setIsGeneratingFrames] = useState(false);
+
   // 업로드 상태
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -113,6 +117,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       // 자동으로 썸네일 생성 (videoUri가 있을 때만)
       if (videoUri) {
         generateThumbnails(videoUri, durationSec);
+        generateTimelineFrames(videoUri, durationSec);
       }
     }
   };
@@ -187,6 +192,41 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   };
 
+  // 타임라인용 프레임 생성 (10개)
+  const generateTimelineFrames = async (uri: string, durationSec: number) => {
+    console.log('🎬 Generating timeline frames');
+    setIsGeneratingFrames(true);
+    try {
+      const frameCount = 10;
+      const interval = durationSec / frameCount;
+
+      const times = Array.from({ length: frameCount }, (_, i) => i * interval);
+
+      const frameResults = await Promise.all(
+        times.map(async (time) => {
+          try {
+            const { uri: frameUri } = await VideoThumbnails.getThumbnailAsync(uri, {
+              time: Math.floor(time * 1000),
+              quality: 0.5, // 타임라인용이므로 낮은 품질로
+            });
+            return frameUri;
+          } catch (err) {
+            console.error('Failed to generate frame at time', time, ':', err);
+            return null;
+          }
+        })
+      );
+
+      const validFrames = frameResults.filter((uri): uri is string => uri !== null);
+      console.log('🎬 Generated', validFrames.length, 'timeline frames');
+      setTimelineFrames(validFrames);
+    } catch (error) {
+      console.error('Failed to generate timeline frames:', error);
+    } finally {
+      setIsGeneratingFrames(false);
+    }
+  };
+
   const handlePlayPause = async () => {
     if (isPlaying) {
       await videoRef.current?.pauseAsync();
@@ -239,13 +279,22 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         initialTrimStart.current = trimStartRef.current;
         setIsDraggingStart(true);
       },
-      onPanResponderMove: (_, gestureState) => {
+      onPanResponderMove: async (_, gestureState) => {
         if (durationRef.current === 0) return;
 
         const deltaTime = (gestureState.dx / timelineWidthRef.current) * durationRef.current;
         const newStart = Math.max(0, Math.min(trimEndRef.current - 1, initialTrimStart.current + deltaTime));
 
         setTrimStart(newStart);
+
+        // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
+        if (videoRef.current) {
+          try {
+            await videoRef.current.setPositionAsync(Math.floor(newStart * 1000));
+          } catch (error) {
+            // seek 에러 무시
+          }
+        }
       },
       onPanResponderRelease: async () => {
         console.log('🟢 Trim start handle - drag released');
@@ -268,7 +317,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         initialTrimEnd.current = trimEndRef.current;
         setIsDraggingEnd(true);
       },
-      onPanResponderMove: (_, gestureState) => {
+      onPanResponderMove: async (_, gestureState) => {
         if (durationRef.current === 0) return;
 
         const deltaTime = (gestureState.dx / timelineWidthRef.current) * durationRef.current;
@@ -278,6 +327,15 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         );
 
         setTrimEnd(newEnd);
+
+        // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
+        if (videoRef.current) {
+          try {
+            await videoRef.current.setPositionAsync(Math.floor(newEnd * 1000));
+          } catch (error) {
+            // seek 에러 무시
+          }
+        }
       },
       onPanResponderRelease: async () => {
         console.log('🔵 Trim end handle - drag released');
@@ -454,7 +512,47 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           >
             {/* 진행 바 */}
             <View style={styles.timelineTrack}>
-              {/* 선택된 범위 */}
+              {/* 타임라인 프레임 이미지들 */}
+              {timelineFrames.length > 0 && (
+                <View style={styles.timelineFramesContainer}>
+                  {timelineFrames.map((frameUri, index) => (
+                    <Image
+                      key={index}
+                      source={{ uri: frameUri }}
+                      style={styles.timelineFrame}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </View>
+              )}
+
+              {/* 선택된 범위 오버레이 (어둡게) */}
+              {duration > 0 && (
+                <>
+                  {/* 시작 전 어두운 영역 */}
+                  <View
+                    style={[
+                      styles.timelineDimmed,
+                      {
+                        left: 0,
+                        width: `${(trimStart / duration) * 100}%`,
+                      },
+                    ]}
+                  />
+                  {/* 끝 후 어두운 영역 */}
+                  <View
+                    style={[
+                      styles.timelineDimmed,
+                      {
+                        left: `${(trimEnd / duration) * 100}%`,
+                        right: 0,
+                      },
+                    ]}
+                  />
+                </>
+              )}
+
+              {/* 선택된 범위 테두리 */}
               <View
                 style={[
                   styles.timelineSelected,
@@ -737,17 +835,38 @@ const styles = StyleSheet.create({
   },
   timelineTrack: {
     height: 80,
-    backgroundColor: theme.colors.gray[200],
+    backgroundColor: theme.colors.gray[900],
     borderRadius: theme.borderRadius.base,
     position: 'relative',
-    overflow: 'visible',
+    overflow: 'hidden', // 프레임 이미지를 위해 hidden으로 변경
+  },
+  timelineFramesContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+  },
+  timelineFrame: {
+    flex: 1,
+    height: '100%',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  timelineDimmed: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   timelineSelected: {
     position: 'absolute',
     top: 0,
     bottom: 0,
-    backgroundColor: theme.colors.primary[500],
-    opacity: 0.3,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[500],
+    backgroundColor: 'transparent',
   },
   playheadIndicator: {
     position: 'absolute',
@@ -759,8 +878,8 @@ const styles = StyleSheet.create({
   },
   trimHandle: {
     position: 'absolute',
-    top: -15,
-    bottom: -15,
+    top: 0,
+    bottom: 0,
     width: 60,
     justifyContent: 'center',
     alignItems: 'center',
