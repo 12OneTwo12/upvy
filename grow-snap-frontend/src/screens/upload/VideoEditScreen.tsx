@@ -46,6 +46,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const [duration, setDuration] = useState(0);
   const [position, setPosition] = useState(0);
 
+  // 실제 비디오 파일 URI (ph:// -> file://)
+  const [videoUri, setVideoUri] = useState<string>('');
+
   // 트리밍 (초 단위)
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
@@ -58,6 +61,21 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   // 업로드 상태
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // 실제 파일 URI 로드
+  React.useEffect(() => {
+    const loadVideoUri = async () => {
+      try {
+        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+        const uri = assetInfo.localUri || assetInfo.uri;
+        setVideoUri(uri);
+      } catch (error) {
+        console.error('Failed to load video URI:', error);
+        Alert.alert('오류', '비디오를 불러올 수 없습니다.');
+      }
+    };
+    loadVideoUri();
+  }, [asset.id]);
 
   const handleVideoLoad = (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
@@ -93,6 +111,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const generateThumbnails = async (durationSec: number) => {
     setIsGeneratingThumbnails(true);
     try {
+      if (!videoUri) {
+        throw new Error('Video URI not loaded');
+      }
+
       // 실제 구현에서는 expo-video-thumbnails 사용
       // 임시로 3개 타임스탬프만 생성
       const times = [
@@ -105,18 +127,20 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       // import * as VideoThumbnails from 'expo-video-thumbnails';
       // const thumbnailUris = await Promise.all(
       //   times.map(time =>
-      //     VideoThumbnails.getThumbnailAsync(asset.uri, { time: time * 1000 })
+      //     VideoThumbnails.getThumbnailAsync(videoUri, { time: time * 1000 })
       //   )
       // );
 
       // 임시로 비디오 자체를 썸네일로 사용
-      setThumbnails([asset.uri, asset.uri, asset.uri]);
-      setSelectedThumbnail(asset.uri);
+      setThumbnails([videoUri, videoUri, videoUri]);
+      setSelectedThumbnail(videoUri);
     } catch (error) {
       console.error('Failed to generate thumbnails:', error);
       // fallback: 비디오 자체를 썸네일로
-      setThumbnails([asset.uri, asset.uri, asset.uri]);
-      setSelectedThumbnail(asset.uri);
+      if (videoUri) {
+        setThumbnails([videoUri, videoUri, videoUri]);
+        setSelectedThumbnail(videoUri);
+      }
     } finally {
       setIsGeneratingThumbnails(false);
     }
@@ -134,6 +158,66 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   };
 
+  // 드래그 시작 시 초기 위치 저장
+  const initialTrimStart = useRef(0);
+  const initialTrimEnd = useRef(0);
+
+  // 트리밍 시작 핸들 드래그
+  const trimStartPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        initialTrimStart.current = trimStart;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (duration === 0) return;
+
+        // 타임라인 너비 기준으로 계산
+        const timelineWidth = SCREEN_WIDTH - 32; // padding 제외
+        const deltaTime = (gestureState.dx / timelineWidth) * duration;
+        const newStart = Math.max(0, Math.min(trimEnd - 1, initialTrimStart.current + deltaTime));
+
+        setTrimStart(newStart);
+      },
+      onPanResponderRelease: async () => {
+        // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
+        if (position < trimStart || position >= trimEnd) {
+          await videoRef.current?.setPositionAsync(trimStart * 1000);
+        }
+      },
+    })
+  ).current;
+
+  // 트리밍 끝 핸들 드래그
+  const trimEndPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        initialTrimEnd.current = trimEnd;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (duration === 0) return;
+
+        const timelineWidth = SCREEN_WIDTH - 32;
+        const deltaTime = (gestureState.dx / timelineWidth) * duration;
+        const newEnd = Math.max(
+          trimStart + 1,
+          Math.min(duration, Math.min(trimStart + MAX_VIDEO_DURATION, initialTrimEnd.current + deltaTime))
+        );
+
+        setTrimEnd(newEnd);
+      },
+      onPanResponderRelease: async () => {
+        // 현재 재생 위치가 범위를 벗어나면 시작 위치로 이동
+        if (position < trimStart || position >= trimEnd) {
+          await videoRef.current?.setPositionAsync(trimStart * 1000);
+        }
+      },
+    })
+  ).current;
+
   const handleNext = async () => {
     if (!selectedThumbnail) {
       Alert.alert('알림', '썸네일을 선택해주세요.');
@@ -149,12 +233,13 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     try {
       setIsUploading(true);
 
-      // 1. MediaLibrary로 실제 파일 URI 얻기 (ph:// -> file://)
-      const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-      const videoFileUri = assetInfo.localUri || assetInfo.uri;
+      if (!videoUri) {
+        Alert.alert('오류', '비디오를 불러올 수 없습니다.');
+        return;
+      }
 
       // 2. 비디오 업로드
-      const videoResponse = await fetch(videoFileUri);
+      const videoResponse = await fetch(videoUri);
       const videoBlob = await videoResponse.blob();
 
       const videoUploadUrlResponse = await generateUploadUrl({
@@ -236,16 +321,20 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 비디오 미리보기 */}
         <View style={styles.videoContainer}>
-          <Video
-            ref={videoRef}
-            source={{ uri: asset.uri }}
-            style={styles.video}
-            resizeMode={ResizeMode.CONTAIN}
-            isLooping={false}
-            shouldPlay={false}
-            onLoad={handleVideoLoad}
-            onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-          />
+          {videoUri ? (
+            <Video
+              ref={videoRef}
+              source={{ uri: videoUri }}
+              style={styles.video}
+              resizeMode={ResizeMode.CONTAIN}
+              isLooping={false}
+              shouldPlay={false}
+              onLoad={handleVideoLoad}
+              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+            />
+          ) : (
+            <ActivityIndicator size="large" color={theme.colors.primary[500]} style={{ marginTop: 100 }} />
+          )}
 
           {/* 재생/일시정지 버튼 */}
           <TouchableOpacity
@@ -305,6 +394,34 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     { left: `${(position / duration) * 100}%` },
                   ]}
                 />
+              )}
+
+              {/* 트리밍 시작 핸들 */}
+              {duration > 0 && (
+                <View
+                  {...trimStartPanResponder.panHandlers}
+                  style={[
+                    styles.trimHandle,
+                    styles.trimHandleLeft,
+                    { left: `${(trimStart / duration) * 100}%` },
+                  ]}
+                >
+                  <View style={styles.trimHandleBar} />
+                </View>
+              )}
+
+              {/* 트리밍 끝 핸들 */}
+              {duration > 0 && (
+                <View
+                  {...trimEndPanResponder.panHandlers}
+                  style={[
+                    styles.trimHandle,
+                    styles.trimHandleRight,
+                    { left: `${(trimEnd / duration) * 100}%` },
+                  ]}
+                >
+                  <View style={styles.trimHandleBar} />
+                </View>
               )}
             </View>
 
@@ -389,10 +506,13 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         {/* 도움말 */}
         <View style={styles.helpSection}>
           <Text style={styles.helpText}>
-            💡 현재 버전에서는 전체 비디오가 업로드됩니다
+            ✂️ 타임라인 핸들을 드래그하여 원하는 구간을 선택하세요
           </Text>
           <Text style={styles.helpText}>
-            ▶️ 재생 버튼을 눌러 미리보기를 확인하세요
+            ▶️ 재생 버튼을 눌러 선택한 구간을 미리보기하세요
+          </Text>
+          <Text style={styles.helpText}>
+            📌 최대 {MAX_VIDEO_DURATION}초까지 선택 가능합니다
           </Text>
         </View>
       </ScrollView>
@@ -534,6 +654,29 @@ const styles = StyleSheet.create({
     width: 3,
     backgroundColor: theme.colors.error,
     zIndex: 10,
+  },
+  trimHandle: {
+    position: 'absolute',
+    top: -10,
+    bottom: -10,
+    width: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  trimHandleLeft: {
+    marginLeft: -15,
+  },
+  trimHandleRight: {
+    marginLeft: -15,
+  },
+  trimHandleBar: {
+    width: 6,
+    height: '100%',
+    backgroundColor: theme.colors.text.inverse,
+    borderRadius: 3,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[500],
   },
   timeLabels: {
     flexDirection: 'row',
