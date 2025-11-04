@@ -36,7 +36,7 @@ abstract class AbstractIntegrationTest {
          */
         @JvmStatic
         val redisContainer: GenericContainer<*> by lazy {
-            GenericContainer(DockerImageName.parse("redis:7.4.1-alpine3.20"))
+            GenericContainer(DockerImageName.parse("redis:7-alpine"))
                 .withExposedPorts(REDIS_PORT)
                 .waitingFor(Wait.forListeningPort())
                 .withStartupTimeout(Duration.ofSeconds(60))
