@@ -6,32 +6,27 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
-  # H2 Database for Testing
-  datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+  # R2DBC H2 Database for Testing
+  # Using a unique DB name per JVM run to avoid test pollution
+  # Each test with @DirtiesContext will get a fresh context but share this DB instance
+  # within that JVM run, so we use timestamp to make it unique per gradle test execution
+  r2dbc:
+    url: r2dbc:h2:mem:///testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
     username: sa
     password:
-    driver-class-name: org.h2.Driver
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
-
-  # H2 Console (optional for debugging)
-  h2:
-    console:
+    pool:
       enabled: true
+      initial-size: 5
+      max-size: 10
 
-  # Redis Configuration (Embedded Redis or TestContainers)
-  data:
-    redis:
-      host: localhost
-      port: 6379
+  # Redis Configuration is provided by @ServiceConnection in TestRedisConfig
+  # No explicit configuration needed - Testcontainers will provide dynamic host/port
 
   # SQL Initialization
   sql:
     init:
       mode: always
-      schema-locations: classpath:sql/create-table-sql.sql
+      schema-locations: classpath:sql/schema-test.sql
 
   # AWS Configuration for Test
   cloud:

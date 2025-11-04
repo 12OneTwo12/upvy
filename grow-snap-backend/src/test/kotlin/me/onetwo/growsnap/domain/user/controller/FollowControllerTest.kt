@@ -28,6 +28,8 @@ import org.springframework.restdocs.request.RequestDocumentation.*
 import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
 
 /**
  * FollowController 단위 테스트 + Spring Rest Docs
@@ -58,8 +60,7 @@ class FollowControllerTest {
             followingId = testFollowingId
         )
 
-        every { followService.follow(testUserId, testFollowingId) } returns follow
-
+        every { followService.follow(testUserId, testFollowingId) } returns Mono.just(follow)
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))
@@ -125,7 +126,7 @@ class FollowControllerTest {
     @DisplayName("언팔로우 성공")
     fun unfollow_Success() {
         // Given
-        justRun { followService.unfollow(testUserId, testFollowingId) }
+        every { followService.unfollow(testUserId, testFollowingId) } returns Mono.empty()
 
         // When & Then
         webTestClient
@@ -168,8 +169,7 @@ class FollowControllerTest {
     @DisplayName("팔로우 관계 확인 - 팔로우 중")
     fun checkFollowing_Following_ReturnsTrue() {
         // Given
-        every { followService.isFollowing(testUserId, testFollowingId) } returns true
-
+        every { followService.isFollowing(testUserId, testFollowingId) } returns Mono.just(true)
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))
@@ -201,8 +201,7 @@ class FollowControllerTest {
     @DisplayName("팔로우 관계 확인 - 팔로우하지 않음")
     fun checkFollowing_NotFollowing_ReturnsFalse() {
         // Given
-        every { followService.isFollowing(testUserId, testFollowingId) } returns false
-
+        every { followService.isFollowing(testUserId, testFollowingId) } returns Mono.just(false)
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))
@@ -219,9 +218,8 @@ class FollowControllerTest {
     fun getFollowStats_Success() {
         // Given
         val targetUserId = UUID.randomUUID()
-        every { followService.getFollowerCount(targetUserId) } returns 100
-        every { followService.getFollowingCount(targetUserId) } returns 50
-
+        every { followService.getFollowerCount(targetUserId) } returns Mono.just(100)
+        every { followService.getFollowingCount(targetUserId) } returns Mono.just(50)
         // When & Then
         webTestClient.get()
             .uri("${ApiPaths.API_V1_FOLLOWS}/stats/{targetUserId}", targetUserId)
@@ -251,9 +249,8 @@ class FollowControllerTest {
     @DisplayName("내 팔로우 통계 조회")
     fun getMyFollowStats_Success() {
         // Given
-        every { followService.getFollowerCount(testUserId) } returns 25
-        every { followService.getFollowingCount(testUserId) } returns 30
-
+        every { followService.getFollowerCount(testUserId) } returns Mono.just(25)
+        every { followService.getFollowingCount(testUserId) } returns Mono.just(30)
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))
@@ -306,8 +303,7 @@ class FollowControllerTest {
             updatedAt = LocalDateTime.now()
         )
 
-        every { followService.getFollowers(targetUserId) } returns listOf(follower1, follower2)
-
+        every { followService.getFollowers(targetUserId) } returns Flux.fromIterable(listOf(follower1, follower2))
         // When & Then: API 호출 및 검증
         webTestClient
             .mutateWith(mockUser(UUID.randomUUID()))
@@ -351,8 +347,7 @@ class FollowControllerTest {
     fun getFollowers_NoFollowers_ReturnsEmptyList() {
         // Given: 팔로워가 없음
         val targetUserId = UUID.randomUUID()
-        every { followService.getFollowers(targetUserId) } returns emptyList()
-
+        every { followService.getFollowers(targetUserId) } returns Flux.empty()
         // When & Then: 빈 배열 반환
         webTestClient
             .mutateWith(mockUser(UUID.randomUUID()))
@@ -394,8 +389,7 @@ class FollowControllerTest {
             updatedAt = LocalDateTime.now()
         )
 
-        every { followService.getFollowing(targetUserId) } returns listOf(following1, following2)
-
+        every { followService.getFollowing(targetUserId) } returns Flux.fromIterable(listOf(following1, following2))
         // When & Then: API 호출 및 검증
         webTestClient
             .mutateWith(mockUser(UUID.randomUUID()))
@@ -439,8 +433,7 @@ class FollowControllerTest {
     fun getFollowing_NoFollowing_ReturnsEmptyList() {
         // Given: 팔로잉이 없음
         val targetUserId = UUID.randomUUID()
-        every { followService.getFollowing(targetUserId) } returns emptyList()
-
+        every { followService.getFollowing(targetUserId) } returns Flux.empty()
         // When & Then: 빈 배열 반환
         webTestClient
             .mutateWith(mockUser(UUID.randomUUID()))

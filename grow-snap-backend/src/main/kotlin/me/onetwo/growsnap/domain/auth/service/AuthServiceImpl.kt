@@ -6,6 +6,7 @@ import me.onetwo.growsnap.infrastructure.redis.RefreshTokenRepository
 import me.onetwo.growsnap.infrastructure.security.jwt.JwtTokenProvider
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
@@ -35,10 +36,10 @@ class AuthServiceImpl(
      * @throws IllegalArgumentException Refresh Token이 유효하지 않은 경우
      */
     @Transactional
-    override fun refreshAccessToken(refreshToken: String): RefreshTokenResponse {
+    override fun refreshAccessToken(refreshToken: String): Mono<RefreshTokenResponse> {
         // Refresh Token 유효성 검증
         if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw IllegalArgumentException("유효하지 않은 Refresh Token입니다")
+            return Mono.error(IllegalArgumentException("유효하지 않은 Refresh Token입니다"))
         }
 
         // Refresh Token에서 사용자 ID 추출
@@ -46,23 +47,22 @@ class AuthServiceImpl(
 
         // Redis에 저장된 Refresh Token과 비교
         val storedRefreshToken = refreshTokenRepository.findByUserId(userId)
-            ?: throw IllegalArgumentException("Refresh Token을 찾을 수 없습니다")
+            ?: return Mono.error(IllegalArgumentException("Refresh Token을 찾을 수 없습니다"))
 
         if (storedRefreshToken != refreshToken) {
-            throw IllegalArgumentException("Refresh Token이 일치하지 않습니다")
+            return Mono.error(IllegalArgumentException("Refresh Token이 일치하지 않습니다"))
         }
 
-        // 사용자 정보 조회
-        val user = userService.getUserById(userId)
-
-        // 새로운 Access Token 생성
-        val newAccessToken = jwtTokenProvider.generateAccessToken(
-            userId = user.id!!,
-            email = user.email,
-            role = user.role
-        )
-
-        return RefreshTokenResponse(accessToken = newAccessToken)
+        // 사용자 정보 조회하고 새로운 Access Token 생성
+        return userService.getUserById(userId)
+            .map { user ->
+                val newAccessToken = jwtTokenProvider.generateAccessToken(
+                    userId = user.id!!,
+                    email = user.email,
+                    role = user.role
+                )
+                RefreshTokenResponse(accessToken = newAccessToken)
+            }
     }
 
     /**

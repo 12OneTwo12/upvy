@@ -81,17 +81,31 @@
 
 **토큰**: ~2,200
 
-### 7. spring-event.md (Spring Event 패턴)
+### 7. reactor-sinks-event.md (Reactor Sinks API 이벤트 패턴)
 
-**내용**: 비동기 이벤트 처리, @TransactionalEventListener, @Async
+**내용**: WebFlux 환경 Reactor Sinks API 이벤트 처리, Critical/Non-Critical Path 분리
 
 **사용 시기**:
-- 이벤트 기반 비동기 처리 구현 시
-- 메인 트랜잭션과 독립적인 작업 처리 시
+- WebFlux 환경에서 이벤트 기반 비동기 처리 구현 시
+- Critical Path(카운트 등)와 Non-Critical Path(협업 필터링 등) 분리 시
+- 메인 리액티브 체인과 독립적인 작업 처리 시
+
+**토큰**: ~3,000
+
+**⚠️ 중요**: WebFlux 환경에서는 ApplicationEventPublisher가 아닌 Reactor Sinks API를 사용해야 합니다!
+
+### 8. reactor-sinks-event-testing.md (Reactor Sinks 이벤트 테스팅)
+
+**내용**: Reactor Sinks 이벤트 테스트 전략, Critical/Non-Critical Path 테스트 구분
+
+**사용 시기**:
+- Reactor Sinks 이벤트 기반 기능의 테스트 작성 시
+- Critical Path 동기 검증 vs Non-Critical Path 비동기 검증 확인 시
+- Awaitility 사용 여부 판단 시
 
 **토큰**: ~2,500
 
-### 8. quick-reference.md (빠른 참조)
+### 9. quick-reference.md (빠른 참조)
 
 **내용**: 체크리스트, 개발 프로세스, 핵심 규칙 요약
 
@@ -102,7 +116,7 @@
 
 **토큰**: ~1,800
 
-### 9. git.md (Git Convention)
+### 10. git.md (Git Convention)
 
 **내용**: 커밋 메시지 형식, 커밋 단위, PR 규칙, 브랜치 전략
 
@@ -114,7 +128,7 @@
 
 **토큰**: ~3,500
 
-### 10. frontend-api-integration.md (프론트엔드 API 통합) ⚠️ 필수
+### 11. frontend-api-integration.md (프론트엔드 API 통합) ⚠️ 필수
 
 **내용**: 프론트엔드 개발 시 백엔드 API 스펙 확인 및 타입 일치 가이드
 
@@ -138,7 +152,7 @@
 | **테스트 작성** | testing-guide → core-principles | ~4,000 |
 | **데이터베이스 쿼리** | database-query → core-principles | ~4,000 |
 | **코드 리뷰** | quick-reference | ~2,000 |
-| **이벤트 기반 처리** | spring-event → mvc-layers → testing-guide | ~7,000 |
+| **Reactor Sinks 이벤트 처리** | reactor-sinks-event → reactor-sinks-event-testing → mvc-layers | ~8,000 |
 | **코드 스타일 수정** | code-style → quick-reference | ~3,000 |
 | **리팩토링** | core-principles → mvc-layers → quick-reference | ~6,000 |
 | **커밋 작성** | git | ~3,500 |
@@ -215,20 +229,20 @@ Claude가 작업 내용을 분석하여 필요한 Skill을 자동으로 로드�
 절감 효과: 90% ↓
 ```
 
-### 시나리오 4: 복잡한 기능 (Event 기반)
+### 시나리오 4: 복잡한 기능 (Reactor Sinks Event 기반)
 
 ```
-작업: "좋아요 기능에 Spring Event로 추천 시스템 연동해줘"
+작업: "좋아요 기능에 Reactor Sinks로 추천 시스템 연동해줘"
 
 필요한 Skill:
 - mvc-layers (계층 구조)
-- testing-guide (테스트 작성)
+- reactor-sinks-event (이벤트 패턴)
+- reactor-sinks-event-testing (이벤트 테스트)
 - database-query (쿼리 규칙)
-- spring-event (이벤트 패턴)
 
-토큰 사용량: 약 10,000 토큰
+토큰 사용량: 약 11,000 토큰
 기존 CLAUDE.md: 약 40,000 토큰
-절감 효과: 75% ↓
+절감 효과: 72% ↓
 ```
 
 ## 구현 시 고려사항

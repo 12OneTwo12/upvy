@@ -10,11 +10,13 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 /**
- * 사용자 시청 기록 레포지토리 구현체
+ * 사용자 시청 기록 레포지토리 구현체 (Reactive with JOOQ R2DBC)
  *
- * JOOQ를 사용하여 user_view_history 테이블에 접근합니다.
+ * JOOQ 3.17+의 R2DBC 지원을 사용합니다.
+ * JOOQ의 type-safe API로 SQL을 생성하고 R2DBC로 실행합니다.
+ * 완전한 Non-blocking 처리를 지원합니다.
  *
- * @property dslContext JOOQ DSL Context
+ * @property dslContext JOOQ DSLContext (R2DBC 기반)
  */
 @Repository
 class UserViewHistoryRepositoryImpl(
@@ -39,19 +41,22 @@ class UserViewHistoryRepositoryImpl(
         watchedDuration: Int,
         completionRate: Int
     ): Mono<Void> {
-        return Mono.fromCallable {
-            dslContext.insertInto(USER_VIEW_HISTORY)
+        val now = LocalDateTime.now()
+
+        // JOOQ의 type-safe API로 INSERT 쿼리 생성
+        return Mono.from(
+            dslContext
+                .insertInto(USER_VIEW_HISTORY)
                 .set(USER_VIEW_HISTORY.USER_ID, userId.toString())
                 .set(USER_VIEW_HISTORY.CONTENT_ID, contentId.toString())
-                .set(USER_VIEW_HISTORY.WATCHED_AT, LocalDateTime.now())
+                .set(USER_VIEW_HISTORY.WATCHED_AT, now)
                 .set(USER_VIEW_HISTORY.WATCHED_DURATION, watchedDuration)
                 .set(USER_VIEW_HISTORY.COMPLETION_RATE, completionRate)
-                .set(USER_VIEW_HISTORY.CREATED_AT, LocalDateTime.now())
+                .set(USER_VIEW_HISTORY.CREATED_AT, now)
                 .set(USER_VIEW_HISTORY.CREATED_BY, userId.toString())
-                .set(USER_VIEW_HISTORY.UPDATED_AT, LocalDateTime.now())
+                .set(USER_VIEW_HISTORY.UPDATED_AT, now)
                 .set(USER_VIEW_HISTORY.UPDATED_BY, userId.toString())
-                .execute()
-        }.then()
+        ).then()
     }
 
     /**
@@ -70,7 +75,8 @@ class UserViewHistoryRepositoryImpl(
         since: LocalDateTime,
         limit: Int
     ): Flux<UUID> {
-        return Mono.fromCallable {
+        // JOOQ의 type-safe API로 SELECT 쿼리 생성
+        return Flux.from(
             dslContext
                 .select(USER_VIEW_HISTORY.CONTENT_ID)
                 .from(USER_VIEW_HISTORY)
@@ -79,9 +85,7 @@ class UserViewHistoryRepositoryImpl(
                 .and(USER_VIEW_HISTORY.DELETED_AT.isNull)
                 .orderBy(USER_VIEW_HISTORY.WATCHED_AT.desc())
                 .limit(limit)
-                .fetch()
-                .map { UUID.fromString(it.value1()) }
-        }.flatMapMany { Flux.fromIterable(it) }
+        ).map { record -> UUID.fromString(record.value1()) }
     }
 
     /**
@@ -100,7 +104,8 @@ class UserViewHistoryRepositoryImpl(
         since: LocalDateTime,
         limit: Int
     ): Flux<ViewHistoryDetail> {
-        return Mono.fromCallable {
+        // JOOQ의 type-safe API로 SELECT 쿼리 생성
+        return Flux.from(
             dslContext
                 .select(
                     USER_VIEW_HISTORY.CONTENT_ID,
@@ -114,15 +119,13 @@ class UserViewHistoryRepositoryImpl(
                 .and(USER_VIEW_HISTORY.DELETED_AT.isNull)
                 .orderBy(USER_VIEW_HISTORY.WATCHED_AT.desc())
                 .limit(limit)
-                .fetch()
-                .map {
-                    ViewHistoryDetail(
-                        contentId = UUID.fromString(it.value1()),
-                        watchedDuration = it.value2()!!,
-                        completionRate = it.value3()!!,
-                        watchedAt = it.value4()!!
-                    )
-                }
-        }.flatMapMany { Flux.fromIterable(it) }
+        ).map { record ->
+            ViewHistoryDetail(
+                contentId = UUID.fromString(record.value1()),
+                watchedDuration = record.value2()!!,
+                completionRate = record.value3()!!,
+                watchedAt = record.value4()!!
+            )
+        }
     }
 }

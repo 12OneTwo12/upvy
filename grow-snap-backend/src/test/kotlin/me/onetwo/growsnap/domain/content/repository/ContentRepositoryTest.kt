@@ -10,10 +10,15 @@ import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import org.assertj.core.api.Assertions.assertThat
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -21,13 +26,11 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("콘텐츠 Repository 통합 테스트")
 class ContentRepositoryTest {
 
@@ -52,7 +55,15 @@ class ContentRepositoryTest {
                 providerId = "creator-123",
                 role = UserRole.USER
             )
-        )!!
+        ).block()!!
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested
@@ -81,7 +92,7 @@ class ContentRepositoryTest {
             )
 
             // When: 저장
-            val saved = contentRepository.save(content)
+            val saved = contentRepository.save(content).block()
 
             // Then: 저장 확인
             assertThat(saved).isNotNull
@@ -90,9 +101,9 @@ class ContentRepositoryTest {
             assertThat(saved.contentType).isEqualTo(ContentType.VIDEO)
 
             // 데이터베이스에서 직접 확인
-            val dbContent = dslContext.selectFrom(CONTENTS)
-                .where(CONTENTS.ID.eq(contentId.toString()))
-                .fetchOne()
+            val dbContent = Mono.from(dslContext.selectFrom(CONTENTS)
+                .where(CONTENTS.ID.eq(contentId.toString())))
+                .block()
             assertThat(dbContent).isNotNull
             assertThat(dbContent!!.get(CONTENTS.CREATOR_ID)).isEqualTo(testUser.id.toString())
         }
@@ -119,7 +130,7 @@ class ContentRepositoryTest {
             )
 
             // When: 저장
-            val saved = contentRepository.save(content)
+            val saved = contentRepository.save(content).block()
 
             // Then: Audit Trail 확인
             assertThat(saved!!.createdAt).isNotNull
@@ -141,7 +152,7 @@ class ContentRepositoryTest {
             insertContent(contentId, testUser.id!!)
 
             // When: 조회
-            val found = contentRepository.findById(contentId)
+            val found = contentRepository.findById(contentId).block()
 
             // Then: 조회 확인
             assertThat(found).isNotNull
@@ -156,7 +167,7 @@ class ContentRepositoryTest {
             val nonExistingId = UUID.randomUUID()
 
             // When: 조회
-            val found = contentRepository.findById(nonExistingId)
+            val found = contentRepository.findById(nonExistingId).block()
 
             // Then: null 반환
             assertThat(found).isNull()
@@ -171,7 +182,7 @@ class ContentRepositoryTest {
             softDeleteContent(contentId, testUser.id!!)
 
             // When: 조회
-            val found = contentRepository.findById(contentId)
+            val found = contentRepository.findById(contentId).block()
 
             // Then: null 반환 (Soft Delete)
             assertThat(found).isNull()
@@ -203,7 +214,7 @@ class ContentRepositoryTest {
             )
 
             // When: 저장
-            val saved = contentRepository.saveMetadata(metadata)
+            val saved = contentRepository.saveMetadata(metadata).block()
 
             // Then: 저장 확인
             assertThat(saved).isNotNull
@@ -227,7 +238,7 @@ class ContentRepositoryTest {
             insertMetadata(contentId, testUser.id!!, "Test Title")
 
             // When: 조회
-            val found = contentRepository.findMetadataByContentId(contentId)
+            val found = contentRepository.findMetadataByContentId(contentId).block()
 
             // Then: 조회 확인
             assertThat(found).isNotNull
@@ -242,7 +253,7 @@ class ContentRepositoryTest {
             val nonExistingId = UUID.randomUUID()
 
             // When: 조회
-            val found = contentRepository.findMetadataByContentId(nonExistingId)
+            val found = contentRepository.findMetadataByContentId(nonExistingId).block()
 
             // Then: null 반환
             assertThat(found).isNull()
@@ -265,7 +276,7 @@ class ContentRepositoryTest {
             insertContent(content3, testUser.id!!)
 
             // When: 조회
-            val found = contentRepository.findByCreatorId(testUser.id!!)
+            val found = contentRepository.findByCreatorId(testUser.id!!).collectList().block()!!
 
             // Then: 3개 조회
             assertThat(found).hasSize(3)
@@ -283,10 +294,10 @@ class ContentRepositoryTest {
                     providerId = "other-123",
                     role = UserRole.USER
                 )
-            )!!
+            ).block()!!
 
             // When: 조회
-            val found = contentRepository.findByCreatorId(otherUser.id!!)
+            val found = contentRepository.findByCreatorId(otherUser.id!!).collectList().block()!!
 
             // Then: 빈 목록
             assertThat(found).isEmpty()
@@ -305,7 +316,7 @@ class ContentRepositoryTest {
             softDeleteContent(content2, testUser.id!!)
 
             // When: 조회
-            val found = contentRepository.findByCreatorId(testUser.id!!)
+            val found = contentRepository.findByCreatorId(testUser.id!!).collectList().block()!!
 
             // Then: 2개만 조회 (삭제된 것 제외)
             assertThat(found).hasSize(2)
@@ -332,16 +343,16 @@ class ContentRepositoryTest {
             insertMetadata(content3, testUser.id!!, "Content 3")
 
             // When: JOIN으로 조회
-            val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!)
+            val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!).collectList().block()!!
 
             // Then: 3개의 콘텐츠와 메타데이터 쌍이 반환됨
             assertThat(found).hasSize(3)
-            assertThat(found.map { it.first.id }).containsExactlyInAnyOrder(content1, content2, content3)
-            assertThat(found.map { it.second.title }).containsExactlyInAnyOrder("Content 1", "Content 2", "Content 3")
+            assertThat(found.map { it.content.id }).containsExactlyInAnyOrder(content1, content2, content3)
+            assertThat(found.map { it.metadata.title }).containsExactlyInAnyOrder("Content 1", "Content 2", "Content 3")
 
             // 각 쌍의 contentId가 일치하는지 확인
-            found.forEach { (content, metadata) ->
-                assertThat(metadata.contentId).isEqualTo(content.id)
+            found.forEach { contentWithMetadata ->
+                assertThat(contentWithMetadata.metadata.contentId).isEqualTo(contentWithMetadata.content.id)
             }
         }
 
@@ -356,10 +367,10 @@ class ContentRepositoryTest {
                     providerId = "other2-123",
                     role = UserRole.USER
                 )
-            )!!
+            ).block()!!
 
             // When: 조회
-            val found = contentRepository.findWithMetadataByCreatorId(otherUser.id!!)
+            val found = contentRepository.findWithMetadataByCreatorId(otherUser.id!!).collectList().block()!!
 
             // Then: 빈 목록
             assertThat(found).isEmpty()
@@ -381,11 +392,11 @@ class ContentRepositoryTest {
             softDeleteContent(content2, testUser.id!!)
 
             // When: 조회
-            val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!)
+            val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!).collectList().block()!!
 
             // Then: 2개만 조회 (삭제된 것 제외)
             assertThat(found).hasSize(2)
-            assertThat(found.map { it.first.id }).containsExactlyInAnyOrder(content1, content3)
+            assertThat(found.map { it.content.id }).containsExactlyInAnyOrder(content1, content3)
         }
 
         @Test
@@ -400,17 +411,16 @@ class ContentRepositoryTest {
             insertMetadata(content2, testUser.id!!, "Content 2")
 
             // 메타데이터 삭제
-            dslContext.update(CONTENT_METADATA)
+            Mono.from(dslContext.update(CONTENT_METADATA)
                 .set(CONTENT_METADATA.DELETED_AT, LocalDateTime.now())
-                .where(CONTENT_METADATA.CONTENT_ID.eq(content2.toString()))
-                .execute()
+                .where(CONTENT_METADATA.CONTENT_ID.eq(content2.toString()))).block()
 
             // When: 조회
-            val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!)
+            val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!).collectList().block()!!
 
             // Then: 메타데이터가 삭제되지 않은 것만 조회
             assertThat(found).hasSize(1)
-            assertThat(found[0].first.id).isEqualTo(content1)
+            assertThat(found[0].content.id).isEqualTo(content1)
         }
 
         @Test
@@ -430,13 +440,13 @@ class ContentRepositoryTest {
             insertMetadata(content3, testUser.id!!, "Content 3")
 
             // When: 조회
-            val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!)
+            val found = contentRepository.findWithMetadataByCreatorId(testUser.id!!).collectList().block()!!
 
             // Then: 최신순 정렬
             assertThat(found).hasSize(3)
-            assertThat(found[0].first.id).isEqualTo(content3)
-            assertThat(found[1].first.id).isEqualTo(content2)
-            assertThat(found[2].first.id).isEqualTo(content1)
+            assertThat(found[0].content.id).isEqualTo(content3)
+            assertThat(found[1].content.id).isEqualTo(content2)
+            assertThat(found[2].content.id).isEqualTo(content1)
         }
     }
 
@@ -452,20 +462,21 @@ class ContentRepositoryTest {
             insertContent(contentId, testUser.id!!)
 
             // When: 삭제
-            val result = contentRepository.delete(contentId, testUser.id!!)
+            val result = contentRepository.delete(contentId, testUser.id!!).block()
 
             // Then: 삭제 성공
-            assertThat(result).isTrue
+            assertThat(result).isNotNull
+            assertThat(result!!).isTrue
 
             // 데이터베이스에서 deleted_at 확인
-            val dbContent = dslContext.selectFrom(CONTENTS)
-                .where(CONTENTS.ID.eq(contentId.toString()))
-                .fetchOne()
+            val dbContent = Mono.from(dslContext.selectFrom(CONTENTS)
+                .where(CONTENTS.ID.eq(contentId.toString())))
+                .block()
             assertThat(dbContent).isNotNull
             assertThat(dbContent!!.get(CONTENTS.DELETED_AT)).isNotNull
 
             // findById로 조회 시 null (Soft Delete)
-            val found = contentRepository.findById(contentId)
+            val found = contentRepository.findById(contentId).block()
             assertThat(found).isNull()
         }
 
@@ -476,10 +487,11 @@ class ContentRepositoryTest {
             val nonExistingId = UUID.randomUUID()
 
             // When: 삭제
-            val result = contentRepository.delete(nonExistingId, testUser.id!!)
+            val result = contentRepository.delete(nonExistingId, testUser.id!!).block()
 
             // Then: 실패
-            assertThat(result).isFalse
+            assertThat(result).isNotNull
+            assertThat(result!!).isFalse
         }
     }
 
@@ -502,7 +514,7 @@ class ContentRepositoryTest {
         creatorId: UUID,
         createdAt: LocalDateTime
     ) {
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -515,8 +527,7 @@ class ContentRepositoryTest {
             .set(CONTENTS.CREATED_AT, createdAt)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, createdAt)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -528,7 +539,7 @@ class ContentRepositoryTest {
         title: String
     ) {
         val now = LocalDateTime.now()
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -538,8 +549,7 @@ class ContentRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -549,11 +559,10 @@ class ContentRepositoryTest {
         contentId: UUID,
         userId: UUID
     ) {
-        dslContext.update(CONTENTS)
+        Mono.from(dslContext.update(CONTENTS)
             .set(CONTENTS.DELETED_AT, LocalDateTime.now())
             .set(CONTENTS.UPDATED_AT, LocalDateTime.now())
             .set(CONTENTS.UPDATED_BY, userId.toString())
-            .where(CONTENTS.ID.eq(contentId.toString()))
-            .execute()
+            .where(CONTENTS.ID.eq(contentId.toString()))).block()
     }
 }

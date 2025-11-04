@@ -10,6 +10,7 @@ import me.onetwo.growsnap.domain.user.repository.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
@@ -30,6 +31,23 @@ class UserServiceImpl(
 ) : UserService {
 
     private val logger = LoggerFactory.getLogger(UserServiceImpl::class.java)
+
+    companion object {
+        /** 닉네임 최대 길이 */
+        private const val MAX_NICKNAME_LENGTH = 20
+
+        /** 닉네임 suffix 길이 (UUID 기반) */
+        private const val NICKNAME_SUFFIX_LENGTH = 6
+
+        /** 닉네임 생성 최대 재시도 횟수 */
+        private const val MAX_NICKNAME_GENERATION_ATTEMPTS = 10
+
+        /** 닉네임 base 부분 최대 길이 (suffix와 언더스코어를 위한 공간 확보) */
+        private const val MAX_NICKNAME_BASE_LENGTH = 14
+
+        /** Fallback 닉네임 생성 시 UUID 길이 */
+        private const val FALLBACK_NICKNAME_UUID_LENGTH = 10
+    }
 
     /**
      * OAuth 제공자와 Provider ID로 사용자 조회 또는 생성
@@ -57,34 +75,43 @@ class UserServiceImpl(
         providerId: String,
         name: String?,
         profileImageUrl: String?
-    ): User {
+    ): Mono<User> {
         // 기존 사용자 조회 (Provider + ProviderId로)
-        userRepository.findByProviderAndProviderId(provider, providerId)?.let {
-            logger.info("Existing user found: userId=${it.id}, email=$email")
-            return it
-        }
-
-        // 신규 사용자 생성
-        val newUser = User(
-            email = email,
-            provider = provider,
-            providerId = providerId
-        )
-        val savedUser = userRepository.save(newUser)
-        logger.info("New user created: userId=${savedUser.id}, email=$email, provider=$provider")
-
-        // 프로필 자동 생성
-        val nickname = generateUniqueNickname(name ?: email.substringBefore("@"))
-        val profile = UserProfile(
-            userId = savedUser.id!!,
-            nickname = nickname,
-            profileImageUrl = profileImageUrl,
-            bio = null
-        )
-        userProfileRepository.save(profile)
-        logger.info("Auto-created profile for user: userId=${savedUser.id}, nickname=$nickname")
-
-        return savedUser
+        return userRepository.findByProviderAndProviderId(provider, providerId)
+            .doOnNext { user ->
+                logger.info("Existing user found: userId=${user.id}, email=$email")
+            }
+            .switchIfEmpty(
+                Mono.defer {
+                    // 신규 사용자 생성
+                    val newUser = User(
+                        email = email,
+                        provider = provider,
+                        providerId = providerId
+                    )
+                    userRepository.save(newUser)
+                        .doOnNext { savedUser ->
+                            logger.info("New user created: userId=${savedUser.id}, email=$email, provider=$provider")
+                        }
+                        .flatMap { savedUser ->
+                            // 프로필 자동 생성
+                            generateUniqueNickname(name ?: email.substringBefore("@"))
+                                .flatMap { nickname ->
+                                    val profile = UserProfile(
+                                        userId = savedUser.id!!,
+                                        nickname = nickname,
+                                        profileImageUrl = profileImageUrl,
+                                        bio = null
+                                    )
+                                    userProfileRepository.save(profile)
+                                        .doOnNext {
+                                            logger.info("Auto-created profile for user: userId=${savedUser.id}, nickname=$nickname")
+                                        }
+                                        .thenReturn(savedUser)
+                                }
+                        }
+                }
+            )
     }
 
     /**
@@ -96,24 +123,30 @@ class UserServiceImpl(
      * @param baseName 기본 닉네임
      * @return 고유한 닉네임
      */
-    private fun generateUniqueNickname(baseName: String): String {
-        var nickname = baseName.take(20) // 닉네임 최대 20자 제한
-        var attempts = 0
-        val maxAttempts = 10
+    private fun generateUniqueNickname(baseName: String): Mono<String> {
+        val initialNickname = baseName.take(MAX_NICKNAME_LENGTH)
 
-        while (userProfileRepository.existsByNickname(nickname) && attempts < maxAttempts) {
-            val suffix = UUID.randomUUID().toString().replace("-", "").take(6)
-            nickname = "${baseName.take(14)}_$suffix" // suffix 포함 최대 21자
-            attempts++
+        fun tryNickname(nickname: String, attempts: Int): Mono<String> {
+            if (attempts >= MAX_NICKNAME_GENERATION_ATTEMPTS) {
+                // 만약 MAX_NICKNAME_GENERATION_ATTEMPTS번 시도해도 중복이면 UUID 사용
+                val fallbackNickname = "user_${UUID.randomUUID().toString().replace("-", "").take(FALLBACK_NICKNAME_UUID_LENGTH)}"
+                logger.warn("Failed to generate unique nickname after $MAX_NICKNAME_GENERATION_ATTEMPTS attempts, using UUID: $fallbackNickname")
+                return Mono.just(fallbackNickname)
+            }
+
+            return userProfileRepository.existsByNickname(nickname)
+                .flatMap { exists ->
+                    if (exists) {
+                        val suffix = UUID.randomUUID().toString().replace("-", "").take(NICKNAME_SUFFIX_LENGTH)
+                        val newNickname = "${baseName.take(MAX_NICKNAME_BASE_LENGTH)}_$suffix"
+                        tryNickname(newNickname, attempts + 1)
+                    } else {
+                        Mono.just(nickname)
+                    }
+                }
         }
 
-        if (attempts >= maxAttempts) {
-            // 만약 10번 시도해도 중복이면 UUID 사용
-            nickname = "user_${UUID.randomUUID().toString().replace("-", "").take(10)}"
-            logger.warn("Failed to generate unique nickname after $maxAttempts attempts, using UUID: $nickname")
-        }
-
-        return nickname
+        return tryNickname(initialNickname, 0)
     }
 
     /**
@@ -123,9 +156,9 @@ class UserServiceImpl(
      * @return 사용자 정보
      * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
      */
-    override fun getUserById(userId: UUID): User {
+    override fun getUserById(userId: UUID): Mono<User> {
         return userRepository.findById(userId)
-            ?: throw UserNotFoundException("사용자를 찾을 수 없습니다. ID: $userId")
+            .switchIfEmpty(Mono.error(UserNotFoundException("사용자를 찾을 수 없습니다. ID: $userId")))
     }
 
     /**
@@ -135,9 +168,9 @@ class UserServiceImpl(
      * @return 사용자 정보
      * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
      */
-    override fun getUserByEmail(email: String): User {
+    override fun getUserByEmail(email: String): Mono<User> {
         return userRepository.findByEmail(email)
-            ?: throw UserNotFoundException("사용자를 찾을 수 없습니다. Email: $email")
+            .switchIfEmpty(Mono.error(UserNotFoundException("사용자를 찾을 수 없습니다. Email: $email")))
     }
 
     /**
@@ -146,8 +179,10 @@ class UserServiceImpl(
      * @param email 확인할 이메일
      * @return 중복 여부 (true: 중복, false: 사용 가능)
      */
-    override fun isEmailDuplicated(email: String): Boolean {
-        return userRepository.findByEmail(email) != null
+    override fun isEmailDuplicated(email: String): Mono<Boolean> {
+        return userRepository.findByEmail(email)
+            .map { true }
+            .defaultIfEmpty(false)
     }
 
     /**
@@ -157,31 +192,32 @@ class UserServiceImpl(
      *
      * ### 처리 흐름
      * 1. 사용자 존재 여부 확인
-     * 2. 사용자 정보 soft delete
-     * 3. 프로필 정보 soft delete
-     * 4. 팔로우/팔로잉 관계 soft delete (양방향 모두)
+     * 2. 사용자 정보, 프로필, 팔로우 관계를 병렬로 soft delete
      *
      * @param userId 탈퇴할 사용자 ID
      * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
      */
     @Transactional
-    override fun withdrawUser(userId: UUID) {
+    override fun withdrawUser(userId: UUID): Mono<Void> {
         // 사용자 존재 여부 확인
-        val user = getUserById(userId)
-        logger.info("Starting user withdrawal: userId=$userId, email=${user.email}")
-
-        // 1. 사용자 soft delete
-        userRepository.softDelete(userId, userId)
-        logger.info("User soft deleted: userId=$userId")
-
-        // 2. 프로필 soft delete
-        userProfileRepository.softDelete(userId, userId)
-        logger.info("User profile soft deleted: userId=$userId")
-
-        // 3. 팔로우 관계 soft delete (양방향 모두)
-        followRepository.softDeleteAllByUserId(userId, userId)
-        logger.info("All follow relationships soft deleted: userId=$userId")
-
-        logger.info("User withdrawal completed: userId=$userId")
+        return getUserById(userId)
+            .doOnNext { user ->
+                logger.info("Starting user withdrawal: userId=$userId, email=${user.email}")
+            }
+            .flatMap {
+                // 사용자, 프로필, 팔로우 관계를 병렬로 soft delete
+                Mono.zip(
+                    userRepository.softDelete(userId, userId)
+                        .doOnSuccess { logger.info("User soft deleted: userId=$userId") },
+                    userProfileRepository.softDelete(userId, userId)
+                        .doOnSuccess { logger.info("User profile soft deleted: userId=$userId") },
+                    followRepository.softDeleteAllByUserId(userId, userId)
+                        .doOnSuccess { logger.info("All follow relationships soft deleted: userId=$userId") }
+                )
+                    .doOnSuccess {
+                        logger.info("User withdrawal completed: userId=$userId")
+                    }
+            }
+            .then()
     }
 }

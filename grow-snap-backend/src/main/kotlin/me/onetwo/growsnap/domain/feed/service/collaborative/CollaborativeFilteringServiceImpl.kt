@@ -4,6 +4,7 @@ import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.UserContentInteractionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -63,6 +64,7 @@ import java.util.UUID
  * @property userContentInteractionRepository 사용자별 콘텐츠 인터랙션 레포지토리
  */
 @Service
+@Transactional(readOnly = true)
 class CollaborativeFilteringServiceImpl(
     private val userContentInteractionRepository: UserContentInteractionRepository
 ) : CollaborativeFilteringService {
@@ -88,7 +90,7 @@ class CollaborativeFilteringServiceImpl(
                 return@outer Flux.empty<UUID>()
             }
 
-            val myContentIds = myInteractions.map { it.first }.toSet()
+            val myContentIds = myInteractions.map { it.contentId }.toSet()
             logger.debug("Found {} seed items for user {}", myContentIds.size, userId)
 
             // 2. 각 seed item을 좋아한 다른 사용자 찾기
@@ -116,12 +118,12 @@ class CollaborativeFilteringServiceImpl(
                             .findAllInteractionsByUser(similarUserId, MAX_ITEMS_PER_SIMILAR_USER)
                     }
                     // 4. 이미 내가 인터랙션한 콘텐츠 제외
-                    .filter { (contentId, _) -> !myContentIds.contains(contentId) }
+                    .filter { interaction -> !myContentIds.contains(interaction.contentId) }
                     // 5. contentId로 그룹화하여 점수 계산 (메모리 효율적)
-                    .groupBy { it.first }  // contentId로 그룹화
+                    .groupBy { it.contentId }  // contentId로 그룹화
                     .flatMap { group ->
-                        group.reduce(0.0) { score, (_, interactionType) ->
-                            val weight = when (interactionType) {
+                        group.reduce(0.0) { score, interaction ->
+                            val weight = when (interaction.interactionType) {
                                 InteractionType.LIKE -> LIKE_WEIGHT
                                 InteractionType.SAVE -> SAVE_WEIGHT
                                 InteractionType.SHARE -> SHARE_WEIGHT

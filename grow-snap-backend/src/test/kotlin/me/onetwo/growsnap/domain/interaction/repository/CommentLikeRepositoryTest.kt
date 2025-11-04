@@ -6,11 +6,19 @@ import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
+import me.onetwo.growsnap.jooq.generated.tables.UserCommentLikes.Companion.USER_COMMENT_LIKES
+import me.onetwo.growsnap.jooq.generated.tables.Comments.Companion.COMMENTS
 import me.onetwo.growsnap.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.ContentMetadata.Companion.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.ContentPhotos.Companion.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.Contents.Companion.CONTENTS
+import me.onetwo.growsnap.jooq.generated.tables.UserProfiles.Companion.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.Users.Companion.USERS
 import org.jooq.DSLContext
 import org.jooq.JSON
+import org.jooq.exception.DataAccessException
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -19,12 +27,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -33,7 +39,6 @@ import java.util.UUID
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("CommentLikeRepository 통합 테스트")
 class CommentLikeRepositoryTest {
 
@@ -63,7 +68,7 @@ class CommentLikeRepositoryTest {
                 providerId = "test-provider-id",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
         testUserId = user.id!!
 
         // 콘텐츠 생성
@@ -77,8 +82,18 @@ class CommentLikeRepositoryTest {
                 userId = testUserId,
                 content = "Test comment"
             )
-        )
-        testCommentId = comment!!.id!!
+        ).block()!!
+        testCommentId = comment.id!!
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(USER_COMMENT_LIKES)).block()
+        Mono.from(dslContext.deleteFrom(COMMENTS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested
@@ -91,7 +106,7 @@ class CommentLikeRepositoryTest {
             // Given: 준비된 사용자와 댓글
 
             // When: 댓글 좋아요 생성
-            val commentLike = commentLikeRepository.save(testUserId, testCommentId)!!
+            val commentLike = commentLikeRepository.save(testUserId, testCommentId).block()!!
 
             // Then: 생성된 댓글 좋아요 검증
             assertEquals(testUserId, commentLike.userId)
@@ -104,11 +119,11 @@ class CommentLikeRepositoryTest {
         @DisplayName("이미 댓글 좋아요가 존재하면, 중복 생성 시 예외가 발생한다")
         fun save_WhenAlreadyExists_ThrowsException() {
             // Given: 이미 댓글 좋아요가 존재
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
 
             // When & Then: 중복 생성 시 DataAccessException 발생
             assertThrows<DataAccessException> {
-                commentLikeRepository.save(testUserId, testCommentId)
+                commentLikeRepository.save(testUserId, testCommentId).block()
             }
         }
     }
@@ -121,13 +136,13 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글 좋아요를 삭제하면, deleted_at이 설정된다")
         fun delete_SetsDeletedAt() {
             // Given: 댓글 좋아요가 존재
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
 
             // When: 댓글 좋아요 삭제
-            commentLikeRepository.delete(testUserId, testCommentId)
+            commentLikeRepository.delete(testUserId, testCommentId).block()
 
             // Then: deleted_at이 설정됨
-            val exists = commentLikeRepository.exists(testUserId, testCommentId)
+            val exists = commentLikeRepository.exists(testUserId, testCommentId).block()!!
             assertFalse(exists)
         }
 
@@ -137,7 +152,7 @@ class CommentLikeRepositoryTest {
             // Given: 댓글 좋아요가 존재하지 않음
 
             // When & Then: 삭제해도 예외 없음
-            commentLikeRepository.delete(testUserId, testCommentId)
+            commentLikeRepository.delete(testUserId, testCommentId).block()
         }
     }
 
@@ -149,10 +164,10 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글 좋아요가 존재하면, true를 반환한다")
         fun exists_WhenExists_ReturnsTrue() {
             // Given: 댓글 좋아요가 존재
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
 
             // When: 존재 여부 확인
-            val exists = commentLikeRepository.exists(testUserId, testCommentId)
+            val exists = commentLikeRepository.exists(testUserId, testCommentId).block()!!
 
             // Then: true 반환
             assertTrue(exists)
@@ -164,7 +179,7 @@ class CommentLikeRepositoryTest {
             // Given: 댓글 좋아요가 존재하지 않음
 
             // When: 존재 여부 확인
-            val exists = commentLikeRepository.exists(testUserId, testCommentId)
+            val exists = commentLikeRepository.exists(testUserId, testCommentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -174,11 +189,11 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글 좋아요가 삭제되면, false를 반환한다")
         fun exists_WhenDeleted_ReturnsFalse() {
             // Given: 댓글 좋아요가 삭제됨
-            commentLikeRepository.save(testUserId, testCommentId)
-            commentLikeRepository.delete(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
+            commentLikeRepository.delete(testUserId, testCommentId).block()
 
             // When: 존재 여부 확인
-            val exists = commentLikeRepository.exists(testUserId, testCommentId)
+            val exists = commentLikeRepository.exists(testUserId, testCommentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -193,10 +208,10 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글 좋아요가 존재하면, 댓글 좋아요를 반환한다")
         fun findByUserIdAndCommentId_WhenExists_ReturnsCommentLike() {
             // Given: 댓글 좋아요가 존재
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()
 
             // When: 댓글 좋아요 조회
-            val commentLike = commentLikeRepository.findByUserIdAndCommentId(testUserId, testCommentId)
+            val commentLike = commentLikeRepository.findByUserIdAndCommentId(testUserId, testCommentId).block()
 
             // Then: 댓글 좋아요 반환
             assertNotNull(commentLike)
@@ -210,7 +225,7 @@ class CommentLikeRepositoryTest {
             // Given: 댓글 좋아요가 존재하지 않음
 
             // When: 댓글 좋아요 조회
-            val commentLike = commentLikeRepository.findByUserIdAndCommentId(testUserId, testCommentId)
+            val commentLike = commentLikeRepository.findByUserIdAndCommentId(testUserId, testCommentId).block()
 
             // Then: null 반환
             assertEquals(null, commentLike)
@@ -227,7 +242,7 @@ class CommentLikeRepositoryTest {
             // Given: 댓글에 좋아요가 없음
 
             // When: 좋아요 수 조회
-            val count = commentLikeRepository.countByCommentId(testCommentId)
+            val count = commentLikeRepository.countByCommentId(testCommentId).block()!!
 
             // Then: 0 반환
             assertEquals(0, count)
@@ -237,7 +252,7 @@ class CommentLikeRepositoryTest {
         @DisplayName("댓글에 좋아요가 있으면, 좋아요 수를 반환한다")
         fun countByCommentId_WhenLikesExist_ReturnsCount() {
             // Given: 댓글에 좋아요가 2개 있음
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()!!
 
             val user2 = userRepository.save(
                 me.onetwo.growsnap.domain.user.model.User(
@@ -246,11 +261,11 @@ class CommentLikeRepositoryTest {
                     providerId = "test-provider-id-2",
                     role = UserRole.USER
                 )
-            )
-            commentLikeRepository.save(user2.id!!, testCommentId)
+            ).block()!!
+            commentLikeRepository.save(user2.id!!, testCommentId).block()!!
 
             // When: 좋아요 수 조회
-            val count = commentLikeRepository.countByCommentId(testCommentId)
+            val count = commentLikeRepository.countByCommentId(testCommentId).block()!!
 
             // Then: 2 반환
             assertEquals(2, count)
@@ -260,7 +275,7 @@ class CommentLikeRepositoryTest {
         @DisplayName("삭제된 좋아요는 카운트에 포함되지 않는다")
         fun countByCommentId_ExcludesDeletedLikes() {
             // Given: 댓글에 좋아요가 2개 있고, 1개는 삭제됨
-            commentLikeRepository.save(testUserId, testCommentId)
+            commentLikeRepository.save(testUserId, testCommentId).block()!!
 
             val user2 = userRepository.save(
                 me.onetwo.growsnap.domain.user.model.User(
@@ -269,12 +284,12 @@ class CommentLikeRepositoryTest {
                     providerId = "test-provider-id-2",
                     role = UserRole.USER
                 )
-            )
-            commentLikeRepository.save(user2.id!!, testCommentId)
-            commentLikeRepository.delete(user2.id!!, testCommentId)
+            ).block()!!
+            commentLikeRepository.save(user2.id!!, testCommentId).block()!!
+            commentLikeRepository.delete(user2.id!!, testCommentId).block()
 
             // When: 좋아요 수 조회
-            val count = commentLikeRepository.countByCommentId(testCommentId)
+            val count = commentLikeRepository.countByCommentId(testCommentId).block()!!
 
             // Then: 1 반환 (삭제된 것 제외)
             assertEquals(1, count)
@@ -292,7 +307,7 @@ class CommentLikeRepositoryTest {
         val now = LocalDateTime.now()
 
         // Contents 테이블 데이터 삽입
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -305,11 +320,10 @@ class CommentLikeRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test description")
@@ -320,11 +334,10 @@ class CommentLikeRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Interactions 테이블 (초기값 0)
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, 0)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 0)
@@ -334,7 +347,6 @@ class CommentLikeRepositoryTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, now)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, now)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
     }
 }

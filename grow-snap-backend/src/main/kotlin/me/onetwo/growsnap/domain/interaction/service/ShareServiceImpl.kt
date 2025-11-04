@@ -1,61 +1,62 @@
 package me.onetwo.growsnap.domain.interaction.service
 
-import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
+import me.onetwo.growsnap.domain.analytics.event.UserInteractionEvent
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
+import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 import me.onetwo.growsnap.domain.interaction.dto.ShareLinkResponse
 import me.onetwo.growsnap.domain.interaction.dto.ShareResponse
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
  * 공유 서비스 구현체
  *
- * 콘텐츠 공유 비즈니스 로직을 처리합니다.
+ * ## 처리 흐름
+ * 1. content_interactions.share_count 증가 (메인 체인, 즉시 반영)
+ * 2. UserInteractionEvent 발행 (협업 필터링용, 비동기)
+ * 3. 응답 반환
  *
- * ### 처리 흐름
- * 1. AnalyticsService를 통한 이벤트 발행
- *    - 카운터 증가 (content_interactions 테이블)
- *    - Spring Event 발행 (UserInteractionEvent)
- *    - user_content_interactions 테이블 저장 (협업 필터링용)
- *
- * @property analyticsService Analytics 서비스 (이벤트 발행)
+ * @property contentInteractionService 콘텐츠 인터랙션 서비스
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
+ * @property eventPublisher Reactive 이벤트 발행자
  */
 @Service
+@Transactional(readOnly = true)
 class ShareServiceImpl(
-    private val analyticsService: AnalyticsService,
-    private val contentInteractionRepository: ContentInteractionRepository
+    private val contentInteractionService: ContentInteractionService,
+    private val contentInteractionRepository: ContentInteractionRepository,
+    private val eventPublisher: ReactiveEventPublisher
 ) : ShareService {
 
     /**
      * 콘텐츠 공유
      *
-     * ### 처리 흐름
-     * 1. AnalyticsService.trackInteractionEvent(SHARE) 호출
-     *    - content_interactions의 share_count 증가
-     *    - UserInteractionEvent 발행
-     *    - UserInteractionEventListener가 user_content_interactions 저장 (협업 필터링용)
-     * 2. 공유 수 조회 및 응답 반환
-     *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
      * @return 공유 응답
      */
+    @Transactional
     override fun shareContent(userId: UUID, contentId: UUID): Mono<ShareResponse> {
         logger.debug("Sharing content: userId={}, contentId={}", userId, contentId)
 
-        // AnalyticsService로 이벤트 발행 (카운터 증가 + user_content_interactions 저장)
-        return analyticsService.trackInteractionEvent(
-            userId,
-            InteractionEventRequest(
-                contentId = contentId,
-                interactionType = InteractionType.SHARE
-            )
-        )
+        // 카운트 증가를 메인 체인에 포함
+        return contentInteractionService.incrementShareCount(contentId)
+            .doOnSuccess {
+                logger.debug("Publishing UserInteractionEvent: userId={}, contentId={}", userId, contentId)
+                // 협업 필터링만 이벤트로 처리 (실패해도 OK)
+                eventPublisher.publish(
+                    UserInteractionEvent(
+                        userId = userId,
+                        contentId = contentId,
+                        interactionType = InteractionType.SHARE
+                    )
+                )
+            }
             .then(getShareResponse(contentId))
             .doOnSuccess { logger.debug("Content shared successfully: userId={}, contentId={}", userId, contentId) }
             .doOnError { error ->
@@ -79,6 +80,7 @@ class ShareServiceImpl(
             }
     }
 
+    @Transactional(readOnly = true)
     override fun getShareLink(contentId: UUID): Mono<ShareLinkResponse> {
         logger.debug("Getting share link: contentId={}", contentId)
 

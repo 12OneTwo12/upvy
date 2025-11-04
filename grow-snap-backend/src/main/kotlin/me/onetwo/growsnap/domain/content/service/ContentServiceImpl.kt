@@ -17,13 +17,14 @@ import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -36,13 +37,15 @@ import java.util.UUID
  * @property contentRepository 콘텐츠 레포지토리
  */
 @Service
+@Transactional(readOnly = true)
 class ContentServiceImpl(
     private val contentUploadService: ContentUploadService,
     private val contentRepository: ContentRepository,
     private val contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository,
     private val uploadSessionRepository: me.onetwo.growsnap.domain.content.repository.UploadSessionRepository,
     private val s3Client: software.amazon.awssdk.services.s3.S3Client,
-    private val eventPublisher: ApplicationEventPublisher,
+    private val eventPublisher: ReactiveEventPublisher,
+    private val contentInteractionService: me.onetwo.growsnap.domain.analytics.service.ContentInteractionService,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -123,7 +126,7 @@ class ContentServiceImpl(
             // 4. S3 URL 생성
             val s3Url = "https://$bucketName.s3.$region.amazonaws.com/${uploadSession.s3Key}"
 
-            // 5. Content 엔티티 생성 및 저장
+            // 5. Content 엔티티 생성
             val content = Content(
                 id = contentId,
                 creatorId = userId,
@@ -140,10 +143,7 @@ class ContentServiceImpl(
                 updatedBy = userId.toString()
             )
 
-            val savedContent = contentRepository.save(content)
-                ?: error("Failed to save content")
-
-            // ContentMetadata 생성 및 저장
+            // ContentMetadata 생성
             val metadata = ContentMetadata(
                 contentId = contentId,
                 title = request.title,
@@ -157,38 +157,61 @@ class ContentServiceImpl(
                 updatedBy = userId.toString()
             )
 
-            val savedMetadata = contentRepository.saveMetadata(metadata)
-                ?: error("Failed to save content metadata")
-
+            Triple(content, metadata, uploadSession.contentType)
+        }.flatMap { (content, metadata, contentType) ->
+            // Save content and metadata reactively
+            contentRepository.save(content)
+                .switchIfEmpty(Mono.error(IllegalStateException("Failed to save content")))
+                .flatMap { savedContent ->
+                    contentRepository.saveMetadata(metadata)
+                        .switchIfEmpty(Mono.error(IllegalStateException("Failed to save content metadata")))
+                        .map { savedMetadata ->
+                            Triple(savedContent, savedMetadata, contentType)
+                        }
+                }
+        }.flatMap { (savedContent, savedMetadata, contentType) ->
             // 6. PHOTO 타입인 경우 사진 목록 저장
-            if (savedContent.contentType == ContentType.PHOTO && !request.photoUrls.isNullOrEmpty()) {
-                request.photoUrls.forEachIndexed { index, photoUrl ->
-                    val photo = ContentPhoto(
-                        contentId = contentId,
+            val photoSaveMono = if (contentType == ContentType.PHOTO && !request.photoUrls.isNullOrEmpty()) {
+                Flux.fromIterable(request.photoUrls.mapIndexed { index, photoUrl ->
+                    ContentPhoto(
+                        contentId = savedContent.id!!,
                         photoUrl = photoUrl,
                         displayOrder = index,
-                        width = request.width,  // 대표 사진 크기 사용
+                        width = request.width,
                         height = request.height,
-                        createdAt = now,
+                        createdAt = savedContent.createdAt,
                         createdBy = userId.toString(),
-                        updatedAt = now,
+                        updatedAt = savedContent.updatedAt,
                         updatedBy = userId.toString()
                     )
-                    val saved = contentPhotoRepository.save(photo)
-                    check(saved) { "Failed to save content photo" }
+                })
+                .flatMap { photo ->
+                    contentPhotoRepository.save(photo)
+                        .onErrorMap { IllegalStateException("Failed to save content photo: ${it.message}") }
                 }
-                logger.info("Content photos saved: contentId=$contentId, count=${request.photoUrls.size}")
+                .then()
+                .doOnSuccess {
+                    logger.info("Content photos saved: contentId=${savedContent.id}, count=${request.photoUrls.size}")
+                }
+            } else {
+                Mono.empty()
             }
 
-            // 7. Redis에서 업로드 세션 삭제 (1회성 토큰)
-            uploadSessionRepository.deleteById(request.contentId)
-            logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
+            photoSaveMono
+                .then(contentInteractionService.createContentInteraction(savedContent.id!!, userId))
+                .then(
+                    Mono.fromCallable {
+                        // 7. Redis에서 업로드 세션 삭제 (1회성 토큰)
+                        uploadSessionRepository.deleteById(request.contentId)
+                        logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
 
-            ContentCreationResult(
-                content = savedContent,
-                metadata = savedMetadata,
-                contentId = contentId
-            )
+                        ContentCreationResult(
+                            content = savedContent,
+                            metadata = savedMetadata,
+                            contentId = savedContent.id!!
+                        )
+                    }
+                )
         }.map { result ->
             // PHOTO 타입인 경우 사진 목록 (이미 저장된 request.photoUrls 사용)
             val photoUrls = if (result.content.contentType == ContentType.PHOTO) {
@@ -224,8 +247,12 @@ class ContentServiceImpl(
         }.doOnSuccess { result ->
             logger.info("Content created successfully: contentId=${result.response.id}")
 
-            // ContentCreatedEvent 발행 - 전체 작업이 성공한 후에만 발행
-            eventPublisher.publishEvent(ContentCreatedEvent(result.contentId, userId))
+            eventPublisher.publish(
+                ContentCreatedEvent(
+                    contentId = result.contentId,
+                    creatorId = userId
+                )
+            )
             logger.info("ContentCreatedEvent published: contentId=${result.contentId}")
         }.map { result ->
             result.response
@@ -243,43 +270,44 @@ class ContentServiceImpl(
     override fun getContent(contentId: UUID): Mono<ContentResponse> {
         logger.info("Getting content: contentId=$contentId")
 
-        return Mono.fromCallable {
-            val content = contentRepository.findById(contentId)
-                ?: throw NoSuchElementException("Content not found: $contentId")
-
-            val metadata = contentRepository.findMetadataByContentId(contentId)
-                ?: throw NoSuchElementException("Content metadata not found: $contentId")
-
-            Pair(content, metadata)
-        }.map { (content, metadata) ->
-            // PHOTO 타입인 경우 사진 목록 조회
-            val photoUrls = if (content.contentType == ContentType.PHOTO) {
-                contentPhotoRepository.findByContentId(content.id!!)
-                    .map { it.photoUrl }
-            } else {
-                null
+        return contentRepository.findById(contentId)
+            .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId")))
+            .flatMap { content ->
+                contentRepository.findMetadataByContentId(contentId)
+                    .switchIfEmpty(Mono.error(NoSuchElementException("Content metadata not found: $contentId")))
+                    .map { metadata -> content to metadata }
             }
-
-            ContentResponse(
-                id = content.id.toString(),
-                creatorId = content.creatorId.toString(),
-                contentType = content.contentType,
-                url = content.url,
-                photoUrls = photoUrls,
-                thumbnailUrl = content.thumbnailUrl,
-                duration = content.duration,
-                width = content.width,
-                height = content.height,
-                status = content.status,
-                title = metadata.title,
-                description = metadata.description,
-                category = metadata.category,
-                tags = metadata.tags,
-                language = metadata.language,
-                createdAt = content.createdAt,
-                updatedAt = content.updatedAt
-            )
-        }
+            .flatMap { (content, metadata) ->
+                // PHOTO 타입인 경우 사진 목록 조회, 아니면 null 반환
+                if (content.contentType == ContentType.PHOTO) {
+                    contentPhotoRepository.findByContentId(content.id!!)
+                        .map { photos -> photos.map { it.photoUrl } }
+                        .map { photoUrls -> Pair(photoUrls as List<String>?, Pair(content, metadata)) }
+                } else {
+                    Mono.just(Pair(null as List<String>?, Pair(content, metadata)))
+                }.map { (photoUrls, contentAndMetadata) ->
+                    val (c, m) = contentAndMetadata
+                    ContentResponse(
+                        id = c.id.toString(),
+                        creatorId = c.creatorId.toString(),
+                        contentType = c.contentType,
+                        url = c.url,
+                        photoUrls = photoUrls,
+                        thumbnailUrl = c.thumbnailUrl,
+                        duration = c.duration,
+                        width = c.width,
+                        height = c.height,
+                        status = c.status,
+                        title = m.title,
+                        description = m.description,
+                        category = m.category,
+                        tags = m.tags,
+                        language = m.language,
+                        createdAt = c.createdAt,
+                        updatedAt = c.updatedAt
+                    )
+                }
+            }
     }
 
     /**
@@ -291,51 +319,58 @@ class ContentServiceImpl(
     override fun getContentsByCreator(creatorId: UUID): Flux<ContentResponse> {
         logger.info("Getting contents by creator: creatorId=$creatorId")
 
-        return Mono.fromCallable {
-            val contentWithMetadataList = contentRepository.findWithMetadataByCreatorId(creatorId)
+        return contentRepository.findWithMetadataByCreatorId(creatorId)
+            .collectList()
+            .flatMap { contentWithMetadataList ->
+                // N+1 방지: PHOTO 타입 콘텐츠의 사진 목록을 일괄 조회
+                val photoContentIds = contentWithMetadataList
+                    .filter { it.content.contentType == ContentType.PHOTO }
+                    .mapNotNull { it.content.id }
 
-            // N+1 방지: PHOTO 타입 콘텐츠의 사진 목록을 일괄 조회
-            val photoContentIds = contentWithMetadataList
-                .filter { it.first.contentType == ContentType.PHOTO }
-                .mapNotNull { it.first.id }
-
-            val photoUrlsMap = if (photoContentIds.isNotEmpty()) {
-                contentPhotoRepository.findByContentIds(photoContentIds)
-                    .mapValues { (_, photos) -> photos.map { it.photoUrl } }
-            } else {
-                emptyMap()
-            }
-
-            Pair(contentWithMetadataList, photoUrlsMap)
-        }.flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
-            Flux.fromIterable(contentWithMetadataList).map { (content, metadata) ->
-                val photoUrls = if (content.contentType == ContentType.PHOTO) {
-                    photoUrlsMap[content.id]
+                val photoUrlsMapMono = if (photoContentIds.isNotEmpty()) {
+                    contentPhotoRepository.findByContentIds(photoContentIds)
+                        .map { photoMap ->
+                            photoMap.mapValues { (_, photos) -> photos.map { it.photoUrl } }
+                        }
                 } else {
-                    null
+                    Mono.just(emptyMap())
                 }
 
-                ContentResponse(
-                    id = content.id.toString(),
-                    creatorId = content.creatorId.toString(),
-                    contentType = content.contentType,
-                    url = content.url,
-                    photoUrls = photoUrls,
-                    thumbnailUrl = content.thumbnailUrl,
-                    duration = content.duration,
-                    width = content.width,
-                    height = content.height,
-                    status = content.status,
-                    title = metadata.title,
-                    description = metadata.description,
-                    category = metadata.category,
-                    tags = metadata.tags,
-                    language = metadata.language,
-                    createdAt = content.createdAt,
-                    updatedAt = content.updatedAt
-                )
+                photoUrlsMapMono.map { photoUrlsMap ->
+                    contentWithMetadataList to photoUrlsMap
+                }
             }
-        }
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+                Flux.fromIterable(contentWithMetadataList).map { contentWithMetadata ->
+                    val content = contentWithMetadata.content
+                    val metadata = contentWithMetadata.metadata
+                    val photoUrls = if (content.contentType == ContentType.PHOTO) {
+                        photoUrlsMap[content.id]
+                    } else {
+                        null
+                    }
+
+                    ContentResponse(
+                        id = content.id.toString(),
+                        creatorId = content.creatorId.toString(),
+                        contentType = content.contentType,
+                        url = content.url,
+                        photoUrls = photoUrls,
+                        thumbnailUrl = content.thumbnailUrl,
+                        duration = content.duration,
+                        width = content.width,
+                        height = content.height,
+                        status = content.status,
+                        title = metadata.title,
+                        description = metadata.description,
+                        category = metadata.category,
+                        tags = metadata.tags,
+                        language = metadata.language,
+                        createdAt = content.createdAt,
+                        updatedAt = content.updatedAt
+                    )
+                }
+            }
     }
 
     /**
@@ -354,87 +389,114 @@ class ContentServiceImpl(
     ): Mono<ContentResponse> {
         logger.info("Updating content: userId=$userId, contentId=$contentId")
 
-        return Mono.fromCallable {
-            // 콘텐츠 존재 확인 및 권한 검증
-            val content = contentRepository.findById(contentId)
-                ?: throw NoSuchElementException("Content not found: $contentId")
+        return contentRepository.findById(contentId)
+            .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId")))
+            .flatMap { content ->
+                if (content.creatorId != userId) {
+                    return@flatMap Mono.error<Pair<Content, ContentMetadata>>(
+                        IllegalAccessException("Not authorized to update this content")
+                    )
+                }
 
-            if (content.creatorId != userId) {
-                throw IllegalAccessException("Not authorized to update this content")
+                contentRepository.findMetadataByContentId(contentId)
+                    .switchIfEmpty(Mono.error(NoSuchElementException("Content metadata not found: $contentId")))
+                    .map { metadata -> content to metadata }
             }
+            .flatMap { (content, metadata) ->
+                // 메타데이터 수정
+                val updatedMetadata = metadata.copy(
+                    title = request.title ?: metadata.title,
+                    description = request.description ?: metadata.description,
+                    category = request.category ?: metadata.category,
+                    tags = request.tags ?: metadata.tags,
+                    language = request.language ?: metadata.language,
+                    updatedAt = LocalDateTime.now(),
+                    updatedBy = userId.toString()
+                )
 
-            val metadata = contentRepository.findMetadataByContentId(contentId)
-                ?: throw NoSuchElementException("Content metadata not found: $contentId")
+                contentRepository.updateMetadata(updatedMetadata)
+                    .flatMap { success ->
+                        if (!success) {
+                            Mono.error(IllegalStateException("Failed to update content metadata"))
+                        } else {
+                            Mono.just(Triple(content, updatedMetadata, request.photoUrls))
+                        }
+                    }
+            }
+            .flatMap { (content, updatedMetadata, photoUrls) ->
+                // PHOTO 타입 콘텐츠의 사진 목록 수정
+                val photoUpdateMono = if (content.contentType == ContentType.PHOTO && photoUrls != null) {
+                    // 기존 사진 삭제 (Soft Delete)
+                    contentPhotoRepository.deleteByContentId(contentId, userId.toString())
+                        .doOnSuccess {
+                            logger.info("Deleted existing photos: contentId=$contentId")
+                        }
+                        .then(
+                            // 새 사진 저장
+                            Flux.fromIterable(photoUrls.mapIndexed { index, photoUrl ->
+                                ContentPhoto(
+                                    contentId = contentId,
+                                    photoUrl = photoUrl,
+                                    displayOrder = index,
+                                    width = content.width,
+                                    height = content.height,
+                                    createdAt = LocalDateTime.now(),
+                                    createdBy = userId.toString(),
+                                    updatedAt = LocalDateTime.now(),
+                                    updatedBy = userId.toString()
+                                )
+                            })
+                            .flatMap { photo ->
+                                contentPhotoRepository.save(photo)
+                                    .onErrorMap { IllegalStateException("Failed to save content photo during update: ${it.message}") }
+                            }
+                            .then()
+                            .doOnSuccess {
+                                logger.info("Updated photos: contentId=$contentId, count=${photoUrls.size}")
+                            }
+                        )
+                } else {
+                    Mono.empty()
+                }
 
-            // 메타데이터 수정
-            val updatedMetadata = metadata.copy(
-                title = request.title ?: metadata.title,
-                description = request.description ?: metadata.description,
-                category = request.category ?: metadata.category,
-                tags = request.tags ?: metadata.tags,
-                language = request.language ?: metadata.language,
-                updatedAt = LocalDateTime.now(),
-                updatedBy = userId.toString()
-            )
+                photoUpdateMono.then(Mono.just(Triple(content, updatedMetadata, photoUrls)))
+            }
+            .flatMap { triple ->
+                val (content, metadata, updatedPhotoUrls) = triple
+                // PHOTO 타입인 경우 사진 목록 조회 (수정되었으면 수정된 것, 아니면 기존 것)
+                val photoUrlsMono: Mono<List<String>?> = if (content.contentType == ContentType.PHOTO) {
+                    if (updatedPhotoUrls != null) {
+                        Mono.just(updatedPhotoUrls)
+                    } else {
+                        contentPhotoRepository.findByContentId(content.id!!)
+                            .map { photos -> photos.map { it.photoUrl } }
+                    }
+                } else {
+                    Mono.justOrEmpty(null)
+                }
 
-            val success = contentRepository.updateMetadata(updatedMetadata)
-            check(success) { "Failed to update content metadata" }
-
-            // PHOTO 타입 콘텐츠의 사진 목록 수정
-            if (content.contentType == ContentType.PHOTO && request.photoUrls != null) {
-                // 기존 사진 삭제 (Soft Delete)
-                contentPhotoRepository.deleteByContentId(contentId, userId.toString())
-                logger.info("Deleted existing photos: contentId=$contentId")
-
-                // 새 사진 저장
-                request.photoUrls.forEachIndexed { index, photoUrl ->
-                    val photo = me.onetwo.growsnap.domain.content.model.ContentPhoto(
-                        contentId = contentId,
-                        photoUrl = photoUrl,
-                        displayOrder = index,
+                photoUrlsMono.map { photoUrls ->
+                    ContentResponse(
+                        id = content.id.toString(),
+                        creatorId = content.creatorId.toString(),
+                        contentType = content.contentType,
+                        url = content.url,
+                        photoUrls = photoUrls,
+                        thumbnailUrl = content.thumbnailUrl,
+                        duration = content.duration,
                         width = content.width,
                         height = content.height,
-                        createdAt = LocalDateTime.now(),
-                        createdBy = userId.toString(),
-                        updatedAt = LocalDateTime.now(),
-                        updatedBy = userId.toString()
+                        status = content.status,
+                        title = metadata.title,
+                        description = metadata.description,
+                        category = metadata.category,
+                        tags = metadata.tags,
+                        language = metadata.language,
+                        createdAt = content.createdAt,
+                        updatedAt = metadata.updatedAt
                     )
-                    val saved = contentPhotoRepository.save(photo)
-                    check(saved) { "Failed to save content photo during update" }
                 }
-                logger.info("Updated photos: contentId=$contentId, count=${request.photoUrls.size}")
-            }
-
-            Triple(content, updatedMetadata, request.photoUrls)
-        }.map { (content, metadata, updatedPhotoUrls) ->
-            // PHOTO 타입인 경우 사진 목록 조회 (수정되었으면 수정된 것, 아니면 기존 것)
-            val photoUrls = if (content.contentType == ContentType.PHOTO) {
-                updatedPhotoUrls ?: contentPhotoRepository.findByContentId(content.id!!)
-                    .map { it.photoUrl }
-            } else {
-                null
-            }
-
-            ContentResponse(
-                id = content.id.toString(),
-                creatorId = content.creatorId.toString(),
-                contentType = content.contentType,
-                url = content.url,
-                photoUrls = photoUrls,
-                thumbnailUrl = content.thumbnailUrl,
-                duration = content.duration,
-                width = content.width,
-                height = content.height,
-                status = content.status,
-                title = metadata.title,
-                description = metadata.description,
-                category = metadata.category,
-                tags = metadata.tags,
-                language = metadata.language,
-                createdAt = content.createdAt,
-                updatedAt = metadata.updatedAt
-            )
-        }.doOnSuccess {
+            }.doOnSuccess {
             logger.info("Content updated successfully: contentId=$contentId")
         }.doOnError { error ->
             logger.error("Failed to update content: userId=$userId, contentId=$contentId", error)
@@ -455,25 +517,31 @@ class ContentServiceImpl(
     ): Mono<Void> {
         logger.info("Deleting content: userId=$userId, contentId=$contentId")
 
-        return Mono.fromCallable {
-            // 콘텐츠 존재 확인 및 권한 검증
-            val content = contentRepository.findById(contentId)
-                ?: throw NoSuchElementException("Content not found: $contentId")
+        return contentRepository.findById(contentId)
+            .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId")))
+            .flatMap { content ->
+                if (content.creatorId != userId) {
+                    return@flatMap Mono.error<Void>(
+                        IllegalAccessException("Not authorized to delete this content")
+                    )
+                }
 
-            if (content.creatorId != userId) {
-                throw IllegalAccessException("Not authorized to delete this content")
+                // Soft Delete
+                contentRepository.delete(contentId, userId)
+                    .flatMap { success ->
+                        if (!success) {
+                            Mono.error(IllegalStateException("Failed to delete content"))
+                        } else {
+                            Mono.empty()
+                        }
+                    }
             }
-
-            // Soft Delete
-            val success = contentRepository.delete(contentId, userId)
-            if (!success) {
-                throw IllegalStateException("Failed to delete content")
+            .doOnSuccess {
+                logger.info("Content deleted successfully: contentId=$contentId")
             }
-        }.then().doOnSuccess {
-            logger.info("Content deleted successfully: contentId=$contentId")
-        }.doOnError { error ->
-            logger.error("Failed to delete content: userId=$userId, contentId=$contentId", error)
-        }
+            .doOnError { error ->
+                logger.error("Failed to delete content: userId=$userId, contentId=$contentId", error)
+            }
     }
 
     /**
@@ -489,7 +557,7 @@ class ContentServiceImpl(
                 it.key(s3Key)
             }
             true
-        } catch (e: software.amazon.awssdk.services.s3.model.NoSuchKeyException) {
+        } catch (e: NoSuchKeyException) {
             logger.warn("S3 object not found: s3Key=$s3Key")
             false
         } catch (e: Exception) {

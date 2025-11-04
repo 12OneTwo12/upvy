@@ -61,7 +61,7 @@ class ContentController(
             .flatMap { userId ->
                 contentService.generateUploadUrl(userId, request)
             }
-            .map { ResponseEntity.ok(it) }
+            .map { ResponseEntity.status(HttpStatus.CREATED).body(it) }
     }
 
     /**
@@ -104,6 +104,9 @@ class ContentController(
     ): Mono<ResponseEntity<ContentResponse>> {
         return contentService.getContent(contentId)
             .map { ResponseEntity.ok(it) }
+            .onErrorResume(NoSuchElementException::class.java) {
+                Mono.just(ResponseEntity.notFound().build())
+            }
             .defaultIfEmpty(ResponseEntity.notFound().build())
     }
 

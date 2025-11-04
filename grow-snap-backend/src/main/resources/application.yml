@@ -2,18 +2,19 @@ spring:
   application:
     name: grow-snap-backend
 
-  # Datasource Configuration (JDBC for JOOQ)
-  datasource:
-    url: jdbc:mysql://localhost:3306/growsnap?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+  # R2DBC Configuration for Reactive Database Access
+  r2dbc:
+    url: r2dbc:mysql://localhost:3306/growsnap?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 10
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+    pool:
+      enabled: true
+      initial-size: 10
+      max-size: 20
+      max-idle-time: 10m
+      max-acquire-time: 30s
+      max-life-time: 30m
+      validation-query: SELECT 1
 
   # Redis Configuration
   data:

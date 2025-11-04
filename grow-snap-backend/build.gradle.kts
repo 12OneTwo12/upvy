@@ -35,8 +35,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    runtimeOnly("com.h2database:h2")
-    runtimeOnly("com.mysql:mysql-connector-j")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.restdocs:spring-restdocs-webtestclient")
@@ -48,11 +46,16 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("com.ninja-squad:springmockk:4.0.2")
 
-    // Embedded Redis for testing
-    testImplementation("com.github.kstyrc:embedded-redis:0.6")
+    // Testcontainers for integration testing with Redis
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers:1.19.3")
+    testImplementation("org.testcontainers:junit-jupiter:1.19.3")
 
     // ArchUnit for architecture testing
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
+
+    // Awaitility for async testing (replaces Thread.sleep)
+    testImplementation("org.awaitility:awaitility-kotlin:4.2.0")
 
     // OAuth2 Client
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
@@ -81,8 +84,11 @@ dependencies {
     // Image processing (Thumbnailator for resizing)
     implementation("net.coobird:thumbnailator:0.4.20")
 
-    // JDBC for JOOQ
-    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    // R2DBC for Reactive Database Access
+    implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
+    implementation("io.r2dbc:r2dbc-pool")
+    runtimeOnly("io.asyncer:r2dbc-mysql:1.0.5")
+    testRuntimeOnly("io.r2dbc:r2dbc-h2")
 
     // JOOQ 기본 런타임 라이브러리
     implementation("org.jooq:jooq:$jooqVersion")

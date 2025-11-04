@@ -3,18 +3,22 @@ package me.onetwo.growsnap.domain.analytics.repository
 import me.onetwo.growsnap.domain.content.model.ContentInteraction
 import me.onetwo.growsnap.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
 import org.jooq.DSLContext
+import org.jooq.Field
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
 import java.time.LocalDateTime
 import java.util.UUID
 
 /**
- * 콘텐츠 인터랙션 레포지토리 구현체
+ * 콘텐츠 인터랙션 레포지토리 구현체 (Reactive with JOOQ R2DBC)
  *
- * JOOQ를 사용하여 content_interactions 테이블에 접근합니다.
+ * JOOQ 3.17+의 R2DBC 지원을 사용합니다.
+ * JOOQ의 type-safe API로 SQL을 생성하고 R2DBC로 실행합니다.
  * 인터랙션 카운터를 원자적으로 증가시킵니다.
+ * 완전한 Non-blocking 처리를 지원합니다.
  *
- * @property dslContext JOOQ DSL Context
+ * @property dslContext JOOQ DSLContext (R2DBC 기반)
  */
 @Repository
 class ContentInteractionRepositoryImpl(
@@ -31,8 +35,10 @@ class ContentInteractionRepositoryImpl(
      * @return 생성 완료 신호
      */
     override fun create(contentInteraction: ContentInteraction): Mono<Void> {
-        return Mono.fromCallable {
-            dslContext.insertInto(CONTENT_INTERACTIONS)
+        // JOOQ의 type-safe API로 INSERT 쿼리 생성
+        return Mono.from(
+            dslContext
+                .insertInto(CONTENT_INTERACTIONS)
                 .set(CONTENT_INTERACTIONS.CONTENT_ID, contentInteraction.contentId.toString())
                 .set(CONTENT_INTERACTIONS.LIKE_COUNT, contentInteraction.likeCount)
                 .set(CONTENT_INTERACTIONS.COMMENT_COUNT, contentInteraction.commentCount)
@@ -43,8 +49,7 @@ class ContentInteractionRepositoryImpl(
                 .set(CONTENT_INTERACTIONS.CREATED_BY, contentInteraction.createdBy?.toString())
                 .set(CONTENT_INTERACTIONS.UPDATED_AT, contentInteraction.updatedAt)
                 .set(CONTENT_INTERACTIONS.UPDATED_BY, contentInteraction.updatedBy?.toString())
-                .execute()
-        }.then()
+        ).then()
     }
 
     /**
@@ -147,20 +152,34 @@ class ContentInteractionRepositoryImpl(
     }
 
     /**
+     * 공유 수 감소
+     *
+     * share_count를 1 감소시키고, updated_at을 갱신합니다.
+     * 0 미만으로 내려가지 않도록 보장합니다.
+     *
+     * @param contentId 콘텐츠 ID
+     * @return 업데이트 완료 신호
+     */
+    override fun decrementShareCount(contentId: UUID): Mono<Void> {
+        return decrementCount(contentId, CONTENT_INTERACTIONS.SHARE_COUNT)
+    }
+
+    /**
      * 좋아요 수 조회
      *
      * @param contentId 콘텐츠 ID
      * @return 좋아요 수
      */
     override fun getLikeCount(contentId: UUID): Mono<Int> {
-        return Mono.fromCallable {
+        // JOOQ의 type-safe API로 SELECT 쿼리 생성
+        return Mono.from(
             dslContext
                 .select(CONTENT_INTERACTIONS.LIKE_COUNT)
                 .from(CONTENT_INTERACTIONS)
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-                .fetchOne(CONTENT_INTERACTIONS.LIKE_COUNT) ?: 0
-        }
+        ).map { record -> record.getValue(CONTENT_INTERACTIONS.LIKE_COUNT) ?: 0 }
+            .defaultIfEmpty(0)
     }
 
     /**
@@ -170,14 +189,15 @@ class ContentInteractionRepositoryImpl(
      * @return 저장 수
      */
     override fun getSaveCount(contentId: UUID): Mono<Int> {
-        return Mono.fromCallable {
+        // JOOQ의 type-safe API로 SELECT 쿼리 생성
+        return Mono.from(
             dslContext
                 .select(CONTENT_INTERACTIONS.SAVE_COUNT)
                 .from(CONTENT_INTERACTIONS)
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-                .fetchOne(CONTENT_INTERACTIONS.SAVE_COUNT) ?: 0
-        }
+        ).map { record -> record.getValue(CONTENT_INTERACTIONS.SAVE_COUNT) ?: 0 }
+            .defaultIfEmpty(0)
     }
 
     /**
@@ -187,14 +207,15 @@ class ContentInteractionRepositoryImpl(
      * @return 공유 수
      */
     override fun getShareCount(contentId: UUID): Mono<Int> {
-        return Mono.fromCallable {
+        // JOOQ的 type-safe API로 SELECT 쿼리 생성
+        return Mono.from(
             dslContext
                 .select(CONTENT_INTERACTIONS.SHARE_COUNT)
                 .from(CONTENT_INTERACTIONS)
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-                .fetchOne(CONTENT_INTERACTIONS.SHARE_COUNT) ?: 0
-        }
+        ).map { record -> record.getValue(CONTENT_INTERACTIONS.SHARE_COUNT) ?: 0 }
+            .defaultIfEmpty(0)
     }
 
     /**
@@ -206,15 +227,16 @@ class ContentInteractionRepositoryImpl(
      * @param field 증가시킬 필드
      * @return 업데이트 완료 신호
      */
-    private fun incrementCount(contentId: UUID, field: org.jooq.Field<Int?>): Mono<Void> {
-        return Mono.fromCallable {
-            dslContext.update(CONTENT_INTERACTIONS)
-                .set(field, field.plus(1))
+    private fun incrementCount(contentId: UUID, field: Field<Int?>): Mono<Void> {
+        // JOOQ의 type-safe API로 UPDATE 쿼리 생성
+        return Mono.from(
+            dslContext
+                .update(CONTENT_INTERACTIONS)
+                .set(field, DSL.field("{0} + 1", Int::class.java, field))
                 .set(CONTENT_INTERACTIONS.UPDATED_AT, LocalDateTime.now())
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-                .execute()
-        }.then()
+        ).then()
     }
 
     /**
@@ -227,16 +249,15 @@ class ContentInteractionRepositoryImpl(
      * @param field 감소시킬 필드
      * @return 업데이트 완료 신호
      */
-    private fun decrementCount(contentId: UUID, field: org.jooq.Field<Int?>): Mono<Void> {
-        return Mono.fromCallable {
-            dslContext.update(CONTENT_INTERACTIONS)
-                .set(field, org.jooq.impl.DSL.case_()
-                    .`when`(field.greaterThan(0), field.minus(1))
-                    .otherwise(0))
+    private fun decrementCount(contentId: UUID, field: Field<Int?>): Mono<Void> {
+        // JOOQ의 type-safe API로 UPDATE 쿼리 생성
+        return Mono.from(
+            dslContext
+                .update(CONTENT_INTERACTIONS)
+                .set(field, DSL.field("CASE WHEN {0} > 0 THEN {0} - 1 ELSE 0 END", Int::class.java, field))
                 .set(CONTENT_INTERACTIONS.UPDATED_AT, LocalDateTime.now())
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-                .execute()
-        }.then()
+        ).then()
     }
 }

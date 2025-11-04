@@ -45,15 +45,6 @@ interface CommentService {
     fun getReplies(userId: UUID?, parentCommentId: UUID, cursor: String?, limit: Int = 20): Mono<CommentListResponse>
 
     /**
-     * 콘텐츠의 댓글 목록 조회 (기존 방식, 하위 호환성)
-     *
-     * @param contentId 콘텐츠 ID
-     * @return 댓글 목록 (계층 구조, 대댓글 포함)
-     */
-    @Deprecated("Use getComments(contentId, cursor, limit) instead")
-    fun getCommentsLegacy(contentId: UUID): Flux<CommentResponse>
-
-    /**
      * 댓글 삭제
      *
      * @param userId 요청한 사용자 ID

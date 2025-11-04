@@ -1,0 +1,337 @@
+-- Drop all tables first to ensure clean state for each test context
+DROP TABLE IF EXISTS reports CASCADE;
+DROP TABLE IF EXISTS user_comment_likes CASCADE;
+DROP TABLE IF EXISTS user_content_interactions CASCADE;
+DROP TABLE IF EXISTS user_likes CASCADE;
+DROP TABLE IF EXISTS user_saves CASCADE;
+DROP TABLE IF EXISTS user_view_history CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS content_subtitles CASCADE;
+DROP TABLE IF EXISTS content_interactions CASCADE;
+DROP TABLE IF EXISTS content_metadata CASCADE;
+DROP TABLE IF EXISTS content_photos CASCADE;
+DROP TABLE IF EXISTS contents CASCADE;
+DROP TABLE IF EXISTS follows CASCADE;
+DROP TABLE IF EXISTS user_profiles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- Users Table
+CREATE TABLE users (
+    id CHAR(36) PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    provider VARCHAR(50) NOT NULL DEFAULT 'GOOGLE',
+    provider_id VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    CONSTRAINT unique_provider_user UNIQUE (provider, provider_id)
+);
+
+CREATE INDEX idx_email ON users(email);
+CREATE INDEX idx_provider_id ON users(provider_id);
+CREATE INDEX idx_deleted_at ON users(deleted_at);
+
+-- User Profiles Table
+CREATE TABLE user_profiles (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL UNIQUE,
+    nickname VARCHAR(20) NOT NULL UNIQUE,
+    profile_image_url VARCHAR(500),
+    bio VARCHAR(500),
+    follower_count INT DEFAULT 0,
+    following_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_nickname ON user_profiles(nickname);
+CREATE INDEX idx_user_id ON user_profiles(user_id);
+CREATE INDEX idx_profile_deleted_at ON user_profiles(deleted_at);
+
+-- Follows Table
+CREATE TABLE follows (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    follower_id CHAR(36) NOT NULL,
+    following_id CHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_follow UNIQUE (follower_id, following_id)
+);
+
+CREATE INDEX idx_follower ON follows(follower_id);
+CREATE INDEX idx_following ON follows(following_id);
+CREATE INDEX idx_follow_deleted_at ON follows(deleted_at);
+
+-- Contents Table
+CREATE TABLE contents (
+    id CHAR(36) PRIMARY KEY,
+    creator_id CHAR(36) NOT NULL,
+    content_type VARCHAR(20) NOT NULL,
+    url VARCHAR(500) NOT NULL,
+    thumbnail_url VARCHAR(500) NOT NULL,
+    duration INT NULL,
+    width INT NOT NULL,
+    height INT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_creator_id ON contents(creator_id);
+CREATE INDEX idx_content_type ON contents(content_type);
+CREATE INDEX idx_status ON contents(status);
+CREATE INDEX idx_content_created_at ON contents(created_at);
+CREATE INDEX idx_content_deleted_at ON contents(deleted_at);
+
+-- Content Photos Table
+CREATE TABLE content_photos (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id CHAR(36) NOT NULL,
+    photo_url VARCHAR(500) NOT NULL,
+    display_order INT NOT NULL DEFAULT 0,
+    width INT NOT NULL,
+    height INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_photo_content_id ON content_photos(content_id);
+CREATE INDEX idx_photo_display_order ON content_photos(content_id, display_order);
+CREATE INDEX idx_photo_deleted_at ON content_photos(deleted_at);
+
+-- Content Metadata Table
+CREATE TABLE content_metadata (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id CHAR(36) NOT NULL UNIQUE,
+    title VARCHAR(200) NOT NULL,
+    description CLOB,
+    category VARCHAR(50) NOT NULL,
+    tags JSON,
+    difficulty_level VARCHAR(20),
+    language VARCHAR(10) NOT NULL DEFAULT 'ko',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_metadata_content_id ON content_metadata(content_id);
+CREATE INDEX idx_category ON content_metadata(category);
+CREATE INDEX idx_metadata_deleted_at ON content_metadata(deleted_at);
+
+-- Content Interactions Table
+CREATE TABLE content_interactions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id CHAR(36) NOT NULL UNIQUE,
+    like_count INT DEFAULT 0,
+    comment_count INT DEFAULT 0,
+    save_count INT DEFAULT 0,
+    share_count INT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_interaction_content_id ON content_interactions(content_id);
+CREATE INDEX idx_like_count ON content_interactions(like_count);
+CREATE INDEX idx_view_count ON content_interactions(view_count);
+CREATE INDEX idx_interaction_deleted_at ON content_interactions(deleted_at);
+
+-- Content Subtitles Table
+CREATE TABLE content_subtitles (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id CHAR(36) NOT NULL,
+    language VARCHAR(10) NOT NULL,
+    subtitle_url VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    CONSTRAINT unique_content_language UNIQUE (content_id, language)
+);
+
+CREATE INDEX idx_subtitle_content_id ON content_subtitles(content_id);
+CREATE INDEX idx_subtitle_language ON content_subtitles(language);
+CREATE INDEX idx_subtitle_deleted_at ON content_subtitles(deleted_at);
+
+-- User View History Table
+CREATE TABLE user_view_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    content_id CHAR(36) NOT NULL,
+    watched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    watched_duration INT DEFAULT 0,
+    completion_rate INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_view_user_id ON user_view_history(user_id);
+CREATE INDEX idx_view_content_id ON user_view_history(content_id);
+CREATE INDEX idx_watched_at ON user_view_history(watched_at);
+CREATE INDEX idx_view_deleted_at ON user_view_history(deleted_at);
+CREATE INDEX idx_user_watched ON user_view_history(user_id, watched_at);
+
+-- User Content Interactions Table
+CREATE TABLE user_content_interactions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    content_id CHAR(36) NOT NULL,
+    interaction_type VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_content_interaction UNIQUE (user_id, content_id, interaction_type)
+);
+
+CREATE INDEX idx_user_interaction_user_id ON user_content_interactions(user_id);
+CREATE INDEX idx_user_interaction_content_id ON user_content_interactions(content_id);
+CREATE INDEX idx_user_interaction_type ON user_content_interactions(interaction_type);
+CREATE INDEX idx_user_interaction_deleted_at ON user_content_interactions(deleted_at);
+CREATE INDEX idx_user_interaction_composite ON user_content_interactions(user_id, content_id);
+
+-- Comments Table
+CREATE TABLE comments (
+    id CHAR(36) PRIMARY KEY,
+    content_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    parent_comment_id CHAR(36) NULL,
+    content CLOB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_comment_content_id ON comments(content_id);
+CREATE INDEX idx_comment_user_id ON comments(user_id);
+CREATE INDEX idx_comment_parent_id ON comments(parent_comment_id);
+CREATE INDEX idx_comment_deleted_at ON comments(deleted_at);
+CREATE INDEX idx_comment_created_at ON comments(created_at);
+
+-- User Likes Table
+CREATE TABLE user_likes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    content_id CHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    deleted_at_unix BIGINT NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_like UNIQUE (user_id, content_id, deleted_at_unix)
+);
+
+CREATE INDEX idx_user_like_user_id ON user_likes(user_id);
+CREATE INDEX idx_user_like_content_id ON user_likes(content_id);
+CREATE INDEX idx_user_like_deleted_at ON user_likes(deleted_at);
+CREATE INDEX idx_user_like_composite ON user_likes(user_id, content_id);
+
+-- User Saves Table
+CREATE TABLE user_saves (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    content_id CHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    deleted_at_unix BIGINT NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_save UNIQUE (user_id, content_id, deleted_at_unix)
+);
+
+CREATE INDEX idx_user_save_user_id ON user_saves(user_id);
+CREATE INDEX idx_user_save_content_id ON user_saves(content_id);
+CREATE INDEX idx_user_save_deleted_at ON user_saves(deleted_at);
+CREATE INDEX idx_user_save_composite ON user_saves(user_id, content_id);
+CREATE INDEX idx_user_save_created_at ON user_saves(created_at);
+
+-- User Comment Likes Table
+CREATE TABLE user_comment_likes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    comment_id CHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    deleted_at_unix BIGINT NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_comment_like UNIQUE (user_id, comment_id, deleted_at_unix)
+);
+
+CREATE INDEX idx_user_comment_like_comment_id ON user_comment_likes(comment_id);
+CREATE INDEX idx_user_comment_like_deleted_at ON user_comment_likes(deleted_at);
+CREATE INDEX idx_user_comment_like_composite ON user_comment_likes(user_id, comment_id);
+
+-- Reports Table
+CREATE TABLE reports (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    reporter_id CHAR(36) NOT NULL,
+    target_type VARCHAR(20) NOT NULL,
+    target_id CHAR(36) NOT NULL,
+    reason VARCHAR(50) NOT NULL,
+    description CLOB,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_report_reporter_id ON reports(reporter_id);
+CREATE INDEX idx_report_target ON reports(target_type, target_id);
+CREATE INDEX idx_report_status ON reports(status);
+CREATE INDEX idx_report_deleted_at ON reports(deleted_at);
+CREATE INDEX idx_report_created_at ON reports(created_at);

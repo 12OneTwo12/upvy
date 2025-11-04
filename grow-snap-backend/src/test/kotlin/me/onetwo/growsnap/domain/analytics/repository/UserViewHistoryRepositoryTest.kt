@@ -10,8 +10,14 @@ import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -21,7 +27,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -32,7 +37,6 @@ import java.util.UUID
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("사용자 시청 기록 Repository 통합 테스트")
 class UserViewHistoryRepositoryTest {
 
@@ -62,7 +66,7 @@ class UserViewHistoryRepositoryTest {
                 providerId = "user-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         // 콘텐츠 3개 생성
         testContent1Id = UUID.randomUUID()
@@ -72,6 +76,15 @@ class UserViewHistoryRepositoryTest {
         insertContent(testContent1Id, testUser.id!!, "Content 1")
         insertContent(testContent2Id, testUser.id!!, "Content 2")
         insertContent(testContent3Id, testUser.id!!, "Content 3")
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(USER_VIEW_HISTORY)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested
@@ -139,7 +152,7 @@ class UserViewHistoryRepositoryTest {
                 completionRate = 50
             ).block()
 
-            Thread.sleep(10)  // 시간 차이 보장
+            // created_at은 millisecond 단위이므로 시간 차이 자동 보장
 
             userViewHistoryRepository.save(
                 testUser.id!!,
@@ -374,7 +387,7 @@ class UserViewHistoryRepositoryTest {
         val now = LocalDateTime.now()
 
         // Contents 테이블
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -387,11 +400,10 @@ class UserViewHistoryRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -401,11 +413,10 @@ class UserViewHistoryRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
 
         // Content_Interactions 테이블
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, 0)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 0)
@@ -415,8 +426,7 @@ class UserViewHistoryRepositoryTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, now)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, now)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -430,7 +440,7 @@ class UserViewHistoryRepositoryTest {
         completionRate: Int = 50
     ) {
         // DSLContext를 사용하여 특정 watched_at 시간으로 저장
-        dslContext.insertInto(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY)
+        Mono.from(dslContext.insertInto(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY)
             .set(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY.USER_ID, userId.toString())
             .set(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY.CONTENT_ID, contentId.toString())
             .set(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY.WATCHED_AT, watchedAt)
@@ -439,7 +449,6 @@ class UserViewHistoryRepositoryTest {
             .set(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY.CREATED_AT, watchedAt)
             .set(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY.CREATED_BY, userId.toString())
             .set(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY.UPDATED_AT, watchedAt)
-            .set(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY.UPDATED_BY, userId.toString())
-            .execute()
+            .set(me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY.UPDATED_BY, userId.toString())).block()
     }
 }

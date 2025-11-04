@@ -7,9 +7,15 @@ import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.ContentMetadata.Companion.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.ContentPhotos.Companion.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.Contents.Companion.CONTENTS
+import me.onetwo.growsnap.jooq.generated.tables.UserProfiles.Companion.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.UserSaves.Companion.USER_SAVES
+import me.onetwo.growsnap.jooq.generated.tables.Users.Companion.USERS
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -21,7 +27,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -30,7 +35,6 @@ import java.util.UUID
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("UserSaveRepository 통합 테스트")
 class UserSaveRepositoryTest {
 
@@ -56,12 +60,21 @@ class UserSaveRepositoryTest {
                 providerId = "test-provider-id",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
         testUserId = user.id!!
 
         // 콘텐츠 생성
         testContentId = UUID.randomUUID()
         insertContent(testContentId, testUserId, "Test Content")
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(USER_SAVES)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested
@@ -74,7 +87,7 @@ class UserSaveRepositoryTest {
             // Given: 준비된 사용자와 콘텐츠
 
             // When: 저장 생성
-            val userSave = userSaveRepository.save(testUserId, testContentId)!!
+            val userSave = userSaveRepository.save(testUserId, testContentId).block()!!
 
             // Then: 생성된 저장 검증
             assertEquals(testUserId, userSave.userId)
@@ -87,11 +100,11 @@ class UserSaveRepositoryTest {
         @DisplayName("이미 저장이 존재하면, 중복 생성 시 예외가 발생한다")
         fun save_WhenAlreadyExists_ThrowsException() {
             // Given: 이미 저장이 존재
-            userSaveRepository.save(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
 
             // When & Then: 중복 생성 시 예외 발생
             try {
-                userSaveRepository.save(testUserId, testContentId)
+                userSaveRepository.save(testUserId, testContentId).block()
                 assert(false) { "Expected exception but none was thrown" }
             } catch (e: Exception) {
                 // 예외 발생 확인 (duplicate, unique constraint violation 등)
@@ -114,13 +127,13 @@ class UserSaveRepositoryTest {
         @DisplayName("저장을 삭제하면, deleted_at이 설정된다")
         fun delete_SetDeletedAt() {
             // Given: 저장이 존재
-            userSaveRepository.save(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
 
             // When: 저장 삭제
-            userSaveRepository.delete(testUserId, testContentId)
+            userSaveRepository.delete(testUserId, testContentId).block()
 
             // Then: deleted_at이 설정됨
-            val exists = userSaveRepository.exists(testUserId, testContentId)
+            val exists = userSaveRepository.exists(testUserId, testContentId).block()!!
             assertFalse(exists)
         }
 
@@ -130,7 +143,7 @@ class UserSaveRepositoryTest {
             // Given: 저장이 존재하지 않음
 
             // When & Then: 삭제해도 예외 없음
-            userSaveRepository.delete(testUserId, testContentId)
+            userSaveRepository.delete(testUserId, testContentId).block()
         }
     }
 
@@ -142,10 +155,10 @@ class UserSaveRepositoryTest {
         @DisplayName("저장이 존재하면, true를 반환한다")
         fun exists_WhenExists_ReturnsTrue() {
             // Given: 저장이 존재
-            userSaveRepository.save(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
 
             // When: 존재 여부 확인
-            val exists = userSaveRepository.exists(testUserId, testContentId)
+            val exists = userSaveRepository.exists(testUserId, testContentId).block()!!
 
             // Then: true 반환
             assertTrue(exists)
@@ -157,7 +170,7 @@ class UserSaveRepositoryTest {
             // Given: 저장이 존재하지 않음
 
             // When: 존재 여부 확인
-            val exists = userSaveRepository.exists(testUserId, testContentId)
+            val exists = userSaveRepository.exists(testUserId, testContentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -167,11 +180,11 @@ class UserSaveRepositoryTest {
         @DisplayName("삭제된 저장은, false를 반환한다")
         fun exists_WhenDeleted_ReturnsFalse() {
             // Given: 저장이 삭제됨
-            userSaveRepository.save(testUserId, testContentId)
-            userSaveRepository.delete(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
+            userSaveRepository.delete(testUserId, testContentId).block()
 
             // When: 존재 여부 확인
-            val exists = userSaveRepository.exists(testUserId, testContentId)
+            val exists = userSaveRepository.exists(testUserId, testContentId).block()!!
 
             // Then: false 반환
             assertFalse(exists)
@@ -191,12 +204,12 @@ class UserSaveRepositoryTest {
             insertContent(contentId1, testUserId, "Content 1")
             insertContent(contentId2, testUserId, "Content 2")
 
-            userSaveRepository.save(testUserId, contentId1)
-            Thread.sleep(10) // 생성 시간 차이를 위해 대기
-            userSaveRepository.save(testUserId, contentId2)
+            userSaveRepository.save(testUserId, contentId1).block()
+            // created_at은 millisecond 단위이므로 시간 차이 자동 보장
+            userSaveRepository.save(testUserId, contentId2).block()
 
             // When: 저장 목록 조회
-            val userSaves = userSaveRepository.findByUserId(testUserId)
+            val userSaves = userSaveRepository.findByUserId(testUserId).collectList().block()!!
 
             // Then: 최신순으로 반환
             assertEquals(2, userSaves.size)
@@ -208,11 +221,11 @@ class UserSaveRepositoryTest {
         @DisplayName("삭제된 저장은 조회되지 않는다")
         fun findByUserId_ExcludesDeleted() {
             // Given: 저장 후 삭제
-            userSaveRepository.save(testUserId, testContentId)
-            userSaveRepository.delete(testUserId, testContentId)
+            userSaveRepository.save(testUserId, testContentId).block()
+            userSaveRepository.delete(testUserId, testContentId).block()
 
             // When: 저장 목록 조회
-            val userSaves = userSaveRepository.findByUserId(testUserId)
+            val userSaves = userSaveRepository.findByUserId(testUserId).collectList().block()!!
 
             // Then: 삭제된 저장은 조회되지 않음
             assertEquals(0, userSaves.size)
@@ -224,7 +237,7 @@ class UserSaveRepositoryTest {
             // Given: 저장이 없음
 
             // When: 저장 목록 조회
-            val userSaves = userSaveRepository.findByUserId(testUserId)
+            val userSaves = userSaveRepository.findByUserId(testUserId).collectList().block()!!
 
             // Then: 빈 목록 반환
             assertEquals(0, userSaves.size)
@@ -241,7 +254,7 @@ class UserSaveRepositoryTest {
     ) {
         val now = LocalDateTime.now()
 
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -254,10 +267,9 @@ class UserSaveRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
 
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -267,10 +279,9 @@ class UserSaveRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
 
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, 0)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 0)
@@ -280,7 +291,6 @@ class UserSaveRepositoryTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, now)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, now)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
     }
 }

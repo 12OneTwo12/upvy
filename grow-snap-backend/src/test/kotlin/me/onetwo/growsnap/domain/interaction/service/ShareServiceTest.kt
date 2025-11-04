@@ -4,11 +4,12 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.justRun
 import io.mockk.verify
-import me.onetwo.growsnap.domain.analytics.dto.InteractionEventRequest
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
-import me.onetwo.growsnap.domain.analytics.service.AnalyticsService
+import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -28,10 +29,13 @@ import java.util.UUID
 class ShareServiceTest {
 
     @MockK
-    private lateinit var analyticsService: AnalyticsService
+    private lateinit var contentInteractionService: ContentInteractionService
 
     @MockK
     private lateinit var contentInteractionRepository: ContentInteractionRepository
+
+    @MockK
+    private lateinit var eventPublisher: ReactiveEventPublisher
 
     @InjectMockKs
     private lateinit var shareService: ShareServiceImpl
@@ -44,10 +48,11 @@ class ShareServiceTest {
     inner class ShareContent {
 
         @Test
-        @DisplayName("콘텐츠를 공유하면, Analytics 이벤트를 발행하고 공유 수를 반환한다")
+        @DisplayName("콘텐츠를 공유하면, 카운트를 증가시키고 이벤트를 발행한 후 공유 수를 반환한다")
         fun shareContent_Success() {
             // Given
-            every { analyticsService.trackInteractionEvent(any(), any()) } returns Mono.empty()
+            every { contentInteractionService.incrementShareCount(testContentId) } returns Mono.empty()
+            justRun { eventPublisher.publish(any()) }
             every { contentInteractionRepository.getShareCount(testContentId) } returns Mono.just(5)
 
             // When
@@ -61,15 +66,8 @@ class ShareServiceTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 1) {
-                analyticsService.trackInteractionEvent(
-                    testUserId,
-                    InteractionEventRequest(
-                        contentId = testContentId,
-                        interactionType = InteractionType.SHARE
-                    )
-                )
-            }
+            verify(exactly = 1) { contentInteractionService.incrementShareCount(testContentId) }
+            verify(exactly = 1) { eventPublisher.publish(any()) }
             verify(exactly = 1) { contentInteractionRepository.getShareCount(testContentId) }
         }
     }

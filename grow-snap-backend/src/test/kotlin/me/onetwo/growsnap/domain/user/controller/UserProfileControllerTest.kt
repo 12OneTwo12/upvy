@@ -62,8 +62,7 @@ class UserProfileControllerTest {
     @DisplayName("내 프로필 조회 성공")
     fun getMyProfile_Success() {
         // Given
-        every { userProfileService.getProfileByUserId(testUserId) } returns testProfile
-
+        every { userProfileService.getProfileByUserId(testUserId) } returns Mono.just(testProfile)
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))
@@ -99,8 +98,7 @@ class UserProfileControllerTest {
     fun getProfileByUserId_Success() {
         // Given
         val targetUserId = UUID.randomUUID()
-        every { userProfileService.getProfileByUserId(targetUserId) } returns testProfile
-
+        every { userProfileService.getProfileByUserId(targetUserId) } returns Mono.just(testProfile)
         // When & Then
         webTestClient.get()
             .uri("${ApiPaths.API_V1_PROFILES}/{targetUserId}", targetUserId)
@@ -135,8 +133,7 @@ class UserProfileControllerTest {
     fun getProfileByNickname_Success() {
         // Given
         val nickname = "testnick"
-        every { userProfileService.getProfileByNickname(nickname) } returns testProfile
-
+        every { userProfileService.getProfileByNickname(nickname) } returns Mono.just(testProfile)
         // When & Then
         webTestClient.get()
             .uri("${ApiPaths.API_V1_PROFILES}/nickname/{nickname}", nickname)
@@ -192,7 +189,7 @@ class UserProfileControllerTest {
 
         every {
             userProfileService.updateProfile(testUserId, request.nickname, request.profileImageUrl, request.bio)
-        } returns testProfile.copy(nickname = "updatednick", bio = "수정된 자기소개")
+        } returns Mono.just(testProfile.copy(nickname = "updatednick", bio = "수정된 자기소개"))
 
         // When & Then
         webTestClient
@@ -236,8 +233,7 @@ class UserProfileControllerTest {
     fun checkNickname_Duplicated() {
         // Given
         val nickname = "duplicatenick"
-        every { userProfileService.isNicknameDuplicated(nickname) } returns true
-
+        every { userProfileService.isNicknameDuplicated(nickname) } returns Mono.just(true)
         // When & Then
         webTestClient.get()
             .uri("${ApiPaths.API_V1_PROFILES}/check/nickname/{nickname}", nickname)
@@ -266,8 +262,7 @@ class UserProfileControllerTest {
     fun checkNickname_Available() {
         // Given
         val nickname = "availablenick"
-        every { userProfileService.isNicknameDuplicated(nickname) } returns false
-
+        every { userProfileService.isNicknameDuplicated(nickname) } returns Mono.just(false)
         // When & Then
         webTestClient.get()
             .uri("${ApiPaths.API_V1_PROFILES}/check/nickname/{nickname}", nickname)

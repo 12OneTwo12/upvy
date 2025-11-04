@@ -1,20 +1,19 @@
 package me.onetwo.growsnap.config
 
 import io.mockk.mockk
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
+import me.onetwo.growsnap.infrastructure.redis.RefreshTokenRepository
 import me.onetwo.growsnap.infrastructure.security.config.PublicApiPaths
 import me.onetwo.growsnap.infrastructure.security.jwt.JwtTokenProvider
-import me.onetwo.growsnap.infrastructure.security.jwt.UuidJwtAuthenticationToken
 import me.onetwo.growsnap.infrastructure.security.oauth2.CustomReactiveOAuth2UserService
 import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthenticationFailureHandler
 import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler
-import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
-import org.springframework.core.convert.converter.Converter
-import org.springframework.security.authentication.AbstractAuthenticationToken
+import org.springframework.context.annotation.Primary
+import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
-import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder
 import org.springframework.security.web.server.SecurityWebFilterChain
 import reactor.core.publisher.Mono
@@ -41,6 +40,7 @@ import java.util.UUID
  */
 @TestConfiguration
 @EnableWebFluxSecurity
+@EnableAsync
 class TestSecurityConfig {
 
     /**
@@ -49,25 +49,19 @@ class TestSecurityConfig {
      * JWT 검증을 우회하고 모든 토큰을 유효하다고 간주합니다.
      */
     @Bean
+    @Primary
     fun reactiveJwtDecoder(): ReactiveJwtDecoder {
-        return ReactiveJwtDecoder { token ->
+        return ReactiveJwtDecoder { _ ->
             Mono.error(IllegalStateException("JWT decoder should not be called in tests. Use mockJwt() instead."))
         }
     }
 
     /**
-     * 테스트용 JWT Authentication Converter
-     *
-     * mockJwt()로 설정된 JWT를 UuidJwtAuthenticationToken으로 변환합니다.
+     * 테스트용 RefreshTokenRepository Mock
      */
     @Bean
-    fun jwtAuthenticationConverter(): Converter<Jwt, Mono<AbstractAuthenticationToken>> {
-        return Converter { jwt ->
-            val userId = UUID.fromString(jwt.subject)
-            val authentication = UuidJwtAuthenticationToken(userId, jwt, emptyList())
-            Mono.just(authentication)
-        }
-    }
+    @Primary
+    fun refreshTokenRepository(): RefreshTokenRepository = mockk(relaxed = true)
 
     /**
      * 테스트용 Mock JwtTokenProvider
@@ -75,18 +69,22 @@ class TestSecurityConfig {
      * OAuth2 로그인 성공 핸들러에서 사용하는 JwtTokenProvider를 mock으로 제공합니다.
      */
     @Bean
+    @Primary
     fun jwtTokenProvider(): JwtTokenProvider = mockk(relaxed = true)
 
     /**
      * 테스트용 Mock OAuth2 서비스 및 핸들러
      */
     @Bean
+    @Primary
     fun customReactiveOAuth2UserService(): CustomReactiveOAuth2UserService = mockk(relaxed = true)
 
     @Bean
+    @Primary
     fun oAuth2AuthenticationSuccessHandler(): OAuth2AuthenticationSuccessHandler = mockk(relaxed = true)
 
     @Bean
+    @Primary
     fun oAuth2AuthenticationFailureHandler(): OAuth2AuthenticationFailureHandler = mockk(relaxed = true)
 
     /**

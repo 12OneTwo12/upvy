@@ -27,7 +27,7 @@ interface UserProfileService {
         nickname: String,
         profileImageUrl: String? = null,
         bio: String? = null
-    ): UserProfile
+    ): Mono<UserProfile>
 
     /**
      * 사용자 ID로 프로필 조회
@@ -36,7 +36,7 @@ interface UserProfileService {
      * @return 프로필 정보
      * @throws me.onetwo.growsnap.domain.user.exception.UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
-    fun getProfileByUserId(userId: UUID): UserProfile
+    fun getProfileByUserId(userId: UUID): Mono<UserProfile>
 
     /**
      * 닉네임으로 프로필 조회
@@ -45,7 +45,7 @@ interface UserProfileService {
      * @return 프로필 정보
      * @throws me.onetwo.growsnap.domain.user.exception.UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
-    fun getProfileByNickname(nickname: String): UserProfile
+    fun getProfileByNickname(nickname: String): Mono<UserProfile>
 
     /**
      * 닉네임 중복 확인
@@ -53,7 +53,7 @@ interface UserProfileService {
      * @param nickname 확인할 닉네임
      * @return 중복 여부 (true: 중복, false: 사용 가능)
      */
-    fun isNicknameDuplicated(nickname: String): Boolean
+    fun isNicknameDuplicated(nickname: String): Mono<Boolean>
 
     /**
      * 프로필 업데이트
@@ -73,7 +73,7 @@ interface UserProfileService {
         nickname: String? = null,
         profileImageUrl: String? = null,
         bio: String? = null
-    ): UserProfile
+    ): Mono<UserProfile>
 
     /**
      * 팔로워 수 증가
@@ -82,7 +82,7 @@ interface UserProfileService {
      * @return 업데이트된 프로필 정보
      * @throws me.onetwo.growsnap.domain.user.exception.UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
-    fun incrementFollowerCount(userId: UUID): UserProfile
+    fun incrementFollowerCount(userId: UUID): Mono<UserProfile>
 
     /**
      * 팔로워 수 감소
@@ -91,7 +91,7 @@ interface UserProfileService {
      * @return 업데이트된 프로필 정보
      * @throws me.onetwo.growsnap.domain.user.exception.UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
-    fun decrementFollowerCount(userId: UUID): UserProfile
+    fun decrementFollowerCount(userId: UUID): Mono<UserProfile>
 
     /**
      * 팔로잉 수 증가
@@ -100,7 +100,7 @@ interface UserProfileService {
      * @return 업데이트된 프로필 정보
      * @throws me.onetwo.growsnap.domain.user.exception.UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
-    fun incrementFollowingCount(userId: UUID): UserProfile
+    fun incrementFollowingCount(userId: UUID): Mono<UserProfile>
 
     /**
      * 팔로잉 수 감소
@@ -109,7 +109,7 @@ interface UserProfileService {
      * @return 업데이트된 프로필 정보
      * @throws me.onetwo.growsnap.domain.user.exception.UserProfileNotFoundException 프로필을 찾을 수 없는 경우
      */
-    fun decrementFollowingCount(userId: UUID): UserProfile
+    fun decrementFollowingCount(userId: UUID): Mono<UserProfile>
 
     /**
      * 프로필 이미지 업로드

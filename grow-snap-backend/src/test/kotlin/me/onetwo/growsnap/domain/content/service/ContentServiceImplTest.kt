@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.justRun
 import io.mockk.verify
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
@@ -20,6 +21,7 @@ import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.model.UploadSession
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.content.repository.UploadSessionRepository
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -31,9 +33,11 @@ import reactor.test.StepVerifier
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import java.time.LocalDateTime
 import java.util.Optional
 import java.util.UUID
+import java.util.function.Consumer
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 Service 테스트")
@@ -55,7 +59,10 @@ class ContentServiceImplTest {
     private lateinit var s3Client: S3Client
 
     @MockK
-    private lateinit var eventPublisher: org.springframework.context.ApplicationEventPublisher
+    private lateinit var eventPublisher: ReactiveEventPublisher
+
+    @MockK
+    private lateinit var contentInteractionService: me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 
     private lateinit var contentService: ContentServiceImpl
 
@@ -67,9 +74,10 @@ class ContentServiceImplTest {
             contentPhotoRepository = contentPhotoRepository,
             uploadSessionRepository = uploadSessionRepository,
             s3Client = s3Client,
+            eventPublisher = eventPublisher,
+            contentInteractionService = contentInteractionService,
             bucketName = "test-bucket",
-            region = "ap-northeast-2",
-            eventPublisher = eventPublisher
+            region = "ap-northeast-2"
         )
     }
 
@@ -184,17 +192,20 @@ class ContentServiceImplTest {
             every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
 
             // Mock S3: 파일 존재 확인
-            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
+            every { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
 
             // Mock Repository: 저장
-            every { contentRepository.save(any()) } returns savedContent
-            every { contentRepository.saveMetadata(any()) } returns savedMetadata
+            every { contentRepository.save(any()) } returns Mono.just(savedContent)
+            every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
 
             // Mock Redis: 세션 삭제
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
 
+            // Mock ContentInteractionService
+            every { contentInteractionService.createContentInteraction(contentId, userId) } returns Mono.empty()
+
             // Mock Event Publisher
-            every { eventPublisher.publishEvent(any<ContentCreatedEvent>()) } returns Unit
+            justRun { eventPublisher.publish(any()) }
 
             // When: 메서드 실행
             val result = contentService.createContent(userId, request)
@@ -210,11 +221,11 @@ class ContentServiceImplTest {
                 .verifyComplete()
 
             verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
-            verify(exactly = 1) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 1) { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) }
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
             verify(exactly = 1) { uploadSessionRepository.deleteById(contentId.toString()) }
-            verify(exactly = 1) { eventPublisher.publishEvent(any<ContentCreatedEvent>()) }
+            verify(exactly = 1) { eventPublisher.publish(any()) }
         }
 
         @Test
@@ -285,12 +296,13 @@ class ContentServiceImplTest {
 
             // Mock 설정
             every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
-            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
-            every { contentRepository.save(any()) } returns savedContent
-            every { contentRepository.saveMetadata(any()) } returns savedMetadata
-            every { contentPhotoRepository.save(any()) } returns true
+            every { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
+            every { contentRepository.save(any()) } returns Mono.just(savedContent)
+            every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
+            every { contentPhotoRepository.save(any()) } returns Mono.empty()
+            every { contentInteractionService.createContentInteraction(contentId, userId) } returns Mono.empty()
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
-            every { eventPublisher.publishEvent(any<ContentCreatedEvent>()) } returns Unit
+            justRun { eventPublisher.publish(any()) }
 
             // When: 메서드 실행
             val result = contentService.createContent(userId, request)
@@ -311,7 +323,7 @@ class ContentServiceImplTest {
             verify(exactly = 3) { contentPhotoRepository.save(any()) }
             verify(exactly = 1) { contentRepository.save(any()) }
             verify(exactly = 1) { contentRepository.saveMetadata(any()) }
-            verify(exactly = 1) { eventPublisher.publishEvent(any<ContentCreatedEvent>()) }
+            verify(exactly = 1) { eventPublisher.publish(any()) }
         }
 
         @Test
@@ -348,7 +360,7 @@ class ContentServiceImplTest {
                 .verify()
 
             verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
-            verify(exactly = 0) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 0) { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) }
         }
 
         @Test
@@ -396,7 +408,7 @@ class ContentServiceImplTest {
                 .verify()
 
             verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
-            verify(exactly = 0) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 0) { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) }
         }
 
         @Test
@@ -433,8 +445,8 @@ class ContentServiceImplTest {
             every { uploadSessionRepository.findById(contentId.toString()) } returns Optional.of(uploadSession)
 
             // Mock S3: 파일 없음 (NoSuchKeyException)
-            every { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) } throws
-                software.amazon.awssdk.services.s3.model.NoSuchKeyException.builder()
+            every { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } throws
+                NoSuchKeyException.builder()
                     .message("The specified key does not exist.")
                     .build()
 
@@ -449,7 +461,7 @@ class ContentServiceImplTest {
                 .verify()
 
             verify(exactly = 1) { uploadSessionRepository.findById(contentId.toString()) }
-            verify(exactly = 1) { s3Client.headObject(any<java.util.function.Consumer<HeadObjectRequest.Builder>>()) }
+            verify(exactly = 1) { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) }
             verify(exactly = 0) { contentRepository.save(any()) }
         }
     }
@@ -495,8 +507,9 @@ class ContentServiceImplTest {
                 updatedBy = userId.toString()
             )
 
-            every { contentRepository.findById(contentId) } returns content
-            every { contentRepository.findMetadataByContentId(contentId) } returns metadata
+            every { contentRepository.findById(contentId) } returns Mono.just(content)
+            every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(metadata)
+            every { contentPhotoRepository.findByContentId(contentId) } returns Mono.just(emptyList())
 
             // When: 메서드 실행
             val result = contentService.getContent(contentId)
@@ -567,11 +580,11 @@ class ContentServiceImplTest {
             )
 
             // Mock 설정
-            every { contentRepository.findById(contentId) } returns existingContent
-            every { contentRepository.findMetadataByContentId(contentId) } returns existingMetadata
-            every { contentRepository.updateMetadata(any()) } returns true
-            every { contentPhotoRepository.deleteByContentId(contentId, userId.toString()) } returns 3 // 기존 3개 삭제
-            every { contentPhotoRepository.save(any()) } returns true
+            every { contentRepository.findById(contentId) } returns Mono.just(existingContent)
+            every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(existingMetadata)
+            every { contentRepository.updateMetadata(any()) } returns Mono.just(true)
+            every { contentPhotoRepository.deleteByContentId(contentId, userId.toString()) } returns Mono.just(3) // 기존 3개 삭제
+            every { contentPhotoRepository.save(any()) } returns Mono.empty()
 
             // When: 메서드 실행
             val result = contentService.updateContent(userId, contentId, request)
@@ -644,10 +657,10 @@ class ContentServiceImplTest {
             )
 
             // Mock 설정
-            every { contentRepository.findById(contentId) } returns existingContent
-            every { contentRepository.findMetadataByContentId(contentId) } returns existingMetadata
-            every { contentRepository.updateMetadata(any()) } returns true
-            every { contentPhotoRepository.findByContentId(contentId) } returns listOf(
+            every { contentRepository.findById(contentId) } returns Mono.just(existingContent)
+            every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(existingMetadata)
+            every { contentRepository.updateMetadata(any()) } returns Mono.just(true)
+            every { contentPhotoRepository.findByContentId(contentId) } returns Mono.just(listOf(
                 me.onetwo.growsnap.domain.content.model.ContentPhoto(
                     contentId = contentId,
                     photoUrl = existingPhotoUrls[0],
@@ -670,7 +683,7 @@ class ContentServiceImplTest {
                     updatedAt = LocalDateTime.now(),
                     updatedBy = userId.toString()
                 )
-            )
+            ))
 
             // When: 메서드 실행
             val result = contentService.updateContent(userId, contentId, request)

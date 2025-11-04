@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.UUID
+import reactor.core.publisher.Mono
 
 /**
  * AuthService 단위 테스트
@@ -62,13 +63,13 @@ class AuthServiceTest {
         every { jwtTokenProvider.validateToken(refreshToken) } returns true
         every { jwtTokenProvider.getUserIdFromToken(refreshToken) } returns testUserId
         every { refreshTokenRepository.findByUserId(testUserId) } returns refreshToken
-        every { userService.getUserById(testUserId) } returns testUser
+        every { userService.getUserById(testUserId) } returns Mono.just(testUser)
         every {
             jwtTokenProvider.generateAccessToken(testUserId, testUser.email, testUser.role)
         } returns newAccessToken
 
         // When
-        val result = authService.refreshAccessToken(refreshToken)
+        val result = authService.refreshAccessToken(refreshToken).block()!!
 
         // Then
         assertNotNull(result)
@@ -93,7 +94,7 @@ class AuthServiceTest {
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
-            authService.refreshAccessToken(invalidToken)
+            authService.refreshAccessToken(invalidToken).block()
         }
 
         assertEquals("유효하지 않은 Refresh Token입니다", exception.message)
@@ -113,7 +114,7 @@ class AuthServiceTest {
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
-            authService.refreshAccessToken(refreshToken)
+            authService.refreshAccessToken(refreshToken).block()
         }
 
         assertEquals("Refresh Token을 찾을 수 없습니다", exception.message)
@@ -135,7 +136,7 @@ class AuthServiceTest {
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
-            authService.refreshAccessToken(requestToken)
+            authService.refreshAccessToken(requestToken).block()
         }
 
         assertEquals("Refresh Token이 일치하지 않습니다", exception.message)

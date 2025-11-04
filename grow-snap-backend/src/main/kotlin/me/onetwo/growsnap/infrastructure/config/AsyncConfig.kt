@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.infrastructure.config
 
+import org.slf4j.LoggerFactory
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.AsyncConfigurer
@@ -63,7 +64,7 @@ class AsyncConfig : AsyncConfigurer {
      */
     override fun getAsyncUncaughtExceptionHandler(): AsyncUncaughtExceptionHandler {
         return AsyncUncaughtExceptionHandler { throwable, method, params ->
-            org.slf4j.LoggerFactory.getLogger(AsyncConfig::class.java).error(
+            LoggerFactory.getLogger(AsyncConfig::class.java).error(
                 "Async method {} threw exception with params {}",
                 method.name,
                 params.joinToString(", "),

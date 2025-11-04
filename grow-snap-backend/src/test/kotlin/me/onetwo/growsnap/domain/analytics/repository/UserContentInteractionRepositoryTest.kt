@@ -11,9 +11,14 @@ import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_CONTENT_INTERACTIONS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -23,7 +28,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -34,7 +38,6 @@ import java.util.UUID
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("사용자 콘텐츠 인터랙션 Repository 통합 테스트")
 class UserContentInteractionRepositoryTest {
 
@@ -66,7 +69,7 @@ class UserContentInteractionRepositoryTest {
                 providerId = "user1-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         testUser2 = userRepository.save(
             User(
@@ -75,7 +78,7 @@ class UserContentInteractionRepositoryTest {
                 providerId = "user2-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         testUser3 = userRepository.save(
             User(
@@ -84,7 +87,7 @@ class UserContentInteractionRepositoryTest {
                 providerId = "user3-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         // 콘텐츠 3개 생성
         testContent1Id = UUID.randomUUID()
@@ -94,6 +97,15 @@ class UserContentInteractionRepositoryTest {
         insertContent(testContent1Id, testUser1.id!!, "Content 1")
         insertContent(testContent2Id, testUser1.id!!, "Content 2")
         insertContent(testContent3Id, testUser1.id!!, "Content 3")
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(USER_CONTENT_INTERACTIONS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested
@@ -325,8 +337,8 @@ class UserContentInteractionRepositoryTest {
             assertEquals(3, result.size)
 
             // contentId와 interactionType 매핑 확인
-            val contentIds = result.map { it.first }
-            val types = result.map { it.second }
+            val contentIds = result.map { it.contentId }
+            val types = result.map { it.interactionType }
 
             assertTrue(contentIds.contains(testContent1Id))
             assertTrue(contentIds.contains(testContent2Id))
@@ -385,7 +397,7 @@ class UserContentInteractionRepositoryTest {
         val now = LocalDateTime.now()
 
         // Contents 테이블
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -398,11 +410,11 @@ class UserContentInteractionRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString()))
+            .block()
 
         // Content_Metadata 테이블
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -412,11 +424,11 @@ class UserContentInteractionRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString()))
+            .block()
 
         // Content_Interactions 테이블
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, 0)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 0)
@@ -426,8 +438,8 @@ class UserContentInteractionRepositoryTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, now)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, now)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString()))
+            .block()
     }
 
     /**
@@ -441,12 +453,13 @@ class UserContentInteractionRepositoryTest {
      * 인터랙션 개수 조회 헬퍼 메서드
      */
     private fun countInteractions(userId: UUID, contentId: UUID, type: InteractionType): Int {
-        return dslContext.selectCount()
+        return Mono.from(dslContext.selectCount()
             .from(USER_CONTENT_INTERACTIONS)
             .where(USER_CONTENT_INTERACTIONS.USER_ID.eq(userId.toString()))
             .and(USER_CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
             .and(USER_CONTENT_INTERACTIONS.INTERACTION_TYPE.eq(type.name))
-            .and(USER_CONTENT_INTERACTIONS.DELETED_AT.isNull)
-            .fetchOne(0, Int::class.java) ?: 0
+            .and(USER_CONTENT_INTERACTIONS.DELETED_AT.isNull))
+            .map { it.value1() }
+            .block() ?: 0
     }
 }

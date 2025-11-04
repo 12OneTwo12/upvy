@@ -8,11 +8,18 @@ import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
+import me.onetwo.growsnap.jooq.generated.tables.UserCommentLikes.Companion.USER_COMMENT_LIKES
+import me.onetwo.growsnap.jooq.generated.tables.Comments.Companion.COMMENTS
 import me.onetwo.growsnap.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.ContentMetadata.Companion.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.ContentPhotos.Companion.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.Contents.Companion.CONTENTS
+import me.onetwo.growsnap.jooq.generated.tables.UserProfiles.Companion.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.Users.Companion.USERS
 import org.jooq.DSLContext
 import org.jooq.JSON
+import reactor.core.publisher.Mono
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -23,13 +30,11 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("댓글 Repository 통합 테스트")
 class CommentRepositoryTest {
 
@@ -60,7 +65,7 @@ class CommentRepositoryTest {
                 providerId = "user-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         testUser2 = userRepository.save(
             User(
@@ -69,7 +74,7 @@ class CommentRepositoryTest {
                 providerId = "user2-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         testUser3 = userRepository.save(
             User(
@@ -78,10 +83,20 @@ class CommentRepositoryTest {
                 providerId = "user3-123",
                 role = UserRole.USER
             )
-        )
+        ).block()!!
 
         testContentId = UUID.randomUUID()
         insertContent(testContentId, testUser.id!!, "Test Video")
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(USER_COMMENT_LIKES)).block()
+        Mono.from(dslContext.deleteFrom(COMMENTS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested
@@ -100,11 +115,11 @@ class CommentRepositoryTest {
             )
 
             // When: 댓글 저장
-            val saved = commentRepository.save(comment)
+            val saved = commentRepository.save(comment).block()!!
 
             // Then: 저장된 댓글 확인
             assertNotNull(saved)
-            assertNotNull(saved!!.id)
+            assertNotNull(saved.id)
             assertEquals(testContentId, saved.contentId)
             assertEquals(testUser.id!!, saved.userId)
             assertEquals("Test comment", saved.content)
@@ -121,22 +136,22 @@ class CommentRepositoryTest {
                     content = "Parent comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // 대댓글 생성
             val reply = Comment(
                 contentId = testContentId,
                 userId = testUser.id!!,
                 content = "Reply comment",
-                parentCommentId = parentComment!!.id
+                parentCommentId = parentComment.id
             )
 
             // When: 대댓글 저장
-            val saved = commentRepository.save(reply)
+            val saved = commentRepository.save(reply).block()!!
 
             // Then: parentCommentId 확인
             assertNotNull(saved)
-            assertEquals(parentComment.id, saved!!.parentCommentId)
+            assertEquals(parentComment.id, saved.parentCommentId)
         }
     }
 
@@ -155,10 +170,10 @@ class CommentRepositoryTest {
                     content = "Test comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // When: ID로 조회
-            val found = commentRepository.findById(comment!!.id!!)
+            val found = commentRepository.findById(comment.id!!).block()
 
             // Then: 댓글 반환 확인
             assertNotNull(found)
@@ -173,7 +188,7 @@ class CommentRepositoryTest {
             val nonExistingId = UUID.randomUUID()
 
             // When: 조회
-            val found = commentRepository.findById(nonExistingId)
+            val found = commentRepository.findById(nonExistingId).block()
 
             // Then: null 반환
             assertNull(found)
@@ -195,9 +210,9 @@ class CommentRepositoryTest {
                     content = "First comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
-            Thread.sleep(10) // 생성 시간 차이를 위해 대기
+            // created_at은 millisecond 단위이므로 시간 차이 자동 보장
 
             commentRepository.save(
                 Comment(
@@ -206,9 +221,8 @@ class CommentRepositoryTest {
                     content = "Second comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
-            Thread.sleep(10)
 
             commentRepository.save(
                 Comment(
@@ -217,10 +231,10 @@ class CommentRepositoryTest {
                     content = "Third comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // When: 댓글 목록 조회
-            val comments = commentRepository.findByContentId(testContentId)
+            val comments = commentRepository.findByContentId(testContentId).collectList().block()!!
 
             // Then: 3개의 댓글이 생성 시간 순서대로 반환
             assertNotNull(comments)
@@ -241,12 +255,12 @@ class CommentRepositoryTest {
                     content = "Comment to be deleted",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
-            commentRepository.delete(comment!!.id!!, testUser.id!!)
+            commentRepository.delete(comment.id!!, testUser.id!!).block()
 
             // When: 댓글 목록 조회
-            val comments = commentRepository.findByContentId(testContentId)
+            val comments = commentRepository.findByContentId(testContentId).collectList().block()!!
 
             // Then: 삭제된 댓글은 조회되지 않음
             assertNotNull(comments)
@@ -269,7 +283,7 @@ class CommentRepositoryTest {
                     content = "Parent comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // 대댓글 2개 생성
             commentRepository.save(
@@ -277,9 +291,9 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Reply 1",
-                    parentCommentId = parentComment!!.id
+                    parentCommentId = parentComment.id
                 )
-            )
+            ).block()!!
 
             commentRepository.save(
                 Comment(
@@ -288,10 +302,10 @@ class CommentRepositoryTest {
                     content = "Reply 2",
                     parentCommentId = parentComment.id
                 )
-            )
+            ).block()!!
 
             // When: 대댓글 조회
-            val replies = commentRepository.findByParentCommentId(parentComment.id!!)
+            val replies = commentRepository.findByParentCommentId(parentComment.id!!).collectList().block()!!
 
             // Then: 2개의 대댓글 반환
             assertNotNull(replies)
@@ -314,13 +328,13 @@ class CommentRepositoryTest {
                     content = "Comment to delete",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // When: 댓글 삭제
-            commentRepository.delete(comment!!.id!!, testUser.id!!)
+            commentRepository.delete(comment.id!!, testUser.id!!).block()
 
             // Then: findById로 조회되지 않음 (deletedAt이 설정됨)
-            val found = commentRepository.findById(comment.id!!)
+            val found = commentRepository.findById(comment.id!!).block()
             assertNull(found)
         }
     }
@@ -341,12 +355,12 @@ class CommentRepositoryTest {
                         content = "Comment $index",
                         parentCommentId = null
                     )
-                )
-                Thread.sleep(10) // 생성 시간 차이를 위해 대기
+                ).block()!!
+                // created_at은 millisecond 단위이므로 시간 차이 자동 보장
             }
 
             // When: limit 3으로 조회
-            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 3)
+            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 3).collectList().block()!!
 
             // Then: 4개 반환 (limit + 1 for hasNext check)
             assertEquals(4, comments.size)
@@ -368,14 +382,13 @@ class CommentRepositoryTest {
                         content = "Comment $index",
                         parentCommentId = null
                     )
-                )
-                savedComments.add(saved!!)
-                Thread.sleep(10)
+                ).block()!!
+                savedComments.add(saved)
             }
 
             // When: 두 번째 댓글을 cursor로 설정하고 조회
             val cursor = savedComments[1].id!!
-            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, cursor, 3)
+            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, cursor, 3).collectList().block()!!
 
             // Then: 세 번째 댓글부터 조회됨
             assertEquals(3, comments.size)
@@ -395,7 +408,7 @@ class CommentRepositoryTest {
                     content = "Parent comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // 대댓글 생성
             commentRepository.save(
@@ -403,12 +416,12 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Reply comment",
-                    parentCommentId = parentComment!!.id
+                    parentCommentId = parentComment.id
                 )
-            )
+            ).block()!!
 
             // When: 최상위 댓글 조회
-            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 10)
+            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 10).collectList().block()!!
 
             // Then: 최상위 댓글만 조회됨
             assertEquals(1, comments.size)
@@ -426,8 +439,7 @@ class CommentRepositoryTest {
                     content = "Comment with 1 like",
                     parentCommentId = null
                 )
-            )!!
-            Thread.sleep(10)
+            ).block()!!
 
             val comment2 = commentRepository.save(
                 Comment(
@@ -436,8 +448,7 @@ class CommentRepositoryTest {
                     content = "Comment with 2 likes + 1 reply",
                     parentCommentId = null
                 )
-            )!!
-            Thread.sleep(10)
+            ).block()!!
 
             commentRepository.save(
                 Comment(
@@ -446,12 +457,12 @@ class CommentRepositoryTest {
                     content = "Comment with no interactions",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // 좋아요 추가: comment1(1개), comment2(2개)
-            commentLikeRepository.save(testUser2.id!!, comment1.id!!)
-            commentLikeRepository.save(testUser2.id!!, comment2.id!!)
-            commentLikeRepository.save(testUser3.id!!, comment2.id!!)
+            commentLikeRepository.save(testUser2.id!!, comment1.id!!).block()
+            commentLikeRepository.save(testUser2.id!!, comment2.id!!).block()
+            commentLikeRepository.save(testUser3.id!!, comment2.id!!).block()
 
             // 대댓글 추가: comment2(1개)
             commentRepository.save(
@@ -461,10 +472,10 @@ class CommentRepositoryTest {
                     content = "Reply to comment2",
                     parentCommentId = comment2.id
                 )
-            )
+            ).block()!!
 
             // When: 최상위 댓글 조회
-            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 10)
+            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 10).collectList().block()!!
 
             // Then: 인기순 정렬 확인
             // comment2 (인기점수 3 = 좋아요 2 + 대댓글 1)
@@ -487,8 +498,8 @@ class CommentRepositoryTest {
                     content = "Older comment",
                     parentCommentId = null
                 )
-            )!!
-            Thread.sleep(100) // 생성 시간 차이를 위해 대기
+            ).block()!!
+            // created_at은 millisecond 단위이므로 시간 차이 자동 보장
 
             val newerComment = commentRepository.save(
                 Comment(
@@ -497,14 +508,14 @@ class CommentRepositoryTest {
                     content = "Newer comment",
                     parentCommentId = null
                 )
-            )!!
+            ).block()!!
 
             // 두 댓글 모두 좋아요 1개씩
-            commentLikeRepository.save(testUser2.id!!, olderComment.id!!)
-            commentLikeRepository.save(testUser2.id!!, newerComment.id!!)
+            commentLikeRepository.save(testUser2.id!!, olderComment.id!!).block()
+            commentLikeRepository.save(testUser2.id!!, newerComment.id!!).block()
 
             // When: 최상위 댓글 조회
-            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 10)
+            val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, null, 10).collectList().block()!!
 
             // Then: 같은 인기 점수면 최신순
             assertEquals(2, comments.size)
@@ -528,7 +539,7 @@ class CommentRepositoryTest {
                     content = "Parent comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // 5개의 대댓글 생성
             repeat(5) { index ->
@@ -537,14 +548,13 @@ class CommentRepositoryTest {
                         contentId = testContentId,
                         userId = testUser.id!!,
                         content = "Reply $index",
-                        parentCommentId = parentComment!!.id
+                        parentCommentId = parentComment.id
                     )
-                )
-                Thread.sleep(10)
+                ).block()!!
             }
 
             // When: limit 3으로 조회
-            val replies = commentRepository.findRepliesByParentCommentId(parentComment!!.id!!, null, 3)
+            val replies = commentRepository.findRepliesByParentCommentId(parentComment.id!!, null, 3).collectList().block()!!
 
             // Then: 4개 반환 (limit + 1 for hasNext check)
             assertEquals(4, replies.size)
@@ -564,7 +574,7 @@ class CommentRepositoryTest {
                     content = "Parent comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // 5개의 대댓글 생성
             val savedReplies = mutableListOf<Comment>()
@@ -574,16 +584,15 @@ class CommentRepositoryTest {
                         contentId = testContentId,
                         userId = testUser.id!!,
                         content = "Reply $index",
-                        parentCommentId = parentComment!!.id
+                        parentCommentId = parentComment.id
                     )
-                )
-                savedReplies.add(saved!!)
-                Thread.sleep(10)
+                ).block()!!
+                savedReplies.add(saved)
             }
 
             // When: 두 번째 대댓글을 cursor로 설정하고 조회
             val cursor = savedReplies[1].id!!
-            val replies = commentRepository.findRepliesByParentCommentId(parentComment!!.id!!, cursor, 3)
+            val replies = commentRepository.findRepliesByParentCommentId(parentComment.id!!, cursor, 3).collectList().block()!!
 
             // Then: 세 번째 대댓글부터 조회됨
             assertEquals(3, replies.size)
@@ -608,10 +617,10 @@ class CommentRepositoryTest {
                     content = "Parent comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // When: 대댓글 개수 조회
-            val count = commentRepository.countRepliesByParentCommentId(parentComment!!.id!!)
+            val count = commentRepository.countRepliesByParentCommentId(parentComment.id!!).block()!!
 
             // Then: 0 반환
             assertEquals(0, count)
@@ -628,7 +637,7 @@ class CommentRepositoryTest {
                     content = "Parent comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // 3개의 대댓글 생성
             repeat(3) { index ->
@@ -637,13 +646,13 @@ class CommentRepositoryTest {
                         contentId = testContentId,
                         userId = testUser.id!!,
                         content = "Reply $index",
-                        parentCommentId = parentComment!!.id
+                        parentCommentId = parentComment.id
                     )
-                )
+                ).block()!!
             }
 
             // When: 대댓글 개수 조회
-            val count = commentRepository.countRepliesByParentCommentId(parentComment!!.id!!)
+            val count = commentRepository.countRepliesByParentCommentId(parentComment.id!!).block()!!
 
             // Then: 3 반환
             assertEquals(3, count)
@@ -660,7 +669,7 @@ class CommentRepositoryTest {
                     content = "Parent comment",
                     parentCommentId = null
                 )
-            )
+            ).block()!!
 
             // 2개의 대댓글 생성
             val reply1 = commentRepository.save(
@@ -668,9 +677,9 @@ class CommentRepositoryTest {
                     contentId = testContentId,
                     userId = testUser.id!!,
                     content = "Reply 1",
-                    parentCommentId = parentComment!!.id
+                    parentCommentId = parentComment.id
                 )
-            )
+            ).block()!!
 
             commentRepository.save(
                 Comment(
@@ -679,13 +688,13 @@ class CommentRepositoryTest {
                     content = "Reply 2",
                     parentCommentId = parentComment.id
                 )
-            )
+            ).block()!!
 
             // 첫 번째 대댓글 삭제
-            commentRepository.delete(reply1!!.id!!, testUser.id!!)
+            commentRepository.delete(reply1.id!!, testUser.id!!).block()
 
             // When: 대댓글 개수 조회
-            val count = commentRepository.countRepliesByParentCommentId(parentComment.id!!)
+            val count = commentRepository.countRepliesByParentCommentId(parentComment.id!!).block()!!
 
             // Then: 1 반환 (삭제된 것 제외)
             assertEquals(1, count)
@@ -702,7 +711,7 @@ class CommentRepositoryTest {
     ) {
         val now = LocalDateTime.now()
 
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
@@ -715,10 +724,9 @@ class CommentRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
 
-        dslContext.insertInto(CONTENT_METADATA)
+        Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
@@ -728,10 +736,9 @@ class CommentRepositoryTest {
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
             .set(CONTENT_METADATA.UPDATED_AT, now)
-            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
 
-        dslContext.insertInto(CONTENT_INTERACTIONS)
+        Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, 0)
             .set(CONTENT_INTERACTIONS.LIKE_COUNT, 0)
@@ -741,7 +748,6 @@ class CommentRepositoryTest {
             .set(CONTENT_INTERACTIONS.CREATED_AT, now)
             .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
             .set(CONTENT_INTERACTIONS.UPDATED_AT, now)
-            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
     }
 }

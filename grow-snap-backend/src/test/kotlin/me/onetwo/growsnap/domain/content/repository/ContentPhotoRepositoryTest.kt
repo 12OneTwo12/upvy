@@ -9,8 +9,13 @@ import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import org.assertj.core.api.Assertions.assertThat
 import org.jooq.DSLContext
+import reactor.core.publisher.Mono
+import reactor.core.publisher.Flux
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -18,13 +23,11 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.UUID
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("콘텐츠 사진 Repository 통합 테스트")
 class ContentPhotoRepositoryTest {
 
@@ -50,10 +53,18 @@ class ContentPhotoRepositoryTest {
                 providerId = "creator-123",
                 role = UserRole.USER
             )
-        )!!
+        ).block()!!
 
         testContentId = UUID.randomUUID()
         insertContent(testContentId, testUser.id!!, "Photo Test")
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Mono.from(dslContext.deleteFrom(CONTENT_PHOTOS)).block()
+        Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+        Mono.from(dslContext.deleteFrom(USER_PROFILES)).block()
+        Mono.from(dslContext.deleteFrom(USERS)).block()
     }
 
     @Nested
@@ -76,17 +87,13 @@ class ContentPhotoRepositoryTest {
                 updatedBy = testUser.id!!.toString()
             )
 
-            // When: 저장
-            val result = contentPhotoRepository.save(photo)
-
-            // Then: 저장 성공
-            assertThat(result).isTrue
+            // When: 저장 (Mono<Void>이므로 예외가 없으면 성공)
+            contentPhotoRepository.save(photo).block()
 
             // 데이터베이스에서 직접 확인
-            val dbPhoto = dslContext.selectFrom(CONTENT_PHOTOS)
+            val dbPhoto = Mono.from(dslContext.selectFrom(CONTENT_PHOTOS)
                 .where(CONTENT_PHOTOS.CONTENT_ID.eq(testContentId.toString()))
-                .and(CONTENT_PHOTOS.DELETED_AT.isNull)
-                .fetchOne()
+                .and(CONTENT_PHOTOS.DELETED_AT.isNull)).block()
 
             assertThat(dbPhoto).isNotNull
             assertThat(dbPhoto!!.get(CONTENT_PHOTOS.PHOTO_URL)).isEqualTo("https://s3.amazonaws.com/photo1.jpg")
@@ -132,16 +139,15 @@ class ContentPhotoRepositoryTest {
             )
 
             // When: 저장
-            contentPhotoRepository.save(photo1)
-            contentPhotoRepository.save(photo2)
-            contentPhotoRepository.save(photo3)
+            contentPhotoRepository.save(photo1).block()
+            contentPhotoRepository.save(photo2).block()
+            contentPhotoRepository.save(photo3).block()
 
             // Then: 3개 모두 저장됨
-            val dbPhotos = dslContext.selectFrom(CONTENT_PHOTOS)
+            val dbPhotos = Flux.from(dslContext.selectFrom(CONTENT_PHOTOS)
                 .where(CONTENT_PHOTOS.CONTENT_ID.eq(testContentId.toString()))
                 .and(CONTENT_PHOTOS.DELETED_AT.isNull)
-                .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc())
-                .fetch()
+                .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc())).collectList().block() ?: emptyList()
 
             assertThat(dbPhotos).hasSize(3)
             assertThat(dbPhotos[0].get(CONTENT_PHOTOS.DISPLAY_ORDER)).isEqualTo(0)
@@ -167,13 +173,12 @@ class ContentPhotoRepositoryTest {
             )
 
             // When: 저장
-            contentPhotoRepository.save(photo)
+            contentPhotoRepository.save(photo).block()
 
             // Then: Audit Trail 확인
-            val dbPhoto = dslContext.selectFrom(CONTENT_PHOTOS)
+            val dbPhoto = Mono.from(dslContext.selectFrom(CONTENT_PHOTOS)
                 .where(CONTENT_PHOTOS.CONTENT_ID.eq(testContentId.toString()))
-                .and(CONTENT_PHOTOS.DELETED_AT.isNull)
-                .fetchOne()
+                .and(CONTENT_PHOTOS.DELETED_AT.isNull)).block()
 
             assertThat(dbPhoto).isNotNull
             assertThat(dbPhoto!!.get(CONTENT_PHOTOS.CREATED_AT)).isNotNull
@@ -197,7 +202,7 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo2.jpg", 1)
 
             // When: 조회
-            val photos = contentPhotoRepository.findByContentId(testContentId)
+            val photos = contentPhotoRepository.findByContentId(testContentId).block()!!
 
             // Then: display_order 순으로 정렬되어 반환
             assertThat(photos).hasSize(3)
@@ -217,7 +222,7 @@ class ContentPhotoRepositoryTest {
             insertContent(emptyContentId, testUser.id!!, "Empty Content")
 
             // When: 조회
-            val photos = contentPhotoRepository.findByContentId(emptyContentId)
+            val photos = contentPhotoRepository.findByContentId(emptyContentId).block()!!
 
             // Then: 빈 목록
             assertThat(photos).isEmpty()
@@ -232,15 +237,14 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo3.jpg", 2)
 
             // photo2를 Soft Delete
-            dslContext.update(CONTENT_PHOTOS)
+            Mono.from(dslContext.update(CONTENT_PHOTOS)
                 .set(CONTENT_PHOTOS.DELETED_AT, LocalDateTime.now())
                 .set(CONTENT_PHOTOS.UPDATED_BY, testUser.id!!.toString())
                 .where(CONTENT_PHOTOS.CONTENT_ID.eq(testContentId.toString()))
-                .and(CONTENT_PHOTOS.DISPLAY_ORDER.eq(1))
-                .execute()
+                .and(CONTENT_PHOTOS.DISPLAY_ORDER.eq(1))).block()
 
             // When: 조회
-            val photos = contentPhotoRepository.findByContentId(testContentId)
+            val photos = contentPhotoRepository.findByContentId(testContentId).block()!!
 
             // Then: 2장만 조회 (삭제된 것 제외)
             assertThat(photos).hasSize(2)
@@ -261,15 +265,14 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo3.jpg", 2)
 
             // When: 삭제
-            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
+            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString()).block()!!
 
             // Then: 3개 삭제됨
             assertThat(deletedCount).isEqualTo(3)
 
             // 데이터베이스에서 deleted_at 확인
-            val dbPhotos = dslContext.selectFrom(CONTENT_PHOTOS)
-                .where(CONTENT_PHOTOS.CONTENT_ID.eq(testContentId.toString()))
-                .fetch()
+            val dbPhotos = Flux.from(dslContext.selectFrom(CONTENT_PHOTOS)
+                .where(CONTENT_PHOTOS.CONTENT_ID.eq(testContentId.toString()))).collectList().block() ?: emptyList()
 
             assertThat(dbPhotos).hasSize(3)
             dbPhotos.forEach { photo ->
@@ -278,7 +281,7 @@ class ContentPhotoRepositoryTest {
             }
 
             // findByContentId로 조회 시 빈 목록 (Soft Delete)
-            val photos = contentPhotoRepository.findByContentId(testContentId)
+            val photos = contentPhotoRepository.findByContentId(testContentId).block()!!
             assertThat(photos).isEmpty()
         }
 
@@ -290,7 +293,7 @@ class ContentPhotoRepositoryTest {
             insertContent(emptyContentId, testUser.id!!, "Empty Content")
 
             // When: 삭제
-            val deletedCount = contentPhotoRepository.deleteByContentId(emptyContentId, testUser.id!!.toString())
+            val deletedCount = contentPhotoRepository.deleteByContentId(emptyContentId, testUser.id!!.toString()).block()!!
 
             // Then: 0 반환
             assertThat(deletedCount).isEqualTo(0)
@@ -303,10 +306,10 @@ class ContentPhotoRepositoryTest {
             insertPhoto(testContentId, testUser.id!!, "photo1.jpg", 0)
             insertPhoto(testContentId, testUser.id!!, "photo2.jpg", 1)
             insertPhoto(testContentId, testUser.id!!, "photo3.jpg", 2)
-            contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
+            contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString()).block()
 
             // When: 다시 삭제 시도
-            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString())
+            val deletedCount = contentPhotoRepository.deleteByContentId(testContentId, testUser.id!!.toString()).block()!!
 
             // Then: 0 반환 (이미 삭제되었으므로)
             assertThat(deletedCount).isEqualTo(0)
@@ -333,7 +336,7 @@ class ContentPhotoRepositoryTest {
 
             // When: 일괄 조회
             val contentIds = listOf(content1, content2)
-            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds).block()!!
 
             // Then: Map으로 그룹화
             assertThat(photosMap).hasSize(2)
@@ -360,7 +363,7 @@ class ContentPhotoRepositoryTest {
 
             // When: 일괄 조회
             val contentIds = listOf(content1, content2)
-            val photosMap = contentPhotoRepository.findByContentIds(contentIds)
+            val photosMap = contentPhotoRepository.findByContentIds(contentIds).block()!!
 
             // Then: 사진이 있는 콘텐츠만 Map에 포함
             assertThat(photosMap).hasSize(1)
@@ -380,7 +383,7 @@ class ContentPhotoRepositoryTest {
     ) {
         val now = LocalDateTime.now()
 
-        dslContext.insertInto(CONTENTS)
+        Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
             .set(CONTENTS.CREATOR_ID, creatorId.toString())
             .set(CONTENTS.CONTENT_TYPE, ContentType.PHOTO.name)
@@ -392,8 +395,7 @@ class ContentPhotoRepositoryTest {
             .set(CONTENTS.CREATED_AT, now)
             .set(CONTENTS.CREATED_BY, creatorId.toString())
             .set(CONTENTS.UPDATED_AT, now)
-            .set(CONTENTS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
@@ -407,7 +409,7 @@ class ContentPhotoRepositoryTest {
     ) {
         val now = LocalDateTime.now()
 
-        dslContext.insertInto(CONTENT_PHOTOS)
+        Mono.from(dslContext.insertInto(CONTENT_PHOTOS)
             .set(CONTENT_PHOTOS.CONTENT_ID, contentId.toString())
             .set(CONTENT_PHOTOS.PHOTO_URL, "https://s3.amazonaws.com/$photoUrl")
             .set(CONTENT_PHOTOS.DISPLAY_ORDER, displayOrder)
@@ -416,15 +418,14 @@ class ContentPhotoRepositoryTest {
             .set(CONTENT_PHOTOS.CREATED_AT, now)
             .set(CONTENT_PHOTOS.CREATED_BY, creatorId.toString())
             .set(CONTENT_PHOTOS.UPDATED_AT, now)
-            .set(CONTENT_PHOTOS.UPDATED_BY, creatorId.toString())
-            .execute()
+            .set(CONTENT_PHOTOS.UPDATED_BY, creatorId.toString())).block()
     }
 
     /**
      * 여러 콘텐츠의 사진 일괄 조회 헬퍼 메서드 (N+1 방지)
      */
     private fun findByContentIds(contentIds: List<UUID>): Map<UUID, List<ContentPhoto>> {
-        return dslContext
+        val records = Flux.from(dslContext
             .select(
                 CONTENT_PHOTOS.ID,
                 CONTENT_PHOTOS.CONTENT_ID,
@@ -441,8 +442,9 @@ class ContentPhotoRepositoryTest {
             .from(CONTENT_PHOTOS)
             .where(CONTENT_PHOTOS.CONTENT_ID.`in`(contentIds.map { it.toString() }))
             .and(CONTENT_PHOTOS.DELETED_AT.isNull)
-            .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc())
-            .fetch()
+            .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc())).collectList().block() ?: emptyList()
+
+        return records
             .groupBy { record -> UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)) }
             .mapValues { (_, records) ->
                 records.map { record ->

@@ -6,24 +6,24 @@
 
 ```
 ✅ 올바른 예시
-GET    /api/v1/videos              # 목록 조회
-POST   /api/v1/videos              # 생성
-GET    /api/v1/videos/{id}         # 상세 조회
-PUT    /api/v1/videos/{id}         # 전체 수정
-PATCH  /api/v1/videos/{id}         # 부분 수정
-DELETE /api/v1/videos/{id}         # 삭제
-POST   /api/v1/videos/{id}/like    # 좋아요 (액션)
+GET    /api/v1/contents              # 목록 조회
+POST   /api/v1/contents              # 생성
+GET    /api/v1/contents/{id}         # 상세 조회
+PUT    /api/v1/contents/{id}         # 전체 수정
+PATCH  /api/v1/contents/{id}         # 부분 수정
+DELETE /api/v1/contents/{id}         # 삭제
+POST   /api/v1/contents/{id}/like    # 좋아요 (액션)
 
 ❌ 잘못된 예시
-GET    /api/v1/getAllVideos        # 동사 사용 금지
-POST   /api/v1/createVideo         # 동사 사용 금지
-GET    /api/v1/videos/get/{id}     # 불필요한 동사
+GET    /api/v1/getAllContents        # 동사 사용 금지
+POST   /api/v1/createContents         # 동사 사용 금지
+GET    /api/v1/contents/get/{id}     # 불필요한 동사
 ```
 
 ### URL 패턴 규칙
 
 - ✅ **명사 사용**: 리소스는 명사로 표현
-- ✅ **복수형 사용**: 컬렉션은 복수형 (videos, users, comments)
+- ✅ **복수형 사용**: 컬렉션은 복수형 (contents, users, comments)
 - ✅ **소문자 사용**: 모든 URL은 소문자
 - ✅ **하이픈 사용**: 단어 구분은 하이픈 (-)
 - ❌ **동사 금지**: createVideo, getVideo 등 동사 사용 금지
@@ -47,10 +47,10 @@ GET    /api/v1/videos/get/{id}     # 불필요한 동사
 
 | 상황 | 상태 코드 | 예시 |
 |-----|---------|-----|
-| **성공적인 조회** | 200 OK | GET /videos/{id} |
-| **성공적인 생성** | 201 Created | POST /videos |
-| **성공적인 수정** | 200 OK | PUT /videos/{id} |
-| **성공적인 삭제** | 204 No Content | DELETE /videos/{id} |
+| **성공적인 조회** | 200 OK | GET /contents/{id} |
+| **성공적인 생성** | 201 Created | POST /contents |
+| **성공적인 수정** | 200 OK | PUT /contents/{id} |
+| **성공적인 삭제** | 204 No Content | DELETE /contents/{id} |
 | **잘못된 요청** | 400 Bad Request | 필수 필드 누락, Validation 실패 |
 | **인증 실패** | 401 Unauthorized | 토큰 없음, 만료된 토큰 |
 | **권한 없음** | 403 Forbidden | 본인이 아닌 리소스 수정 시도 |
@@ -211,16 +211,16 @@ fun inconsistentReturn(): UserResponse {
 ```kotlin
 @Test
 @DisplayName("비디오 목록 조회 시, 페이지네이션된 목록을 반환한다")
-fun getVideos_ReturnsPagedList() {
+fun getContents_ReturnsPagedList() {
     // Given, When, Then...
 
     webTestClient.get()
-        .uri("/api/v1/videos?page=0&size=10")
+        .uri("/api/v1/contents?page=0&size=10")
         .exchange()
         .expectStatus().isOk
         .expectBody()
         .consumeWith(
-            document("videos-list",
+            document("contents-list",
                 queryParameters(
                     parameterWithName("page").description("페이지 번호 (0부터 시작)"),
                     parameterWithName("size").description("페이지 크기")

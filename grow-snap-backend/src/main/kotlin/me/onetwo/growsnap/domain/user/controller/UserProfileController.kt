@@ -48,10 +48,8 @@ class UserProfileController(
     ): Mono<ResponseEntity<UserProfileResponse>> {
         return principal
             .toUserId()
-            .map { userId ->
-                val profile = userProfileService.getProfileByUserId(userId)
-                ResponseEntity.ok(UserProfileResponse.from(profile))
-            }
+            .flatMap { userId -> userProfileService.getProfileByUserId(userId) }
+            .map { profile -> ResponseEntity.ok(UserProfileResponse.from(profile)) }
     }
 
     /**
@@ -64,10 +62,8 @@ class UserProfileController(
     fun getProfileByUserId(
         @PathVariable targetUserId: UUID
     ): Mono<ResponseEntity<UserProfileResponse>> {
-        return Mono.fromCallable {
-            val profile = userProfileService.getProfileByUserId(targetUserId)
-            ResponseEntity.ok(UserProfileResponse.from(profile))
-        }
+        return userProfileService.getProfileByUserId(targetUserId)
+            .map { profile -> ResponseEntity.ok(UserProfileResponse.from(profile)) }
     }
 
     /**
@@ -80,10 +76,8 @@ class UserProfileController(
     fun getProfileByNickname(
         @PathVariable nickname: String
     ): Mono<ResponseEntity<UserProfileResponse>> {
-        return Mono.fromCallable {
-            val profile = userProfileService.getProfileByNickname(nickname)
-            ResponseEntity.ok(UserProfileResponse.from(profile))
-        }
+        return userProfileService.getProfileByNickname(nickname)
+            .map { profile -> ResponseEntity.ok(UserProfileResponse.from(profile)) }
     }
 
     /**
@@ -100,15 +94,15 @@ class UserProfileController(
     ): Mono<ResponseEntity<UserProfileResponse>> {
         return principal
             .toUserId()
-            .map { userId ->
-                val profile = userProfileService.updateProfile(
+            .flatMap { userId ->
+                userProfileService.updateProfile(
                     userId = userId,
                     nickname = request.nickname,
                     profileImageUrl = request.profileImageUrl,
                     bio = request.bio
                 )
-                ResponseEntity.ok(UserProfileResponse.from(profile))
             }
+            .map { profile -> ResponseEntity.ok(UserProfileResponse.from(profile)) }
     }
 
     /**
@@ -121,10 +115,8 @@ class UserProfileController(
     fun checkNickname(
         @PathVariable nickname: String
     ): Mono<ResponseEntity<NicknameCheckResponse>> {
-        return Mono.fromCallable {
-            val isDuplicated = userProfileService.isNicknameDuplicated(nickname)
-            ResponseEntity.ok(NicknameCheckResponse(nickname, isDuplicated))
-        }
+        return userProfileService.isNicknameDuplicated(nickname)
+            .map { isDuplicated -> ResponseEntity.ok(NicknameCheckResponse(nickname, isDuplicated)) }
     }
 
     /**
