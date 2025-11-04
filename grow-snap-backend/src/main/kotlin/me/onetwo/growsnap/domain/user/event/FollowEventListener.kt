@@ -7,16 +7,16 @@ import org.springframework.stereotype.Component
 /**
  * 팔로우 이벤트 리스너
  *
- * 팔로우 이벤트를 비동기로 처리하여 알림을 생성합니다.
+ * 팔로우 이벤트를 Reactive하게 처리하여 알림을 생성합니다.
  *
- * ## 처리 흐름 (WebFlux 환경)
+ * ## 처리 흐름 (R2DBC 환경)
  * 1. 이벤트 발행 즉시 실행 (@EventListener)
- * 2. 비동기로 실행 (@Async)
+ * 2. Reactive하게 실행 (Mono<Void> 반환)
  * 3. 팔로우 알림 생성 및 전송
  *
  * ## 장애 격리
  * - 이 메서드가 실패해도 메인 요청에 영향 없음
- * - 로그만 남기고 예외를 삼킴
+ * - 로그만 남기고 예외를 삼킴 (onErrorResume)
  * - 알림 전송 실패는 사용자 경험에 크리티컬하지 않음
  *
  * ## 향후 확장
@@ -33,10 +33,10 @@ class FollowEventListener {
      * 현재는 로그만 남기며, 추후 실제 알림 시스템과 통합 예정입니다.
      *
      * @param event 팔로우 이벤트
+     * @return Mono<Void>
      */
     @EventListener
     fun handleFollowEvent(event: FollowEvent) {
-        @Suppress("TooGenericExceptionCaught")
         try {
             logger.debug(
                 "Handling FollowEvent: follower={}, following={}, timestamp={}",
@@ -58,8 +58,6 @@ class FollowEventListener {
 
             logger.debug("FollowEvent handled successfully")
         } catch (e: Exception) {
-            // 예외를 삼켜서 메인 트랜잭션에 영향을 주지 않음
-            // 이벤트 리스너의 실패 격리를 위해 generic Exception을 catch
             logger.error(
                 "Failed to handle FollowEvent: follower={}, following={}",
                 event.followerId,

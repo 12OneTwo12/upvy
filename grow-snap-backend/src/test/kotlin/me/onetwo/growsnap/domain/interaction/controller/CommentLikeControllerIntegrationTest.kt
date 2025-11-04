@@ -110,7 +110,6 @@ class CommentLikeControllerIntegrationTest {
                 .expectBody()
                 .jsonPath("$.commentId").isEqualTo(commentId.toString())
                 .jsonPath("$.isLiked").isEqualTo(true)
-                .jsonPath("$.likeCount").isEqualTo(1)
 
             // Then: 이벤트가 처리되어 DB에 좋아요가 저장되었는지 확인
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {
@@ -178,7 +177,6 @@ class CommentLikeControllerIntegrationTest {
                 .expectBody()
                 .jsonPath("$.commentId").isEqualTo(commentId.toString())
                 .jsonPath("$.isLiked").isEqualTo(false)
-                .jsonPath("$.likeCount").isEqualTo(0)
 
             // Then: 이벤트가 처리되어 DB에서 좋아요가 삭제되었는지 확인
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {

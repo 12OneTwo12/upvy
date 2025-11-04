@@ -142,12 +142,14 @@ class LikeControllerIntegrationTest {
                 .expectBody()
                 .jsonPath("$.contentId").isEqualTo(content.id!!.toString())
                 .jsonPath("$.isLiked").isEqualTo(false)
-                .jsonPath("$.likeCount").isEqualTo(0)
 
-            // Then: 이벤트가 처리되어 DB에서 좋아요가 삭제되었는지 확인
+            // Then: 이벤트가 처리되어 DB에서 좋아요가 삭제되고 카운트가 감소했는지 확인
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {
                 val like = userLikeRepository.findByUserIdAndContentId(user.id!!, content.id!!)
                 assertThat(like).isNull()
+
+                val likeCount = contentInteractionRepository.getLikeCount(content.id!!).block()
+                assertThat(likeCount).isEqualTo(0)
             }
         }
     }

@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.analytics.service
 
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
+import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
@@ -11,13 +12,12 @@ import java.util.UUID
 interface UserContentInteractionService {
 
     /**
-     * 사용자 인터랙션을 저장합니다.
-     *
-     * Fire-and-forget 방식으로 비동기 저장합니다.
+     * 사용자 인터랙션을 저장합니다 (Reactive).
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
      * @param interactionType 인터랙션 타입
+     * @return Mono<Void> 저장 완료 신호
      */
-    fun saveUserInteraction(userId: UUID, contentId: UUID, interactionType: InteractionType)
+    fun saveUserInteraction(userId: UUID, contentId: UUID, interactionType: InteractionType): Mono<Void>
 }

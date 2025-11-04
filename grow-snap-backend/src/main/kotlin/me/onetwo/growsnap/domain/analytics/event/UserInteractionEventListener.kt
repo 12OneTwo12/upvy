@@ -51,38 +51,42 @@ class UserInteractionEventListener(
     /**
      * 사용자 인터랙션 이벤트 처리
      *
-     * 비동기로 user_content_interactions 테이블에 저장합니다.
+     * Reactive하게 user_content_interactions 테이블에 저장합니다.
      *
-         * ### EventListener
+     * ### EventListener
      * - 이벤트 발행 즉시 실행됨
-     * - WebFlux 환경에서는 TransactionalEventListener 대신 EventListener 사용
+     * - subscribe()로 Reactive chain을 시작
+     * - 비동기 방식으로 실행됨
      *
      * @param event 사용자 인터랙션 이벤트
      */
     @EventListener
     fun handleUserInteractionEvent(event: UserInteractionEvent) {
-        try {
-            logger.debug(
-                "Handling UserInteractionEvent: userId={}, contentId={}, type={}",
-                event.userId,
-                event.contentId,
-                event.interactionType
-            )
+        logger.debug(
+            "Handling UserInteractionEvent: userId={}, contentId={}, type={}",
+            event.userId,
+            event.contentId,
+            event.interactionType
+        )
 
-            userContentInteractionService.saveUserInteraction(
-                event.userId,
-                event.contentId,
-                event.interactionType
-            )
-        } catch (e: Exception) {
-            logger.error(
-                "Failed to handle UserInteractionEvent: userId={}, contentId={}, type={}",
-                event.userId,
-                event.contentId,
-                event.interactionType,
-                e
-            )
-        }
+        userContentInteractionService.saveUserInteraction(
+            event.userId,
+            event.contentId,
+            event.interactionType
+        )
+            .doOnSuccess {
+                logger.debug("UserInteractionEvent handled successfully")
+            }
+            .doOnError { e ->
+                logger.error(
+                    "Failed to handle UserInteractionEvent: userId={}, contentId={}, type={}",
+                    event.userId,
+                    event.contentId,
+                    event.interactionType,
+                    e
+                )
+            }
+            .subscribe()
     }
 
     companion object {

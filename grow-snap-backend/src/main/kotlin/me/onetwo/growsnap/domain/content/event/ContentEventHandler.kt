@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component
 /**
  * 콘텐츠 이벤트 핸들러
  *
- * 콘텐츠 관련 이벤트를 비동기로 처리합니다.
+ * 콘텐츠 관련 이벤트를 Reactive하게 처리합니다.
  *
  * @property contentInteractionService 콘텐츠 인터랙션 서비스
  */
@@ -28,8 +28,12 @@ class ContentEventHandler(
      */
     @EventListener
     fun handleContentCreated(event: ContentCreatedEvent) {
-        logger.info("Handling ContentCreatedEvent: contentId=${event.contentId}")
-
-        contentInteractionService.createContentInteraction(event.contentId, event.creatorId)
+        try {
+            logger.info("Handling ContentCreatedEvent: contentId=${event.contentId}")
+            contentInteractionService.createContentInteraction(event.contentId, event.creatorId)
+            logger.info("ContentCreatedEvent handled successfully: contentId=${event.contentId}")
+        } catch (e: Exception) {
+            logger.error("Failed to handle ContentCreatedEvent: contentId=${event.contentId}", e)
+        }
     }
 }

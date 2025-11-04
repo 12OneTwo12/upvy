@@ -4,6 +4,7 @@ import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.UserContentInteractionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
@@ -21,15 +22,17 @@ class UserContentInteractionServiceImpl(
     private val logger = LoggerFactory.getLogger(UserContentInteractionServiceImpl::class.java)
 
     /**
-     * 사용자 인터랙션을 저장합니다.
+     * 사용자 인터랙션을 저장합니다 (Reactive).
      *
-     * Fire-and-forget 방식으로 비동기 저장합니다.
+     * 완전한 Reactive 방식으로 저장합니다.
+     * 에러가 발생해도 로그만 남기고 예외를 전파하지 않습니다.
      *
      * @param userId 사용자 ID
      * @param contentId 콘텐츠 ID
      * @param interactionType 인터랙션 타입
+     * @return Mono<Void> 저장 완료 신호
      */
-    override fun saveUserInteraction(userId: UUID, contentId: UUID, interactionType: InteractionType) {
+    override fun saveUserInteraction(userId: UUID, contentId: UUID, interactionType: InteractionType): Mono<Void> {
         logger.debug(
             "Saving user interaction: userId={}, contentId={}, type={}",
             userId,
@@ -37,25 +40,24 @@ class UserContentInteractionServiceImpl(
             interactionType
         )
 
-        userContentInteractionRepository.save(userId, contentId, interactionType)
-            .subscribe(
-                {
-                    logger.debug(
-                        "User interaction saved successfully: userId={}, contentId={}, type={}",
-                        userId,
-                        contentId,
-                        interactionType
-                    )
-                },
-                { error ->
-                    logger.error(
-                        "Failed to save user interaction: userId={}, contentId={}, type={}",
-                        userId,
-                        contentId,
-                        interactionType,
-                        error
-                    )
-                }
-            )
+        return userContentInteractionRepository.save(userId, contentId, interactionType)
+            .doOnSuccess {
+                logger.debug(
+                    "User interaction saved successfully: userId={}, contentId={}, type={}",
+                    userId,
+                    contentId,
+                    interactionType
+                )
+            }
+            .doOnError { error ->
+                logger.error(
+                    "Failed to save user interaction: userId={}, contentId={}, type={}",
+                    userId,
+                    contentId,
+                    interactionType,
+                    error
+                )
+            }
+            .onErrorResume { Mono.empty() }
     }
 }

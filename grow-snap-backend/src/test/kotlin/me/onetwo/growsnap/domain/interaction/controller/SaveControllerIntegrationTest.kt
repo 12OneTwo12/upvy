@@ -139,12 +139,14 @@ class SaveControllerIntegrationTest {
                 .expectBody()
                 .jsonPath("$.contentId").isEqualTo(content.id!!.toString())
                 .jsonPath("$.isSaved").isEqualTo(false)
-                .jsonPath("$.saveCount").isEqualTo(0)
 
-            // Then: 이벤트가 처리되어 DB에서 저장이 삭제되었는지 확인
+            // Then: 이벤트가 처리되어 DB에서 저장이 삭제되고 카운트가 감소했는지 확인
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {
                 val exists = userSaveRepository.exists(user.id!!, content.id!!).block()!!
                 assertThat(exists).isFalse
+
+                val saveCount = contentInteractionRepository.getSaveCount(content.id!!).block()
+                assertThat(saveCount).isEqualTo(0)
             }
         }
     }

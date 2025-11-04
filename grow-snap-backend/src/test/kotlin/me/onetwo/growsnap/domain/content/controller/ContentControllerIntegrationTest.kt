@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.content.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.model.Category
@@ -50,6 +51,9 @@ class ContentControllerIntegrationTest {
 
     @Autowired
     private lateinit var contentRepository: ContentRepository
+
+    @Autowired
+    private lateinit var contentInteractionRepository: ContentInteractionRepository
 
     @Nested
     @DisplayName("POST /api/v1/contents/upload-url - Presigned URL 생성")
@@ -105,7 +109,8 @@ class ContentControllerIntegrationTest {
 
             val content = createContent(
                 contentRepository,
-                creatorId = user.id!!
+                creatorId = user.id!!,
+                contentInteractionRepository = contentInteractionRepository
             )
 
             // When & Then: API 호출 및 검증
@@ -151,7 +156,8 @@ class ContentControllerIntegrationTest {
 
             val content = createContent(
                 contentRepository,
-                creatorId = user.id!!
+                creatorId = user.id!!,
+                contentInteractionRepository = contentInteractionRepository
             )
 
             // When & Then: API 호출 및 검증
