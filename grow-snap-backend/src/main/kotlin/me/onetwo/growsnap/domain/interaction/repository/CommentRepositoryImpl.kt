@@ -4,6 +4,7 @@ import me.onetwo.growsnap.domain.interaction.model.Comment
 import me.onetwo.growsnap.jooq.generated.tables.references.COMMENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_COMMENT_LIKES
 import org.jooq.DSLContext
+import org.jooq.Record
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
@@ -362,7 +363,7 @@ class CommentRepositoryImpl(
      * @param record JOOQ Record
      * @return Comment 엔티티
      */
-    private fun recordToComment(record: org.jooq.Record): Comment {
+    private fun recordToComment(record: Record): Comment {
         return Comment(
             id = UUID.fromString(record.getValue(COMMENTS.ID)),
             contentId = UUID.fromString(record.getValue(COMMENTS.CONTENT_ID)),

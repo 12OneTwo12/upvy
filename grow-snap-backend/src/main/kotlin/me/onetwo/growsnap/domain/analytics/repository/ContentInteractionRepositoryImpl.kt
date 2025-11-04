@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.analytics.repository
 import me.onetwo.growsnap.domain.content.model.ContentInteraction
 import me.onetwo.growsnap.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
 import org.jooq.DSLContext
+import org.jooq.Field
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
@@ -213,7 +214,7 @@ class ContentInteractionRepositoryImpl(
      * @param field 증가시킬 필드
      * @return 업데이트 완료 신호
      */
-    private fun incrementCount(contentId: UUID, field: org.jooq.Field<Int?>): Mono<Void> {
+    private fun incrementCount(contentId: UUID, field: Field<Int?>): Mono<Void> {
         // JOOQ의 type-safe API로 UPDATE 쿼리 생성
         return Mono.from(
             dslContext
@@ -235,7 +236,7 @@ class ContentInteractionRepositoryImpl(
      * @param field 감소시킬 필드
      * @return 업데이트 완료 신호
      */
-    private fun decrementCount(contentId: UUID, field: org.jooq.Field<Int?>): Mono<Void> {
+    private fun decrementCount(contentId: UUID, field: Field<Int?>): Mono<Void> {
         // JOOQ의 type-safe API로 UPDATE 쿼리 생성
         return Mono.from(
             dslContext

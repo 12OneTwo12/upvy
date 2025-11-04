@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.content.repository
 import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import org.jooq.DSLContext
+import org.jooq.Record
 import org.jooq.exception.DataAccessException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
@@ -149,7 +150,7 @@ class ContentPhotoRepository(
      * @param record JOOQ Record
      * @return ContentPhoto 엔티티
      */
-    private fun mapRecordToContentPhoto(record: org.jooq.Record): ContentPhoto {
+    private fun mapRecordToContentPhoto(record: Record): ContentPhoto {
         return ContentPhoto(
             id = record.getValue(CONTENT_PHOTOS.ID),
             contentId = UUID.fromString(record.getValue(CONTENT_PHOTOS.CONTENT_ID)),
