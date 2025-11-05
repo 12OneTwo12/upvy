@@ -6,7 +6,7 @@
  */
 
 import apiClient from '@/api/client';
-import { API_ENDPOINTS } from '@/constants/api';
+import { API_ENDPOINTS, API_UPLOAD_TIMEOUT } from '@/constants/api';
 import type {
   ContentUploadUrlRequest,
   ContentUploadUrlResponse,
@@ -28,7 +28,8 @@ export const generateUploadUrl = async (
 ): Promise<ContentUploadUrlResponse> => {
   const { data } = await apiClient.post<ContentUploadUrlResponse>(
     API_ENDPOINTS.CONTENT.UPLOAD_URL,
-    request
+    request,
+    { timeout: API_UPLOAD_TIMEOUT } // 업로드용 긴 타임아웃 (120초)
   );
   return data;
 };
@@ -50,6 +51,9 @@ export const uploadFileToS3 = async (
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
 
+    // 타임아웃 설정 (120초)
+    xhr.timeout = API_UPLOAD_TIMEOUT;
+
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable && onProgress) {
         const progress = Math.round((event.loaded / event.total) * 100);
@@ -67,6 +71,10 @@ export const uploadFileToS3 = async (
 
     xhr.addEventListener('error', () => {
       reject(new Error('Upload failed'));
+    });
+
+    xhr.addEventListener('timeout', () => {
+      reject(new Error('Upload timeout - please check your network connection'));
     });
 
     xhr.open('PUT', uploadUrl);
@@ -93,7 +101,8 @@ export const createContent = async (
 ): Promise<ContentResponse> => {
   const { data } = await apiClient.post<ContentResponse>(
     API_ENDPOINTS.CONTENT.CREATE,
-    request
+    request,
+    { timeout: API_UPLOAD_TIMEOUT } // 업로드 관련이므로 긴 타임아웃 적용
   );
   return data;
 };
