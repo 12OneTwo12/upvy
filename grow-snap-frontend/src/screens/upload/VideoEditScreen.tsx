@@ -25,6 +25,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Ionicons } from '@expo/vector-icons';
+import { trim } from 'react-native-video-trim';
 import { theme } from '@/theme';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -406,32 +407,59 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
     try {
       setIsUploading(true);
+      setUploadProgress(0);
 
       if (!videoUri) {
         Alert.alert('오류', '비디오를 불러올 수 없습니다.');
         return;
       }
 
-      // 2. 비디오 업로드
-      const videoResponse = await fetch(videoUri);
-      const videoBlob = await videoResponse.blob();
+      // 1. 비디오 트리밍 (필요한 경우)
+      let finalVideoUri = videoUri;
+      const needsTrimming = trimStart > 0 || trimEnd < duration;
 
+      if (needsTrimming) {
+        console.log('🎬 Trimming video:', { trimStart, trimEnd, duration });
+        try {
+          const trimmedVideoPath = await trim(videoUri, {
+            startTime: Math.floor(trimStart * 1000), // 밀리초 단위
+            endTime: Math.floor(trimEnd * 1000),     // 밀리초 단위
+          });
+          finalVideoUri = trimmedVideoPath;
+          setUploadProgress(10);
+          console.log('✅ Video trimmed successfully:', trimmedVideoPath);
+        } catch (trimError) {
+          console.error('❌ Trim failed:', trimError);
+          Alert.alert('오류', '비디오 편집에 실패했습니다.');
+          return;
+        }
+      } else {
+        console.log('ℹ️ No trimming needed, using original video');
+        setUploadProgress(10);
+      }
+
+      // 2. 비디오 blob 생성
+      const videoResponse = await fetch(finalVideoUri);
+      const videoBlob = await videoResponse.blob();
+      setUploadProgress(20);
+
+      // 3. S3 업로드 URL 생성
       const videoUploadUrlResponse = await generateUploadUrl({
         contentType: 'VIDEO',
         fileName: asset.filename,
         fileSize: videoBlob.size,
       });
 
+      // 4. S3에 비디오 업로드
       await uploadFileToS3(
         videoUploadUrlResponse.uploadUrl,
         videoBlob,
-        (progress) => setUploadProgress(Math.floor(progress * 0.7))
+        (progress) => setUploadProgress(Math.floor(20 + progress * 0.5)) // 20% → 70%
       );
 
       const videoS3Url = videoUploadUrlResponse.uploadUrl.split('?')[0];
 
-      // 2. 썸네일 업로드 (임시로 비디오 썸네일 스크린샷 사용)
-      // TODO: expo-video-thumbnails로 실제 썸네일 생성
+      // 5. 썸네일 업로드
       const thumbnailResponse = await fetch(selectedThumbnail);
       const thumbnailBlob = await thumbnailResponse.blob();
 
@@ -445,12 +473,13 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       await uploadFileToS3(
         thumbnailUploadUrlResponse.uploadUrl,
         thumbnailBlob,
-        (progress) => setUploadProgress(Math.floor(70 + progress * 0.3))
+        (progress) => setUploadProgress(Math.floor(70 + progress * 0.3)) // 70% → 100%
       );
 
       const thumbnailS3Url = thumbnailUploadUrlResponse.uploadUrl.split('?')[0];
+      setUploadProgress(100);
 
-      // 3. 메타데이터 입력 화면으로 이동
+      // 6. 메타데이터 입력 화면으로 이동
       navigation.navigate('ContentMetadata', {
         contentId: videoUploadUrlResponse.contentId,
         contentType: 'VIDEO',
