@@ -19,7 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
+import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import java.time.LocalDateTime
 import java.util.UUID
 
 /**
@@ -30,7 +32,6 @@ import java.util.UUID
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @ActiveProfiles("test")
-@org.springframework.transaction.annotation.Transactional
 @DisplayName("검색 기록 Repository 통합 테스트")
 class SearchHistoryRepositoryImplTest {
 
@@ -72,7 +73,7 @@ class SearchHistoryRepositoryImplTest {
     @AfterEach
     fun tearDown() {
         // 테스트 데이터 정리
-        dslContext.deleteFrom(SEARCH_HISTORY).execute()
+        Mono.from(dslContext.deleteFrom(SEARCH_HISTORY)).block()
     }
 
     @Nested
@@ -134,12 +135,15 @@ class SearchHistoryRepositoryImplTest {
             searchHistoryRepository.save(testUser.id!!, keyword, searchType).block()
 
             // Then: 3개의 검색 기록이 저장됨
-            val count = dslContext.fetchCount(
-                dslContext.selectFrom(SEARCH_HISTORY)
+            val count = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
                     .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
                     .and(SEARCH_HISTORY.KEYWORD.eq(keyword))
                     .and(SEARCH_HISTORY.DELETED_AT.isNull)
-            )
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
             assertThat(count).isEqualTo(3)
         }
     }
@@ -151,12 +155,10 @@ class SearchHistoryRepositoryImplTest {
         @Test
         @DisplayName("사용자의 최근 검색어를 최신순으로 조회한다")
         fun findRecentByUserId_WithSearchHistory_ReturnsRecentSearches() {
-            // Given: 3개의 검색 기록
-            searchHistoryRepository.save(testUser.id!!, "Java", SearchType.CONTENT).block()
-            Thread.sleep(10) // 시간 차이를 위해 대기
-            searchHistoryRepository.save(testUser.id!!, "Kotlin", SearchType.CONTENT).block()
-            Thread.sleep(10)
-            searchHistoryRepository.save(testUser.id!!, "Python", SearchType.CONTENT).block()
+            // Given: 3개의 검색 기록 (명시적 시간 설정)
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, LocalDateTime.now().minusHours(3))
+            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, LocalDateTime.now().minusHours(2))
+            insertSearchHistory(testUser.id!!, "Python", SearchType.CONTENT, LocalDateTime.now().minusHours(1))
 
             // When: 최근 검색어 조회
             val result = searchHistoryRepository.findRecentByUserId(testUser.id!!, 10)
@@ -175,12 +177,10 @@ class SearchHistoryRepositoryImplTest {
         @Test
         @DisplayName("동일한 키워드는 가장 최근 검색만 반환한다 (중복 제거)")
         fun findRecentByUserId_WithDuplicateKeyword_ReturnsOnlyLatest() {
-            // Given: 동일한 키워드로 여러 번 검색
-            searchHistoryRepository.save(testUser.id!!, "Java", SearchType.CONTENT).block()
-            Thread.sleep(10)
-            searchHistoryRepository.save(testUser.id!!, "Kotlin", SearchType.CONTENT).block()
-            Thread.sleep(10)
-            searchHistoryRepository.save(testUser.id!!, "Java", SearchType.CONTENT).block() // 중복
+            // Given: 동일한 키워드로 여러 번 검색 (명시적 시간 설정)
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, LocalDateTime.now().minusHours(3))
+            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, LocalDateTime.now().minusHours(2))
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, LocalDateTime.now().minusHours(1)) // 중복
 
             // When: 최근 검색어 조회
             val result = searchHistoryRepository.findRecentByUserId(testUser.id!!, 10)
@@ -198,10 +198,10 @@ class SearchHistoryRepositoryImplTest {
         @Test
         @DisplayName("limit 개수만큼만 반환한다")
         fun findRecentByUserId_WithLimit_ReturnsLimitedResults() {
-            // Given: 5개의 검색 기록
+            // Given: 5개의 검색 기록 (명시적 시간 설정)
+            val now = LocalDateTime.now()
             repeat(5) { i ->
-                searchHistoryRepository.save(testUser.id!!, "Keyword$i", SearchType.CONTENT).block()
-                Thread.sleep(10)
+                insertSearchHistory(testUser.id!!, "Keyword$i", SearchType.CONTENT, now.minusHours((5 - i).toLong()))
             }
 
             // When: limit 3으로 조회
@@ -287,21 +287,27 @@ class SearchHistoryRepositoryImplTest {
                 .verifyComplete()
 
             // Then: "Java" 검색 기록이 소프트 삭제됨
-            val javaCount = dslContext.fetchCount(
-                dslContext.selectFrom(SEARCH_HISTORY)
+            val javaCount = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
                     .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
                     .and(SEARCH_HISTORY.KEYWORD.eq("Java"))
                     .and(SEARCH_HISTORY.DELETED_AT.isNull)
-            )
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
             assertThat(javaCount).isEqualTo(0)
 
             // Then: "Kotlin" 검색 기록은 유지됨
-            val kotlinCount = dslContext.fetchCount(
-                dslContext.selectFrom(SEARCH_HISTORY)
+            val kotlinCount = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
                     .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
                     .and(SEARCH_HISTORY.KEYWORD.eq("Kotlin"))
                     .and(SEARCH_HISTORY.DELETED_AT.isNull)
-            )
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
             assertThat(kotlinCount).isEqualTo(1)
         }
 
@@ -319,11 +325,14 @@ class SearchHistoryRepositoryImplTest {
                 .verifyComplete()
 
             // Then: 기존 검색 기록은 유지됨
-            val count = dslContext.fetchCount(
-                dslContext.selectFrom(SEARCH_HISTORY)
+            val count = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
                     .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
                     .and(SEARCH_HISTORY.DELETED_AT.isNull)
-            )
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
             assertThat(count).isEqualTo(1)
         }
     }
@@ -348,11 +357,14 @@ class SearchHistoryRepositoryImplTest {
                 .verifyComplete()
 
             // Then: 모든 검색 기록이 소프트 삭제됨
-            val count = dslContext.fetchCount(
-                dslContext.selectFrom(SEARCH_HISTORY)
+            val count = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
                     .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
                     .and(SEARCH_HISTORY.DELETED_AT.isNull)
-            )
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
             assertThat(count).isEqualTo(0)
         }
 
@@ -396,20 +408,51 @@ class SearchHistoryRepositoryImplTest {
             searchHistoryRepository.deleteAllByUserId(testUser.id!!).block()
 
             // Then: testUser의 검색 기록만 삭제됨
-            val testUserCount = dslContext.fetchCount(
-                dslContext.selectFrom(SEARCH_HISTORY)
+            val testUserCount = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
                     .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
                     .and(SEARCH_HISTORY.DELETED_AT.isNull)
-            )
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
             assertThat(testUserCount).isEqualTo(0)
 
             // Then: otherUser의 검색 기록은 유지됨
-            val otherUserCount = dslContext.fetchCount(
-                dslContext.selectFrom(SEARCH_HISTORY)
+            val otherUserCount = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
                     .where(SEARCH_HISTORY.USER_ID.eq(otherUser.id.toString()))
                     .and(SEARCH_HISTORY.DELETED_AT.isNull)
-            )
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
             assertThat(otherUserCount).isEqualTo(1)
         }
+    }
+
+    /**
+     * 검색 기록 삽입 헬퍼 메서드
+     *
+     * Thread.sleep() 대신 명시적 시간 설정을 사용합니다.
+     */
+    private fun insertSearchHistory(
+        userId: UUID,
+        keyword: String,
+        searchType: SearchType,
+        createdAt: LocalDateTime
+    ) {
+        val userIdStr = userId.toString()
+        Mono.from(
+            dslContext.insertInto(SEARCH_HISTORY)
+                .set(SEARCH_HISTORY.USER_ID, userIdStr)
+                .set(SEARCH_HISTORY.KEYWORD, keyword)
+                .set(SEARCH_HISTORY.SEARCH_TYPE, searchType.name)
+                .set(SEARCH_HISTORY.CREATED_AT, createdAt)
+                .set(SEARCH_HISTORY.CREATED_BY, userIdStr)
+                .set(SEARCH_HISTORY.UPDATED_AT, createdAt)
+                .set(SEARCH_HISTORY.UPDATED_BY, userIdStr)
+                .returningResult(SEARCH_HISTORY.ID)
+        ).block()
     }
 }

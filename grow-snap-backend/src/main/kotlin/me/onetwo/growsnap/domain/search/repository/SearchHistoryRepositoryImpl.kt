@@ -87,13 +87,14 @@ class SearchHistoryRepositoryImpl(
         // Subquery: 각 키워드별 최신 검색 기록 ID
         val latestIds = dslContext
             .select(
-                SEARCH_HISTORY.ID.max().`as`("latest_id")
+                SEARCH_HISTORY.ID.max().`as`("latest_id"),
+                SEARCH_HISTORY.CREATED_AT.max().`as`("latest_created_at")
             )
             .from(SEARCH_HISTORY)
             .where(SEARCH_HISTORY.USER_ID.eq(userIdStr))
             .and(SEARCH_HISTORY.DELETED_AT.isNull)
             .groupBy(SEARCH_HISTORY.KEYWORD)
-            .orderBy(SEARCH_HISTORY.CREATED_AT.desc())
+            .orderBy(SEARCH_HISTORY.CREATED_AT.max().desc())
             .limit(limit)
 
         return Flux.from(

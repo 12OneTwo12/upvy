@@ -10,6 +10,7 @@ import me.onetwo.growsnap.domain.search.dto.TrendingSearchResponse
 import me.onetwo.growsnap.domain.search.dto.UserSearchRequest
 import me.onetwo.growsnap.domain.search.dto.UserSearchResponse
 import me.onetwo.growsnap.domain.search.service.SearchService
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -40,7 +41,7 @@ import java.security.Principal
  * @property searchService 검색 Service
  */
 @RestController
-@RequestMapping("/api/v1/search")
+@RequestMapping(ApiPaths.API_V1_SEARCH)
 class SearchController(
     private val searchService: SearchService
 ) {
@@ -57,12 +58,11 @@ class SearchController(
     @GetMapping("/contents")
     fun searchContents(
         @Valid request: ContentSearchRequest,
-        principal: Mono<Principal>
+        principal: Mono<Principal>?
     ): Mono<ResponseEntity<ContentSearchResponse>> {
         logger.debug("Searching contents: query={}", request.q)
 
-        return principal
-            .toUserId()
+        return (principal?.toUserId() ?: Mono.empty())
             .flatMap { userId ->
                 searchService.searchContents(request, userId)
             }
@@ -87,12 +87,11 @@ class SearchController(
     @GetMapping("/users")
     fun searchUsers(
         @Valid request: UserSearchRequest,
-        principal: Mono<Principal>
+        principal: Mono<Principal>?
     ): Mono<ResponseEntity<UserSearchResponse>> {
         logger.debug("Searching users: query={}", request.q)
 
-        return principal
-            .toUserId()
+        return (principal?.toUserId() ?: Mono.empty())
             .flatMap { userId ->
                 searchService.searchUsers(request, userId)
             }

@@ -10,6 +10,8 @@ import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import me.onetwo.growsnap.jooq.generated.tables.references.SEARCH_HISTORY
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
+import org.awaitility.kotlin.untilAsserted
 import org.jooq.DSLContext
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -19,8 +21,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
+import reactor.core.publisher.Mono
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 /**
  * SearchEventSubscriber 통합 테스트
@@ -30,7 +33,6 @@ import java.util.UUID
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("검색 이벤트 Subscriber 통합 테스트")
 class SearchEventSubscriberTest {
 
@@ -71,8 +73,8 @@ class SearchEventSubscriberTest {
 
     @AfterEach
     fun tearDown() {
-        // 테스트 데이터 정리
-        dslContext.deleteFrom(SEARCH_HISTORY).execute()
+        // 테스트 데이터 정리 (Reactive)
+        Mono.from(dslContext.deleteFrom(SEARCH_HISTORY)).block()
     }
 
     @Test
@@ -88,18 +90,20 @@ class SearchEventSubscriberTest {
         // When: 이벤트 발행 (Reactor Sinks API)
         eventPublisher.publish(event)
 
-        // Then: 비동기 처리를 위해 잠시 대기
-        Thread.sleep(500)
-
-        // Then: 검색 기록이 데이터베이스에 저장되었는지 확인
-        val count = dslContext.fetchCount(
-            dslContext.selectFrom(SEARCH_HISTORY)
-                .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
-                .and(SEARCH_HISTORY.KEYWORD.eq("프로그래밍"))
-                .and(SEARCH_HISTORY.SEARCH_TYPE.eq(SearchType.CONTENT.name))
-                .and(SEARCH_HISTORY.DELETED_AT.isNull)
-        )
-        assertThat(count).isEqualTo(1)
+        // Then: Awaitility로 비동기 처리 대기
+        await.atMost(2, TimeUnit.SECONDS).untilAsserted {
+            val count = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
+                    .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
+                    .and(SEARCH_HISTORY.KEYWORD.eq("프로그래밍"))
+                    .and(SEARCH_HISTORY.SEARCH_TYPE.eq(SearchType.CONTENT.name))
+                    .and(SEARCH_HISTORY.DELETED_AT.isNull)
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
+            assertThat(count).isEqualTo(1)
+        }
     }
 
     @Test
@@ -115,16 +119,19 @@ class SearchEventSubscriberTest {
         // When: 이벤트 발행 (Reactor Sinks API)
         eventPublisher.publish(event)
 
-        // Then: 비동기 처리를 위해 잠시 대기
-        Thread.sleep(500)
-
-        // Then: 검색 기록이 저장되지 않음
-        val count = dslContext.fetchCount(
-            dslContext.selectFrom(SEARCH_HISTORY)
-                .where(SEARCH_HISTORY.KEYWORD.eq("프로그래밍"))
-                .and(SEARCH_HISTORY.DELETED_AT.isNull)
-        )
-        assertThat(count).isEqualTo(0)
+        // Then: Awaitility로 비동기 처리 대기 (pollDelay 추가: 즉시 처리되지 않음을 확인)
+        await.pollDelay(500, TimeUnit.MILLISECONDS).atMost(1, TimeUnit.SECONDS).untilAsserted {
+            // Then: 검색 기록이 저장되지 않음
+            val count = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
+                    .where(SEARCH_HISTORY.KEYWORD.eq("프로그래밍"))
+                    .and(SEARCH_HISTORY.DELETED_AT.isNull)
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
+            assertThat(count).isEqualTo(0)
+        }
     }
 
     @Test
@@ -140,18 +147,20 @@ class SearchEventSubscriberTest {
         // When: 이벤트 발행 (Reactor Sinks API)
         eventPublisher.publish(event)
 
-        // Then: 비동기 처리를 위해 잠시 대기
-        Thread.sleep(500)
-
-        // Then: 검색 기록이 데이터베이스에 저장되었는지 확인
-        val count = dslContext.fetchCount(
-            dslContext.selectFrom(SEARCH_HISTORY)
-                .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
-                .and(SEARCH_HISTORY.KEYWORD.eq("홍길동"))
-                .and(SEARCH_HISTORY.SEARCH_TYPE.eq(SearchType.USER.name))
-                .and(SEARCH_HISTORY.DELETED_AT.isNull)
-        )
-        assertThat(count).isEqualTo(1)
+        // Then: Awaitility로 비동기 처리 대기
+        await.atMost(2, TimeUnit.SECONDS).untilAsserted {
+            val count = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
+                    .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
+                    .and(SEARCH_HISTORY.KEYWORD.eq("홍길동"))
+                    .and(SEARCH_HISTORY.SEARCH_TYPE.eq(SearchType.USER.name))
+                    .and(SEARCH_HISTORY.DELETED_AT.isNull)
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
+            assertThat(count).isEqualTo(1)
+        }
     }
 
     @Test
@@ -166,19 +175,21 @@ class SearchEventSubscriberTest {
 
         // When: 3번 이벤트 발행 (Reactor Sinks API)
         eventPublisher.publish(event)
-        Thread.sleep(200)
         eventPublisher.publish(event)
-        Thread.sleep(200)
         eventPublisher.publish(event)
-        Thread.sleep(200)
 
-        // Then: 3개의 검색 기록이 저장됨
-        val count = dslContext.fetchCount(
-            dslContext.selectFrom(SEARCH_HISTORY)
-                .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
-                .and(SEARCH_HISTORY.KEYWORD.eq("Kotlin"))
-                .and(SEARCH_HISTORY.DELETED_AT.isNull)
-        )
-        assertThat(count).isEqualTo(3)
+        // Then: Awaitility로 비동기 처리 대기 - 3개의 검색 기록이 저장됨
+        await.atMost(2, TimeUnit.SECONDS).untilAsserted {
+            val count = Mono.from(
+                dslContext.selectCount()
+                    .from(SEARCH_HISTORY)
+                    .where(SEARCH_HISTORY.USER_ID.eq(testUser.id.toString()))
+                    .and(SEARCH_HISTORY.KEYWORD.eq("Kotlin"))
+                    .and(SEARCH_HISTORY.DELETED_AT.isNull)
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .block()
+            assertThat(count).isEqualTo(3)
+        }
     }
 }

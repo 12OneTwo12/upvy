@@ -17,7 +17,7 @@ import java.util.UUID
  * 2. ReactiveEventPublisher로 SearchPerformedEvent 발행
  * 3. SearchEventSubscriber가 비동기로 처리:
  *    - SearchHistoryService를 통해 검색 기록 저장 (Non-Critical Path)
- *    - Redis trending keywords 카운트 증가 (TODO)
+ *    - Redis trending keywords 카운트 증가 (향후 구현 예정)
  *
  * ### Non-Critical Path
  * - 검색 기록 저장 실패해도 메인 검색 API는 성공

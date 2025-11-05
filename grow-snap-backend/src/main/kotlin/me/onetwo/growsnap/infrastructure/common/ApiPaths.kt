@@ -15,4 +15,5 @@ object ApiPaths {
     const val API_V1_CONTENTS = "$API_V1/contents"
     const val API_V1_FEED = "$API_V1/feed"
     const val API_V1_ANALYTICS = "$API_V1/analytics"
+    const val API_V1_SEARCH = "$API_V1/search"
 }

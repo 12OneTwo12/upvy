@@ -13,6 +13,44 @@
 **❌ Controller + Service 테스트만 작성하고 Repository 테스트를 생략하지 마세요!**
 **✅ Repository 테스트가 없으면 데이터베이스 레벨의 버그를 놓칠 수 있습니다!**
 
+## 🚨 절대 금지: Thread.sleep()
+
+**NEVER use `Thread.sleep()` in ANY test (including unit tests, integration tests, and reactive tests)!**
+
+```kotlin
+// ❌ 절대 사용 금지
+Thread.sleep(500)
+Thread.sleep(1000)
+TimeUnit.SECONDS.sleep(1)
+
+// ✅ 대신 사용할 방법들:
+
+// 1. Awaitility (비동기 이벤트 테스트)
+await.atMost(2, TimeUnit.SECONDS).untilAsserted {
+    assertThat(result).isEqualTo(expected)
+}
+
+// 2. 명시적 타임스탬프 (시간 차이가 필요한 테스트)
+insertSearchHistory(userId, "Java", SearchType.CONTENT, LocalDateTime.now().minusHours(3))
+insertSearchHistory(userId, "Kotlin", SearchType.CONTENT, LocalDateTime.now().minusHours(2))
+insertSearchHistory(userId, "Python", SearchType.CONTENT, LocalDateTime.now().minusHours(1))
+
+// 3. StepVerifier (Reactive 테스트)
+StepVerifier.create(mono)
+    .expectNext(expected)
+    .verifyComplete()
+```
+
+**이유:**
+- 테스트를 불필요하게 느리게 만듦 (수백ms ~ 수초 지연)
+- 비결정적인 타이밍 이슈 발생 가능 (Flaky test)
+- Reactive 프로그래밍 원칙 위반
+- CI/CD 파이프라인 성능 저하
+
+**참고:**
+- `reactor-sinks-event-testing.md` - 비동기 이벤트 테스트 방법
+- `integration-testing.md` - 통합 테스트에서 타임스탬프 다루기
+
 ## Controller 테스트 인증 모킹 (OAuth2 Resource Server)
 
 **중요**: 이 프로젝트는 Spring Security OAuth2 Resource Server를 사용하므로, 컨트롤러 테스트에서 인증된 사용자를 모킹할 때는 반드시 `mockUser()` helper function을 사용해야 합니다.

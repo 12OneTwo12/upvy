@@ -24,7 +24,7 @@ import reactor.core.scheduler.Schedulers
  * ## 처리 흐름
  * 1. SearchPerformedEvent 수신
  * 2. userId가 있으면 SearchHistoryService를 통해 검색 기록 저장
- * 3. TODO: Redis trending keywords 카운트 증가
+ * 3. (향후 구현 예정) Redis trending keywords 카운트 증가
  *
  * ## 장애 격리
  * - search_history 저장 실패해도 검색 API는 성공
@@ -98,7 +98,7 @@ class SearchEventSubscriber(
                 }
         } ?: Mono.empty()  // 비인증 사용자는 스킵
 
-        // TODO: Redis trending keywords 카운트 증가
+        // Note: Redis trending keywords 카운트 증가 기능은 향후 구현 예정
     }
 
     companion object {

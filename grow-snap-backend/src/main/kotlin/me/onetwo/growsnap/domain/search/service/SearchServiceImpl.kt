@@ -1,6 +1,5 @@
 package me.onetwo.growsnap.domain.search.service
 
-import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.search.dto.AutocompleteRequest
 import me.onetwo.growsnap.domain.search.dto.AutocompleteResponse
 import me.onetwo.growsnap.domain.search.dto.ContentSearchRequest
@@ -20,7 +19,6 @@ import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
 
@@ -33,7 +31,6 @@ import java.util.UUID
  *
  * @property searchRepository 검색 Repository
  * @property searchHistoryRepository 검색 기록 Repository
- * @property feedRepository 피드 Repository (FeedItemResponse 조회용)
  * @property userProfileRepository 사용자 프로필 Repository (사용자 검색용)
  * @property eventPublisher Reactive Event Publisher (검색 기록 저장용)
  */
@@ -127,7 +124,7 @@ class SearchServiceImpl(
                                 profileImageUrl = profile.profileImageUrl,
                                 bio = profile.bio,
                                 followerCount = profile.followerCount,
-                                isFollowing = false  // TODO: 팔로우 여부 조회
+                                isFollowing = false  // Note: 팔로우 여부 조회 기능은 향후 구현 예정
                             )
                         }
                         .collectList()
@@ -192,7 +189,7 @@ class SearchServiceImpl(
     ): Mono<TrendingSearchResponse> {
         logger.debug("Getting trending keywords: limit={}", limit)
 
-        // TODO: Redis에서 인기 검색어 조회
+        // Note: Redis에서 인기 검색어 조회 기능은 향후 구현 예정
         return Mono.just(TrendingSearchResponse.empty())
             .doOnSuccess { response ->
                 logger.debug("Trending keywords completed: count={}", response.keywords.size)

@@ -4,6 +4,26 @@
 
 **WebFlux 환경에서 Reactor Sinks API를 사용한 완전한 Reactive 이벤트 처리**를 테스트하는 방법을 설명합니다.
 
+### 🚨 절대 금지: Thread.sleep()
+
+**NEVER use `Thread.sleep()` in any test, including reactive tests!**
+
+```kotlin
+// ❌ 절대 사용 금지
+Thread.sleep(500)
+Thread.sleep(1000)
+TimeUnit.SECONDS.sleep(1)
+
+// ✅ 대신 Awaitility 사용
+await.atMost(2, TimeUnit.SECONDS).untilAsserted { ... }
+```
+
+**이유:**
+- 테스트를 불필요하게 느리게 만듦
+- 비결정적인 타이밍 이슈 발생 가능
+- Reactive 프로그래밍 원칙 위반
+- CI/CD 파이프라인 성능 저하
+
 ### ⚠️ 기존 패턴과의 차이점
 
 **기존 (ApplicationEventPublisher + @EventListener):**

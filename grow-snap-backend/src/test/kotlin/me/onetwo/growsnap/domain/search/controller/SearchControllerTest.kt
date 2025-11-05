@@ -25,6 +25,7 @@ import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.search.dto.SearchHistoryItem
 import me.onetwo.growsnap.domain.search.model.SearchType
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.util.mockUser
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -128,7 +129,7 @@ class SearchControllerTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/contents")
+                        .path("${ApiPaths.API_V1_SEARCH}/contents")
                         .queryParam("q", query)
                         .queryParam("sortBy", "RELEVANCE")
                         .queryParam("limit", 20)
@@ -207,7 +208,7 @@ class SearchControllerTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/contents")
+                        .path("${ApiPaths.API_V1_SEARCH}/contents")
                         .queryParam("q", query)
                         .build()
                 }
@@ -254,7 +255,7 @@ class SearchControllerTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/users")
+                        .path("${ApiPaths.API_V1_SEARCH}/users")
                         .queryParam("q", query)
                         .queryParam("limit", 20)
                         .build()
@@ -326,7 +327,7 @@ class SearchControllerTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/autocomplete")
+                        .path("${ApiPaths.API_V1_SEARCH}/autocomplete")
                         .queryParam("q", query)
                         .queryParam("limit", 10)
                         .build()
@@ -387,7 +388,7 @@ class SearchControllerTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/trending")
+                        .path("${ApiPaths.API_V1_SEARCH}/trending")
                         .queryParam("limit", 10)
                         .build()
                 }
@@ -443,7 +444,7 @@ class SearchControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/search/history?limit=10")
+                .uri("${ApiPaths.API_V1_SEARCH}/history?limit=10")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -484,7 +485,7 @@ class SearchControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("/api/v1/search/history")
+                .uri("${ApiPaths.API_V1_SEARCH}/history")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -509,7 +510,7 @@ class SearchControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .delete()
-                .uri("/api/v1/search/history/{keyword}", keyword)
+                .uri("${ApiPaths.API_V1_SEARCH}/history/{keyword}", keyword)
                 .exchange()
                 .expectStatus().isNoContent
                 .expectBody()
@@ -538,7 +539,7 @@ class SearchControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .delete()
-                .uri("/api/v1/search/history/{keyword}", keyword)
+                .uri("${ApiPaths.API_V1_SEARCH}/history/{keyword}", keyword)
                 .exchange()
                 .expectStatus().isNoContent
 
@@ -562,7 +563,7 @@ class SearchControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .delete()
-                .uri("/api/v1/search/history")
+                .uri("${ApiPaths.API_V1_SEARCH}/history")
                 .exchange()
                 .expectStatus().isNoContent
                 .expectBody()

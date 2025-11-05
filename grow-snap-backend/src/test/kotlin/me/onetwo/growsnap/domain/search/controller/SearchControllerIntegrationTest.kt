@@ -13,6 +13,7 @@ import me.onetwo.growsnap.infrastructure.manticore.dto.Hits
 import me.onetwo.growsnap.infrastructure.manticore.dto.ManticoreSearchResponse
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.search.model.SearchType
+import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.util.createUserWithProfile
 import me.onetwo.growsnap.util.mockUser
 import org.assertj.core.api.Assertions.assertThat
@@ -111,7 +112,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/contents")
+                        .path("${ApiPaths.API_V1_SEARCH}/contents")
                         .queryParam("q", query)
                         .queryParam("sortBy", "RELEVANCE")
                         .queryParam("limit", 20)
@@ -147,7 +148,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/contents")
+                        .path("${ApiPaths.API_V1_SEARCH}contents")
                         .queryParam("q", query)
                         .queryParam("category", category.name)
                         .build()
@@ -170,7 +171,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/contents")
+                        .path("${ApiPaths.API_V1_SEARCH}/contents")
                         .queryParam("q", query)
                         .build()
                 }
@@ -198,7 +199,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/contents")
+                        .path("${ApiPaths.API_V1_SEARCH}/contents")
                         .queryParam("q", query)
                         .build()
                 }
@@ -223,7 +224,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/users")
+                        .path("${ApiPaths.API_V1_SEARCH}/users")
                         .queryParam("q", query)
                         .queryParam("limit", 20)
                         .build()
@@ -248,7 +249,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/users")
+                        .path("${ApiPaths.API_V1_SEARCH}/users")
                         .queryParam("q", query)
                         .build()
                 }
@@ -281,7 +282,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/autocomplete")
+                        .path("${ApiPaths.API_V1_SEARCH}/autocomplete")
                         .queryParam("q", query)
                         .queryParam("limit", 10)
                         .build()
@@ -305,7 +306,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("/api/v1/search/trending")
+                        .path("${ApiPaths.API_V1_SEARCH}/trending")
                         .queryParam("limit", 10)
                         .build()
                 }
@@ -339,7 +340,7 @@ class SearchControllerIntegrationTest {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .get()
-                .uri("/api/v1/search/history?limit=10")
+                .uri("${ApiPaths.API_V1_SEARCH}/history?limit=10")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -365,7 +366,7 @@ class SearchControllerIntegrationTest {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .get()
-                .uri("/api/v1/search/history")
+                .uri("${ApiPaths.API_V1_SEARCH}/history")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -385,16 +386,14 @@ class SearchControllerIntegrationTest {
 
             // 동일한 키워드로 여러 번 검색
             searchHistoryRepository.save(user.id!!, "Kotlin", SearchType.CONTENT).block()
-            Thread.sleep(10)
             searchHistoryRepository.save(user.id!!, "Java", SearchType.CONTENT).block()
-            Thread.sleep(10)
             searchHistoryRepository.save(user.id!!, "Kotlin", SearchType.CONTENT).block()
 
             // When & Then: 검색 기록 조회 (Kotlin은 1개만 반환됨)
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .get()
-                .uri("/api/v1/search/history")
+                .uri("${ApiPaths.API_V1_SEARCH}/history")
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
@@ -427,7 +426,7 @@ class SearchControllerIntegrationTest {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("/api/v1/search/history/{keyword}", "Java")
+                .uri("${ApiPaths.API_V1_SEARCH}/history/{keyword}", "Java")
                 .exchange()
                 .expectStatus().isNoContent
 
@@ -454,7 +453,7 @@ class SearchControllerIntegrationTest {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("/api/v1/search/history/{keyword}", "프로그래밍")
+                .uri("${ApiPaths.API_V1_SEARCH}/history/{keyword}", "프로그래밍")
                 .exchange()
                 .expectStatus().isNoContent
 
@@ -478,7 +477,7 @@ class SearchControllerIntegrationTest {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("/api/v1/search/history/{keyword}", "NonExistent")
+                .uri("${ApiPaths.API_V1_SEARCH}/history/{keyword}", "NonExistent")
                 .exchange()
                 .expectStatus().isNoContent
         }
@@ -507,7 +506,7 @@ class SearchControllerIntegrationTest {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("/api/v1/search/history")
+                .uri("${ApiPaths.API_V1_SEARCH}/history")
                 .exchange()
                 .expectStatus().isNoContent
 
@@ -531,7 +530,7 @@ class SearchControllerIntegrationTest {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("/api/v1/search/history")
+                .uri("${ApiPaths.API_V1_SEARCH}/history")
                 .exchange()
                 .expectStatus().isNoContent
         }
@@ -562,7 +561,7 @@ class SearchControllerIntegrationTest {
             webTestClient
                 .mutateWith(mockUser(user1.id!!))
                 .delete()
-                .uri("/api/v1/search/history")
+                .uri("${ApiPaths.API_V1_SEARCH}/history")
                 .exchange()
                 .expectStatus().isNoContent
 

@@ -14,7 +14,6 @@ import me.onetwo.growsnap.infrastructure.manticore.dto.Hit
 import me.onetwo.growsnap.infrastructure.manticore.dto.Hits
 import me.onetwo.growsnap.infrastructure.manticore.dto.ManticoreSearchResponse
 import org.assertj.core.api.Assertions.assertThat
-import org.jooq.DSLContext
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -33,7 +32,6 @@ import java.util.UUID
 class SearchRepositoryImplTest {
 
     private val manticoreSearchClient: ManticoreSearchClient = mockk()
-    private val dslContext: DSLContext = mockk(relaxed = true)
     private val properties = ManticoreSearchProperties(
         baseUrl = "http://localhost:9308",
         timeout = 5000
@@ -41,7 +39,6 @@ class SearchRepositoryImplTest {
 
     private val searchRepository: SearchRepository = SearchRepositoryImpl(
         manticoreSearchClient = manticoreSearchClient,
-        dslContext = dslContext,
         properties = properties
     )
 

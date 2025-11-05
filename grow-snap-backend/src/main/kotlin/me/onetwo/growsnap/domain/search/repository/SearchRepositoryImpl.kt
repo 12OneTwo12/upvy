@@ -8,7 +8,6 @@ import me.onetwo.growsnap.domain.search.model.SearchSortType
 import me.onetwo.growsnap.infrastructure.manticore.ManticoreSearchClient
 import me.onetwo.growsnap.infrastructure.manticore.ManticoreSearchProperties
 import me.onetwo.growsnap.infrastructure.manticore.dto.ManticoreSearchRequest
-import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
@@ -26,13 +25,11 @@ import java.util.UUID
  * - **자동완성**: Manticore Search autocomplete_index 사용
  *
  * @property manticoreSearchClient Manticore Search 클라이언트
- * @property dslContext JOOQ DSL Context
  * @property properties Manticore Search 설정
  */
 @Repository
 class SearchRepositoryImpl(
     private val manticoreSearchClient: ManticoreSearchClient,
-    private val dslContext: DSLContext,
     private val properties: ManticoreSearchProperties
 ) : SearchRepository {
 
@@ -72,28 +69,36 @@ class SearchRepositoryImpl(
             "match" to mapOf("*" to query)
         )
 
-        // 필터 구성
-        val filters = mutableMapOf<String, Any>()
+        // 필터 구성 (bool query with must clauses)
+        val mustClauses = mutableListOf<Map<String, Any>>()
+
         category?.let {
-            filters["equals"] = mapOf("category" to it.name)
+            mustClauses.add(mapOf("equals" to mapOf("category" to it.name)))
         }
         difficulty?.let {
-            filters["equals"] = mapOf("difficulty" to it.name)
+            mustClauses.add(mapOf("equals" to mapOf("difficulty" to it.name)))
         }
 
         if (minDuration != null || maxDuration != null) {
             val rangeFilter = mutableMapOf<String, Int>()
             minDuration?.let { rangeFilter["gte"] = it }
             maxDuration?.let { rangeFilter["lte"] = it }
-            filters["range"] = mapOf("duration" to rangeFilter)
+            mustClauses.add(mapOf("range" to mapOf("duration" to rangeFilter)))
         }
 
         language?.let {
-            filters["equals"] = mapOf("language" to it)
+            mustClauses.add(mapOf("equals" to mapOf("language" to it)))
         }
 
         // 소프트 삭제 필터
-        filters["equals"] = mapOf("is_deleted" to false)
+        mustClauses.add(mapOf("equals" to mapOf("is_deleted" to false)))
+
+        // Bool query로 모든 필터 조합
+        val filters = if (mustClauses.isNotEmpty()) {
+            mapOf("bool" to mapOf("must" to mustClauses))
+        } else {
+            null
+        }
 
         // 정렬 구성
         val sort = when (sortBy) {
@@ -113,7 +118,7 @@ class SearchRepositoryImpl(
         val request = ManticoreSearchRequest(
             index = properties.index.content,
             query = matchQuery,
-            filter = filters.takeIf { it.isNotEmpty() },
+            filter = filters,
             sort = sort,
             limit = limit + 1,  // hasNext 확인을 위해 +1
             offset = 0
