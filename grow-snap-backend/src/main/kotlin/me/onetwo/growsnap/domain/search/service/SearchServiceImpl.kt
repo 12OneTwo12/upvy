@@ -5,15 +5,21 @@ import me.onetwo.growsnap.domain.search.dto.AutocompleteRequest
 import me.onetwo.growsnap.domain.search.dto.AutocompleteResponse
 import me.onetwo.growsnap.domain.search.dto.ContentSearchRequest
 import me.onetwo.growsnap.domain.search.dto.ContentSearchResponse
+import me.onetwo.growsnap.domain.search.dto.SearchHistoryItem
+import me.onetwo.growsnap.domain.search.dto.SearchHistoryResponse
 import me.onetwo.growsnap.domain.search.dto.TrendingSearchResponse
 import me.onetwo.growsnap.domain.search.dto.UserSearchRequest
 import me.onetwo.growsnap.domain.search.dto.UserSearchResponse
 import me.onetwo.growsnap.domain.search.dto.UserSearchResult
+import me.onetwo.growsnap.domain.search.event.SearchPerformedEvent
+import me.onetwo.growsnap.domain.search.model.SearchType
+import me.onetwo.growsnap.domain.search.repository.SearchHistoryRepository
 import me.onetwo.growsnap.domain.search.repository.SearchRepository
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -23,14 +29,18 @@ import java.util.UUID
  * SearchService 구현체
  *
  * @property searchRepository 검색 Repository
+ * @property searchHistoryRepository 검색 기록 Repository
  * @property feedRepository 피드 Repository (FeedItemResponse 조회용)
  * @property dslContext JOOQ DSL Context
+ * @property eventPublisher Spring Event Publisher (검색 기록 저장용)
  */
 @Service
 class SearchServiceImpl(
     private val searchRepository: SearchRepository,
+    private val searchHistoryRepository: SearchHistoryRepository,
     private val feedRepository: FeedRepository,
-    private val dslContext: DSLContext
+    private val dslContext: DSLContext,
+    private val eventPublisher: ApplicationEventPublisher
 ) : SearchService {
 
     /**
@@ -70,6 +80,14 @@ class SearchServiceImpl(
             }
             .doOnSuccess { response ->
                 logger.debug("Content search completed: count={}", response.count)
+                // 검색 기록 저장 이벤트 발행
+                eventPublisher.publishEvent(
+                    SearchPerformedEvent(
+                        userId = userId,
+                        keyword = request.q,
+                        searchType = SearchType.CONTENT
+                    )
+                )
             }
             .doOnError { error ->
                 logger.error("Content search failed: query={}", request.q, error)
@@ -132,6 +150,14 @@ class SearchServiceImpl(
             }
             .doOnSuccess { response ->
                 logger.debug("User search completed: count={}", response.count)
+                // 검색 기록 저장 이벤트 발행
+                eventPublisher.publishEvent(
+                    SearchPerformedEvent(
+                        userId = currentUserId,
+                        keyword = request.q,
+                        searchType = SearchType.USER
+                    )
+                )
             }
             .doOnError { error ->
                 logger.error("User search failed: query={}", request.q, error)
@@ -179,6 +205,71 @@ class SearchServiceImpl(
         return Mono.just(TrendingSearchResponse.empty())
             .doOnSuccess { response ->
                 logger.debug("Trending keywords completed: count={}", response.keywords.size)
+            }
+    }
+
+    /**
+     * 최근 검색어 조회
+     *
+     * @param userId 사용자 ID
+     * @param limit 최대 개수
+     * @return 검색 기록 응답
+     */
+    override fun getRecentSearches(
+        userId: UUID,
+        limit: Int
+    ): Mono<SearchHistoryResponse> {
+        logger.debug("Getting recent searches: userId={}, limit={}", userId, limit)
+
+        return searchHistoryRepository.findRecentByUserId(userId, limit)
+            .map { histories ->
+                SearchHistoryResponse(
+                    keywords = histories.map { history ->
+                        SearchHistoryItem(
+                            keyword = history.keyword,
+                            searchType = history.searchType
+                        )
+                    }
+                )
+            }
+            .doOnSuccess { response ->
+                logger.debug("Recent searches completed: count={}", response.keywords.size)
+            }
+    }
+
+    /**
+     * 특정 검색어 삭제
+     *
+     * @param userId 사용자 ID
+     * @param keyword 검색 키워드
+     * @return 삭제 완료 시그널 (Mono<Void>)
+     */
+    override fun deleteSearchHistory(
+        userId: UUID,
+        keyword: String
+    ): Mono<Void> {
+        logger.debug("Deleting search history: userId={}, keyword={}", userId, keyword)
+
+        return searchHistoryRepository.deleteByUserIdAndKeyword(userId, keyword)
+            .doOnSuccess {
+                logger.debug("Search history deleted: userId={}, keyword={}", userId, keyword)
+            }
+    }
+
+    /**
+     * 전체 검색 기록 삭제
+     *
+     * @param userId 사용자 ID
+     * @return 삭제 완료 시그널 (Mono<Void>)
+     */
+    override fun deleteAllSearchHistory(
+        userId: UUID
+    ): Mono<Void> {
+        logger.debug("Deleting all search history: userId={}", userId)
+
+        return searchHistoryRepository.deleteAllByUserId(userId)
+            .doOnSuccess {
+                logger.debug("All search history deleted: userId={}", userId)
             }
     }
 

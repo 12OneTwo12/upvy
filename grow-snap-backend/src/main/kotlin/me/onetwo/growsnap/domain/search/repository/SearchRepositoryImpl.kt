@@ -8,11 +8,9 @@ import me.onetwo.growsnap.domain.search.model.SearchSortType
 import me.onetwo.growsnap.infrastructure.manticore.ManticoreSearchClient
 import me.onetwo.growsnap.infrastructure.manticore.ManticoreSearchProperties
 import me.onetwo.growsnap.infrastructure.manticore.dto.ManticoreSearchRequest
-import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.LocalDate
 import java.util.UUID
@@ -20,11 +18,11 @@ import java.util.UUID
 /**
  * SearchRepository 구현체
  *
- * Manticore Search와 PostgreSQL을 사용한 검색 기능을 제공합니다.
+ * Manticore Search를 사용한 검색 기능을 제공합니다.
  *
  * ## 검색 전략
  * - **콘텐츠 검색**: Manticore Search content_index 사용
- * - **사용자 검색**: PostgreSQL user_profiles 테이블 직접 검색 (LIKE 연산)
+ * - **사용자 검색**: Manticore Search user_index 사용
  * - **자동완성**: Manticore Search autocomplete_index 사용
  *
  * @property manticoreSearchClient Manticore Search 클라이언트
@@ -139,7 +137,7 @@ class SearchRepositoryImpl(
     /**
      * 사용자 검색
      *
-     * PostgreSQL user_profiles 테이블에서 닉네임으로 검색합니다.
+     * Manticore Search user_index에서 닉네임으로 검색합니다.
      *
      * @param query 검색 키워드
      * @param cursor 페이지네이션 커서
@@ -153,19 +151,27 @@ class SearchRepositoryImpl(
     ): Mono<List<UUID>> {
         logger.debug("Searching users: query={}", query)
 
-        return Flux.from(
-            dslContext
-                .select(USER_PROFILES.USER_ID)
-                .from(USER_PROFILES)
-                .where(USER_PROFILES.NICKNAME.like("%$query%"))
-                .and(USER_PROFILES.DELETED_AT.isNull)
-                .orderBy(USER_PROFILES.CREATED_AT.desc())
-                .limit(limit + 1)
+        val matchQuery = mapOf(
+            "match" to mapOf("nickname" to query)
         )
-            .map { record ->
-                UUID.fromString(record.getValue(USER_PROFILES.USER_ID))
+
+        val request = ManticoreSearchRequest(
+            index = properties.index.user,
+            query = matchQuery,
+            sort = listOf(
+                mapOf("created_at" to mapOf("order" to "desc"))
+            ),
+            limit = limit + 1,  // hasNext 확인을 위해 +1
+            offset = 0
+        )
+
+        return manticoreSearchClient.search(request)
+            .map { response ->
+                response.hits.hits.mapNotNull { hit ->
+                    val userIdStr = hit.source["user_id"] as? String
+                    userIdStr?.let { UUID.fromString(it) }
+                }
             }
-            .collectList()
             .doOnSuccess { userIds ->
                 logger.debug("User search completed: count={}", userIds.size)
             }

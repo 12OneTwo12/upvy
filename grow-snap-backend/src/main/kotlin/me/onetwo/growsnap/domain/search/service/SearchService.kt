@@ -4,6 +4,7 @@ import me.onetwo.growsnap.domain.search.dto.AutocompleteRequest
 import me.onetwo.growsnap.domain.search.dto.AutocompleteResponse
 import me.onetwo.growsnap.domain.search.dto.ContentSearchRequest
 import me.onetwo.growsnap.domain.search.dto.ContentSearchResponse
+import me.onetwo.growsnap.domain.search.dto.SearchHistoryResponse
 import me.onetwo.growsnap.domain.search.dto.TrendingSearchResponse
 import me.onetwo.growsnap.domain.search.dto.UserSearchRequest
 import me.onetwo.growsnap.domain.search.dto.UserSearchResponse
@@ -74,4 +75,41 @@ interface SearchService {
     fun getTrendingKeywords(
         limit: Int = 10
     ): Mono<TrendingSearchResponse>
+
+    /**
+     * 최근 검색어 조회
+     *
+     * 사용자의 최근 검색어 목록을 반환합니다.
+     * 동일한 키워드는 가장 최근 검색만 표시됩니다.
+     *
+     * @param userId 사용자 ID
+     * @param limit 최대 개수 (기본값: 10)
+     * @return 검색 기록 응답
+     */
+    fun getRecentSearches(
+        userId: UUID,
+        limit: Int = 10
+    ): Mono<SearchHistoryResponse>
+
+    /**
+     * 특정 검색어 삭제
+     *
+     * @param userId 사용자 ID
+     * @param keyword 검색 키워드
+     * @return 삭제 완료 시그널 (Mono<Void>)
+     */
+    fun deleteSearchHistory(
+        userId: UUID,
+        keyword: String
+    ): Mono<Void>
+
+    /**
+     * 전체 검색 기록 삭제
+     *
+     * @param userId 사용자 ID
+     * @return 삭제 완료 시그널 (Mono<Void>)
+     */
+    fun deleteAllSearchHistory(
+        userId: UUID
+    ): Mono<Void>
 }

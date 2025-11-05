@@ -5,14 +5,18 @@ import me.onetwo.growsnap.domain.search.dto.AutocompleteRequest
 import me.onetwo.growsnap.domain.search.dto.AutocompleteResponse
 import me.onetwo.growsnap.domain.search.dto.ContentSearchRequest
 import me.onetwo.growsnap.domain.search.dto.ContentSearchResponse
+import me.onetwo.growsnap.domain.search.dto.SearchHistoryResponse
 import me.onetwo.growsnap.domain.search.dto.TrendingSearchResponse
 import me.onetwo.growsnap.domain.search.dto.UserSearchRequest
 import me.onetwo.growsnap.domain.search.dto.UserSearchResponse
 import me.onetwo.growsnap.domain.search.service.SearchService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -29,6 +33,9 @@ import java.security.Principal
  * - GET /api/v1/search/users - 사용자 검색
  * - GET /api/v1/search/autocomplete - 자동완성
  * - GET /api/v1/search/trending - 인기 검색어
+ * - GET /api/v1/search/history - 검색 기록 조회
+ * - DELETE /api/v1/search/history/{keyword} - 특정 검색어 삭제
+ * - DELETE /api/v1/search/history - 전체 검색 기록 삭제
  *
  * @property searchService 검색 Service
  */
@@ -138,6 +145,73 @@ class SearchController(
             .doOnSuccess {
                 logger.debug("Trending keywords completed")
             }
+    }
+
+    /**
+     * 검색 기록 조회
+     *
+     * 사용자의 최근 검색어 목록을 반환합니다.
+     *
+     * @param principal 현재 사용자 (필수)
+     * @param limit 최대 개수 (기본값: 10)
+     * @return 검색 기록 응답
+     */
+    @GetMapping("/history")
+    fun getSearchHistory(
+        @RequestParam(defaultValue = "10") limit: Int,
+        principal: Mono<Principal>
+    ): Mono<ResponseEntity<SearchHistoryResponse>> {
+        logger.debug("Getting search history: limit={}", limit)
+
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                searchService.getRecentSearches(userId, limit)
+            }
+            .map { ResponseEntity.ok(it) }
+            .doOnSuccess {
+                logger.debug("Search history completed")
+            }
+    }
+
+    /**
+     * 특정 검색어 삭제
+     *
+     * @param keyword 검색 키워드
+     * @param principal 현재 사용자 (필수)
+     * @return 204 No Content
+     */
+    @DeleteMapping("/history/{keyword}")
+    fun deleteSearchHistory(
+        @PathVariable keyword: String,
+        principal: Mono<Principal>
+    ): Mono<ResponseEntity<Void>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                searchService.deleteSearchHistory(userId, keyword)
+                    .doOnSuccess { logger.debug("Search history deleted: keyword={}", keyword) }
+            }
+            .thenReturn(ResponseEntity.noContent().build())
+    }
+
+    /**
+     * 전체 검색 기록 삭제
+     *
+     * @param principal 현재 사용자 (필수)
+     * @return 204 No Content
+     */
+    @DeleteMapping("/history")
+    fun deleteAllSearchHistory(
+        principal: Mono<Principal>
+    ): Mono<ResponseEntity<Void>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                searchService.deleteAllSearchHistory(userId)
+                    .doOnSuccess { logger.debug("All search history deleted for userId: {}", userId) }
+            }
+            .thenReturn(ResponseEntity.noContent().build())
     }
 
     companion object {

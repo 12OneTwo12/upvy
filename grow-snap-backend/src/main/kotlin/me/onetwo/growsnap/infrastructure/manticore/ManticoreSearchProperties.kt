@@ -33,9 +33,11 @@ data class ManticoreSearchProperties(
  * Manticore Search 인덱스 이름 설정
  *
  * @property content 콘텐츠 검색 인덱스 이름 (기본값: content_index)
+ * @property user 사용자 검색 인덱스 이름 (기본값: user_index)
  * @property autocomplete 자동완성 인덱스 이름 (기본값: autocomplete_index)
  */
 data class IndexProperties(
     val content: String = "content_index",
+    val user: String = "user_index",
     val autocomplete: String = "autocomplete_index"
 )

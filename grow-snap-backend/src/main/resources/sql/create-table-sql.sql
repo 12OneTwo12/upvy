@@ -319,3 +319,23 @@ CREATE INDEX IF NOT EXISTS idx_report_target ON reports(target_type, target_id);
 CREATE INDEX IF NOT EXISTS idx_report_status ON reports(status);
 CREATE INDEX IF NOT EXISTS idx_report_deleted_at ON reports(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_report_created_at ON reports(created_at);
+
+-- Search History Table (검색 기록)
+CREATE TABLE IF NOT EXISTS search_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    keyword VARCHAR(100) NOT NULL,
+    search_type VARCHAR(20) NOT NULL,  -- CONTENT, USER
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_history_user_id ON search_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_search_history_keyword ON search_history(keyword);
+CREATE INDEX IF NOT EXISTS idx_search_history_created_at ON search_history(created_at);
+CREATE INDEX IF NOT EXISTS idx_search_history_composite ON search_history(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_search_history_deleted_at ON search_history(deleted_at);
