@@ -91,6 +91,15 @@ logging:
     org.springframework.security: DEBUG
     org.jooq: DEBUG
 
+# Manticore Search Configuration
+manticore:
+  search:
+    base-url: ${MANTICORE_BASE_URL:http://localhost:9308}
+    timeout: 5000
+    index:
+      content: content_index
+      autocomplete: autocomplete_index
+
 # Server Configuration
 server:
   port: 8080
