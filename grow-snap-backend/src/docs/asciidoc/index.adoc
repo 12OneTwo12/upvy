@@ -174,3 +174,13 @@ include::share/link-get.adoc[]
 사용자 행동 분석 API
 
 include::analytics/view-track.adoc[]
+
+[[search-api]]
+== Search API
+
+콘텐츠 및 사용자 검색 API
+
+include::search/search-contents.adoc[]
+include::search/search-users.adoc[]
+include::search/search-autocomplete.adoc[]
+include::search/search-trending.adoc[]
