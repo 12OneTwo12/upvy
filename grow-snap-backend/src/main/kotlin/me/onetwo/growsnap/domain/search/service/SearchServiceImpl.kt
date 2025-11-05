@@ -16,10 +16,10 @@ import me.onetwo.growsnap.domain.search.model.SearchType
 import me.onetwo.growsnap.domain.search.repository.SearchHistoryRepository
 import me.onetwo.growsnap.domain.search.repository.SearchRepository
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -28,11 +28,15 @@ import java.util.UUID
 /**
  * SearchService 구현체
  *
+ * ## Reactor Sinks API 패턴
+ * - ReactiveEventPublisher로 검색 이벤트 발행
+ * - 검색 기록은 비동기 이벤트로 처리 (Non-Critical Path)
+ *
  * @property searchRepository 검색 Repository
  * @property searchHistoryRepository 검색 기록 Repository
  * @property feedRepository 피드 Repository (FeedItemResponse 조회용)
  * @property dslContext JOOQ DSL Context
- * @property eventPublisher Spring Event Publisher (검색 기록 저장용)
+ * @property eventPublisher Reactive Event Publisher (검색 기록 저장용)
  */
 @Service
 class SearchServiceImpl(
@@ -40,7 +44,7 @@ class SearchServiceImpl(
     private val searchHistoryRepository: SearchHistoryRepository,
     private val feedRepository: FeedRepository,
     private val dslContext: DSLContext,
-    private val eventPublisher: ApplicationEventPublisher
+    private val eventPublisher: ReactiveEventPublisher
 ) : SearchService {
 
     /**
@@ -80,8 +84,8 @@ class SearchServiceImpl(
             }
             .doOnSuccess { response ->
                 logger.debug("Content search completed: count={}", response.count)
-                // 검색 기록 저장 이벤트 발행
-                eventPublisher.publishEvent(
+                // 검색 기록 저장 이벤트 발행 (Reactor Sinks API)
+                eventPublisher.publish(
                     SearchPerformedEvent(
                         userId = userId,
                         keyword = request.q,
@@ -150,8 +154,8 @@ class SearchServiceImpl(
             }
             .doOnSuccess { response ->
                 logger.debug("User search completed: count={}", response.count)
-                // 검색 기록 저장 이벤트 발행
-                eventPublisher.publishEvent(
+                // 검색 기록 저장 이벤트 발행 (Reactor Sinks API)
+                eventPublisher.publish(
                     SearchPerformedEvent(
                         userId = currentUserId,
                         keyword = request.q,

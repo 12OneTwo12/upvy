@@ -2,6 +2,7 @@ package me.onetwo.growsnap.domain.search.controller
 
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
+import io.mockk.verify
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.DifficultyLevel
 import me.onetwo.growsnap.domain.feed.dto.CreatorInfoResponse
@@ -22,6 +23,8 @@ import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.search.dto.SearchHistoryItem
+import me.onetwo.growsnap.domain.search.model.SearchType
 import me.onetwo.growsnap.util.mockUser
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -409,6 +412,165 @@ class SearchControllerTest {
                         )
                     )
                 )
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/search/history - 검색 기록 조회")
+    inner class GetSearchHistory {
+
+        @Test
+        @DisplayName("인증된 사용자의 검색 기록을 조회하면, 200과 검색 기록을 반환한다")
+        fun getSearchHistory_WithAuthenticatedUser_ReturnsHistory() {
+            // Given: Service 모킹
+            val userId = UUID.randomUUID()
+            val response = me.onetwo.growsnap.domain.search.dto.SearchHistoryResponse(
+                keywords = listOf(
+                    SearchHistoryItem(
+                        keyword = "프로그래밍",
+                        searchType = SearchType.CONTENT
+                    ),
+                    SearchHistoryItem(
+                        keyword = "홍길동",
+                        searchType = SearchType.USER
+                    )
+                )
+            )
+
+            every { searchService.getRecentSearches(userId, 10) } returns Mono.just(response)
+
+            // When & Then: API 호출 및 REST Docs 생성
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("/api/v1/search/history?limit=10")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.keywords").isArray
+                .jsonPath("$.keywords[0].keyword").isEqualTo("프로그래밍")
+                .jsonPath("$.keywords[0].searchType").isEqualTo("CONTENT")
+                .jsonPath("$.keywords[1].keyword").isEqualTo("홍길동")
+                .jsonPath("$.keywords[1].searchType").isEqualTo("USER")
+                .consumeWith(
+                    document(
+                        "search-history-get",
+                        queryParameters(
+                            parameterWithName("limit").description("최대 개수 (기본값: 10)").optional()
+                        ),
+                        responseFields(
+                            fieldWithPath("keywords[]").description("검색 기록 목록"),
+                            fieldWithPath("keywords[].keyword").description("검색 키워드"),
+                            fieldWithPath("keywords[].searchType").description("검색 타입 (CONTENT, USER)")
+                        )
+                    )
+                )
+
+            verify(exactly = 1) { searchService.getRecentSearches(userId, 10) }
+        }
+
+        @Test
+        @DisplayName("검색 기록이 없으면, 빈 리스트를 반환한다")
+        fun getSearchHistory_WithNoHistory_ReturnsEmptyList() {
+            // Given: Service 모킹 (빈 리스트)
+            val userId = UUID.randomUUID()
+            val response = me.onetwo.growsnap.domain.search.dto.SearchHistoryResponse(
+                keywords = emptyList()
+            )
+
+            every { searchService.getRecentSearches(userId, 10) } returns Mono.just(response)
+
+            // When & Then: API 호출
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("/api/v1/search/history")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.keywords").isEmpty
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/v1/search/history/{keyword} - 특정 검색어 삭제")
+    inner class DeleteSearchHistory {
+
+        @Test
+        @DisplayName("특정 검색어를 삭제하면, 204를 반환한다")
+        fun deleteSearchHistory_WithKeyword_Returns204() {
+            // Given: Service 모킹
+            val userId = UUID.randomUUID()
+            val keyword = "Java"
+
+            every { searchService.deleteSearchHistory(userId, keyword) } returns Mono.empty()
+
+            // When & Then: API 호출 및 REST Docs 생성
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .delete()
+                .uri("/api/v1/search/history/{keyword}", keyword)
+                .exchange()
+                .expectStatus().isNoContent
+                .expectBody()
+                .consumeWith(
+                    document(
+                        "search-history-delete-keyword",
+                        org.springframework.restdocs.request.RequestDocumentation.pathParameters(
+                            org.springframework.restdocs.request.RequestDocumentation.parameterWithName("keyword").description("삭제할 검색 키워드")
+                        )
+                    )
+                )
+
+            verify(exactly = 1) { searchService.deleteSearchHistory(userId, keyword) }
+        }
+
+        @Test
+        @DisplayName("한글 키워드도 삭제할 수 있다")
+        fun deleteSearchHistory_WithKoreanKeyword_Returns204() {
+            // Given: Service 모킹
+            val userId = UUID.randomUUID()
+            val keyword = "프로그래밍"
+
+            every { searchService.deleteSearchHistory(userId, keyword) } returns Mono.empty()
+
+            // When & Then: API 호출
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .delete()
+                .uri("/api/v1/search/history/{keyword}", keyword)
+                .exchange()
+                .expectStatus().isNoContent
+
+            verify(exactly = 1) { searchService.deleteSearchHistory(userId, keyword) }
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/v1/search/history - 전체 검색 기록 삭제")
+    inner class DeleteAllSearchHistory {
+
+        @Test
+        @DisplayName("전체 검색 기록을 삭제하면, 204를 반환한다")
+        fun deleteAllSearchHistory_Returns204() {
+            // Given: Service 모킹
+            val userId = UUID.randomUUID()
+
+            every { searchService.deleteAllSearchHistory(userId) } returns Mono.empty()
+
+            // When & Then: API 호출 및 REST Docs 생성
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .delete()
+                .uri("/api/v1/search/history")
+                .exchange()
+                .expectStatus().isNoContent
+                .expectBody()
+                .consumeWith(
+                    document("search-history-delete-all")
+                )
+
+            verify(exactly = 1) { searchService.deleteAllSearchHistory(userId) }
         }
     }
 }

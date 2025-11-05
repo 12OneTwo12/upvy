@@ -12,8 +12,10 @@ import me.onetwo.growsnap.infrastructure.manticore.dto.Hit
 import me.onetwo.growsnap.infrastructure.manticore.dto.Hits
 import me.onetwo.growsnap.infrastructure.manticore.dto.ManticoreSearchResponse
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.domain.search.model.SearchType
 import me.onetwo.growsnap.util.createUserWithProfile
 import me.onetwo.growsnap.util.mockUser
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -56,6 +58,9 @@ class SearchControllerIntegrationTest {
 
     @Autowired
     private lateinit var userProfileRepository: UserProfileRepository
+
+    @Autowired
+    private lateinit var searchHistoryRepository: me.onetwo.growsnap.domain.search.repository.SearchHistoryRepository
 
     @MockkBean
     private lateinit var manticoreSearchClient: ManticoreSearchClient
@@ -308,6 +313,266 @@ class SearchControllerIntegrationTest {
                 .expectStatus().isOk
                 .expectBody()
                 .jsonPath("$.keywords").isArray
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/search/history - 검색 기록 조회")
+    inner class GetSearchHistory {
+
+        @Test
+        @DisplayName("사용자의 검색 기록을 조회하면, 200과 검색 기록을 반환한다")
+        fun getSearchHistory_WithSearchHistory_ReturnsHistory() {
+            // Given: 사용자 생성 및 검색 기록 저장
+            val (user, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            // 검색 기록 저장
+            searchHistoryRepository.save(user.id!!, "Java", SearchType.CONTENT).block()
+            searchHistoryRepository.save(user.id!!, "홍길동", SearchType.USER).block()
+
+            // When & Then: 검색 기록 조회
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .get()
+                .uri("/api/v1/search/history?limit=10")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.keywords").isArray
+                .jsonPath("$.keywords[0].keyword").isEqualTo("홍길동")  // 최신순
+                .jsonPath("$.keywords[0].searchType").isEqualTo("USER")
+                .jsonPath("$.keywords[1].keyword").isEqualTo("Java")
+                .jsonPath("$.keywords[1].searchType").isEqualTo("CONTENT")
+        }
+
+        @Test
+        @DisplayName("검색 기록이 없으면, 빈 리스트를 반환한다")
+        fun getSearchHistory_WithNoHistory_ReturnsEmptyList() {
+            // Given: 사용자 생성 (검색 기록 없음)
+            val (user, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "test2@example.com",
+                providerId = "google-456"
+            )
+
+            // When & Then: 검색 기록 조회
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .get()
+                .uri("/api/v1/search/history")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.keywords").isEmpty
+        }
+
+        @Test
+        @DisplayName("동일한 키워드는 가장 최근 검색만 반환한다")
+        fun getSearchHistory_WithDuplicateKeyword_ReturnsOnlyLatest() {
+            // Given: 사용자 생성 및 동일한 키워드로 여러 번 검색
+            val (user, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "test3@example.com",
+                providerId = "google-789"
+            )
+
+            // 동일한 키워드로 여러 번 검색
+            searchHistoryRepository.save(user.id!!, "Kotlin", SearchType.CONTENT).block()
+            Thread.sleep(10)
+            searchHistoryRepository.save(user.id!!, "Java", SearchType.CONTENT).block()
+            Thread.sleep(10)
+            searchHistoryRepository.save(user.id!!, "Kotlin", SearchType.CONTENT).block()
+
+            // When & Then: 검색 기록 조회 (Kotlin은 1개만 반환됨)
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .get()
+                .uri("/api/v1/search/history")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.keywords").isArray
+                .jsonPath("$.keywords.length()").isEqualTo(2)
+                .jsonPath("$.keywords[0].keyword").isEqualTo("Kotlin")  // 최신
+                .jsonPath("$.keywords[1].keyword").isEqualTo("Java")
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/v1/search/history/{keyword} - 특정 검색어 삭제")
+    inner class DeleteSearchHistory {
+
+        @Test
+        @DisplayName("특정 검색어를 삭제하면, 204를 반환하고 해당 키워드가 삭제된다")
+        fun deleteSearchHistory_WithKeyword_Returns204AndDeletesKeyword() {
+            // Given: 사용자 생성 및 검색 기록 저장
+            val (user, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "test4@example.com",
+                providerId = "google-111"
+            )
+
+            searchHistoryRepository.save(user.id!!, "Java", SearchType.CONTENT).block()
+            searchHistoryRepository.save(user.id!!, "Kotlin", SearchType.CONTENT).block()
+
+            // When: 특정 검색어 삭제
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .delete()
+                .uri("/api/v1/search/history/{keyword}", "Java")
+                .exchange()
+                .expectStatus().isNoContent
+
+            // Then: Java는 삭제되고 Kotlin은 남아있음
+            val remaining = searchHistoryRepository.findRecentByUserId(user.id!!, 10).block()
+            assertThat(remaining).hasSize(1)
+            assertThat(remaining!![0].keyword).isEqualTo("Kotlin")
+        }
+
+        @Test
+        @DisplayName("한글 키워드도 삭제할 수 있다")
+        fun deleteSearchHistory_WithKoreanKeyword_Returns204() {
+            // Given: 사용자 생성 및 한글 검색 기록 저장
+            val (user, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "test5@example.com",
+                providerId = "google-222"
+            )
+
+            searchHistoryRepository.save(user.id!!, "프로그래밍", SearchType.CONTENT).block()
+
+            // When & Then: 한글 키워드 삭제
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .delete()
+                .uri("/api/v1/search/history/{keyword}", "프로그래밍")
+                .exchange()
+                .expectStatus().isNoContent
+
+            // Then: 검색 기록이 삭제됨
+            val remaining = searchHistoryRepository.findRecentByUserId(user.id!!, 10).block()
+            assertThat(remaining).isEmpty()
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 키워드를 삭제해도 204를 반환한다")
+        fun deleteSearchHistory_WithNonExistentKeyword_Returns204() {
+            // Given: 사용자 생성
+            val (user, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "test6@example.com",
+                providerId = "google-333"
+            )
+
+            // When & Then: 존재하지 않는 키워드 삭제
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .delete()
+                .uri("/api/v1/search/history/{keyword}", "NonExistent")
+                .exchange()
+                .expectStatus().isNoContent
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/v1/search/history - 전체 검색 기록 삭제")
+    inner class DeleteAllSearchHistory {
+
+        @Test
+        @DisplayName("전체 검색 기록을 삭제하면, 204를 반환하고 모든 기록이 삭제된다")
+        fun deleteAllSearchHistory_Returns204AndDeletesAll() {
+            // Given: 사용자 생성 및 여러 검색 기록 저장
+            val (user, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "test7@example.com",
+                providerId = "google-444"
+            )
+
+            searchHistoryRepository.save(user.id!!, "Java", SearchType.CONTENT).block()
+            searchHistoryRepository.save(user.id!!, "Kotlin", SearchType.CONTENT).block()
+            searchHistoryRepository.save(user.id!!, "홍길동", SearchType.USER).block()
+
+            // When: 전체 검색 기록 삭제
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .delete()
+                .uri("/api/v1/search/history")
+                .exchange()
+                .expectStatus().isNoContent
+
+            // Then: 모든 검색 기록이 삭제됨
+            val remaining = searchHistoryRepository.findRecentByUserId(user.id!!, 10).block()
+            assertThat(remaining).isEmpty()
+        }
+
+        @Test
+        @DisplayName("검색 기록이 없어도 204를 반환한다")
+        fun deleteAllSearchHistory_WithNoHistory_Returns204() {
+            // Given: 사용자 생성 (검색 기록 없음)
+            val (user, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "test8@example.com",
+                providerId = "google-555"
+            )
+
+            // When & Then: 전체 검색 기록 삭제
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .delete()
+                .uri("/api/v1/search/history")
+                .exchange()
+                .expectStatus().isNoContent
+        }
+
+        @Test
+        @DisplayName("다른 사용자의 검색 기록은 삭제되지 않는다")
+        fun deleteAllSearchHistory_DoesNotDeleteOtherUserHistory() {
+            // Given: 두 명의 사용자 생성
+            val (user1, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "user1@example.com",
+                providerId = "google-666"
+            )
+
+            val (user2, _) = createUserWithProfile(
+                userRepository = userRepository,
+                userProfileRepository = userProfileRepository,
+                email = "user2@example.com",
+                providerId = "google-777"
+            )
+
+            // 각 사용자의 검색 기록 저장
+            searchHistoryRepository.save(user1.id!!, "Java", SearchType.CONTENT).block()
+            searchHistoryRepository.save(user2.id!!, "Python", SearchType.CONTENT).block()
+
+            // When: user1의 검색 기록 삭제
+            webTestClient
+                .mutateWith(mockUser(user1.id!!))
+                .delete()
+                .uri("/api/v1/search/history")
+                .exchange()
+                .expectStatus().isNoContent
+
+            // Then: user1의 검색 기록만 삭제되고 user2의 기록은 유지됨
+            val user1Remaining = searchHistoryRepository.findRecentByUserId(user1.id!!, 10).block()
+            val user2Remaining = searchHistoryRepository.findRecentByUserId(user2.id!!, 10).block()
+
+            assertThat(user1Remaining).isEmpty()
+            assertThat(user2Remaining).hasSize(1)
+            assertThat(user2Remaining!![0].keyword).isEqualTo("Python")
         }
     }
 }
