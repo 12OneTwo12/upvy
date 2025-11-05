@@ -6,7 +6,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.DifficultyLevel
-import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.search.dto.AutocompleteRequest
 import me.onetwo.growsnap.domain.search.dto.AutocompleteSuggestion
 import me.onetwo.growsnap.domain.search.dto.ContentSearchRequest
@@ -15,15 +14,18 @@ import me.onetwo.growsnap.domain.search.dto.UserSearchRequest
 import me.onetwo.growsnap.domain.search.model.SearchSortType
 import me.onetwo.growsnap.domain.search.model.SearchType
 import me.onetwo.growsnap.domain.search.repository.SearchRepository
+import me.onetwo.growsnap.domain.user.model.UserProfile
+import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
-import org.jooq.DSLContext
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import java.time.LocalDateTime
 import java.util.UUID
 
 /**
@@ -40,15 +42,13 @@ class SearchServiceImplTest {
 
     private val searchRepository: SearchRepository = mockk()
     private val searchHistoryRepository: me.onetwo.growsnap.domain.search.repository.SearchHistoryRepository = mockk()
-    private val feedRepository: FeedRepository = mockk()
-    private val dslContext: DSLContext = mockk(relaxed = true)
+    private val userProfileRepository: UserProfileRepository = mockk()
     private val eventPublisher: ReactiveEventPublisher = mockk(relaxed = true)
 
     private val searchService: SearchService = SearchServiceImpl(
         searchRepository = searchRepository,
         searchHistoryRepository = searchHistoryRepository,
-        feedRepository = feedRepository,
-        dslContext = dslContext,
+        userProfileRepository = userProfileRepository,
         eventPublisher = eventPublisher
     )
 
@@ -243,10 +243,34 @@ class SearchServiceImplTest {
         @Test
         @DisplayName("검색 키워드로 사용자를 검색하면, UserSearchResponse를 반환한다")
         fun searchUsers_WithQuery_ReturnsUserSearchResponse() {
-            // Given: 사용자 ID 목록
+            // Given: 사용자 ID 목록 및 프로필
             val query = "홍길동"
             val userId1 = UUID.randomUUID()
             val userId2 = UUID.randomUUID()
+
+            val userProfile1 = UserProfile(
+                id = 1L,
+                userId = userId1,
+                nickname = "홍길동",
+                profileImageUrl = null,
+                bio = "안녕하세요",
+                followerCount = 10,
+                followingCount = 5,
+                createdAt = LocalDateTime.now(),
+                updatedAt = LocalDateTime.now()
+            )
+
+            val userProfile2 = UserProfile(
+                id = 2L,
+                userId = userId2,
+                nickname = "김홍길동",
+                profileImageUrl = null,
+                bio = null,
+                followerCount = 20,
+                followingCount = 10,
+                createdAt = LocalDateTime.now(),
+                updatedAt = LocalDateTime.now()
+            )
 
             val request = UserSearchRequest(
                 q = query,
@@ -262,6 +286,10 @@ class SearchServiceImplTest {
                 )
             } returns Mono.just(listOf(userId1, userId2))
 
+            every {
+                userProfileRepository.findByUserIds(setOf(userId1, userId2))
+            } returns Flux.just(userProfile1, userProfile2)
+
             // When: 사용자 검색
             val result = searchService.searchUsers(request, null)
 
@@ -269,6 +297,9 @@ class SearchServiceImplTest {
             StepVerifier.create(result)
                 .assertNext { response ->
                     assertThat(response).isNotNull()
+                    assertThat(response.content).hasSize(2)
+                    assertThat(response.content[0].nickname).isEqualTo("홍길동")
+                    assertThat(response.content[1].nickname).isEqualTo("김홍길동")
                 }
                 .verifyComplete()
 
@@ -278,6 +309,10 @@ class SearchServiceImplTest {
                     cursor = null,
                     limit = 20
                 )
+            }
+
+            verify(exactly = 1) {
+                userProfileRepository.findByUserIds(setOf(userId1, userId2))
             }
         }
 

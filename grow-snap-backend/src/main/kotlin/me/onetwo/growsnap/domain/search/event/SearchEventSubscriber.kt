@@ -1,7 +1,7 @@
 package me.onetwo.growsnap.domain.search.event
 
 import jakarta.annotation.PostConstruct
-import me.onetwo.growsnap.domain.search.repository.SearchHistoryRepository
+import me.onetwo.growsnap.domain.search.service.SearchHistoryService
 import me.onetwo.growsnap.infrastructure.event.DomainEvent
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -23,7 +23,7 @@ import reactor.core.scheduler.Schedulers
  *
  * ## 처리 흐름
  * 1. SearchPerformedEvent 수신
- * 2. userId가 있으면 search_history 테이블에 저장
+ * 2. userId가 있으면 SearchHistoryService를 통해 검색 기록 저장
  * 3. TODO: Redis trending keywords 카운트 증가
  *
  * ## 장애 격리
@@ -31,12 +31,12 @@ import reactor.core.scheduler.Schedulers
  * - onErrorResume으로 예외 흡수
  * - ERROR 로그만 남김
  *
- * @property searchHistoryRepository 검색 기록 레포지토리
+ * @property searchHistoryService 검색 기록 서비스
  * @property domainEventFlux 도메인 이벤트 Flux
  */
 @Component
 class SearchEventSubscriber(
-    private val searchHistoryRepository: SearchHistoryRepository,
+    private val searchHistoryService: SearchHistoryService,
     private val domainEventFlux: Flux<DomainEvent>
 ) {
 
@@ -86,18 +86,16 @@ class SearchEventSubscriber(
             event.searchType
         )
 
-        // 인증된 사용자만 검색 기록 저장
+        // 인증된 사용자만 검색 기록 저장 (Service를 통해 처리)
         return event.userId?.let { userId ->
-            searchHistoryRepository.save(userId, event.keyword, event.searchType)
-                .doOnSuccess { savedHistory ->
+            searchHistoryService.saveSearchHistory(userId, event.keyword, event.searchType)
+                .doOnSuccess {
                     logger.debug(
-                        "Search history saved: id={}, userId={}, keyword={}",
-                        savedHistory.id,
+                        "Search history saved: userId={}, keyword={}",
                         userId,
                         event.keyword
                     )
                 }
-                .then()
         } ?: Mono.empty()  // 비인증 사용자는 스킵
 
         // TODO: Redis trending keywords 카운트 증가

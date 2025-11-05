@@ -15,10 +15,9 @@ import me.onetwo.growsnap.domain.search.event.SearchPerformedEvent
 import me.onetwo.growsnap.domain.search.model.SearchType
 import me.onetwo.growsnap.domain.search.repository.SearchHistoryRepository
 import me.onetwo.growsnap.domain.search.repository.SearchRepository
+import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
-import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
-import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -35,15 +34,14 @@ import java.util.UUID
  * @property searchRepository 검색 Repository
  * @property searchHistoryRepository 검색 기록 Repository
  * @property feedRepository 피드 Repository (FeedItemResponse 조회용)
- * @property dslContext JOOQ DSL Context
+ * @property userProfileRepository 사용자 프로필 Repository (사용자 검색용)
  * @property eventPublisher Reactive Event Publisher (검색 기록 저장용)
  */
 @Service
 class SearchServiceImpl(
     private val searchRepository: SearchRepository,
     private val searchHistoryRepository: SearchHistoryRepository,
-    private val feedRepository: FeedRepository,
-    private val dslContext: DSLContext,
+    private val userProfileRepository: UserProfileRepository,
     private val eventPublisher: ReactiveEventPublisher
 ) : SearchService {
 
@@ -120,26 +118,15 @@ class SearchServiceImpl(
                 if (userIds.isEmpty()) {
                     Mono.just(CursorPageResponse.empty())
                 } else {
-                    // user_profiles 조회
-                    Flux.from(
-                        dslContext
-                            .select(
-                                USER_PROFILES.USER_ID,
-                                USER_PROFILES.NICKNAME,
-                                USER_PROFILES.PROFILE_IMAGE_URL,
-                                USER_PROFILES.BIO
-                            )
-                            .from(USER_PROFILES)
-                            .where(USER_PROFILES.USER_ID.`in`(userIds.map { it.toString() }))
-                            .and(USER_PROFILES.DELETED_AT.isNull)
-                    )
-                        .map { record ->
+                    // UserProfileRepository를 사용하여 프로필 조회
+                    userProfileRepository.findByUserIds(userIds.toSet())
+                        .map { profile ->
                             UserSearchResult(
-                                userId = UUID.fromString(record.getValue(USER_PROFILES.USER_ID)),
-                                nickname = record.getValue(USER_PROFILES.NICKNAME) ?: "",
-                                profileImageUrl = record.getValue(USER_PROFILES.PROFILE_IMAGE_URL),
-                                bio = record.getValue(USER_PROFILES.BIO),
-                                followerCount = 0,  // TODO: 팔로워 수 조회
+                                userId = profile.userId,
+                                nickname = profile.nickname,
+                                profileImageUrl = profile.profileImageUrl,
+                                bio = profile.bio,
+                                followerCount = profile.followerCount,
                                 isFollowing = false  // TODO: 팔로우 여부 조회
                             )
                         }
