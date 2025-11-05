@@ -33,7 +33,7 @@ import java.util.UUID
 class SearchRepositoryImplTest {
 
     private val manticoreSearchClient: ManticoreSearchClient = mockk()
-    private val dslContext: DSLContext = mockk()
+    private val dslContext: DSLContext = mockk(relaxed = true)
     private val properties = ManticoreSearchProperties(
         baseUrl = "http://localhost:9308",
         timeout = 5000
@@ -202,10 +202,6 @@ class SearchRepositoryImplTest {
             val query = "홍길동"
             val userId1 = UUID.randomUUID()
             val userId2 = UUID.randomUUID()
-
-            every {
-                dslContext.select(any()).from(any<org.jooq.Table<*>>())
-            } returns mockk()
 
             // When: 사용자 검색
             val result = searchRepository.searchUsers(
