@@ -70,12 +70,13 @@ class SearchControllerIntegrationTest {
 
     @BeforeEach
     fun setUp() {
-        // Given: 테스트 사용자 생성
+        // Given: 테스트 사용자 생성 (UUID로 고유한 이메일 사용)
+        val uuid = UUID.randomUUID().toString().substring(0, 8)
         val (user, _) = createUserWithProfile(
             userRepository = userRepository,
             userProfileRepository = userProfileRepository,
-            email = "test@example.com",
-            providerId = "test-123"
+            email = "search-controller-test-$uuid@example.com",
+            providerId = "test-$uuid"
         )
         testUserId = user.id!!
     }
@@ -546,22 +547,23 @@ class SearchControllerIntegrationTest {
         @Test
         @DisplayName("다른 사용자의 검색 기록은 삭제되지 않는다")
         fun deleteAllSearchHistory_DoesNotDeleteOtherUserHistory() {
-            // Given: 두 명의 사용자 생성
+            // Given: 두 명의 사용자 생성 (timestamp로 고유성 보장)
+            val timestamp = System.currentTimeMillis()
             val uuid1 = UUID.randomUUID().toString().substring(0, 8)
             val uuid2 = UUID.randomUUID().toString().substring(0, 8)
 
             val (user1, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "delete-all-user1-$uuid1@example.com",
-                providerId = "google-delete-all-666-$uuid1"
+                email = "delete-all-user1-$timestamp-$uuid1@example.com",
+                providerId = "google-delete-all-666-$timestamp-$uuid1"
             )
 
             val (user2, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "delete-all-user2-$uuid2@example.com",
-                providerId = "google-delete-all-777-$uuid2"
+                email = "delete-all-user2-$timestamp-$uuid2@example.com",
+                providerId = "google-delete-all-777-$timestamp-$uuid2"
             )
 
             // 각 사용자의 검색 기록 저장

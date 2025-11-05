@@ -33,6 +33,4 @@ curl -X GET "http://localhost:8080/api/v1/search/users?q=홍길동&cursor=eyJuaW
 * 검색 키워드는 최소 2글자 이상이어야 합니다
 * 인증 없이도 검색 가능합니다
 * 인증된 사용자의 경우 `isFollowing` 필드에 팔로우 여부가 포함됩니다
-* PostgreSQL LIKE 검색을 사용하며, 닉네임의 부분 일치를 지원합니다
 * 커서 기반 페이지네이션으로 무한 스크롤을 지원합니다
-* 검색 결과는 닉네임 가나다순으로 정렬됩니다
