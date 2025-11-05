@@ -146,6 +146,15 @@ class ContentControllerTest {
                 category = request.category,
                 tags = request.tags,
                 language = request.language,
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 0,
+                    commentCount = 0,
+                    saveCount = 0,
+                    shareCount = 0,
+                    viewCount = 0,
+                    isLiked = false,
+                    isSaved = false
+                ),
                 createdAt = LocalDateTime.now(),
                 updatedAt = LocalDateTime.now()
             )
@@ -199,6 +208,13 @@ class ContentControllerTest {
                             fieldWithPath("category").description("카테고리"),
                             fieldWithPath("tags").description("태그 목록"),
                             fieldWithPath("language").description("언어"),
+                            fieldWithPath("interactions.likeCount").description("좋아요 수").optional(),
+                            fieldWithPath("interactions.commentCount").description("댓글 수").optional(),
+                            fieldWithPath("interactions.saveCount").description("저장 수").optional(),
+                            fieldWithPath("interactions.shareCount").description("공유 수").optional(),
+                            fieldWithPath("interactions.viewCount").description("조회수").optional(),
+                            fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
+                            fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성 시각"),
                             fieldWithPath("updatedAt").description("수정 시각")
                         )
@@ -233,11 +249,20 @@ class ContentControllerTest {
                 category = Category.PROGRAMMING,
                 tags = listOf("test"),
                 language = "ko",
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 10,
+                    commentCount = 5,
+                    saveCount = 3,
+                    shareCount = 2,
+                    viewCount = 100,
+                    isLiked = false,
+                    isSaved = false
+                ),
                 createdAt = LocalDateTime.now(),
                 updatedAt = LocalDateTime.now()
             )
 
-            every { contentService.getContent(contentId) } returns Mono.just(response)
+            every { contentService.getContent(contentId, any()) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -271,6 +296,13 @@ class ContentControllerTest {
                             fieldWithPath("category").description("카테고리"),
                             fieldWithPath("tags").description("태그 목록"),
                             fieldWithPath("language").description("언어"),
+                            fieldWithPath("interactions.likeCount").description("좋아요 수").optional(),
+                            fieldWithPath("interactions.commentCount").description("댓글 수").optional(),
+                            fieldWithPath("interactions.saveCount").description("저장 수").optional(),
+                            fieldWithPath("interactions.shareCount").description("공유 수").optional(),
+                            fieldWithPath("interactions.viewCount").description("조회수").optional(),
+                            fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
+                            fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성 시각"),
                             fieldWithPath("updatedAt").description("수정 시각")
                         )
@@ -284,7 +316,7 @@ class ContentControllerTest {
             // Given: 존재하지 않는 contentId
             val contentId = UUID.randomUUID()
 
-            every { contentService.getContent(contentId) } returns Mono.empty()
+            every { contentService.getContent(contentId, any()) } returns Mono.empty()
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -292,6 +324,139 @@ class ContentControllerTest {
                 .uri("${ApiPaths.API_V1_CONTENTS}/$contentId")
                 .exchange()
                 .expectStatus().isNotFound
+        }
+
+        @Test
+        @DisplayName("서비스에서 NoSuchElementException 발생 시, 404를 반환한다")
+        fun getContent_WhenServiceThrowsNoSuchElementException_Returns404() {
+            // Given: 존재하지 않는 contentId
+            val contentId = UUID.randomUUID()
+
+            every { contentService.getContent(contentId, any()) } returns Mono.error(NoSuchElementException("Content not found"))
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .get()
+                .uri("${ApiPaths.API_V1_CONTENTS}/$contentId")
+                .exchange()
+                .expectStatus().isNotFound
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/contents/me - 내 콘텐츠 목록 조회")
+    inner class GetMyContents {
+
+        @Test
+        @DisplayName("인증된 사용자의 콘텐츠 목록 조회 시, 200과 콘텐츠 목록을 반환한다")
+        fun getMyContents_WithAuthenticatedUser_Returns200AndContentList() {
+            // Given: 테스트 데이터
+            val userId = UUID.randomUUID()
+
+            val response1 = ContentResponse(
+                id = UUID.randomUUID().toString(),
+                creatorId = userId.toString(),
+                contentType = ContentType.VIDEO,
+                url = "https://s3.amazonaws.com/video1.mp4",
+                photoUrls = null,
+                thumbnailUrl = "https://s3.amazonaws.com/thumbnail1.jpg",
+                duration = 60,
+                width = 1920,
+                height = 1080,
+                status = ContentStatus.PUBLISHED,
+                title = "My Video 1",
+                description = "Description 1",
+                category = Category.PROGRAMMING,
+                tags = listOf("test1"),
+                language = "ko",
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 10,
+                    commentCount = 5,
+                    saveCount = 3,
+                    shareCount = 2,
+                    viewCount = 100,
+                    isLiked = false,
+                    isSaved = false
+                ),
+                createdAt = LocalDateTime.now(),
+                updatedAt = LocalDateTime.now()
+            )
+
+            val response2 = ContentResponse(
+                id = UUID.randomUUID().toString(),
+                creatorId = userId.toString(),
+                contentType = ContentType.PHOTO,
+                url = "https://s3.amazonaws.com/photo1.jpg",
+                photoUrls = listOf("https://s3.amazonaws.com/photo1.jpg", "https://s3.amazonaws.com/photo2.jpg"),
+                thumbnailUrl = "https://s3.amazonaws.com/thumbnail2.jpg",
+                duration = null,
+                width = 1080,
+                height = 1350,
+                status = ContentStatus.PUBLISHED,
+                title = "My Photo 1",
+                description = "Description 2",
+                category = Category.HEALTH,
+                tags = listOf("test2"),
+                language = "ko",
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 20,
+                    commentCount = 10,
+                    saveCount = 5,
+                    shareCount = 3,
+                    viewCount = 200,
+                    isLiked = false,
+                    isSaved = false
+                ),
+                createdAt = LocalDateTime.now(),
+                updatedAt = LocalDateTime.now()
+            )
+
+            every { contentService.getContentsByCreator(userId, userId) } returns reactor.core.publisher.Flux.just(response1, response2)
+
+            // When & Then: API 호출 및 검증
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("${ApiPaths.API_V1_CONTENTS}/me")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$[0].id").isNotEmpty
+                .jsonPath("$[0].title").isEqualTo("My Video 1")
+                .jsonPath("$[1].id").isNotEmpty
+                .jsonPath("$[1].title").isEqualTo("My Photo 1")
+                .consumeWith(
+                    document(
+                        "content-get-my-contents",
+                        preprocessResponse(prettyPrint()),
+                        responseFields(
+                            fieldWithPath("[].id").description("콘텐츠 ID"),
+                            fieldWithPath("[].creatorId").description("생성자 ID"),
+                            fieldWithPath("[].contentType").description("콘텐츠 타입"),
+                            fieldWithPath("[].url").description("콘텐츠 URL").optional(),
+                            fieldWithPath("[].photoUrls").description("사진 URL 목록 (PHOTO 타입인 경우)").optional(),
+                            fieldWithPath("[].thumbnailUrl").description("썸네일 URL"),
+                            fieldWithPath("[].duration").description("동영상 길이 (초)").optional(),
+                            fieldWithPath("[].width").description("가로 해상도"),
+                            fieldWithPath("[].height").description("세로 해상도"),
+                            fieldWithPath("[].status").description("콘텐츠 상태"),
+                            fieldWithPath("[].title").description("제목"),
+                            fieldWithPath("[].description").description("설명").optional(),
+                            fieldWithPath("[].category").description("카테고리"),
+                            fieldWithPath("[].tags").description("태그 목록"),
+                            fieldWithPath("[].language").description("언어"),
+                            fieldWithPath("[].interactions.likeCount").description("좋아요 수").optional(),
+                            fieldWithPath("[].interactions.commentCount").description("댓글 수").optional(),
+                            fieldWithPath("[].interactions.saveCount").description("저장 수").optional(),
+                            fieldWithPath("[].interactions.shareCount").description("공유 수").optional(),
+                            fieldWithPath("[].interactions.viewCount").description("조회수").optional(),
+                            fieldWithPath("[].interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
+                            fieldWithPath("[].interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
+                            fieldWithPath("[].createdAt").description("생성 시각"),
+                            fieldWithPath("[].updatedAt").description("수정 시각")
+                        )
+                    )
+                )
         }
     }
 
@@ -335,6 +500,15 @@ class ContentControllerTest {
                 category = Category.HEALTH,
                 tags = listOf("health", "photo"),
                 language = "ko",
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 5,
+                    commentCount = 3,
+                    saveCount = 2,
+                    shareCount = 1,
+                    viewCount = 50,
+                    isLiked = false,
+                    isSaved = false
+                ),
                 createdAt = LocalDateTime.now().minusDays(1),
                 updatedAt = LocalDateTime.now()
             )
@@ -391,6 +565,13 @@ class ContentControllerTest {
                             fieldWithPath("category").description("카테고리"),
                             fieldWithPath("tags").description("태그 목록"),
                             fieldWithPath("language").description("언어 코드"),
+                            fieldWithPath("interactions.likeCount").description("좋아요 수").optional(),
+                            fieldWithPath("interactions.commentCount").description("댓글 수").optional(),
+                            fieldWithPath("interactions.saveCount").description("저장 수").optional(),
+                            fieldWithPath("interactions.shareCount").description("공유 수").optional(),
+                            fieldWithPath("interactions.viewCount").description("조회수").optional(),
+                            fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
+                            fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성일시"),
                             fieldWithPath("updatedAt").description("수정일시")
                         )

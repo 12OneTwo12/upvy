@@ -64,6 +64,15 @@ class ContentServiceImplTest {
     @MockK
     private lateinit var contentInteractionService: me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
 
+    @MockK
+    private lateinit var contentInteractionRepository: me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
+
+    @MockK
+    private lateinit var userLikeRepository: me.onetwo.growsnap.domain.interaction.repository.UserLikeRepository
+
+    @MockK
+    private lateinit var userSaveRepository: me.onetwo.growsnap.domain.interaction.repository.UserSaveRepository
+
     private lateinit var contentService: ContentServiceImpl
 
     @BeforeEach
@@ -76,6 +85,9 @@ class ContentServiceImplTest {
             s3Client = s3Client,
             eventPublisher = eventPublisher,
             contentInteractionService = contentInteractionService,
+            contentInteractionRepository = contentInteractionRepository,
+            userLikeRepository = userLikeRepository,
+            userSaveRepository = userSaveRepository,
             bucketName = "test-bucket",
             region = "ap-northeast-2"
         )
@@ -510,9 +522,14 @@ class ContentServiceImplTest {
             every { contentRepository.findById(contentId) } returns Mono.just(content)
             every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(metadata)
             every { contentPhotoRepository.findByContentId(contentId) } returns Mono.just(emptyList())
+            every { contentInteractionRepository.getLikeCount(contentId) } returns Mono.just(0)
+            every { contentInteractionRepository.getCommentCount(contentId) } returns Mono.just(0)
+            every { contentInteractionRepository.getSaveCount(contentId) } returns Mono.just(0)
+            every { contentInteractionRepository.getShareCount(contentId) } returns Mono.just(0)
+            every { contentInteractionRepository.getViewCount(contentId) } returns Mono.just(0)
 
             // When: 메서드 실행
-            val result = contentService.getContent(contentId)
+            val result = contentService.getContent(contentId, null)
 
             // Then: 결과 검증
             StepVerifier.create(result)
