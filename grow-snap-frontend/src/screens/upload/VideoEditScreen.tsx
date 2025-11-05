@@ -106,13 +106,23 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   }, [videoUri, duration]);
 
-  const handleVideoLoad = (status: AVPlaybackStatus) => {
+  const handleVideoLoad = async (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
       const durationMs = status.durationMillis || 0;
       const durationSec = durationMs / 1000;
       console.log('📹 Video loaded - duration:', durationSec.toFixed(2), 'seconds');
       setDuration(durationSec);
       setTrimEnd(Math.min(durationSec, MAX_VIDEO_DURATION));
+
+      // 비디오를 trimStart 위치로 이동 (앞부분 트리밍 시 재생 문제 해결)
+      if (trimStart > 0 && videoRef.current) {
+        try {
+          await videoRef.current.setPositionAsync(trimStart * 1000);
+          console.log('📹 Video positioned at trimStart:', trimStart.toFixed(2), 'seconds');
+        } catch (error) {
+          console.error('Failed to set initial position:', error);
+        }
+      }
 
       // 자동으로 썸네일 생성 (videoUri가 있을 때만)
       if (videoUri) {
@@ -251,7 +261,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
   // seek throttle을 위한 ref
   const lastSeekTime = useRef(0);
-  const SEEK_THROTTLE_MS = 100; // 100ms마다 한 번만 seek
+  const SEEK_THROTTLE_MS = 50; // 50ms마다 한 번만 seek (더 빠른 프리뷰)
 
   React.useEffect(() => {
     trimStartRef.current = trimStart;
