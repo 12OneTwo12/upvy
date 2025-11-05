@@ -55,9 +55,9 @@ class SearchEventSubscriberTest {
         // Given: 테스트 사용자 생성
         testUser = User(
             id = UUID.randomUUID(),
-            email = "test@example.com",
+            email = "search-event-test@example.com",
             provider = OAuthProvider.GOOGLE,
-            providerId = "google-12345",
+            providerId = "google-search-event-12345",
             role = UserRole.USER
         )
         userRepository.save(testUser).block()

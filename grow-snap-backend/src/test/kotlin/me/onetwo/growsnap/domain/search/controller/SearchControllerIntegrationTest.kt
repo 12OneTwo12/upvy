@@ -148,7 +148,7 @@ class SearchControllerIntegrationTest {
                 .get()
                 .uri { uriBuilder ->
                     uriBuilder
-                        .path("${ApiPaths.API_V1_SEARCH}contents")
+                        .path("${ApiPaths.API_V1_SEARCH}/contents")
                         .queryParam("q", query)
                         .queryParam("category", category.name)
                         .build()
@@ -215,8 +215,24 @@ class SearchControllerIntegrationTest {
         @Test
         @DisplayName("검색 키워드로 사용자를 검색하면, 200과 검색 결과를 반환한다")
         fun searchUsers_WithQuery_Returns200AndResults() {
-            // Given: 검색 키워드
+            // Given: 검색 키워드 및 Manticore Search 응답 모킹
             val query = "test"
+            val userId1 = UUID.randomUUID()
+
+            val manticoreResponse = ManticoreSearchResponse(
+                hits = Hits(
+                    hits = listOf(
+                        Hit(
+                            id = "1",
+                            score = 1.5,
+                            source = mapOf("user_id" to userId1.toString())
+                        )
+                    ),
+                    total = 1
+                )
+            )
+
+            every { manticoreSearchClient.search(any()) } returns Mono.just(manticoreResponse)
 
             // When & Then: 사용자 검색
             webTestClient
@@ -324,21 +340,13 @@ class SearchControllerIntegrationTest {
         @Test
         @DisplayName("사용자의 검색 기록을 조회하면, 200과 검색 기록을 반환한다")
         fun getSearchHistory_WithSearchHistory_ReturnsHistory() {
-            // Given: 사용자 생성 및 검색 기록 저장
-            val (user, _) = createUserWithProfile(
-                userRepository = userRepository,
-                userProfileRepository = userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
-            )
-
-            // 검색 기록 저장
-            searchHistoryRepository.save(user.id!!, "Java", SearchType.CONTENT).block()
-            searchHistoryRepository.save(user.id!!, "홍길동", SearchType.USER).block()
+            // Given: 검색 기록 저장 (setUp()에서 생성된 testUserId 사용)
+            searchHistoryRepository.save(testUserId, "Java", SearchType.CONTENT).block()
+            searchHistoryRepository.save(testUserId, "홍길동", SearchType.USER).block()
 
             // When & Then: 검색 기록 조회
             webTestClient
-                .mutateWith(mockUser(user.id!!))
+                .mutateWith(mockUser(testUserId))
                 .get()
                 .uri("${ApiPaths.API_V1_SEARCH}/history?limit=10")
                 .exchange()
@@ -443,8 +451,8 @@ class SearchControllerIntegrationTest {
             val (user, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "test5@example.com",
-                providerId = "google-222"
+                email = "korean-keyword-test@example.com",
+                providerId = "google-korean-keyword-222"
             )
 
             searchHistoryRepository.save(user.id!!, "프로그래밍", SearchType.CONTENT).block()
@@ -539,18 +547,21 @@ class SearchControllerIntegrationTest {
         @DisplayName("다른 사용자의 검색 기록은 삭제되지 않는다")
         fun deleteAllSearchHistory_DoesNotDeleteOtherUserHistory() {
             // Given: 두 명의 사용자 생성
+            val uuid1 = UUID.randomUUID().toString().substring(0, 8)
+            val uuid2 = UUID.randomUUID().toString().substring(0, 8)
+
             val (user1, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "user1@example.com",
-                providerId = "google-666"
+                email = "delete-all-user1-$uuid1@example.com",
+                providerId = "google-delete-all-666-$uuid1"
             )
 
             val (user2, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "user2@example.com",
-                providerId = "google-777"
+                email = "delete-all-user2-$uuid2@example.com",
+                providerId = "google-delete-all-777-$uuid2"
             )
 
             // 각 사용자의 검색 기록 저장

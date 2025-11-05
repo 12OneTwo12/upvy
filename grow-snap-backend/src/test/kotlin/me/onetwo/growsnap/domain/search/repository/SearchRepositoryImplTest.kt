@@ -200,6 +200,26 @@ class SearchRepositoryImplTest {
             val userId1 = UUID.randomUUID()
             val userId2 = UUID.randomUUID()
 
+            val manticoreResponse = ManticoreSearchResponse(
+                hits = Hits(
+                    hits = listOf(
+                        Hit(
+                            id = "1",
+                            score = 1.5,
+                            source = mapOf("user_id" to userId1.toString())
+                        ),
+                        Hit(
+                            id = "2",
+                            score = 1.2,
+                            source = mapOf("user_id" to userId2.toString())
+                        )
+                    ),
+                    total = 2
+                )
+            )
+
+            every { manticoreSearchClient.search(any()) } returns Mono.just(manticoreResponse)
+
             // When: 사용자 검색
             val result = searchRepository.searchUsers(
                 query = query,
@@ -207,12 +227,16 @@ class SearchRepositoryImplTest {
                 limit = 20
             )
 
-            // Then: 사용자 ID 목록 반환 (현재는 빈 목록, 구현 후 실제 ID 반환)
+            // Then: 사용자 ID 목록 반환
             StepVerifier.create(result)
                 .assertNext { userIds ->
-                    assertThat(userIds).isNotNull()
+                    assertThat(userIds).isNotNull
+                    assertThat(userIds).hasSize(2)
+                    assertThat(userIds).contains(userId1, userId2)
                 }
                 .verifyComplete()
+
+            verify(exactly = 1) { manticoreSearchClient.search(any()) }
         }
     }
 

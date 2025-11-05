@@ -54,9 +54,9 @@ class SearchHistoryRepositoryImplTest {
         // Given: 테스트 사용자 생성
         testUser = User(
             id = UUID.randomUUID(),
-            email = "test@example.com",
+            email = "search-history-repo-test@example.com",
             provider = OAuthProvider.GOOGLE,
-            providerId = "google-12345",
+            providerId = "google-search-history-repo-12345",
             role = UserRole.USER
         )
         userRepository.save(testUser).block()

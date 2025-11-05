@@ -234,6 +234,58 @@ class SearchServiceImplTest {
                 )
             }
         }
+
+        @Test
+        @DisplayName("비인증 사용자(userId=null)가 검색하면, 검색 결과를 반환한다")
+        fun searchContents_WithUnauthenticatedUser_ReturnsResults() {
+            // Given: 비인증 사용자 (userId = null)
+            val query = "테스트"
+            val contentId = UUID.randomUUID()
+
+            val request = ContentSearchRequest(
+                q = query,
+                category = null,
+                difficulty = null,
+                minDuration = null,
+                maxDuration = null,
+                startDate = null,
+                endDate = null,
+                language = null,
+                sortBy = SearchSortType.RELEVANCE,
+                cursor = null,
+                limit = 20
+            )
+
+            every {
+                searchRepository.searchContents(
+                    query = query,
+                    category = null,
+                    difficulty = null,
+                    minDuration = null,
+                    maxDuration = null,
+                    startDate = null,
+                    endDate = null,
+                    language = null,
+                    sortBy = SearchSortType.RELEVANCE,
+                    cursor = null,
+                    limit = 20
+                )
+            } returns Mono.just(listOf(contentId))
+
+            // When: 비인증 사용자로 검색 (userId = null)
+            val result = searchService.searchContents(request, null)
+
+            // Then: 검색 결과 반환
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response).isNotNull()
+                    // TODO: FeedItemResponse 조회 구현 후 상세 검증
+                }
+                .verifyComplete()
+
+            // 검색 기록은 저장되지 않음 (userId가 null이므로)
+            verify(exactly = 0) { searchHistoryRepository.save(any(), any(), any()) }
+        }
     }
 
     @Nested
@@ -345,6 +397,53 @@ class SearchServiceImplTest {
                     assertThat(response.hasNext).isFalse()
                 }
                 .verifyComplete()
+        }
+
+        @Test
+        @DisplayName("비인증 사용자(userId=null)가 검색하면, 검색 결과를 반환한다")
+        fun searchUsers_WithUnauthenticatedUser_ReturnsResults() {
+            // Given: 비인증 사용자 (userId = null)
+            val query = "테스트"
+            val userId1 = UUID.randomUUID()
+            val userProfile1 = UserProfile(
+                userId = userId1,
+                nickname = "테스터",
+                profileImageUrl = null,
+                bio = null
+            )
+
+            val request = UserSearchRequest(
+                q = query,
+                cursor = null,
+                limit = 20
+            )
+
+            every {
+                searchRepository.searchUsers(
+                    query = query,
+                    cursor = null,
+                    limit = 20
+                )
+            } returns Mono.just(listOf(userId1))
+
+            every {
+                userProfileRepository.findByUserIds(setOf(userId1))
+            } returns Flux.just(userProfile1)
+
+            // When: 비인증 사용자로 검색 (userId = null)
+            val result = searchService.searchUsers(request, null)
+
+            // Then: 검색 결과 반환
+            StepVerifier.create(result)
+                .assertNext { response ->
+                    assertThat(response).isNotNull()
+                    assertThat(response.content).isNotEmpty()
+                    assertThat(response.content[0].nickname).isEqualTo("테스터")
+                }
+                .verifyComplete()
+
+            // 검색 기록은 저장되지 않음 (userId가 null이므로)
+            verify(exactly = 0) { searchHistoryRepository.save(any(), any(), any()) }
         }
     }
 
