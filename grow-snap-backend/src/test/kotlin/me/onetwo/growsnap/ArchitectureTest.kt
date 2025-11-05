@@ -46,7 +46,7 @@ class ArchitectureTest {
      * - Controller → Service, DTO만 의존 가능
      * - Service → Repository, 다른 Service, DTO, Infrastructure만 의존 가능
      * - Repository → Model, DTO, JOOQ만 의존 가능 (복잡한 쿼리 결과 매핑 시 DTO 반환 허용)
-     * - Event → Repository, Service, DTO 의존 가능 (비동기 이벤트 처리)
+     * - Event → Service, DTO, Model 의존 가능 (비동기 이벤트 처리, Repository 직접 호출 금지)
      * - Infrastructure → Service, Model 의존 가능 (예: OAuth2가 UserService 의존)
      */
     @ArchTest
@@ -64,7 +64,7 @@ class ArchitectureTest {
         .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service", "Event", "Infrastructure")
         .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
         .whereLayer("DTO").mayOnlyBeAccessedByLayers("Controller", "Service", "Repository", "Event", "DTO")
-        .whereLayer("Model").mayOnlyBeAccessedByLayers("Controller", "Service", "Repository", "DTO", "Infrastructure")
+        .whereLayer("Model").mayOnlyBeAccessedByLayers("Controller", "Service", "Repository", "DTO", "Event", "Infrastructure")
 
     /**
      * 순환 의존성 금지 규칙 - Service와 Repository 레이어

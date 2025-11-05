@@ -1,0 +1,45 @@
+[[search-contents]]
+=== 콘텐츠 검색
+
+콘텐츠 제목, 설명, 태그, 크리에이터 이름으로 검색합니다.
+
+==== Request
+
+include::{snippets}/search-contents/http-request.adoc[]
+include::{snippets}/search-contents/query-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/search-contents/http-response.adoc[]
+include::{snippets}/search-contents/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# 기본 검색
+curl -X GET "http://localhost:8080/api/v1/search/contents?q=프로그래밍&sortBy=RELEVANCE&limit=20"
+
+# 카테고리 필터 적용
+curl -X GET "http://localhost:8080/api/v1/search/contents?q=프로그래밍&category=PROGRAMMING&sortBy=RELEVANCE&limit=20"
+
+# 난이도 필터 적용
+curl -X GET "http://localhost:8080/api/v1/search/contents?q=프로그래밍&difficulty=BEGINNER&sortBy=RECENT&limit=20"
+
+# 인증된 사용자 검색 (좋아요/저장 여부 포함)
+curl -X GET "http://localhost:8080/api/v1/search/contents?q=프로그래밍&sortBy=RELEVANCE&limit=20" \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 검색 키워드는 최소 2글자 이상이어야 합니다
+* 인증 없이도 검색 가능합니다 (공개 API)
+* 인증된 사용자의 경우 `isLiked`, `isSaved` 필드에 사용자별 상태가 포함됩니다
+* Manticore Search를 사용한 전문 검색으로 관련도 높은 결과를 제공합니다
+* 정렬 옵션:
+  - `RELEVANCE`: 관련도순 (BM25 알고리즘)
+  - `RECENT`: 최신순
+  - `POPULAR`: 인기순 (좋아요, 조회수 기반)
+* 커서 기반 페이지네이션으로 무한 스크롤을 지원합니다
+* 응답 형식은 Feed API와 동일한 `FeedItemResponse`를 사용합니다

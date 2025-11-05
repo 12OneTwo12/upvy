@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.analytics.repository
 
 import me.onetwo.growsnap.domain.content.model.Category
+import me.onetwo.growsnap.domain.content.model.ContentInteraction
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
@@ -118,7 +119,7 @@ class ContentInteractionRepositoryTest {
                 .set(CONTENTS.UPDATED_BY, testUser.id.toString()))
                 .block()
 
-            val contentInteraction = me.onetwo.growsnap.domain.content.model.ContentInteraction(
+            val contentInteraction = ContentInteraction(
                 contentId = newContentId,
                 likeCount = 0,
                 commentCount = 0,
@@ -171,7 +172,7 @@ class ContentInteractionRepositoryTest {
                 .set(CONTENTS.UPDATED_AT, now))
                 .block()
 
-            val contentInteraction = me.onetwo.growsnap.domain.content.model.ContentInteraction(
+            val contentInteraction = ContentInteraction(
                 contentId = newContentId,
                 likeCount = 0,
                 commentCount = 0,

@@ -49,7 +49,13 @@ object PublicApiPaths {
             "${ApiPaths.API_V1_PROFILES}/check/nickname/*",    // 닉네임 중복 확인
 
             // 팔로우 통계
-            "${ApiPaths.API_V1_FOLLOWS}/stats/*"
+            "${ApiPaths.API_V1_FOLLOWS}/stats/*",
+
+            // 검색 (콘텐츠/사용자 검색, 자동완성, 인기 검색어 - 비로그인 사용자도 접근 가능)
+            "${ApiPaths.API_V1_SEARCH}/contents",
+            "${ApiPaths.API_V1_SEARCH}/users",
+            "${ApiPaths.API_V1_SEARCH}/autocomplete",
+            "${ApiPaths.API_V1_SEARCH}/trending",
 
             // 콘텐츠 개별 조회 (GET /api/v1/contents/{contentId})
             // 주의: SecurityConfig에서 /me를 먼저 authenticated()로 선언하여

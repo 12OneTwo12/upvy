@@ -1,0 +1,31 @@
+[[search-history-delete-all]]
+=== 전체 검색 기록 삭제
+
+사용자의 모든 검색 기록을 삭제합니다.
+
+==== Request
+
+include::{snippets}/search-history-delete-all/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/search-history-delete-all/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# 전체 검색 기록 삭제
+curl -X DELETE "http://localhost:8080/api/v1/search/history" \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* **인증 필수**: 로그인한 사용자만 자신의 검색 기록을 삭제할 수 있습니다
+* 사용자의 모든 검색 기록이 소프트 삭제됩니다 (deleted_at 필드 업데이트)
+* 다른 사용자의 검색 기록은 삭제되지 않습니다
+* 검색 기록이 없어도 204 No Content를 반환합니다
+* 성공 시 응답 본문 없이 204 No Content를 반환합니다
+* 삭제 후에는 검색 기록 조회 시 빈 리스트가 반환됩니다
+* 되돌릴 수 없으므로 주의가 필요합니다

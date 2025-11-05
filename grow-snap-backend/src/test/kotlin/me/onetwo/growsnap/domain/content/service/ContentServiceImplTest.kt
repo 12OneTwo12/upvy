@@ -16,6 +16,7 @@ import me.onetwo.growsnap.domain.content.exception.UploadSessionUnauthorizedExce
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.Content
 import me.onetwo.growsnap.domain.content.model.ContentMetadata
+import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.model.UploadSession
@@ -678,7 +679,7 @@ class ContentServiceImplTest {
             every { contentRepository.findMetadataByContentId(contentId) } returns Mono.just(existingMetadata)
             every { contentRepository.updateMetadata(any()) } returns Mono.just(true)
             every { contentPhotoRepository.findByContentId(contentId) } returns Mono.just(listOf(
-                me.onetwo.growsnap.domain.content.model.ContentPhoto(
+                ContentPhoto(
                     contentId = contentId,
                     photoUrl = existingPhotoUrls[0],
                     displayOrder = 0,
@@ -689,7 +690,7 @@ class ContentServiceImplTest {
                     updatedAt = LocalDateTime.now(),
                     updatedBy = userId.toString()
                 ),
-                me.onetwo.growsnap.domain.content.model.ContentPhoto(
+                ContentPhoto(
                     contentId = contentId,
                     photoUrl = existingPhotoUrls[1],
                     displayOrder = 1,

@@ -4,7 +4,7 @@ spring:
 
   # R2DBC Configuration for Reactive Database Access
   r2dbc:
-    url: r2dbc:mysql://localhost:3306/growsnap?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: r2dbc:mysql://localhost:3306/growsnap?useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
     pool:
@@ -90,6 +90,16 @@ logging:
     me.onetwo.growsnap: DEBUG
     org.springframework.security: DEBUG
     org.jooq: DEBUG
+
+# Manticore Search Configuration
+manticore:
+  search:
+    base-url: ${MANTICORE_BASE_URL:http://localhost:9308}
+    timeout: 5000
+    index:
+      content: content_index
+      user: user_index
+      autocomplete: autocomplete_index
 
 # Server Configuration
 server:

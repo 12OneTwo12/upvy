@@ -1,0 +1,37 @@
+[[search-autocomplete]]
+=== 자동완성
+
+입력 중인 키워드에 대한 자동완성 제안을 제공합니다.
+
+==== Request
+
+include::{snippets}/search-autocomplete/http-request.adoc[]
+include::{snippets}/search-autocomplete/query-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/search-autocomplete/http-response.adoc[]
+include::{snippets}/search-autocomplete/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# 기본 자동완성
+curl -X GET "http://localhost:8080/api/v1/search/autocomplete?q=프로&limit=10"
+
+# 제안 개수 조정
+curl -X GET "http://localhost:8080/api/v1/search/autocomplete?q=프로&limit=5"
+----
+
+==== Notes
+
+* 검색 키워드는 최소 1글자 이상이어야 합니다
+* 인증 없이도 사용 가능합니다 (공개 API)
+* Manticore Search의 자동완성 인덱스를 사용합니다
+* 제안 타입:
+  - `CONTENT`: 콘텐츠 제목 및 태그 기반 제안
+  - `USER`: 사용자 닉네임 기반 제안
+* `highlightedText` 필드는 매칭된 부분을 `<em>` 태그로 강조 표시합니다
+* 응답 속도 최적화를 위해 기본 제한은 10개입니다
+* 인기도와 관련도를 조합하여 제안 순서를 결정합니다

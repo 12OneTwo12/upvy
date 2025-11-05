@@ -2,7 +2,7 @@
 
 > 모든 개발 작업 시 빠르게 참조할 수 있는 체크리스트와 핵심 규칙 요약입니다.
 
-## Claude가 반드시 지킬 것 (18가지 핵심 규칙)
+## Claude가 반드시 지킬 것 (19가지 핵심 규칙)
 
 1. **TDD**: 테스트 → 구현 → 리팩토링 (시나리오 기반, Given-When-Then 주석 필수)
 2. **테스트 검증**: 구현 후 반드시 빌드/테스트 실행, 통과해야만 완료
@@ -22,6 +22,7 @@
 16. **FQCN 금지**: Fully Qualified Class Name 사용 금지, 반드시 import 문 사용
 17. **Principal 추출 (WebFlux)**: userId는 `principal: Mono<Principal>`로 Spring Security Context에서 추출, Request Body/Path Variable 사용 금지
 18. **Spring Event 패턴**: 비동기 이벤트 처리 시 @TransactionalEventListener(AFTER_COMMIT) + @Async 사용, 메인 트랜잭션과 독립성 보장
+19. **Thread.sleep() 절대 금지**: 모든 테스트에서 Thread.sleep() 사용 금지, 대신 Awaitility, 명시적 타임스탬프, StepVerifier 사용
 
 ## 개발 프로세스 (항상 이 순서로)
 
