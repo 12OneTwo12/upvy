@@ -83,13 +83,13 @@
 
 ### Service (비즈니스 로직)
 
-- ✅ 비즈니스 로직, 트랜잭션 관리, Repository 호출, Mono/Flux 변환
+- ✅ 비즈니스 로직, 트랜잭션 관리, Repository 호출, Reactive 체이닝
 - ❌ HTTP 처리, DSLContext 직접 사용
 
 ### Repository (데이터베이스)
 
-- ✅ JOOQ 쿼리, 순수 타입 반환 (Entity, List, Boolean)
-- ❌ Mono/Flux 반환, 비즈니스 로직
+- ✅ JOOQ R2DBC 쿼리, **Reactive 타입 반환 (Mono<Entity>, Flux<Entity>)**
+- ❌ 비즈니스 로직
 
 ## 금지 사항 (절대 준수)
 

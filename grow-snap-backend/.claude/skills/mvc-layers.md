@@ -110,7 +110,7 @@ fun trackViewEvent(
 
 ## Service (서비스)
 
-**역할**: 비즈니스 로직 처리
+**역할**: 비즈니스 로직 처리 (Reactive)
 
 ### 허용되는 역할
 
@@ -119,7 +119,7 @@ fun trackViewEvent(
 - ✅ 복잡한 데이터 처리 (FilePart 처리, 이미지 변환 등)
 - ✅ 다른 서비스 호출 (서비스 간 조율)
 - ✅ **Repository 호출 (데이터베이스 접근)**
-- ✅ **Mono/Flux 변환 (Repository 결과를 Reactive로 변환)**
+- ✅ **Reactive 체이닝 (Repository가 반환하는 Mono/Flux를 flatMap, map 등으로 체이닝)**
 - ✅ 예외 처리 및 변환
 
 ### 금지되는 역할
@@ -133,7 +133,7 @@ fun trackViewEvent(
 **절대 준수**: Service는 Repository를 통해서만 데이터베이스에 접근합니다.
 
 ```kotlin
-// ✅ GOOD: Service가 Repository를 호출하고 Mono/Flux로 변환
+// ✅ GOOD: Service가 Repository를 직접 체이닝 (Repository가 이미 Mono/Flux 반환)
 @Service
 class CommentServiceImpl(
     private val commentRepository: CommentRepository,
@@ -141,47 +141,44 @@ class CommentServiceImpl(
 ) : CommentService {
 
     override fun createComment(userId: UUID, contentId: UUID, request: CommentRequest): Mono<CommentResponse> {
-        // Repository 호출 결과를 Mono로 변환
-        return Mono.fromCallable {
-            commentRepository.save(
-                Comment(
-                    contentId = contentId,
-                    userId = userId,
-                    content = request.content
-                )
-            ) ?: throw IllegalStateException("Failed to create comment")
-        }.flatMap { savedComment ->
-            // 사용자 정보도 Repository를 통해 조회
-            Mono.fromCallable {
+        // Repository가 이미 Mono<Comment>를 반환하므로 직접 체이닝
+        return commentRepository.save(
+            Comment(
+                contentId = contentId,
+                userId = userId,
+                content = request.content
+            )
+        ).switchIfEmpty(Mono.error(IllegalStateException("Failed to create comment")))
+            .flatMap { savedComment ->
+                // userProfileRepository도 Mono<Map>을 반환
                 userProfileRepository.findUserInfosByUserIds(setOf(userId))
-            }.map { userInfoMap ->
-                val (nickname, profileImageUrl) = userInfoMap[userId] ?: Pair("Unknown", null)
-                CommentResponse(
-                    id = savedComment.id!!.toString(),
-                    userNickname = nickname,
-                    userProfileImageUrl = profileImageUrl,
-                    content = savedComment.content
-                )
+                    .map { userInfoMap ->
+                        val (nickname, profileImageUrl) = userInfoMap[userId] ?: Pair("Unknown", null)
+                        CommentResponse(
+                            id = savedComment.id!!.toString(),
+                            userNickname = nickname,
+                            userProfileImageUrl = profileImageUrl,
+                            content = savedComment.content
+                        )
+                    }
             }
-        }
     }
 
     override fun getComments(contentId: UUID): Flux<CommentResponse> {
-        // Repository 호출 결과를 Flux로 변환
-        return Mono.fromCallable {
-            commentRepository.findByContentId(contentId)
-        }.flatMapMany { comments ->
-            val userIds = comments.map { it.userId }.toSet()
+        // Repository가 이미 Flux<Comment>를 반환하므로 직접 체이닝
+        return commentRepository.findByContentId(contentId)
+            .collectList()
+            .flatMapMany { comments ->
+                val userIds = comments.map { it.userId }.toSet()
 
-            Mono.fromCallable {
                 userProfileRepository.findUserInfosByUserIds(userIds)
-            }.flatMapMany { userInfoMap ->
-                Flux.fromIterable(comments).map { comment ->
-                    val userInfo = userInfoMap[comment.userId] ?: Pair("Unknown", null)
-                    mapToCommentResponse(comment, userInfo)
-                }
+                    .flatMapMany { userInfoMap ->
+                        Flux.fromIterable(comments).map { comment ->
+                            val userInfo = userInfoMap[comment.userId] ?: Pair("Unknown", null)
+                            mapToCommentResponse(comment, userInfo)
+                        }
+                    }
             }
-        }
     }
 }
 
@@ -193,29 +190,27 @@ class CommentServiceImpl(
 ) : CommentService {
 
     override fun createComment(userId: UUID, contentId: UUID, request: CommentRequest): Mono<CommentResponse> {
-        return commentRepository.save(comment)
-            .flatMap { savedComment ->
-                // ❌ Service에서 JOOQ 쿼리 직접 실행 (Repository 역할 침범)
-                Mono.fromCallable {
-                    dslContext
-                        .select(USER_PROFILES.NICKNAME, USER_PROFILES.PROFILE_IMAGE_URL)
-                        .from(USER_PROFILES)
-                        .where(USER_PROFILES.USER_ID.eq(userId.toString()))
-                        .fetchOne()
-                        ?.let {
-                            Pair(
-                                it.getValue(USER_PROFILES.NICKNAME) ?: "Unknown",
-                                it.getValue(USER_PROFILES.PROFILE_IMAGE_URL)
-                            )
-                        }
-                }.map { (nickname, profileImageUrl) ->
-                    CommentResponse(
-                        id = savedComment.id!!.toString(),
-                        userNickname = nickname,
-                        userProfileImageUrl = profileImageUrl
-                    )
-                }
+        return commentRepository.save(
+            Comment(
+                contentId = contentId,
+                userId = userId,
+                content = request.content
+            )
+        ).flatMap { savedComment ->
+            // ❌ Service에서 JOOQ 쿼리 직접 실행 (Repository 역할 침범)
+            Mono.from(
+                dslContext
+                    .select(USER_PROFILES.NICKNAME, USER_PROFILES.PROFILE_IMAGE_URL)
+                    .from(USER_PROFILES)
+                    .where(USER_PROFILES.USER_ID.eq(userId.toString()))
+            ).map { record ->
+                CommentResponse(
+                    id = savedComment.id!!.toString(),
+                    userNickname = record.getValue(USER_PROFILES.NICKNAME) ?: "Unknown",
+                    userProfileImageUrl = record.getValue(USER_PROFILES.PROFILE_IMAGE_URL)
+                )
             }
+        }
     }
 }
 ```
@@ -224,88 +219,99 @@ class CommentServiceImpl(
 
 - [ ] **Repository만 호출**: 데이터베이스 접근은 Repository를 통해서만
 - [ ] **DSLContext 사용 금지**: Service에서 JOOQ 쿼리 직접 실행 금지
-- [ ] **Mono/Flux 변환**: Repository 결과를 `Mono.fromCallable`로 변환
+- [ ] **Reactive 체이닝**: Repository가 반환하는 Mono/Flux를 직접 체이닝
 - [ ] **비즈니스 로직**: Repository를 조합하여 비즈니스 로직 구현
 
 ## Repository (레포지토리)
 
-**역할**: 데이터베이스 CRUD
+**역할**: 데이터베이스 CRUD (Reactive with JOOQ R2DBC)
 
 ### 허용되는 역할
 
-- ✅ 데이터베이스 쿼리 실행 (JOOQ만 사용)
+- ✅ 데이터베이스 쿼리 실행 (JOOQ R2DBC 사용)
 - ✅ Entity 저장/조회/수정/삭제
-- ✅ 순수한 타입 반환 (Entity, List, Boolean 등)
+- ✅ **Reactive 타입 반환 (Mono<Entity>, Flux<Entity>, Mono<Boolean> 등)**
+- ✅ **Non-blocking 데이터베이스 접근**
 
 ### 금지되는 역할
 
-- ❌ **Mono/Flux 반환 금지** (Service에서 변환)
 - ❌ 비즈니스 로직 금지
 - ❌ 다른 Repository 호출 최소화
 
 ### Repository 계층 규칙 상세
 
-**절대 준수**: Repository는 JOOQ를 사용한 순수한 데이터베이스 쿼리만 작성합니다.
+**절대 준수**: Repository는 JOOQ R2DBC를 사용하여 Reactive 쿼리를 작성합니다.
 
 ```kotlin
-// ✅ GOOD: Repository는 순수 타입 반환
-@Repository
-class CommentRepositoryImpl(
-    private val dslContext: DSLContext
-) : CommentRepository {
-
-    override fun save(comment: Comment): Comment? {
-        return dslContext
-            .insertInto(COMMENTS)
-            .set(COMMENTS.ID, comment.id.toString())
-            .set(COMMENTS.CONTENT, comment.content)
-            .returning()
-            .fetchOne()
-            ?.let { recordToComment(it) }
-    }
-
-    override fun findById(commentId: UUID): Comment? {
-        return dslContext
-            .select(COMMENTS.ID, COMMENTS.CONTENT)
-            .from(COMMENTS)
-            .where(COMMENTS.ID.eq(commentId.toString()))
-            .and(COMMENTS.DELETED_AT.isNull)
-            .fetchOne()
-            ?.let { recordToComment(it) }
-    }
-
-    override fun findByContentId(contentId: UUID): List<Comment> {
-        return dslContext
-            .select(COMMENTS.ID, COMMENTS.CONTENT)
-            .from(COMMENTS)
-            .where(COMMENTS.CONTENT_ID.eq(contentId.toString()))
-            .and(COMMENTS.DELETED_AT.isNull)
-            .fetch()
-            .map { recordToComment(it) }
-    }
-}
-
-// ❌ BAD: Repository가 Mono/Flux 반환
+// ✅ GOOD: Repository는 Reactive 타입 반환 (JOOQ R2DBC)
 @Repository
 class CommentRepositoryImpl(
     private val dslContext: DSLContext
 ) : CommentRepository {
 
     override fun save(comment: Comment): Mono<Comment> {
-        return Mono.fromCallable {
-            dslContext.insertInto(COMMENTS)
-                .set(COMMENTS.ID, comment.id.toString())
-                .execute()
-        }.map { comment }  // ❌ Repository에서 Mono 반환 금지
+        val now = LocalDateTime.now()
+        val commentId = comment.id ?: UUID.randomUUID()
+
+        return Mono.from(
+            dslContext
+                .insertInto(COMMENTS)
+                .set(COMMENTS.ID, commentId.toString())
+                .set(COMMENTS.CONTENT, comment.content)
+                .set(COMMENTS.CREATED_AT, now)
+        ).thenReturn(
+            Comment(
+                id = commentId,
+                content = comment.content,
+                createdAt = now
+            )
+        )
+    }
+
+    override fun findById(commentId: UUID): Mono<Comment> {
+        return Mono.from(
+            dslContext
+                .select(COMMENTS.ID, COMMENTS.CONTENT, COMMENTS.CREATED_AT)
+                .from(COMMENTS)
+                .where(COMMENTS.ID.eq(commentId.toString()))
+                .and(COMMENTS.DELETED_AT.isNull)
+        ).map { record -> recordToComment(record) }
+    }
+
+    override fun findByContentId(contentId: UUID): Flux<Comment> {
+        return Flux.from(
+            dslContext
+                .select(COMMENTS.ID, COMMENTS.CONTENT, COMMENTS.CREATED_AT)
+                .from(COMMENTS)
+                .where(COMMENTS.CONTENT_ID.eq(contentId.toString()))
+                .and(COMMENTS.DELETED_AT.isNull)
+                .orderBy(COMMENTS.CREATED_AT.desc())
+        ).map { record -> recordToComment(record) }
+    }
+}
+
+// ❌ BAD: Repository가 순수 타입(blocking) 반환
+@Repository
+class CommentRepositoryImpl(
+    private val dslContext: DSLContext
+) : CommentRepository {
+
+    // ❌ 순수 타입 반환은 blocking 호출을 유발
+    override fun save(comment: Comment): Comment? {
+        return dslContext
+            .insertInto(COMMENTS)
+            .set(COMMENTS.ID, comment.id.toString())
+            .fetchOne()  // ❌ blocking 호출
+            ?.let { recordToComment(it) }
     }
 }
 ```
 
 ### Repository 체크리스트
 
-- [ ] **JOOQ만 사용**: DSLContext를 사용한 순수한 쿼리만 작성
-- [ ] **순수 타입 반환**: Mono/Flux 없이 Entity, List, Boolean 등 순수 타입 반환
-- [ ] **Reactive 변환 금지**: `Mono.fromCallable`, `Flux.from` 등 사용하지 않음
+- [ ] **JOOQ R2DBC 사용**: DSLContext를 사용한 Reactive 쿼리 작성
+- [ ] **Reactive 타입 반환**: `Mono<Entity>`, `Flux<Entity>`, `Mono<Boolean>` 등 반환
+- [ ] **Non-blocking 패턴**: `Mono.from()`, `Flux.from()`으로 JOOQ 쿼리를 Reactive로 변환
 - [ ] **비즈니스 로직 없음**: 쿼리 실행만 담당
 
 ## 계층별 책임 예시: 프로필 이미지 업로드
