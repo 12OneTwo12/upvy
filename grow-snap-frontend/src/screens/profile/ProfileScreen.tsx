@@ -9,11 +9,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useQuery } from '@tanstack/react-query';
-import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
+import { RootStackParamList, ProfileStackParamList } from '@/types/navigation.types';
 import { ProfileHeader, ContentGrid } from '@/components/profile';
 import { Button, LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
@@ -25,7 +24,7 @@ import { createStyleSheet } from '@/utils/styles';
 import type { ContentResponse } from '@/types/content.types';
 
 type NavigationProp = CompositeNavigationProp<
-  BottomTabNavigationProp<MainTabParamList, 'Profile'>,
+  NativeStackNavigationProp<ProfileStackParamList, 'ProfileMain'>,
   NativeStackNavigationProp<RootStackParamList>
 >;
 
@@ -181,7 +180,7 @@ export default function ProfileScreen() {
 
   // 콘텐츠 클릭 핸들러
   const handleContentPress = (content: ContentResponse) => {
-    navigation.navigate('ContentViewer', { contentId: content.id });
+    navigation.navigate('ProfileContentViewer', { contentId: content.id });
   };
 
   if (profileLoading || !profile) {

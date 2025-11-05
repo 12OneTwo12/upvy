@@ -26,8 +26,8 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Feed: undefined;
   Search: undefined;
-  Upload: undefined;
-  Profile: undefined;
+  Upload: NavigatorScreenParams<UploadStackParamList>;
+  Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 /**
@@ -68,4 +68,12 @@ export type UploadStackParamList = {
     };
   };
   ContentManagement: undefined;
+};
+
+/**
+ * Profile Stack Navigator Params
+ */
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  ProfileContentViewer: { contentId: string };
 };

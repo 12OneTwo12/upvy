@@ -6,8 +6,7 @@
 
 import React, { useState } from 'react';
 import { View, Dimensions, StatusBar, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { FeedItem } from '@/components/feed';
@@ -18,17 +17,13 @@ import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
 import { shareContent } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
-import { RootStackParamList } from '@/types/navigation.types';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-type ContentViewerRouteProp = RouteProp<RootStackParamList, 'ContentViewer'>;
-type ContentViewerNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ContentViewer'>;
-
 export default function ContentViewerScreen() {
-  const route = useRoute<ContentViewerRouteProp>();
-  const navigation = useNavigation<ContentViewerNavigationProp>();
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const { contentId } = route.params;
 
   const [commentModalVisible, setCommentModalVisible] = useState(false);
