@@ -21,6 +21,7 @@ import me.onetwo.growsnap.domain.search.service.SearchService
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.util.mockUser
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -78,7 +79,7 @@ class SearchControllerTest {
 
             val feedItem = FeedItemResponse(
                 contentId = contentId,
-                contentType = me.onetwo.growsnap.domain.content.model.ContentType.VIDEO,
+                contentType = ContentType.VIDEO,
                 url = "https://example.com/video.mp4",
                 photoUrls = null,
                 thumbnailUrl = "https://example.com/thumbnail.jpg",
