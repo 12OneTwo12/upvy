@@ -262,7 +262,8 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
   // seek throttle을 위한 ref
   const lastSeekTime = useRef(0);
-  const SEEK_THROTTLE_MS = 50; // 50ms마다 한 번만 seek (더 빠른 프리뷰)
+  const pendingSeekRef = useRef<number | null>(null);
+  const SEEK_THROTTLE_MS = 16; // ~60fps (16ms) - 더 부드러운 프리뷰
 
   React.useEffect(() => {
     trimStartRef.current = trimStart;
@@ -315,22 +316,32 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         setTrimStart(newStart);
         console.log('🟢 Dragging - dx:', gestureState.dx.toFixed(1), 'newStart:', newStart.toFixed(2));
 
-        // Throttle: 100ms마다 한 번만 seek
+        // Throttle: 16ms마다 한 번만 seek (~60fps)
         const now = Date.now();
-        if (now - lastSeekTime.current > SEEK_THROTTLE_MS) {
+        if (now - lastSeekTime.current > SEEK_THROTTLE_MS && videoRef.current) {
           lastSeekTime.current = now;
+          pendingSeekRef.current = null;
 
-          // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
-          if (videoRef.current) {
-            videoRef.current.setPositionAsync(Math.floor(newStart * 1000)).catch(() => {
-              // seek 에러 무시
-            });
-          }
+          // 드래그 중 비디오를 해당 위치로 즉시 이동 (실시간 프리뷰)
+          const targetPosition = Math.floor(newStart * 1000);
+          videoRef.current.setPositionAsync(targetPosition).catch((error) => {
+            console.log('Seek error (expected during rapid dragging):', error.message);
+          });
+        } else {
+          // 다음 seek를 위해 대기
+          pendingSeekRef.current = newStart;
         }
       },
       onPanResponderRelease: () => {
         console.log('🟢 Trim start handle - drag released');
         setIsDraggingStart(false);
+
+        // 드래그 종료 시 pending seek가 있다면 마지막 위치로 이동
+        if (pendingSeekRef.current !== null && videoRef.current) {
+          const finalPosition = Math.floor(pendingSeekRef.current * 1000);
+          videoRef.current.setPositionAsync(finalPosition).catch(() => {});
+          pendingSeekRef.current = null;
+        }
       },
     })
   ).current;
@@ -373,22 +384,32 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         setTrimEnd(newEnd);
         console.log('🔵 Dragging - dx:', gestureState.dx.toFixed(1), 'newEnd:', newEnd.toFixed(2));
 
-        // Throttle: 100ms마다 한 번만 seek
+        // Throttle: 16ms마다 한 번만 seek (~60fps)
         const now = Date.now();
-        if (now - lastSeekTime.current > SEEK_THROTTLE_MS) {
+        if (now - lastSeekTime.current > SEEK_THROTTLE_MS && videoRef.current) {
           lastSeekTime.current = now;
+          pendingSeekRef.current = null;
 
-          // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
-          if (videoRef.current) {
-            videoRef.current.setPositionAsync(Math.floor(newEnd * 1000)).catch(() => {
-              // seek 에러 무시
-            });
-          }
+          // 드래그 중 비디오를 해당 위치로 즉시 이동 (실시간 프리뷰)
+          const targetPosition = Math.floor(newEnd * 1000);
+          videoRef.current.setPositionAsync(targetPosition).catch((error) => {
+            console.log('Seek error (expected during rapid dragging):', error.message);
+          });
+        } else {
+          // 다음 seek를 위해 대기
+          pendingSeekRef.current = newEnd;
         }
       },
       onPanResponderRelease: () => {
         console.log('🔵 Trim end handle - drag released');
         setIsDraggingEnd(false);
+
+        // 드래그 종료 시 pending seek가 있다면 마지막 위치로 이동
+        if (pendingSeekRef.current !== null && videoRef.current) {
+          const finalPosition = Math.floor(pendingSeekRef.current * 1000);
+          videoRef.current.setPositionAsync(finalPosition).catch(() => {});
+          pendingSeekRef.current = null;
+        }
       },
     })
   ).current;
