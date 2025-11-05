@@ -196,6 +196,77 @@ class SearchControllerTest {
         }
 
         @Test
+        @DisplayName("인증 없이 검색하면, 200과 공개 검색 결과를 반환한다 (비로그인 사용자)")
+        fun searchContents_WithoutAuthentication_Returns200AndPublicResults() {
+            // Given: 콘텐츠 검색 결과 (비인증 사용자)
+            val query = "프로그래밍"
+            val contentId = UUID.randomUUID()
+            val creatorId = UUID.randomUUID()
+
+            val feedItem = FeedItemResponse(
+                contentId = contentId,
+                contentType = ContentType.VIDEO,
+                url = "https://example.com/video.mp4",
+                photoUrls = null,
+                thumbnailUrl = "https://example.com/thumbnail.jpg",
+                duration = 120,
+                width = 1920,
+                height = 1080,
+                title = "프로그래밍 기초",
+                description = "프로그래밍을 배워봅시다",
+                category = Category.PROGRAMMING,
+                tags = listOf("프로그래밍", "기초"),
+                creator = CreatorInfoResponse(
+                    userId = creatorId,
+                    nickname = "개발자",
+                    profileImageUrl = null,
+                    followerCount = 50
+                ),
+                interactions = InteractionInfoResponse(
+                    likeCount = 10,
+                    commentCount = 5,
+                    saveCount = 3,
+                    shareCount = 2,
+                    viewCount = 100,
+                    isLiked = false,
+                    isSaved = false
+                ),
+                subtitles = emptyList()
+            )
+
+            val response = CursorPageResponse(
+                content = listOf(feedItem),
+                nextCursor = null,
+                hasNext = false,
+                count = 1
+            )
+
+            every {
+                searchService.searchContents(any(), null)
+            } returns Mono.just(response)
+
+            // When & Then: 비인증 콘텐츠 검색
+            webTestClient
+                .get()
+                .uri { uriBuilder ->
+                    uriBuilder
+                        .path("${ApiPaths.API_V1_SEARCH}/contents")
+                        .queryParam("q", query)
+                        .queryParam("sortBy", "RELEVANCE")
+                        .queryParam("limit", 20)
+                        .build()
+                }
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content[0].contentId").isEqualTo(contentId.toString())
+                .jsonPath("$.content[0].title").isEqualTo("프로그래밍 기초")
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.count").isEqualTo(1)
+        }
+
+        @Test
         @DisplayName("검색 키워드가 2글자 미만이면, 400을 반환한다")
         fun searchContents_WithShortQuery_Returns400() {
             // Given: 짧은 검색 키워드
@@ -290,6 +361,53 @@ class SearchControllerTest {
                         )
                     )
                 )
+        }
+
+        @Test
+        @DisplayName("인증 없이 사용자를 검색하면, 200과 공개 검색 결과를 반환한다 (비로그인 사용자)")
+        fun searchUsers_WithoutAuthentication_Returns200AndPublicResults() {
+            // Given: 사용자 검색 결과 (비인증 사용자)
+            val query = "홍길동"
+            val userId = UUID.randomUUID()
+
+            val userResult = UserSearchResult(
+                userId = userId,
+                nickname = "홍길동",
+                profileImageUrl = "https://example.com/profile.jpg",
+                bio = "안녕하세요",
+                followerCount = 100,
+                isFollowing = false
+            )
+
+            val response = CursorPageResponse(
+                content = listOf(userResult),
+                nextCursor = null,
+                hasNext = false,
+                count = 1
+            )
+
+            every {
+                searchService.searchUsers(any(), null)
+            } returns Mono.just(response)
+
+            // When & Then: 비인증 사용자 검색
+            webTestClient
+                .get()
+                .uri { uriBuilder ->
+                    uriBuilder
+                        .path("${ApiPaths.API_V1_SEARCH}/users")
+                        .queryParam("q", query)
+                        .queryParam("limit", 20)
+                        .build()
+                }
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content[0].userId").isEqualTo(userId.toString())
+                .jsonPath("$.content[0].nickname").isEqualTo("홍길동")
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.count").isEqualTo(1)
         }
     }
 
