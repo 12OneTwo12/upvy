@@ -14,11 +14,10 @@ import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
 import { getContent } from '@/api/content.api';
 import { getProfileByUserId } from '@/api/auth.api';
-import { createLike, deleteLike, getLikeStatus, getLikeCount } from '@/api/like.api';
-import { createSave, deleteSave, getSaveStatus } from '@/api/save.api';
+import { createLike, deleteLike } from '@/api/like.api';
+import { createSave, deleteSave } from '@/api/save.api';
 import { shareContent } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
-import { getComments } from '@/api/comment.api';
 import { RootStackParamList } from '@/types/navigation.types';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
@@ -35,7 +34,7 @@ export default function ContentViewerScreen() {
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const queryClient = useQueryClient();
 
-  // 콘텐츠 데이터 로드
+  // 콘텐츠 데이터 로드 (인터랙션 정보 포함)
   const { data: content, isLoading: contentLoading } = useQuery({
     queryKey: ['content', contentId],
     queryFn: () => getContent(contentId),
@@ -47,28 +46,6 @@ export default function ContentViewerScreen() {
     queryFn: () => getProfileByUserId(content!.creatorId),
     enabled: !!content?.creatorId,
   });
-
-  // Interaction 정보 병렬 로드
-  const { data: likeStatus } = useQuery({
-    queryKey: ['likeStatus', contentId],
-    queryFn: () => getLikeStatus(contentId),
-    enabled: !!content,
-  });
-
-  const { data: likeCount } = useQuery({
-    queryKey: ['likeCount', contentId],
-    queryFn: () => getLikeCount(contentId),
-    enabled: !!content,
-  });
-
-  const { data: saveStatus } = useQuery({
-    queryKey: ['saveStatus', contentId],
-    queryFn: () => getSaveStatus(contentId),
-    enabled: !!content,
-  });
-
-  // NOTE: 백엔드에 전체 댓글 수 조회 API가 없어서 commentCount는 0으로 설정
-  // getComments는 첫 페이지(20개)만 가져오므로 정확한 전체 개수를 알 수 없음
 
   const isLoading = contentLoading || creatorLoading;
 
@@ -94,12 +71,13 @@ export default function ContentViewerScreen() {
           isFollowing: creatorProfile.isFollowing,
         },
         interactions: {
-          likeCount: likeCount?.likeCount ?? 0,
-          commentCount: 0, // 백엔드에 전체 댓글 수 조회 API 없음
-          saveCount: 0, // 백엔드에서 제공하지 않음 (SaveResponse는 저장/취소 시에만)
-          shareCount: 0, // 백엔드에서 제공하지 않음
-          isLiked: likeStatus?.isLiked,
-          isSaved: saveStatus?.isSaved,
+          likeCount: content.interactions?.likeCount ?? 0,
+          commentCount: content.interactions?.commentCount ?? 0,
+          saveCount: content.interactions?.saveCount ?? 0,
+          shareCount: content.interactions?.shareCount ?? 0,
+          viewCount: content.interactions?.viewCount ?? 0,
+          isLiked: content.interactions?.isLiked ?? false,
+          isSaved: content.interactions?.isSaved ?? false,
         },
         subtitles: [],
       }
@@ -115,14 +93,17 @@ export default function ContentViewerScreen() {
       }
     },
     onSuccess: (response) => {
-      // 백엔드 응답으로 정확한 값 업데이트
-      queryClient.setQueryData(['likeStatus', contentId], {
-        contentId: response.contentId,
-        isLiked: response.isLiked,
-      });
-      queryClient.setQueryData(['likeCount', contentId], {
-        contentId: response.contentId,
-        likeCount: response.likeCount,
+      // 콘텐츠의 인터랙션 정보 업데이트
+      queryClient.setQueryData(['content', contentId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          interactions: {
+            ...oldData.interactions,
+            likeCount: response.likeCount,
+            isLiked: response.isLiked,
+          },
+        };
       });
     },
   });
@@ -137,10 +118,16 @@ export default function ContentViewerScreen() {
       }
     },
     onSuccess: (response) => {
-      // 백엔드 응답으로 정확한 값 업데이트
-      queryClient.setQueryData(['saveStatus', contentId], {
-        contentId: response.contentId,
-        isSaved: response.isSaved,
+      // 콘텐츠의 인터랙션 정보 업데이트
+      queryClient.setQueryData(['content', contentId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          interactions: {
+            ...oldData.interactions,
+            isSaved: response.isSaved,
+          },
+        };
       });
     },
   });
@@ -173,8 +160,9 @@ export default function ContentViewerScreen() {
 
   const handleCommentModalClose = () => {
     setCommentModalVisible(false);
-    // 댓글 목록 다시 로드 (댓글 수 업데이트)
+    // 댓글 목록 및 콘텐츠 인터랙션 정보 다시 로드 (댓글 수 업데이트)
     queryClient.invalidateQueries({ queryKey: ['comments', contentId] });
+    queryClient.invalidateQueries({ queryKey: ['content', contentId] });
   };
 
   const handleSave = () => {
