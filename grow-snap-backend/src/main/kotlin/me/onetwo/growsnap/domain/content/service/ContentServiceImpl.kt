@@ -17,6 +17,7 @@ import me.onetwo.growsnap.domain.content.model.ContentPhoto
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
+import me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -592,24 +593,15 @@ class ContentServiceImpl(
      * @param userId 사용자 ID (선택, null이면 사용자별 상태는 false로 반환)
      * @return 인터랙션 정보를 담은 Mono
      */
-    private fun getInteractionInfo(contentId: UUID, userId: UUID?): Mono<me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse> {
+    private fun getInteractionInfo(contentId: UUID, userId: UUID?): Mono<InteractionInfoResponse> {
         val likeCountMono = contentInteractionRepository.getLikeCount(contentId)
         val commentCountMono = contentInteractionRepository.getCommentCount(contentId)
         val saveCountMono = contentInteractionRepository.getSaveCount(contentId)
         val shareCountMono = contentInteractionRepository.getShareCount(contentId)
         val viewCountMono = contentInteractionRepository.getViewCount(contentId)
 
-        val isLikedMono = if (userId != null) {
-            userLikeRepository.exists(userId, contentId)
-        } else {
-            Mono.just(false)
-        }
-
-        val isSavedMono = if (userId != null) {
-            userSaveRepository.exists(userId, contentId)
-        } else {
-            Mono.just(false)
-        }
+        val isLikedMono = userId?.let { userLikeRepository.exists(it, contentId) } ?: Mono.just(false)
+        val isSavedMono = userId?.let { userSaveRepository.exists(it, contentId) } ?: Mono.just(false)
 
         return Mono.zip(
             likeCountMono,
@@ -620,7 +612,7 @@ class ContentServiceImpl(
             isLikedMono,
             isSavedMono
         ).map { tuple ->
-            me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+            InteractionInfoResponse(
                 likeCount = tuple.t1,
                 commentCount = tuple.t2,
                 saveCount = tuple.t3,

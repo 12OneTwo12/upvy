@@ -171,15 +171,7 @@ class ContentInteractionRepositoryImpl(
      * @return 좋아요 수
      */
     override fun getLikeCount(contentId: UUID): Mono<Int> {
-        // JOOQ의 type-safe API로 SELECT 쿼리 생성
-        return Mono.from(
-            dslContext
-                .select(CONTENT_INTERACTIONS.LIKE_COUNT)
-                .from(CONTENT_INTERACTIONS)
-                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-                .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-        ).map { record -> record.getValue(CONTENT_INTERACTIONS.LIKE_COUNT) ?: 0 }
-            .defaultIfEmpty(0)
+        return getCount(contentId, CONTENT_INTERACTIONS.LIKE_COUNT)
     }
 
     /**
@@ -189,15 +181,7 @@ class ContentInteractionRepositoryImpl(
      * @return 저장 수
      */
     override fun getSaveCount(contentId: UUID): Mono<Int> {
-        // JOOQ의 type-safe API로 SELECT 쿼리 생성
-        return Mono.from(
-            dslContext
-                .select(CONTENT_INTERACTIONS.SAVE_COUNT)
-                .from(CONTENT_INTERACTIONS)
-                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-                .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-        ).map { record -> record.getValue(CONTENT_INTERACTIONS.SAVE_COUNT) ?: 0 }
-            .defaultIfEmpty(0)
+        return getCount(contentId, CONTENT_INTERACTIONS.SAVE_COUNT)
     }
 
     /**
@@ -207,15 +191,7 @@ class ContentInteractionRepositoryImpl(
      * @return 공유 수
      */
     override fun getShareCount(contentId: UUID): Mono<Int> {
-        // JOOQ的 type-safe API로 SELECT 쿼리 생성
-        return Mono.from(
-            dslContext
-                .select(CONTENT_INTERACTIONS.SHARE_COUNT)
-                .from(CONTENT_INTERACTIONS)
-                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-                .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-        ).map { record -> record.getValue(CONTENT_INTERACTIONS.SHARE_COUNT) ?: 0 }
-            .defaultIfEmpty(0)
+        return getCount(contentId, CONTENT_INTERACTIONS.SHARE_COUNT)
     }
 
     /**
@@ -225,14 +201,7 @@ class ContentInteractionRepositoryImpl(
      * @return 댓글 수
      */
     override fun getCommentCount(contentId: UUID): Mono<Int> {
-        return Mono.from(
-            dslContext
-                .select(CONTENT_INTERACTIONS.COMMENT_COUNT)
-                .from(CONTENT_INTERACTIONS)
-                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-                .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-        ).map { record -> record.getValue(CONTENT_INTERACTIONS.COMMENT_COUNT) ?: 0 }
-            .defaultIfEmpty(0)
+        return getCount(contentId, CONTENT_INTERACTIONS.COMMENT_COUNT)
     }
 
     /**
@@ -242,14 +211,7 @@ class ContentInteractionRepositoryImpl(
      * @return 조회수
      */
     override fun getViewCount(contentId: UUID): Mono<Int> {
-        return Mono.from(
-            dslContext
-                .select(CONTENT_INTERACTIONS.VIEW_COUNT)
-                .from(CONTENT_INTERACTIONS)
-                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
-                .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
-        ).map { record -> record.getValue(CONTENT_INTERACTIONS.VIEW_COUNT) ?: 0 }
-            .defaultIfEmpty(0)
+        return getCount(contentId, CONTENT_INTERACTIONS.VIEW_COUNT)
     }
 
     /**
@@ -293,5 +255,26 @@ class ContentInteractionRepositoryImpl(
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
         ).then()
+    }
+
+    /**
+     * 카운트 조회 공통 로직
+     *
+     * 지정된 필드의 카운트 값을 조회합니다.
+     * 레코드가 없거나 값이 null인 경우 0을 반환합니다.
+     *
+     * @param contentId 콘텐츠 ID
+     * @param field 조회할 필드
+     * @return 카운트 값
+     */
+    private fun getCount(contentId: UUID, field: Field<Int?>): Mono<Int> {
+        return Mono.from(
+            dslContext
+                .select(field)
+                .from(CONTENT_INTERACTIONS)
+                .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
+                .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
+        ).map { record -> record.getValue(field) ?: 0 }
+            .defaultIfEmpty(0)
     }
 }
