@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useQuery } from '@tanstack/react-query';
 import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
 import { ProfileHeader, ContentGrid } from '@/components/profile';
 import { Button, LoadingSpinner } from '@/components/common';
@@ -119,80 +120,35 @@ const useStyles = createStyleSheet({
 export default function ProfileScreen() {
   const styles = useStyles();
   const navigation = useNavigation<NavigationProp>();
-  const { profile: storeProfile, user, updateProfile, logout } = useAuthStore();
-  const [profile, setProfile] = useState(storeProfile);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [contents, setContents] = useState<ContentResponse[]>([]);
-  const [contentsLoading, setContentsLoading] = useState(false);
+  const { profile: storeProfile, user, updateProfile } = useAuthStore();
 
-  // 프로필 데이터 로드
-  const loadProfile = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
+  // 프로필 데이터 로드 (React Query)
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
+    queryKey: ['myProfile'],
+    queryFn: async () => {
+      const data = await getMyProfile();
+      updateProfile(data);
+      return data;
+    },
+    initialData: storeProfile || undefined,
+    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
+  });
 
-    const result = await withErrorHandling(
-      async () => {
-        const data = await getMyProfile();
-        setProfile(data);
-        updateProfile(data);
-        return data;
-      },
-      {
-        showAlert: true,
-        alertTitle: '프로필 조회 실패',
-        logContext: 'ProfileScreen.loadProfile',
-      }
-    );
-
-    if (showLoading) setLoading(false);
-    return result;
-  };
-
-  // 콘텐츠 목록 로드
-  const loadContents = async (showLoading = true) => {
-    if (showLoading) setContentsLoading(true);
-
-    const result = await withErrorHandling(
-      async () => {
-        const data = await getMyContents();
-        setContents(data);
-        return data;
-      },
-      {
-        showAlert: true,
-        alertTitle: '콘텐츠 조회 실패',
-        logContext: 'ProfileScreen.loadContents',
-      }
-    );
-
-    if (showLoading) setContentsLoading(false);
-    return result;
-  };
+  // 콘텐츠 목록 로드 (React Query - 캐싱 활성화)
+  const { data: contents = [], isLoading: contentsLoading, refetch: refetchContents } = useQuery({
+    queryKey: ['myContents'],
+    queryFn: getMyContents,
+    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지 (다시 로드하지 않음)
+    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+  });
 
   // 새로고침
+  const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadProfile(false), loadContents(false)]);
+    await Promise.all([refetchProfile(), refetchContents()]);
     setRefreshing(false);
   };
-
-  // 화면이 포커스될 때마다 프로필 및 콘텐츠 리로드
-  useFocusEffect(
-    useCallback(() => {
-      // 화면에 진입할 때 프로필 및 콘텐츠 새로고침
-      loadProfile(false);
-      loadContents(false);
-    }, [])
-  );
-
-  // 초기 로드
-  useEffect(() => {
-    if (!profile) {
-      loadProfile();
-    }
-    // 콘텐츠는 항상 로드
-    loadContents();
-  }, []);
 
   // 프로필 수정 화면으로 이동
   const handleEditProfile = () => {
@@ -228,8 +184,7 @@ export default function ProfileScreen() {
     navigation.navigate('ContentViewer', { contentId: content.id });
   };
 
-
-  if (loading || !profile) {
+  if (profileLoading || !profile) {
     return (
       <SafeAreaView style={styles.loadingContainer} edges={['top']}>
         <LoadingSpinner />
