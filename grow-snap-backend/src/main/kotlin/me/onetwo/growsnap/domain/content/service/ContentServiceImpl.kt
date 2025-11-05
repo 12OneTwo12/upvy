@@ -46,6 +46,9 @@ class ContentServiceImpl(
     private val s3Client: software.amazon.awssdk.services.s3.S3Client,
     private val eventPublisher: ReactiveEventPublisher,
     private val contentInteractionService: me.onetwo.growsnap.domain.analytics.service.ContentInteractionService,
+    private val contentInteractionRepository: me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository,
+    private val userLikeRepository: me.onetwo.growsnap.domain.interaction.repository.UserLikeRepository,
+    private val userSaveRepository: me.onetwo.growsnap.domain.interaction.repository.UserSaveRepository,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -265,10 +268,11 @@ class ContentServiceImpl(
      * 콘텐츠를 조회합니다.
      *
      * @param contentId 콘텐츠 ID
+     * @param userId 사용자 ID (선택, 인터랙션 정보에 사용자별 상태를 포함하려면 제공)
      * @return 콘텐츠 정보를 담은 Mono
      */
-    override fun getContent(contentId: UUID): Mono<ContentResponse> {
-        logger.info("Getting content: contentId=$contentId")
+    override fun getContent(contentId: UUID, userId: UUID?): Mono<ContentResponse> {
+        logger.info("Getting content: contentId=$contentId, userId=$userId")
 
         return contentRepository.findById(contentId)
             .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId")))
@@ -279,34 +283,42 @@ class ContentServiceImpl(
             }
             .flatMap { (content, metadata) ->
                 // PHOTO 타입인 경우 사진 목록 조회, 아니면 null 반환
-                if (content.contentType == ContentType.PHOTO) {
+                val photoUrlsMono = if (content.contentType == ContentType.PHOTO) {
                     contentPhotoRepository.findByContentId(content.id!!)
                         .map { photos -> photos.map { it.photoUrl } }
-                        .map { photoUrls -> Pair(photoUrls as List<String>?, Pair(content, metadata)) }
                 } else {
-                    Mono.just(Pair(null as List<String>?, Pair(content, metadata)))
-                }.map { (photoUrls, contentAndMetadata) ->
-                    val (c, m) = contentAndMetadata
-                    ContentResponse(
-                        id = c.id.toString(),
-                        creatorId = c.creatorId.toString(),
-                        contentType = c.contentType,
-                        url = c.url,
-                        photoUrls = photoUrls,
-                        thumbnailUrl = c.thumbnailUrl,
-                        duration = c.duration,
-                        width = c.width,
-                        height = c.height,
-                        status = c.status,
-                        title = m.title,
-                        description = m.description,
-                        category = m.category,
-                        tags = m.tags,
-                        language = m.language,
-                        createdAt = c.createdAt,
-                        updatedAt = c.updatedAt
-                    )
+                    Mono.justOrEmpty(null)
                 }
+
+                // Interaction 정보 조회
+                val interactionMono = getInteractionInfo(contentId, userId)
+
+                Mono.zip(photoUrlsMono.defaultIfEmpty(emptyList()), interactionMono)
+                    .map { tuple ->
+                        val photoUrls = tuple.t1.takeIf { it.isNotEmpty() }
+                        val interactions = tuple.t2
+
+                        ContentResponse(
+                            id = content.id.toString(),
+                            creatorId = content.creatorId.toString(),
+                            contentType = content.contentType,
+                            url = content.url,
+                            photoUrls = photoUrls,
+                            thumbnailUrl = content.thumbnailUrl,
+                            duration = content.duration,
+                            width = content.width,
+                            height = content.height,
+                            status = content.status,
+                            title = metadata.title,
+                            description = metadata.description,
+                            category = metadata.category,
+                            tags = metadata.tags,
+                            language = metadata.language,
+                            interactions = interactions,
+                            createdAt = content.createdAt,
+                            updatedAt = content.updatedAt
+                        )
+                    }
             }
     }
 
@@ -314,10 +326,11 @@ class ContentServiceImpl(
      * 크리에이터의 콘텐츠 목록을 조회합니다.
      *
      * @param creatorId 크리에이터 ID
+     * @param userId 사용자 ID (선택, 인터랙션 정보에 사용자별 상태를 포함하려면 제공)
      * @return 콘텐츠 목록을 담은 Flux
      */
-    override fun getContentsByCreator(creatorId: UUID): Flux<ContentResponse> {
-        logger.info("Getting contents by creator: creatorId=$creatorId")
+    override fun getContentsByCreator(creatorId: UUID, userId: UUID?): Flux<ContentResponse> {
+        logger.info("Getting contents by creator: creatorId=$creatorId, userId=$userId")
 
         return contentRepository.findWithMetadataByCreatorId(creatorId)
             .collectList()
@@ -341,7 +354,7 @@ class ContentServiceImpl(
                 }
             }
             .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
-                Flux.fromIterable(contentWithMetadataList).map { contentWithMetadata ->
+                Flux.fromIterable(contentWithMetadataList).flatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
                     val photoUrls = if (content.contentType == ContentType.PHOTO) {
@@ -350,25 +363,29 @@ class ContentServiceImpl(
                         null
                     }
 
-                    ContentResponse(
-                        id = content.id.toString(),
-                        creatorId = content.creatorId.toString(),
-                        contentType = content.contentType,
-                        url = content.url,
-                        photoUrls = photoUrls,
-                        thumbnailUrl = content.thumbnailUrl,
-                        duration = content.duration,
-                        width = content.width,
-                        height = content.height,
-                        status = content.status,
-                        title = metadata.title,
-                        description = metadata.description,
-                        category = metadata.category,
-                        tags = metadata.tags,
-                        language = metadata.language,
-                        createdAt = content.createdAt,
-                        updatedAt = content.updatedAt
-                    )
+                    // Interaction 정보 조회
+                    getInteractionInfo(content.id!!, userId).map { interactions ->
+                        ContentResponse(
+                            id = content.id.toString(),
+                            creatorId = content.creatorId.toString(),
+                            contentType = content.contentType,
+                            url = content.url,
+                            photoUrls = photoUrls,
+                            thumbnailUrl = content.thumbnailUrl,
+                            duration = content.duration,
+                            width = content.width,
+                            height = content.height,
+                            status = content.status,
+                            title = metadata.title,
+                            description = metadata.description,
+                            category = metadata.category,
+                            tags = metadata.tags,
+                            language = metadata.language,
+                            interactions = interactions,
+                            createdAt = content.createdAt,
+                            updatedAt = content.updatedAt
+                        )
+                    }
                 }
             }
     }
@@ -563,6 +580,55 @@ class ContentServiceImpl(
         } catch (e: Exception) {
             logger.error("Failed to check S3 object existence: s3Key=$s3Key", e)
             false
+        }
+    }
+
+    /**
+     * 인터랙션 정보 조회
+     *
+     * 콘텐츠의 인터랙션 통계 (좋아요, 댓글, 저장, 공유, 조회수) 및 사용자별 상태를 조회합니다.
+     *
+     * @param contentId 콘텐츠 ID
+     * @param userId 사용자 ID (선택, null이면 사용자별 상태는 false로 반환)
+     * @return 인터랙션 정보를 담은 Mono
+     */
+    private fun getInteractionInfo(contentId: UUID, userId: UUID?): Mono<me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse> {
+        val likeCountMono = contentInteractionRepository.getLikeCount(contentId)
+        val commentCountMono = contentInteractionRepository.getCommentCount(contentId)
+        val saveCountMono = contentInteractionRepository.getSaveCount(contentId)
+        val shareCountMono = contentInteractionRepository.getShareCount(contentId)
+        val viewCountMono = contentInteractionRepository.getViewCount(contentId)
+
+        val isLikedMono = if (userId != null) {
+            userLikeRepository.exists(userId, contentId)
+        } else {
+            Mono.just(false)
+        }
+
+        val isSavedMono = if (userId != null) {
+            userSaveRepository.exists(userId, contentId)
+        } else {
+            Mono.just(false)
+        }
+
+        return Mono.zip(
+            likeCountMono,
+            commentCountMono,
+            saveCountMono,
+            shareCountMono,
+            viewCountMono,
+            isLikedMono,
+            isSavedMono
+        ).map { tuple ->
+            me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                likeCount = tuple.t1,
+                commentCount = tuple.t2,
+                saveCount = tuple.t3,
+                shareCount = tuple.t4,
+                viewCount = tuple.t5,
+                isLiked = tuple.t6,
+                isSaved = tuple.t7
+            )
         }
     }
 }

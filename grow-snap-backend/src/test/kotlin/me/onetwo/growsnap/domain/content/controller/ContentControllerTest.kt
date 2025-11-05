@@ -146,6 +146,15 @@ class ContentControllerTest {
                 category = request.category,
                 tags = request.tags,
                 language = request.language,
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 0,
+                    commentCount = 0,
+                    saveCount = 0,
+                    shareCount = 0,
+                    viewCount = 0,
+                    isLiked = false,
+                    isSaved = false
+                ),
                 createdAt = LocalDateTime.now(),
                 updatedAt = LocalDateTime.now()
             )
@@ -199,6 +208,13 @@ class ContentControllerTest {
                             fieldWithPath("category").description("카테고리"),
                             fieldWithPath("tags").description("태그 목록"),
                             fieldWithPath("language").description("언어"),
+                            fieldWithPath("interactions.likeCount").description("좋아요 수").optional(),
+                            fieldWithPath("interactions.commentCount").description("댓글 수").optional(),
+                            fieldWithPath("interactions.saveCount").description("저장 수").optional(),
+                            fieldWithPath("interactions.shareCount").description("공유 수").optional(),
+                            fieldWithPath("interactions.viewCount").description("조회수").optional(),
+                            fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
+                            fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성 시각"),
                             fieldWithPath("updatedAt").description("수정 시각")
                         )
@@ -233,11 +249,20 @@ class ContentControllerTest {
                 category = Category.PROGRAMMING,
                 tags = listOf("test"),
                 language = "ko",
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 10,
+                    commentCount = 5,
+                    saveCount = 3,
+                    shareCount = 2,
+                    viewCount = 100,
+                    isLiked = false,
+                    isSaved = false
+                ),
                 createdAt = LocalDateTime.now(),
                 updatedAt = LocalDateTime.now()
             )
 
-            every { contentService.getContent(contentId) } returns Mono.just(response)
+            every { contentService.getContent(contentId, any()) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -271,6 +296,13 @@ class ContentControllerTest {
                             fieldWithPath("category").description("카테고리"),
                             fieldWithPath("tags").description("태그 목록"),
                             fieldWithPath("language").description("언어"),
+                            fieldWithPath("interactions.likeCount").description("좋아요 수").optional(),
+                            fieldWithPath("interactions.commentCount").description("댓글 수").optional(),
+                            fieldWithPath("interactions.saveCount").description("저장 수").optional(),
+                            fieldWithPath("interactions.shareCount").description("공유 수").optional(),
+                            fieldWithPath("interactions.viewCount").description("조회수").optional(),
+                            fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
+                            fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성 시각"),
                             fieldWithPath("updatedAt").description("수정 시각")
                         )
@@ -284,7 +316,7 @@ class ContentControllerTest {
             // Given: 존재하지 않는 contentId
             val contentId = UUID.randomUUID()
 
-            every { contentService.getContent(contentId) } returns Mono.empty()
+            every { contentService.getContent(contentId, any()) } returns Mono.empty()
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -335,6 +367,15 @@ class ContentControllerTest {
                 category = Category.HEALTH,
                 tags = listOf("health", "photo"),
                 language = "ko",
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 5,
+                    commentCount = 3,
+                    saveCount = 2,
+                    shareCount = 1,
+                    viewCount = 50,
+                    isLiked = false,
+                    isSaved = false
+                ),
                 createdAt = LocalDateTime.now().minusDays(1),
                 updatedAt = LocalDateTime.now()
             )
@@ -391,6 +432,13 @@ class ContentControllerTest {
                             fieldWithPath("category").description("카테고리"),
                             fieldWithPath("tags").description("태그 목록"),
                             fieldWithPath("language").description("언어 코드"),
+                            fieldWithPath("interactions.likeCount").description("좋아요 수").optional(),
+                            fieldWithPath("interactions.commentCount").description("댓글 수").optional(),
+                            fieldWithPath("interactions.saveCount").description("저장 수").optional(),
+                            fieldWithPath("interactions.shareCount").description("공유 수").optional(),
+                            fieldWithPath("interactions.viewCount").description("조회수").optional(),
+                            fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
+                            fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성일시"),
                             fieldWithPath("updatedAt").description("수정일시")
                         )

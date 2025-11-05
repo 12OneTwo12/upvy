@@ -94,15 +94,26 @@ class ContentController(
     /**
      * 콘텐츠를 조회합니다.
      *
+     * 인증된 사용자의 경우 인터랙션 정보에 사용자별 상태 (isLiked, isSaved)가 포함됩니다.
+     * 비인증 사용자의 경우 인터랙션 통계만 반환되며, isLiked와 isSaved는 false로 설정됩니다.
+     *
+     * @param principal 인증된 사용자 Principal (선택)
      * @param contentId 콘텐츠 ID
-     * @return 200 OK - 콘텐츠 정보
+     * @return 200 OK - 콘텐츠 정보 (인터랙션 정보 포함)
      *         404 Not Found - 콘텐츠가 존재하지 않음
      */
     @GetMapping("/{contentId}")
     fun getContent(
+        principal: Mono<Principal>?,
         @PathVariable contentId: UUID
     ): Mono<ResponseEntity<ContentResponse>> {
-        return contentService.getContent(contentId)
+        val userIdMono = principal?.toUserId() ?: Mono.empty()
+
+        return userIdMono.flatMap { userId ->
+            contentService.getContent(contentId, userId)
+        }.switchIfEmpty(
+            contentService.getContent(contentId, null)
+        )
             .map { ResponseEntity.ok(it) }
             .onErrorResume(NoSuchElementException::class.java) {
                 Mono.just(ResponseEntity.notFound().build())
@@ -113,8 +124,10 @@ class ContentController(
     /**
      * 크리에이터의 콘텐츠 목록을 조회합니다.
      *
+     * 자신의 콘텐츠 목록을 조회하며, 인터랙션 정보에 사용자별 상태 (isLiked, isSaved)가 포함됩니다.
+     *
      * @param principal 인증된 사용자 Principal
-     * @return 200 OK - 콘텐츠 목록
+     * @return 200 OK - 콘텐츠 목록 (인터랙션 정보 포함)
      */
     @GetMapping("/me")
     fun getMyContents(
@@ -123,7 +136,7 @@ class ContentController(
         return principal
             .toUserId()
             .flatMapMany { userId ->
-                contentService.getContentsByCreator(userId)
+                contentService.getContentsByCreator(userId, userId)
             }
             .collectList()
             .map { ResponseEntity.ok(it) }

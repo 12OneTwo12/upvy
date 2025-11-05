@@ -117,4 +117,20 @@ interface ContentInteractionRepository {
      * @return 공유 수
      */
     fun getShareCount(contentId: UUID): Mono<Int>
+
+    /**
+     * 댓글 수 조회
+     *
+     * @param contentId 콘텐츠 ID
+     * @return 댓글 수
+     */
+    fun getCommentCount(contentId: UUID): Mono<Int>
+
+    /**
+     * 조회수 조회
+     *
+     * @param contentId 콘텐츠 ID
+     * @return 조회수
+     */
+    fun getViewCount(contentId: UUID): Mono<Int>
 }

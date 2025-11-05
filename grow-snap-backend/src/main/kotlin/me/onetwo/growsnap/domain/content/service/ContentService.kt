@@ -48,17 +48,19 @@ interface ContentService {
      * 콘텐츠를 조회합니다.
      *
      * @param contentId 콘텐츠 ID
+     * @param userId 사용자 ID (선택, 인터랙션 정보에 사용자별 상태를 포함하려면 제공)
      * @return 콘텐츠 정보를 담은 Mono
      */
-    fun getContent(contentId: UUID): Mono<ContentResponse>
+    fun getContent(contentId: UUID, userId: UUID? = null): Mono<ContentResponse>
 
     /**
      * 크리에이터의 콘텐츠 목록을 조회합니다.
      *
      * @param creatorId 크리에이터 ID
+     * @param userId 사용자 ID (선택, 인터랙션 정보에 사용자별 상태를 포함하려면 제공)
      * @return 콘텐츠 목록을 담은 Flux
      */
-    fun getContentsByCreator(creatorId: UUID): Flux<ContentResponse>
+    fun getContentsByCreator(creatorId: UUID, userId: UUID? = null): Flux<ContentResponse>
 
     /**
      * 콘텐츠를 수정합니다.
