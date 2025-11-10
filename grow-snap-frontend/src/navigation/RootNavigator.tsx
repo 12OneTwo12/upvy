@@ -49,11 +49,7 @@ export default function RootNavigator() {
               component={EditProfileScreen}
               options={{ presentation: 'modal' }}
             />
-            <Stack.Screen
-              name="Settings"
-              component={SettingsScreen}
-              options={{ presentation: 'modal' }}
-            />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="UserProfile" component={UserProfileScreen} />
             <Stack.Screen name="FollowList" component={FollowListScreen} />
           </>

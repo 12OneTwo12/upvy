@@ -27,36 +27,36 @@ const useStyles = createStyleSheet({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[4],
     paddingVertical: theme.spacing[3],
-    borderBottomWidth: 0.5,
-    borderBottomColor: theme.colors.gray[200],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
   },
-  headerTitle: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.primary,
-  },
-  closeButton: {
+  backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: theme.spacing[3],
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text.primary,
   },
   scrollView: {
     flex: 1,
   },
   section: {
-    paddingTop: theme.spacing[4],
+    marginTop: theme.spacing[4],
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.secondary,
     paddingHorizontal: theme.spacing[4],
-    marginBottom: theme.spacing[3],
+    marginBottom: theme.spacing[2],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -67,7 +67,7 @@ const useStyles = createStyleSheet({
     paddingHorizontal: theme.spacing[4],
     paddingVertical: theme.spacing[4],
     backgroundColor: theme.colors.background.primary,
-    borderBottomWidth: 0.5,
+    borderBottomWidth: 1,
     borderBottomColor: theme.colors.border.light,
   },
   settingRowDisabled: {
@@ -97,7 +97,7 @@ const useStyles = createStyleSheet({
   comingSoonBadge: {
     backgroundColor: theme.colors.gray[200],
     paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[1],
+    paddingVertical: 2,
     borderRadius: theme.borderRadius.sm,
     marginLeft: theme.spacing[2],
   },
@@ -106,13 +106,20 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.secondary,
     fontWeight: theme.typography.fontWeight.medium,
   },
+  divider: {
+    height: 8,
+    backgroundColor: theme.colors.background.secondary,
+  },
+  dangerSection: {
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[4],
+  },
   dangerButton: {
     backgroundColor: theme.colors.error,
-    marginHorizontal: theme.spacing[4],
-    marginTop: theme.spacing[4],
-    paddingVertical: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
     borderRadius: theme.borderRadius.base,
     alignItems: 'center',
+    marginBottom: theme.spacing[3],
   },
   dangerButtonText: {
     color: theme.colors.text.inverse,
@@ -121,9 +128,7 @@ const useStyles = createStyleSheet({
   },
   logoutButton: {
     backgroundColor: theme.colors.gray[800],
-    marginHorizontal: theme.spacing[4],
-    marginTop: theme.spacing[2],
-    paddingVertical: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
     borderRadius: theme.borderRadius.base,
     alignItems: 'center',
   },
@@ -131,11 +136,6 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.inverse,
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
-  },
-  divider: {
-    height: 8,
-    backgroundColor: theme.colors.background.secondary,
-    marginVertical: theme.spacing[4],
   },
 });
 
@@ -230,21 +230,42 @@ export default function SettingsScreen() {
     );
   };
 
+  /**
+   * 서비스 약관 화면으로 이동
+   */
+  const handleTermsOfService = () => {
+    showComingSoonAlert('서비스 약관');
+  };
+
+  /**
+   * 개인정보 보호정책 화면으로 이동
+   */
+  const handlePrivacyPolicy = () => {
+    showComingSoonAlert('개인정보 보호정책');
+  };
+
+  /**
+   * 도움말 및 지원 화면으로 이동
+   */
+  const handleHelp = () => {
+    showComingSoonAlert('도움말 및 지원');
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>설정</Text>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.closeButton}
+          style={styles.backButton}
         >
           <Ionicons
-            name="close"
+            name="arrow-back"
             size={24}
             color={theme.colors.text.primary}
           />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>설정</Text>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -256,8 +277,8 @@ export default function SettingsScreen() {
             <View style={styles.settingLeft}>
               <Ionicons
                 name="person-outline"
-                size={20}
-                color={theme.colors.primary[500]}
+                size={22}
+                color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -287,8 +308,8 @@ export default function SettingsScreen() {
             <View style={styles.settingLeft}>
               <Ionicons
                 name="lock-closed-outline"
-                size={20}
-                color={theme.colors.primary[500]}
+                size={22}
+                color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -321,8 +342,8 @@ export default function SettingsScreen() {
             <View style={styles.settingLeft}>
               <Ionicons
                 name="ban-outline"
-                size={20}
-                color={theme.colors.primary[500]}
+                size={22}
+                color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -357,8 +378,8 @@ export default function SettingsScreen() {
             <View style={styles.settingLeft}>
               <Ionicons
                 name="notifications-outline"
-                size={20}
-                color={theme.colors.primary[500]}
+                size={22}
+                color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -392,13 +413,13 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.settingRow}
-            onPress={() => showComingSoonAlert('서비스 약관')}
+            onPress={handleTermsOfService}
           >
             <View style={styles.settingLeft}>
               <Ionicons
                 name="document-text-outline"
-                size={20}
-                color={theme.colors.primary[500]}
+                size={22}
+                color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <Text style={styles.settingLabel}>서비스 약관</Text>
@@ -412,13 +433,13 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.settingRow}
-            onPress={() => showComingSoonAlert('개인정보 보호정책')}
+            onPress={handlePrivacyPolicy}
           >
             <View style={styles.settingLeft}>
               <Ionicons
                 name="shield-checkmark-outline"
-                size={20}
-                color={theme.colors.primary[500]}
+                size={22}
+                color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <Text style={styles.settingLabel}>개인정보 보호정책</Text>
@@ -432,13 +453,13 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.settingRow}
-            onPress={() => showComingSoonAlert('도움말 및 지원')}
+            onPress={handleHelp}
           >
             <View style={styles.settingLeft}>
               <Ionicons
                 name="help-circle-outline"
-                size={20}
-                color={theme.colors.primary[500]}
+                size={22}
+                color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <Text style={styles.settingLabel}>도움말 및 지원</Text>
@@ -454,8 +475,8 @@ export default function SettingsScreen() {
             <View style={styles.settingLeft}>
               <Ionicons
                 name="information-circle-outline"
-                size={20}
-                color={theme.colors.primary[500]}
+                size={22}
+                color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -469,7 +490,7 @@ export default function SettingsScreen() {
         <View style={styles.divider} />
 
         {/* Account Management */}
-        <View style={styles.section}>
+        <View style={styles.dangerSection}>
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={handleLogout}
