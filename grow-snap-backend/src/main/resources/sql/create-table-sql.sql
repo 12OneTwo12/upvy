@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS user_status_history (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_status_history_user_id ON user_status_history(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_status_history_changed_at ON user_status_history(changed_at);
+CREATE INDEX idx_user_status_history_user_id ON user_status_history(user_id);
+CREATE INDEX idx_user_status_history_changed_at ON user_status_history(changed_at);
 
 -- User Profiles Table
 CREATE TABLE IF NOT EXISTS user_profiles (
