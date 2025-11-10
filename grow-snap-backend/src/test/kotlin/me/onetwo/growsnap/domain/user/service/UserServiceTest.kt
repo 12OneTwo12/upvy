@@ -143,14 +143,14 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("OAuth 사용자 조회 또는 생성 - 탈퇴한 사용자 복원")
-    fun findOrCreateOAuthUser_DeletedUser_RestoresUser() {
+    @DisplayName("OAuth 사용자 조회 또는 생성 - 탈퇴한 사용자 재가입 (새 프로필 생성)")
+    fun findOrCreateOAuthUser_DeletedUser_CreatesNewProfile() {
         // Given
-        val email = "deleted@example.com"
+        val email = "deleted_no_profile@example.com"
         val provider = OAuthProvider.GOOGLE
-        val providerId = "google-789"
-        val name = "Restored User"
-        val profileImageUrl = "https://example.com/restored-profile.jpg"
+        val providerId = "google-790"
+        val name = "Restored User No Profile"
+        val profileImageUrl = "https://example.com/new-profile.jpg"
 
         val userId = UUID.randomUUID()
         val deletedUser = User(
@@ -166,6 +166,14 @@ class UserServiceTest {
         val restoredUser = deletedUser.copy(
             status = UserStatus.ACTIVE,
             deletedAt = null
+        )
+
+        val newProfile = UserProfile(
+            id = 1L,
+            userId = userId,
+            nickname = name,
+            profileImageUrl = profileImageUrl,
+            bio = null
         )
 
         val mockHistory = UserStatusHistory(
@@ -190,8 +198,11 @@ class UserServiceTest {
             userStatusHistoryRepository.save(any())
         } returns Mono.just(mockHistory)
         every {
-            userProfileRepository.restore(userId)
-        } returns Mono.empty()
+            userProfileRepository.existsByNickname(any())
+        } returns Mono.just(false)
+        every {
+            userProfileRepository.save(any())
+        } returns Mono.just(newProfile)
 
         // When
         val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl).block()!!
@@ -209,7 +220,7 @@ class UserServiceTest {
             userStatusHistoryRepository.save(any())
         }
         verify(exactly = 1) {
-            userProfileRepository.restore(userId)
+            userProfileRepository.save(any())  // 새로운 프로필 생성됨
         }
         verify(exactly = 0) {
             userRepository.save(any())

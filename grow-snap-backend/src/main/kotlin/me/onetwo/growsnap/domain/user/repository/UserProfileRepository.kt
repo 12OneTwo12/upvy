@@ -8,6 +8,8 @@ import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -24,6 +26,7 @@ class UserProfileRepository(
                 .set(USER_PROFILES.NICKNAME, profile.nickname)
                 .set(USER_PROFILES.PROFILE_IMAGE_URL, profile.profileImageUrl)
                 .set(USER_PROFILES.BIO, profile.bio)
+                .set(USER_PROFILES.DELETED_AT_UNIX, 0L)
                 .returningResult(USER_PROFILES.ID)
         ).map { record ->
             profile.copy(id = record.getValue(USER_PROFILES.ID))
@@ -92,33 +95,18 @@ class UserProfileRepository(
      * @param deletedBy 삭제한 사용자 ID
      */
     fun softDelete(userId: UUID, deletedBy: UUID): Mono<Void> {
+        val now = LocalDateTime.now()
+        val deletedAtUnix = now.atZone(ZoneId.systemDefault()).toEpochSecond()
+
         return Mono.from(
             dsl.update(USER_PROFILES)
-                .set(USER_PROFILES.DELETED_AT, java.time.LocalDateTime.now())
-                .set(USER_PROFILES.UPDATED_AT, java.time.LocalDateTime.now())
+                .set(USER_PROFILES.DELETED_AT, now)
+                .set(USER_PROFILES.DELETED_AT_UNIX, deletedAtUnix)
+                .set(USER_PROFILES.UPDATED_AT, now)
                 .set(USER_PROFILES.UPDATED_BY, deletedBy.toString())
                 .where(USER_PROFILES.USER_ID.eq(userId.toString()))
                 .and(USER_PROFILES.DELETED_AT.isNull)
         ).then()
-    }
-
-    /**
-     * 프로필 복원 (Soft Delete 취소)
-     *
-     * 탈퇴한 사용자가 재가입할 때 기존 프로필을 복원합니다.
-     *
-     * @param userId 사용자 ID
-     * @return 복원된 프로필 정보
-     */
-    fun restore(userId: UUID): Mono<UserProfile> {
-        return Mono.from(
-            dsl.update(USER_PROFILES)
-                .set(USER_PROFILES.DELETED_AT, null as java.time.LocalDateTime?)
-                .set(USER_PROFILES.UPDATED_AT, java.time.LocalDateTime.now())
-                .set(USER_PROFILES.UPDATED_BY, userId.toString())
-                .where(USER_PROFILES.USER_ID.eq(userId.toString()))
-                .and(USER_PROFILES.DELETED_AT.isNotNull)  // 삭제된 데이터만 복원
-        ).then(findByUserId(userId))
     }
 
     /**
@@ -182,7 +170,9 @@ class UserProfileRepository(
             followerCount = record.followerCount ?: 0,
             followingCount = record.followingCount ?: 0,
             createdAt = record.createdAt!!,
-            updatedAt = record.updatedAt!!
+            updatedAt = record.updatedAt!!,
+            deletedAt = record.deletedAt,
+            deletedAtUnix = record.deletedAtUnix ?: 0L
         )
     }
 }

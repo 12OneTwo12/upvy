@@ -92,7 +92,7 @@ class UserServiceImpl(
         profileImageUrl: String?
     ): Mono<User> {
         return when {
-            user.isDeleted() -> restoreDeletedAccount(user, provider, providerId)
+            user.isDeleted() -> restoreDeletedAccount(user, provider, providerId, name, profileImageUrl)
             user.hasProviderChanged(provider, providerId) -> updateProviderIfNeeded(user, provider, providerId)
             else -> {
                 logger.info("Existing active user found: userId=${user.id}, email=${user.email}, provider=$provider")
@@ -106,12 +106,17 @@ class UserServiceImpl(
      *
      * 1. Provider 정보 업데이트 (다른 OAuth로 재가입 가능)
      * 2. 사용자 상태를 ACTIVE로 변경 (이력 기록)
-     * 3. 프로필 복원
+     * 3. 새로운 프로필 생성 (이전 프로필은 audit trail로만 보관)
+     *
+     * 참고: 탈퇴한 사용자가 재가입하면 완전히 새로 시작합니다.
+     * 이전 프로필은 soft delete 상태로 audit trail에만 남기고 복원하지 않습니다.
      */
     private fun restoreDeletedAccount(
         user: User,
         provider: OAuthProvider,
-        providerId: String
+        providerId: String,
+        name: String?,
+        profileImageUrl: String?
     ): Mono<User> {
         logger.info("Re-registering deleted account: userId=${user.id}, email=${user.email}, provider=$provider")
 
@@ -125,11 +130,13 @@ class UserServiceImpl(
                 )
             }
             .flatMap { restoredUser ->
-                userProfileRepository.restore(restoredUser.id!!)
-                    .doOnNext { logger.info("Profile restored: userId=${restoredUser.id}") }
+                // 탈퇴 후 재가입은 항상 새 프로필 생성 (이전 프로필은 복원하지 않음)
+                logger.info("Creating fresh profile for re-registered user: userId=${restoredUser.id}")
+                createProfileForNewUser(restoredUser, name ?: restoredUser.email.substringBefore("@"), profileImageUrl)
+                    .doOnNext { logger.info("New profile created for re-registered user: userId=${restoredUser.id}") }
                     .thenReturn(restoredUser)
             }
-            .doOnNext { logger.info("Account restored: userId=${it.id}, email=${it.email}, provider=$provider") }
+            .doOnNext { logger.info("Account restored with fresh profile: userId=${it.id}, email=${it.email}, provider=$provider") }
     }
 
     /**

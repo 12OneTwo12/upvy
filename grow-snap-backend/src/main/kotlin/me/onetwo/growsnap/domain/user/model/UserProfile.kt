@@ -15,5 +15,6 @@ data class UserProfile(
     val createdBy: String? = null,
     val updatedAt: LocalDateTime = LocalDateTime.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null
+    val deletedAt: LocalDateTime? = null,
+    val deletedAtUnix: Long = 0L
 )

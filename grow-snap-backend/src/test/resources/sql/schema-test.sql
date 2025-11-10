@@ -41,8 +41,8 @@ CREATE INDEX idx_deleted_at ON users(deleted_at);
 -- User Profiles Table
 CREATE TABLE user_profiles (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id CHAR(36) NOT NULL UNIQUE,
-    nickname VARCHAR(20) NOT NULL UNIQUE,
+    user_id CHAR(36) NOT NULL,
+    nickname VARCHAR(20) NOT NULL,
     profile_image_url VARCHAR(500),
     bio VARCHAR(500),
     follower_count INT DEFAULT 0,
@@ -52,7 +52,10 @@ CREATE TABLE user_profiles (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(36) NULL,
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    deleted_at_unix BIGINT NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_profile UNIQUE (user_id, deleted_at_unix),
+    CONSTRAINT unique_nickname UNIQUE (nickname, deleted_at_unix)
 );
 
 CREATE INDEX idx_nickname ON user_profiles(nickname);
