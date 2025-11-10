@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 import java.security.Principal
 import java.util.UUID
@@ -57,16 +58,27 @@ class UserController(
      * 회원 탈퇴
      *
      * 인증된 사용자를 탈퇴 처리합니다 (Soft Delete).
-     * 사용자, 프로필, 팔로우 관계가 모두 삭제됩니다.
+     * 사용자, 프로필, 팔로우 관계가 모두 삭제되며, 세션도 invalidate됩니다.
      *
      * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
+     * @param exchange ServerWebExchange (세션 invalidate용)
      * @return 204 No Content
      */
     @DeleteMapping("/me")
-    fun withdrawMe(principal: Mono<Principal>): Mono<ResponseEntity<Void>> {
+    fun withdrawMe(
+        principal: Mono<Principal>,
+        exchange: ServerWebExchange
+    ): Mono<ResponseEntity<Void>> {
         return principal
             .toUserId()
             .flatMap { userId -> userService.withdrawUser(userId) }
+            .then(
+                exchange.session
+                    .flatMap { session ->
+                        session.invalidate()
+                        Mono.empty<Void>()
+                    }
+            )
             .thenReturn(ResponseEntity.noContent().build())
     }
 }
