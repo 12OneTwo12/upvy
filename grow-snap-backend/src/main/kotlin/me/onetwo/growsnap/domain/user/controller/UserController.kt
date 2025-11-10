@@ -2,6 +2,7 @@ package me.onetwo.growsnap.domain.user.controller
 
 import me.onetwo.growsnap.domain.user.dto.UserResponse
 import me.onetwo.growsnap.domain.user.service.UserService
+import me.onetwo.growsnap.infrastructure.redis.RefreshTokenRepository
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.http.ResponseEntity
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 import java.security.Principal
 import java.util.UUID
@@ -23,7 +23,8 @@ import java.util.UUID
 @RestController
 @RequestMapping(ApiPaths.API_V1_USERS)
 class UserController(
-    private val userService: UserService
+    private val userService: UserService,
+    private val refreshTokenRepository: RefreshTokenRepository
 ) {
 
     /**
@@ -58,27 +59,21 @@ class UserController(
      * 회원 탈퇴
      *
      * 인증된 사용자를 탈퇴 처리합니다 (Soft Delete).
-     * 사용자, 프로필, 팔로우 관계가 모두 삭제되며, 세션도 invalidate됩니다.
+     * 사용자, 프로필, 팔로우 관계가 모두 삭제되며, Refresh Token도 삭제됩니다.
+     *
+     * 참고: JWT Access Token은 만료 시까지 유효하므로, 프론트엔드에서 토큰을 삭제해야 합니다.
      *
      * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
-     * @param exchange ServerWebExchange (세션 invalidate용)
      * @return 204 No Content
      */
     @DeleteMapping("/me")
-    fun withdrawMe(
-        principal: Mono<Principal>,
-        exchange: ServerWebExchange
-    ): Mono<ResponseEntity<Void>> {
+    fun withdrawMe(principal: Mono<Principal>): Mono<ResponseEntity<Void>> {
         return principal
             .toUserId()
-            .flatMap { userId -> userService.withdrawUser(userId) }
-            .then(
-                exchange.session
-                    .flatMap { session ->
-                        session.invalidate()
-                        Mono.empty<Void>()
-                    }
-            )
+            .flatMap { userId ->
+                userService.withdrawUser(userId)
+                    .doOnSuccess { refreshTokenRepository.deleteByUserId(userId) }
+            }
             .thenReturn(ResponseEntity.noContent().build())
     }
 }

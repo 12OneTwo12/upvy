@@ -4,6 +4,7 @@ import me.onetwo.growsnap.infrastructure.security.jwt.JwtAuthenticationConverter
 import me.onetwo.growsnap.infrastructure.security.oauth2.CustomReactiveOAuth2UserService
 import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthenticationFailureHandler
 import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler
+import me.onetwo.growsnap.infrastructure.security.oauth2.OAuth2AuthorizationRequestCustomizer
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -32,7 +33,8 @@ class SecurityConfig(
     private val customOAuth2UserService: CustomReactiveOAuth2UserService,
     private val oAuth2SuccessHandler: OAuth2AuthenticationSuccessHandler,
     private val oAuth2FailureHandler: OAuth2AuthenticationFailureHandler,
-    private val jwtAuthenticationConverter: JwtAuthenticationConverter
+    private val jwtAuthenticationConverter: JwtAuthenticationConverter,
+    private val oauth2AuthorizationRequestCustomizer: OAuth2AuthorizationRequestCustomizer
 ) {
 
     /**
@@ -65,6 +67,7 @@ class SecurityConfig(
             }
             .oauth2Login { oauth2 ->
                 oauth2
+                    .authorizationRequestResolver(oauth2AuthorizationRequestCustomizer)
                     .authenticationSuccessHandler(oAuth2SuccessHandler)
                     .authenticationFailureHandler(oAuth2FailureHandler)
                     .authenticationManager(oauth2AuthenticationManager())
