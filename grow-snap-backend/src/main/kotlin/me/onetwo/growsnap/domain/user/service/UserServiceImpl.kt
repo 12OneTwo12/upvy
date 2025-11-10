@@ -53,13 +53,17 @@ class UserServiceImpl(
      * OAuth 제공자와 Provider ID로 사용자 조회 또는 생성
      *
      * OAuth 로그인 시 사용하며, 기존 사용자가 있으면 반환하고 없으면 새로 생성합니다.
-     * 신규 사용자 생성 시 프로필도 자동으로 생성됩니다.
+     * 탈퇴한 계정으로 재가입 시 기존 계정을 복원합니다.
      *
      * ### 처리 흐름
-     * 1. Provider + ProviderId로 기존 사용자 조회
-     * 2. 없으면 신규 사용자 생성
-     * 3. 신규 사용자인 경우 프로필 자동 생성 (OAuth 이름을 닉네임으로 사용)
-     * 4. 닉네임 중복 시 고유 suffix 추가 (예: "John_a1b2c3")
+     * 1. 이메일로 사용자 조회 (soft deleted 포함)
+     * 2. 사용자가 있는 경우:
+     *    a. Soft deleted 상태: Provider 정보 업데이트 + 계정 복원 + 프로필 복원
+     *    b. Active 상태: Provider 정보가 다르면 업데이트, 그대로 반환
+     * 3. 사용자가 없는 경우:
+     *    a. 신규 사용자 생성
+     *    b. 프로필 자동 생성 (OAuth 이름을 닉네임으로 사용)
+     *    c. 닉네임 중복 시 고유 suffix 추가 (예: "John_a1b2c3")
      *
      * @param email 사용자 이메일
      * @param provider OAuth 제공자 (GOOGLE, NAVER, KAKAO 등)
@@ -76,14 +80,53 @@ class UserServiceImpl(
         name: String?,
         profileImageUrl: String?
     ): Mono<User> {
-        // 기존 사용자 조회 (Provider + ProviderId로)
-        return userRepository.findByProviderAndProviderId(provider, providerId)
-            .doOnNext { user ->
-                logger.info("Existing user found: userId=${user.id}, email=$email")
+        // 이메일로 사용자 조회 (soft deleted 포함)
+        return userRepository.findByEmailIncludingDeleted(email)
+            .flatMap { existingUser ->
+                val isDeleted = existingUser.deletedAt != null
+                val providerChanged = existingUser.provider != provider || existingUser.providerId != providerId
+
+                when {
+                    // Case 1: 탈퇴한 계정으로 재가입
+                    isDeleted -> {
+                        logger.info("Re-registering deleted account: userId=${existingUser.id}, email=$email, provider=$provider")
+
+                        // Provider 정보 업데이트 (다른 OAuth 제공자로 재가입 가능)
+                        val updateProviderMono = if (providerChanged) {
+                            userRepository.updateProvider(existingUser.id!!, provider, providerId)
+                        } else {
+                            Mono.just(existingUser)
+                        }
+
+                        updateProviderMono.flatMap {
+                            // 사용자 계정 복원 + 프로필 복원
+                            Mono.zip(
+                                userRepository.restore(existingUser.id!!),
+                                userProfileRepository.restore(existingUser.id!!)
+                            ).map { (restoredUser, _) ->
+                                logger.info("Account restored: userId=${restoredUser.id}, email=$email, provider=$provider")
+                                restoredUser
+                            }
+                        }
+                    }
+
+                    // Case 2: 활성 계정이지만 Provider 정보가 다름 (다른 OAuth로 로그인)
+                    providerChanged -> {
+                        logger.info("Updating provider info: userId=${existingUser.id}, email=$email, oldProvider=${existingUser.provider}, newProvider=$provider")
+                        userRepository.updateProvider(existingUser.id!!, provider, providerId)
+                    }
+
+                    // Case 3: 활성 계정이고 Provider 정보 일치
+                    else -> {
+                        logger.info("Existing active user found: userId=${existingUser.id}, email=$email, provider=$provider")
+                        Mono.just(existingUser)
+                    }
+                }
             }
             .switchIfEmpty(
+                // Case 4: 신규 사용자 생성
                 Mono.defer {
-                    // 신규 사용자 생성
+                    logger.info("Creating new user: email=$email, provider=$provider")
                     val newUser = User(
                         email = email,
                         provider = provider,

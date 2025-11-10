@@ -103,6 +103,25 @@ class UserProfileRepository(
     }
 
     /**
+     * 프로필 복원 (Soft Delete 취소)
+     *
+     * 탈퇴한 사용자가 재가입할 때 기존 프로필을 복원합니다.
+     *
+     * @param userId 사용자 ID
+     * @return 복원된 프로필 정보
+     */
+    fun restore(userId: UUID): Mono<UserProfile> {
+        return Mono.from(
+            dsl.update(USER_PROFILES)
+                .set(USER_PROFILES.DELETED_AT, null as java.time.LocalDateTime?)
+                .set(USER_PROFILES.UPDATED_AT, java.time.LocalDateTime.now())
+                .set(USER_PROFILES.UPDATED_BY, userId.toString())
+                .where(USER_PROFILES.USER_ID.eq(userId.toString()))
+                .and(USER_PROFILES.DELETED_AT.isNotNull)  // 삭제된 데이터만 복원
+        ).then(findByUserId(userId))
+    }
+
+    /**
      * 여러 사용자의 프로필 정보를 일괄 조회
      *
      * N+1 쿼리 문제를 방지하기 위해 IN 절을 사용하여 한 번에 조회합니다.
