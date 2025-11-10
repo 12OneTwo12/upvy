@@ -9,6 +9,9 @@ import MainNavigator from './MainNavigator';
 import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
+import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
+import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
+import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
 import UserProfileScreen from '@/screens/profile/UserProfileScreen';
 import FollowListScreen from '@/screens/profile/FollowListScreen';
 
@@ -50,6 +53,9 @@ export default function RootNavigator() {
               options={{ presentation: 'modal' }}
             />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
             <Stack.Screen name="UserProfile" component={UserProfileScreen} />
             <Stack.Screen name="FollowList" component={FollowListScreen} />
           </>

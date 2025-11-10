@@ -110,25 +110,14 @@ const useStyles = createStyleSheet({
     height: 8,
     backgroundColor: theme.colors.background.secondary,
   },
-  dangerSection: {
+  logoutSection: {
     paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[4],
-  },
-  dangerButton: {
-    backgroundColor: theme.colors.error,
-    paddingVertical: theme.spacing[3],
-    borderRadius: theme.borderRadius.base,
-    alignItems: 'center',
-    marginBottom: theme.spacing[3],
-  },
-  dangerButtonText: {
-    color: theme.colors.text.inverse,
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
+    paddingTop: theme.spacing[6],
+    paddingBottom: theme.spacing[4],
   },
   logoutButton: {
-    backgroundColor: theme.colors.gray[800],
-    paddingVertical: theme.spacing[3],
+    backgroundColor: theme.colors.primary[500],
+    paddingVertical: theme.spacing[4],
     borderRadius: theme.borderRadius.base,
     alignItems: 'center',
   },
@@ -136,6 +125,19 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.inverse,
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
+  },
+  withdrawContainer: {
+    alignItems: 'center',
+    marginTop: theme.spacing[6],
+    marginBottom: theme.spacing[4],
+  },
+  withdrawButton: {
+    paddingVertical: theme.spacing[2],
+  },
+  withdrawText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[400],
+    textDecorationLine: 'underline',
   },
 });
 
@@ -234,21 +236,21 @@ export default function SettingsScreen() {
    * 서비스 약관 화면으로 이동
    */
   const handleTermsOfService = () => {
-    showComingSoonAlert('서비스 약관');
+    navigation.navigate('TermsOfService');
   };
 
   /**
    * 개인정보 보호정책 화면으로 이동
    */
   const handlePrivacyPolicy = () => {
-    showComingSoonAlert('개인정보 보호정책');
+    navigation.navigate('PrivacyPolicy');
   };
 
   /**
    * 도움말 및 지원 화면으로 이동
    */
   const handleHelp = () => {
-    showComingSoonAlert('도움말 및 지원');
+    navigation.navigate('HelpSupport');
   };
 
   return (
@@ -300,10 +302,8 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>개인정보 및 보안</Text>
 
-          <TouchableOpacity
+          <View
             style={[styles.settingRow, styles.settingRowDisabled]}
-            onPress={() => showComingSoonAlert('비공개 계정')}
-            disabled={true}
           >
             <View style={styles.settingLeft}>
               <Ionicons
@@ -313,13 +313,15 @@ export default function SettingsScreen() {
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>비공개 계정</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.settingLabel}>비공개 계정</Text>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText}>준비중</Text>
+                  </View>
+                </View>
                 <Text style={styles.settingSubtitle}>
                   팔로워 승인 필요
                 </Text>
-              </View>
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>준비중</Text>
               </View>
             </View>
             <Switch
@@ -332,7 +334,7 @@ export default function SettingsScreen() {
               }}
               thumbColor={privateAccount ? theme.colors.primary[500] : theme.colors.gray[200]}
             />
-          </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[styles.settingRow, styles.settingRowDisabled]}
@@ -370,10 +372,8 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>알림</Text>
 
-          <TouchableOpacity
+          <View
             style={[styles.settingRow, styles.settingRowDisabled]}
-            onPress={() => showComingSoonAlert('알림 설정')}
-            disabled={true}
           >
             <View style={styles.settingLeft}>
               <Ionicons
@@ -383,13 +383,15 @@ export default function SettingsScreen() {
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>알림</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.settingLabel}>알림</Text>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText}>준비중</Text>
+                  </View>
+                </View>
                 <Text style={styles.settingSubtitle}>
                   좋아요, 댓글, 팔로우 알림
                 </Text>
-              </View>
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>준비중</Text>
               </View>
             </View>
             <Switch
@@ -402,7 +404,7 @@ export default function SettingsScreen() {
               }}
               thumbColor={notificationsEnabled ? theme.colors.primary[500] : theme.colors.gray[200]}
             />
-          </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.divider} />
@@ -490,7 +492,7 @@ export default function SettingsScreen() {
         <View style={styles.divider} />
 
         {/* Account Management */}
-        <View style={styles.dangerSection}>
+        <View style={styles.logoutSection}>
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={handleLogout}
@@ -498,12 +500,14 @@ export default function SettingsScreen() {
             <Text style={styles.logoutButtonText}>로그아웃</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.dangerButton}
-            onPress={handleDeleteAccount}
-          >
-            <Text style={styles.dangerButtonText}>회원 탈퇴</Text>
-          </TouchableOpacity>
+          <View style={styles.withdrawContainer}>
+            <TouchableOpacity
+              style={styles.withdrawButton}
+              onPress={handleDeleteAccount}
+            >
+              <Text style={styles.withdrawText}>회원 탈퇴</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Bottom spacing */}
