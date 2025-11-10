@@ -24,13 +24,20 @@
 ```bash
 Node.js >= 18
 npm >= 9
+Xcode >= 15 (iOS 개발용)
+CocoaPods (iOS)
 ```
 
 ### 설치
 
 ```bash
 cd grow-snap-frontend
-npm install
+
+# 의존성 설치 (네이티브 모듈 자동 등록 포함)
+npm install --legacy-peer-deps
+
+# iOS: CocoaPods 의존성 설치
+cd ios && pod install && cd ..
 ```
 
 ### 개발 서버 실행
@@ -39,7 +46,7 @@ npm install
 # Expo 개발 서버 시작
 npm start
 
-# iOS 시뮬레이터
+# iOS 시뮬레이터 (권장)
 npm run ios
 
 # Android 에뮬레이터
@@ -48,6 +55,12 @@ npm run android
 # 웹 브라우저
 npm run web
 ```
+
+### ⚠️ 중요: 비디오 트리밍 기능 설정
+
+이 프로젝트는 **커스텀 네이티브 모듈**을 사용합니다. 자세한 설정 방법은:
+
+📖 **[비디오 트리밍 설정 가이드](./docs/VIDEO_TRIMMING_SETUP.md)** 참고
 
 ---
 

@@ -3,7 +3,7 @@
  *
  * 인스타그램 스타일의 비디오 편집
  * - 비디오 미리보기 및 재생
- * - 타임라인 트리밍
+ * - 타임라인 편집 (길이 조절)
  * - 썸네일 자동 생성
  */
 
@@ -19,11 +19,13 @@ import {
   Image,
   ActivityIndicator,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/theme';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
@@ -49,6 +51,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
   // 실제 비디오 파일 URI (ph:// -> file://)
   const [videoUri, setVideoUri] = useState<string>('');
+  const [isLoadingVideo, setIsLoadingVideo] = useState(true);
 
   // 트리밍 (초 단위)
   const [trimStart, setTrimStart] = useState(0);
@@ -71,6 +74,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   const [isDraggingStart, setIsDraggingStart] = useState(false);
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
 
+  // 트리밍 상태
+  const [isTrimming, setIsTrimming] = useState(false);
+  const [trimmingProgress, setTrimmingProgress] = useState(0);
+
   // 타임라인 실제 너비
   const [timelineWidth, setTimelineWidth] = useState(SCREEN_WIDTH - 32);
 
@@ -85,18 +92,99 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   React.useEffect(() => {
     const loadVideoUri = async () => {
       try {
+        setIsLoadingVideo(true);
         console.log('📹 Loading video URI for asset:', asset.id);
-        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-        const uri = assetInfo.localUri || assetInfo.uri;
-        console.log('📹 Video URI loaded:', uri);
+        console.log('📹 Asset info:', JSON.stringify(asset, null, 2));
+
+        // asset.uri가 이미 file:// 형식이면 그대로 사용 (카메라로 촬영한 경우)
+        if (asset.uri && asset.uri.startsWith('file://')) {
+          console.log('📹 Using direct URI (camera capture):', asset.uri);
+          setVideoUri(asset.uri);
+          setIsLoadingVideo(false);
+          return;
+        }
+
+        // ph:// 형식이면 MediaLibrary로 실제 파일 URI 가져오기
+        if (asset.uri && asset.uri.startsWith('ph://')) {
+          console.log('📹 Converting ph:// URI to file:// URI...');
+
+          try {
+            // MediaLibrary의 getAssetInfoAsync 사용
+            const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+            console.log('📹 Asset info from MediaLibrary:', JSON.stringify(assetInfo, null, 2));
+
+            // localUri가 있으면 사용 (이게 가장 좋은 경우)
+            if (assetInfo.localUri && assetInfo.localUri.startsWith('file://')) {
+              console.log('✅ Found localUri:', assetInfo.localUri);
+              setVideoUri(assetInfo.localUri);
+              setIsLoadingVideo(false);
+              return;
+            }
+
+            // localUri가 없으면 MediaLibrary에서 asset을 export해야 함
+            // iOS에서는 ph:// URI를 직접 읽을 수 없으므로
+            // createAssetAsync의 역방향인 asset export가 필요
+            console.log('📹 No localUri found, exporting asset to file...');
+
+            const cacheDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+            if (!cacheDir) {
+              throw new Error('Could not get cache directory');
+            }
+
+            // 임시 파일명 생성
+            const filename = `temp_video_${Date.now()}.mp4`;
+            const tempUri = `${cacheDir}${filename}`;
+
+            console.log('📹 Temp file path:', tempUri);
+
+            // iOS에서 PHAsset을 파일로 export하는 방법
+            // expo-media-library는 직접적인 export API가 없으므로
+            // Image Picker를 통해 이미 선택된 asset의 localUri를 얻어야 함
+
+            // 대안: React Native에서 PHAsset을 읽는 네이티브 브릿지 필요
+            // 하지만 expo-media-library만으로는 불가능
+
+            // 최종 해결책: expo-image-picker로 다시 선택
+            // 또는 UploadMainScreen에서 이미 localUri를 가져왔어야 함
+
+            console.warn('⚠️ Cannot convert ph:// URI without localUri');
+            console.warn('⚠️ This is a limitation of expo-media-library');
+
+            // 임시 방편: ph:// URI를 그대로 사용 시도
+            // (expo-av Video가 내부적으로 처리할 수도 있음)
+            console.log('📹 Trying ph:// URI directly (may not work)...');
+            setVideoUri(assetInfo.uri);
+            setIsLoadingVideo(false);
+
+          } catch (error) {
+            console.error('❌ Failed to process ph:// URI:', error);
+            throw error;
+          }
+
+          return;
+        }
+
+        // 기타 경우
+        const uri = asset.uri;
+        if (!uri) {
+          throw new Error('Could not get video URI from asset');
+        }
+
+        console.log('📹 Video URI loaded successfully:', uri);
         setVideoUri(uri);
+        setIsLoadingVideo(false);
       } catch (error) {
-        console.error('Failed to load video URI:', error);
-        Alert.alert('오류', '비디오를 불러올 수 없습니다.');
+        console.error('❌ Failed to load video URI:', error);
+        setIsLoadingVideo(false);
+        Alert.alert('오류', '비디오를 불러올 수 없습니다. 다시 시도해주세요.');
+        // 일정 시간 후 이전 화면으로 돌아가기
+        setTimeout(() => {
+          navigation.goBack();
+        }, 2000);
       }
     };
     loadVideoUri();
-  }, [asset.id]);
+  }, [asset.id, asset.uri, navigation]);
 
   // videoUri가 로드되고 duration이 있으면 썸네일 생성
   React.useEffect(() => {
@@ -106,7 +194,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   }, [videoUri, duration]);
 
-  const handleVideoLoad = (status: AVPlaybackStatus) => {
+  const handleVideoLoad = async (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
       const durationMs = status.durationMillis || 0;
       const durationSec = durationMs / 1000;
@@ -227,14 +315,64 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   };
 
+  // VideoAssetExporter (AVFoundation)를 사용한 비디오 트리밍
+  const trimVideoNative = async (inputUri: string, startTime: number, endTime: number): Promise<string> => {
+    try {
+      console.log('✂️ Starting video trim with AVFoundation');
+      console.log('✂️ Input URI:', inputUri);
+
+      // Lazy import to avoid "runtime not ready" error
+      const { VideoAssetExporter } = await import('video-asset-exporter');
+
+      // iOS URIs often have hash fragments with metadata - strip them
+      const cleanUri = inputUri.split('#')[0];
+
+      // file:// 접두사 제거하여 파일 경로만 추출
+      const inputPath = cleanUri.replace('file://', '');
+
+      // 출력 파일 경로 생성
+      const timestamp = Date.now();
+      const outputPath = `${FileSystem.documentDirectory}trimmed_${timestamp}.mp4`;
+      const outputFilePath = outputPath.replace('file://', '');
+
+      console.log('✂️ Input path:', inputPath);
+      console.log('✂️ Output path:', outputFilePath);
+      console.log('✂️ Trim range:', startTime.toFixed(2), '-', endTime.toFixed(2), 'seconds');
+
+      setIsTrimming(true);
+      setTrimmingProgress(50);
+
+      // VideoAssetExporter.trimVideo 호출
+      const resultPath = await VideoAssetExporter.trimVideo(
+        inputPath,
+        outputFilePath,
+        startTime,
+        endTime
+      );
+
+      console.log('✅ Video trimmed successfully');
+      console.log('✂️ Result path:', resultPath);
+
+      // file:// 접두사 추가하여 반환
+      const resultUri = resultPath.startsWith('file://') ? resultPath : `file://${resultPath}`;
+
+      return resultUri;
+    } catch (error) {
+      console.error('❌ Video trim failed:', error);
+      throw error;
+    } finally {
+      setIsTrimming(false);
+      setTrimmingProgress(0);
+    }
+  };
+
   const handlePlayPause = async () => {
     if (isPlaying) {
       await videoRef.current?.pauseAsync();
     } else {
-      // 현재 위치가 트리밍 범위를 벗어나면 시작 위치로 이동
-      if (position >= trimEnd || position < trimStart) {
-        await videoRef.current?.setPositionAsync(trimStart * 1000);
-      }
+      // 재생 전에 항상 시작 위치로 이동
+      console.log('▶️ Play from:', trimStart.toFixed(2), 'seconds');
+      await videoRef.current?.setPositionAsync(trimStart * 1000);
       await videoRef.current?.playAsync();
     }
   };
@@ -251,7 +389,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
   // seek throttle을 위한 ref
   const lastSeekTime = useRef(0);
-  const SEEK_THROTTLE_MS = 100; // 100ms마다 한 번만 seek
+  const SEEK_THROTTLE_MS = 50; // 50ms마다 한 번만 seek (더 부드러운 프리뷰)
 
   React.useEffect(() => {
     trimStartRef.current = trimStart;
@@ -402,9 +540,44 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         return;
       }
 
-      // 2. 비디오 업로드
-      const videoResponse = await fetch(videoUri);
+      let videoToUpload = videoUri;
+
+      // 트리밍이 필요한 경우 (시작이 0이 아니거나 끝이 전체 길이가 아닌 경우)
+      const needsTrimming = trimStart > 0.1 || trimEnd < duration - 0.1;
+
+      if (needsTrimming) {
+        try {
+          console.log('✂️ Trimming needed, starting trim process...');
+          setUploadProgress(5);
+
+          // 네이티브 모듈로 비디오 트리밍
+          videoToUpload = await trimVideoNative(videoUri, trimStart, trimEnd);
+
+          console.log('✅ Video trimmed successfully, new URI:', videoToUpload);
+          setUploadProgress(20);
+        } catch (trimError) {
+          console.error('❌ Trim failed:', trimError);
+          Alert.alert(
+            '편집 실패',
+            '비디오 편집에 실패했습니다. 원본 비디오를 업로드하시겠습니까?',
+            [
+              { text: '취소', style: 'cancel', onPress: () => { setIsUploading(false); return; } },
+              { text: '원본 업로드', onPress: () => { videoToUpload = videoUri; } },
+            ]
+          );
+          return;
+        }
+      } else {
+        console.log('ℹ️ No trimming needed, uploading original video');
+        setUploadProgress(10);
+      }
+
+      // 1. 비디오 업로드
+      console.log('📤 Starting video upload...');
+      const videoResponse = await fetch(videoToUpload);
       const videoBlob = await videoResponse.blob();
+
+      console.log('📤 Video blob size:', videoBlob.size, 'bytes');
 
       const videoUploadUrlResponse = await generateUploadUrl({
         contentType: 'VIDEO',
@@ -415,13 +588,17 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       await uploadFileToS3(
         videoUploadUrlResponse.uploadUrl,
         videoBlob,
-        (progress) => setUploadProgress(Math.floor(progress * 0.7))
+        (progress) => {
+          const uploadProgress = needsTrimming ? 20 + Math.floor(progress * 0.5) : 10 + Math.floor(progress * 0.6);
+          setUploadProgress(uploadProgress);
+        }
       );
 
       const videoS3Url = videoUploadUrlResponse.uploadUrl.split('?')[0];
+      console.log('✅ Video uploaded to S3:', videoS3Url);
 
-      // 2. 썸네일 업로드 (임시로 비디오 썸네일 스크린샷 사용)
-      // TODO: expo-video-thumbnails로 실제 썸네일 생성
+      // 2. 썸네일 업로드
+      console.log('📤 Starting thumbnail upload...');
       const thumbnailResponse = await fetch(selectedThumbnail);
       const thumbnailBlob = await thumbnailResponse.blob();
 
@@ -435,10 +612,16 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       await uploadFileToS3(
         thumbnailUploadUrlResponse.uploadUrl,
         thumbnailBlob,
-        (progress) => setUploadProgress(Math.floor(70 + progress * 0.3))
+        (progress) => {
+          const baseProgress = needsTrimming ? 70 : 70;
+          setUploadProgress(Math.floor(baseProgress + progress * 0.3));
+        }
       );
 
       const thumbnailS3Url = thumbnailUploadUrlResponse.uploadUrl.split('?')[0];
+      console.log('✅ Thumbnail uploaded to S3:', thumbnailS3Url);
+
+      setUploadProgress(100);
 
       // 3. 메타데이터 입력 화면으로 이동
       navigation.navigate('ContentMetadata', {
@@ -453,7 +636,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         },
       });
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('❌ Upload failed:', error);
       Alert.alert('오류', '업로드에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsUploading(false);
@@ -470,14 +653,18 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
         <Text style={styles.headerTitle}>편집</Text>
 
-        <TouchableOpacity onPress={handleNext} disabled={isUploading} style={styles.headerButton}>
+        <TouchableOpacity
+          onPress={handleNext}
+          disabled={isUploading || isTrimming}
+          style={styles.headerButton}
+        >
           <Text
             style={[
               styles.nextButtonText,
-              isUploading && styles.disabledText,
+              (isUploading || isTrimming) && styles.disabledText,
             ]}
           >
-            {isUploading ? '업로드 중...' : '다음'}
+            {isTrimming ? '편집 중...' : isUploading ? '업로드 중...' : '다음'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -489,8 +676,19 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       >
         {/* 비디오 미리보기 */}
         <View style={styles.videoContainer}>
-          {videoUri ? (
+          {isLoadingVideo ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+              <Text style={styles.loadingText}>비디오 준비 중...</Text>
+              <Text style={styles.loadingSubtext}>
+                {asset.uri?.startsWith('ph://')
+                  ? '갤러리에서 비디오를 가져오고 있습니다'
+                  : '비디오를 로드하고 있습니다'}
+              </Text>
+            </View>
+          ) : videoUri ? (
             <Video
+              key={videoUri} // videoUri가 변경될 때마다 컴포넌트 리마운트
               ref={videoRef}
               source={{ uri: videoUri }}
               style={styles.video}
@@ -501,40 +699,47 @@ export default function VideoEditScreen({ navigation, route }: Props) {
               onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
             />
           ) : (
-            <ActivityIndicator size="large" color={theme.colors.primary[500]} style={{ marginTop: 100 }} />
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+              <Text style={styles.loadingText}>비디오 로딩 중...</Text>
+            </View>
           )}
 
-          {/* 재생/일시정지 버튼 */}
-          <TouchableOpacity
-            style={styles.playButton}
-            onPress={handlePlayPause}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={isPlaying ? 'pause' : 'play'}
-              size={32}
-              color="#fff"
-            />
-          </TouchableOpacity>
+          {/* 재생/일시정지 버튼 - 로딩 중이 아니고 비디오가 있을 때만 표시 */}
+          {!isLoadingVideo && videoUri && (
+            <>
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={handlePlayPause}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={isPlaying ? 'pause' : 'play'}
+                  size={32}
+                  color="#fff"
+                />
+              </TouchableOpacity>
 
-          {/* 재생 시간 */}
-          <View style={styles.timeIndicator}>
-            <Text style={styles.timeText}>
-              {formatTime(position)} / {formatTime(duration)}
-            </Text>
-          </View>
+              {/* 재생 시간 */}
+              <View style={styles.timeIndicator}>
+                <Text style={styles.timeText}>
+                  {formatTime(position)} / {formatTime(duration)}
+                </Text>
+              </View>
 
-          {/* 트리밍 범위 표시 */}
-          <View style={styles.trimRangeIndicator}>
-            <Text style={styles.trimRangeText}>
-              {formatTime(trimStart)} - {formatTime(trimEnd)} ({formatTime(trimEnd - trimStart)})
-            </Text>
-          </View>
+              {/* 트리밍 범위 표시 */}
+              <View style={styles.trimRangeIndicator}>
+                <Text style={styles.trimRangeText}>
+                  {formatTime(trimStart)} - {formatTime(trimEnd)} ({formatTime(trimEnd - trimStart)})
+                </Text>
+              </View>
+            </>
+          )}
         </View>
 
-        {/* 타임라인 트리밍 - 인스타그램 스타일 */}
+        {/* 타임라인 편집 - 인스타그램 스타일 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>트리밍</Text>
+          <Text style={styles.sectionTitle}>편집</Text>
           <Text style={styles.sectionSubtitle}>
             타임라인을 드래그하여 {MAX_VIDEO_DURATION}초 이내로 선택하세요
           </Text>
@@ -729,17 +934,27 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        {/* 업로드 진행률 */}
-        {isUploading && (
+        {/* 업로드 및 편집 진행률 */}
+        {(isUploading || isTrimming) && (
           <View style={styles.uploadProgressContainer}>
             <Text style={styles.uploadProgressText}>
-              업로드 중... {uploadProgress}%
+              {isTrimming
+                ? `비디오 편집 중... ${trimmingProgress}%`
+                : `업로드 중... ${uploadProgress}%`}
             </Text>
             <View style={styles.progressBar}>
               <View
-                style={[styles.progressFill, { width: `${uploadProgress}%` }]}
+                style={[
+                  styles.progressFill,
+                  { width: isTrimming ? `${trimmingProgress}%` : `${uploadProgress}%` }
+                ]}
               />
             </View>
+            {isTrimming && (
+              <Text style={[styles.uploadProgressText, { marginTop: 8, fontSize: 12 }]}>
+                비디오를 편집하고 있습니다. 잠시만 기다려주세요.
+              </Text>
+            )}
           </View>
         )}
 
@@ -811,6 +1026,26 @@ const styles = StyleSheet.create({
   video: {
     width: '100%',
     height: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.gray[900],
+    padding: theme.spacing[6],
+  },
+  loadingText: {
+    marginTop: theme.spacing[4],
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.inverse,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    marginTop: theme.spacing[2],
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[400],
+    textAlign: 'center',
   },
   playButton: {
     position: 'absolute',
