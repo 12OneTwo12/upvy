@@ -198,14 +198,8 @@ export default function SettingsScreen() {
             );
 
             if (result) {
-              Alert.alert('탈퇴 완료', '회원 탈퇴가 완료되었습니다.', [
-                {
-                  text: '확인',
-                  onPress: async () => {
-                    await logout();
-                  },
-                },
-              ]);
+              // 탈퇴 성공 시 즉시 로그아웃 (로그인 화면으로 자동 이동)
+              await logout();
             }
           },
           style: 'destructive',
