@@ -8,6 +8,7 @@ import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
+import SettingsScreen from '@/screens/profile/SettingsScreen';
 import UserProfileScreen from '@/screens/profile/UserProfileScreen';
 import FollowListScreen from '@/screens/profile/FollowListScreen';
 
@@ -46,6 +47,11 @@ export default function RootNavigator() {
             <Stack.Screen
               name="EditProfile"
               component={EditProfileScreen}
+              options={{ presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
               options={{ presentation: 'modal' }}
             />
             <Stack.Screen name="UserProfile" component={UserProfileScreen} />

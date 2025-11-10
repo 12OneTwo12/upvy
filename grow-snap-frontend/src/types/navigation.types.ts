@@ -8,6 +8,7 @@ export type RootStackParamList = {
   ProfileSetup: undefined;
   Main: NavigatorScreenParams<MainTabParamList>;
   EditProfile: undefined;
+  Settings: undefined;
   UserProfile: { userId: string };
   FollowList: { userId: string; initialTab?: 'followers' | 'following' };
 };
