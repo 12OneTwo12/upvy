@@ -4,9 +4,12 @@ import me.onetwo.growsnap.domain.user.exception.UserNotFoundException
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserProfile
+import me.onetwo.growsnap.domain.user.model.UserStatus
+import me.onetwo.growsnap.domain.user.model.UserStatusHistory
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
+import me.onetwo.growsnap.domain.user.repository.UserStatusHistoryRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -21,13 +24,15 @@ import java.util.UUID
  * @property userRepository 사용자 Repository
  * @property userProfileRepository 사용자 프로필 Repository
  * @property followRepository 팔로우 Repository
+ * @property userStatusHistoryRepository 사용자 상태 변경 이력 Repository
  */
 @Service
 @Transactional(readOnly = true)
 class UserServiceImpl(
     private val userRepository: UserRepository,
     private val userProfileRepository: UserProfileRepository,
-    private val followRepository: FollowRepository
+    private val followRepository: FollowRepository,
+    private val userStatusHistoryRepository: UserStatusHistoryRepository
 ) : UserService {
 
     private val logger = LoggerFactory.getLogger(UserServiceImpl::class.java)
@@ -52,18 +57,7 @@ class UserServiceImpl(
     /**
      * OAuth 제공자와 Provider ID로 사용자 조회 또는 생성
      *
-     * OAuth 로그인 시 사용하며, 기존 사용자가 있으면 반환하고 없으면 새로 생성합니다.
-     * 탈퇴한 계정으로 재가입 시 기존 계정을 복원합니다.
-     *
-     * ### 처리 흐름
-     * 1. 이메일로 사용자 조회 (soft deleted 포함)
-     * 2. 사용자가 있는 경우:
-     *    a. Soft deleted 상태: Provider 정보 업데이트 + 계정 복원 + 프로필 복원
-     *    b. Active 상태: Provider 정보가 다르면 업데이트, 그대로 반환
-     * 3. 사용자가 없는 경우:
-     *    a. 신규 사용자 생성
-     *    b. 프로필 자동 생성 (OAuth 이름을 닉네임으로 사용)
-     *    c. 닉네임 중복 시 고유 suffix 추가 (예: "John_a1b2c3")
+     * 오케스트레이션만 담당하며, 실제 로직은 private 메소드에 위임합니다.
      *
      * @param email 사용자 이메일
      * @param provider OAuth 제공자 (GOOGLE, NAVER, KAKAO 등)
@@ -80,81 +74,184 @@ class UserServiceImpl(
         name: String?,
         profileImageUrl: String?
     ): Mono<User> {
-        // 이메일로 사용자 조회 (soft deleted 포함)
         return userRepository.findByEmailIncludingDeleted(email)
-            .flatMap { existingUser ->
-                val isDeleted = existingUser.deletedAt != null
-                val providerChanged = existingUser.provider != provider || existingUser.providerId != providerId
+            .flatMap { user -> handleExistingUser(user, provider, providerId, name, profileImageUrl) }
+            .switchIfEmpty(Mono.defer { createNewUser(email, provider, providerId, name, profileImageUrl) })
+    }
 
-                when {
-                    // Case 1: 탈퇴한 계정으로 재가입
-                    isDeleted -> {
-                        logger.info("Re-registering deleted account: userId=${existingUser.id}, email=$email, provider=$provider")
+    /**
+     * 기존 사용자 처리
+     *
+     * 사용자 상태에 따라 적절한 처리를 수행합니다.
+     */
+    private fun handleExistingUser(
+        user: User,
+        provider: OAuthProvider,
+        providerId: String,
+        name: String?,
+        profileImageUrl: String?
+    ): Mono<User> {
+        return when {
+            user.isDeleted() -> restoreDeletedAccount(user, provider, providerId)
+            user.hasProviderChanged(provider, providerId) -> updateProviderIfNeeded(user, provider, providerId)
+            else -> {
+                logger.info("Existing active user found: userId=${user.id}, email=${user.email}, provider=$provider")
+                Mono.just(user)
+            }
+        }
+    }
 
-                        // Provider 정보 업데이트 (다른 OAuth 제공자로 재가입 가능)
-                        val updateProviderMono = if (providerChanged) {
-                            userRepository.updateProvider(existingUser.id!!, provider, providerId)
-                        } else {
-                            Mono.just(existingUser)
-                        }
+    /**
+     * 탈퇴한 계정 복원
+     *
+     * 1. Provider 정보 업데이트 (다른 OAuth로 재가입 가능)
+     * 2. 사용자 상태를 ACTIVE로 변경 (이력 기록)
+     * 3. 프로필 복원
+     */
+    private fun restoreDeletedAccount(
+        user: User,
+        provider: OAuthProvider,
+        providerId: String
+    ): Mono<User> {
+        logger.info("Re-registering deleted account: userId=${user.id}, email=${user.email}, provider=$provider")
 
-                        updateProviderMono.flatMap {
-                            // 사용자 계정 복원 + 프로필 복원
-                            Mono.zip(
-                                userRepository.restore(existingUser.id!!),
-                                userProfileRepository.restore(existingUser.id!!)
-                            ).map { (restoredUser, _) ->
-                                logger.info("Account restored: userId=${restoredUser.id}, email=$email, provider=$provider")
-                                restoredUser
-                            }
-                        }
-                    }
+        return updateProviderIfNeeded(user, provider, providerId)
+            .flatMap { updatedUser ->
+                changeUserStatus(
+                    userId = updatedUser.id!!,
+                    newStatus = UserStatus.ACTIVE,
+                    reason = "User re-registration via OAuth",
+                    changedBy = updatedUser.id
+                )
+            }
+            .flatMap { restoredUser ->
+                userProfileRepository.restore(restoredUser.id!!)
+                    .doOnNext { logger.info("Profile restored: userId=${restoredUser.id}") }
+                    .thenReturn(restoredUser)
+            }
+            .doOnNext { logger.info("Account restored: userId=${it.id}, email=${it.email}, provider=$provider") }
+    }
 
-                    // Case 2: 활성 계정이지만 Provider 정보가 다름 (다른 OAuth로 로그인)
-                    providerChanged -> {
-                        logger.info("Updating provider info: userId=${existingUser.id}, email=$email, oldProvider=${existingUser.provider}, newProvider=$provider")
-                        userRepository.updateProvider(existingUser.id!!, provider, providerId)
-                    }
+    /**
+     * Provider 정보 업데이트 (필요한 경우만)
+     *
+     * 다른 OAuth 제공자로 로그인 시 Provider 정보를 업데이트합니다.
+     */
+    private fun updateProviderIfNeeded(
+        user: User,
+        provider: OAuthProvider,
+        providerId: String
+    ): Mono<User> {
+        if (!user.hasProviderChanged(provider, providerId)) {
+            return Mono.just(user)
+        }
 
-                    // Case 3: 활성 계정이고 Provider 정보 일치
-                    else -> {
-                        logger.info("Existing active user found: userId=${existingUser.id}, email=$email, provider=$provider")
-                        Mono.just(existingUser)
-                    }
+        logger.info("Updating provider info: userId=${user.id}, oldProvider=${user.provider}, newProvider=$provider")
+        return userRepository.updateProvider(user.id!!, provider, providerId)
+    }
+
+    /**
+     * 사용자 상태 변경 + 이력 기록
+     *
+     * 상태 변경과 동시에 user_status_history에 이력을 기록합니다.
+     */
+    private fun changeUserStatus(
+        userId: UUID,
+        newStatus: UserStatus,
+        reason: String,
+        changedBy: UUID
+    ): Mono<User> {
+        return userRepository.findByIdIncludingDeleted(userId)
+            .flatMap { user ->
+                val history = UserStatusHistory(
+                    userId = userId,
+                    previousStatus = user.status,
+                    newStatus = newStatus,
+                    reason = reason,
+                    changedBy = changedBy.toString()
+                )
+
+                Mono.zip(
+                    userRepository.updateStatus(userId, newStatus, changedBy),
+                    userStatusHistoryRepository.save(history)
+                ).map { tuple ->
+                    logger.info("User status changed: userId=$userId, ${user.status} → $newStatus")
+                    tuple.t1
                 }
             }
-            .switchIfEmpty(
-                // Case 4: 신규 사용자 생성
-                Mono.defer {
-                    logger.info("Creating new user: email=$email, provider=$provider")
-                    val newUser = User(
-                        email = email,
-                        provider = provider,
-                        providerId = providerId
-                    )
-                    userRepository.save(newUser)
-                        .doOnNext { savedUser ->
-                            logger.info("New user created: userId=${savedUser.id}, email=$email, provider=$provider")
-                        }
-                        .flatMap { savedUser ->
-                            // 프로필 자동 생성
-                            generateUniqueNickname(name ?: email.substringBefore("@"))
-                                .flatMap { nickname ->
-                                    val profile = UserProfile(
-                                        userId = savedUser.id!!,
-                                        nickname = nickname,
-                                        profileImageUrl = profileImageUrl,
-                                        bio = null
-                                    )
-                                    userProfileRepository.save(profile)
-                                        .doOnNext {
-                                            logger.info("Auto-created profile for user: userId=${savedUser.id}, nickname=$nickname")
-                                        }
-                                        .thenReturn(savedUser)
-                                }
-                        }
-                }
-            )
+    }
+
+    /**
+     * 신규 사용자 생성
+     *
+     * 1. 사용자 생성
+     * 2. 상태 이력 기록 (최초 가입)
+     * 3. 프로필 자동 생성
+     */
+    private fun createNewUser(
+        email: String,
+        provider: OAuthProvider,
+        providerId: String,
+        name: String?,
+        profileImageUrl: String?
+    ): Mono<User> {
+        logger.info("Creating new user: email=$email, provider=$provider")
+
+        val newUser = User(
+            email = email,
+            provider = provider,
+            providerId = providerId,
+            status = UserStatus.ACTIVE
+        )
+
+        return userRepository.save(newUser)
+            .doOnNext { logger.info("New user created: userId=${it.id}, email=$email") }
+            .flatMap { savedUser ->
+                // 최초 가입 이력 기록
+                val history = UserStatusHistory(
+                    userId = savedUser.id!!,
+                    previousStatus = null,
+                    newStatus = UserStatus.ACTIVE,
+                    reason = "Initial signup via $provider OAuth",
+                    changedBy = savedUser.id.toString()
+                )
+
+                Mono.zip(
+                    createProfileForNewUser(savedUser, name ?: email.substringBefore("@"), profileImageUrl),
+                    userStatusHistoryRepository.save(history)
+                ).map { tuple -> tuple.t1 }
+            }
+    }
+
+    /**
+     * 신규 사용자 프로필 자동 생성
+     *
+     * OAuth 이름을 기반으로 고유한 닉네임을 생성하고 프로필을 생성합니다.
+     */
+    private fun createProfileForNewUser(
+        user: User,
+        baseName: String,
+        profileImageUrl: String?
+    ): Mono<User> {
+        return generateUniqueNickname(baseName)
+            .flatMap { nickname ->
+                val profile = UserProfile(
+                    userId = user.id!!,
+                    nickname = nickname,
+                    profileImageUrl = profileImageUrl,
+                    bio = null
+                )
+                userProfileRepository.save(profile)
+                    .doOnNext { logger.info("Auto-created profile: userId=${user.id}, nickname=$nickname") }
+                    .thenReturn(user)
+            }
+    }
+
+    /**
+     * User 확장 - Provider 변경 여부 확인
+     */
+    private fun User.hasProviderChanged(provider: OAuthProvider, providerId: String): Boolean {
+        return this.provider != provider || this.providerId != providerId
     }
 
     /**
@@ -231,36 +328,35 @@ class UserServiceImpl(
     /**
      * 사용자 회원 탈퇴 (Soft Delete)
      *
-     * 사용자, 프로필, 팔로우 관계를 모두 soft delete 처리합니다.
-     *
-     * ### 처리 흐름
-     * 1. 사용자 존재 여부 확인
-     * 2. 사용자 정보, 프로필, 팔로우 관계를 병렬로 soft delete
+     * 1. 사용자 상태를 DELETED로 변경 (이력 기록)
+     * 2. 프로필, 팔로우 관계를 soft delete 처리
      *
      * @param userId 탈퇴할 사용자 ID
      * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
      */
     @Transactional
     override fun withdrawUser(userId: UUID): Mono<Void> {
-        // 사용자 존재 여부 확인
         return getUserById(userId)
-            .doOnNext { user ->
-                logger.info("Starting user withdrawal: userId=$userId, email=${user.email}")
+            .doOnNext { user -> logger.info("Starting user withdrawal: userId=$userId, email=${user.email}") }
+            .flatMap { user ->
+                // 사용자 상태를 DELETED로 변경 + 이력 기록
+                changeUserStatus(
+                    userId = userId,
+                    newStatus = UserStatus.DELETED,
+                    reason = "User requested account deletion",
+                    changedBy = userId
+                )
             }
             .flatMap {
-                // 사용자, 프로필, 팔로우 관계를 병렬로 soft delete
+                // 프로필, 팔로우 관계를 병렬로 soft delete
                 Mono.zip(
-                    userRepository.softDelete(userId, userId)
-                        .doOnSuccess { logger.info("User soft deleted: userId=$userId") },
                     userProfileRepository.softDelete(userId, userId)
                         .doOnSuccess { logger.info("User profile soft deleted: userId=$userId") },
                     followRepository.softDeleteAllByUserId(userId, userId)
                         .doOnSuccess { logger.info("All follow relationships soft deleted: userId=$userId") }
                 )
-                    .doOnSuccess {
-                        logger.info("User withdrawal completed: userId=$userId")
-                    }
             }
+            .doOnSuccess { logger.info("User withdrawal completed: userId=$userId") }
             .then()
     }
 }

@@ -11,9 +11,13 @@ import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserProfile
 import me.onetwo.growsnap.domain.user.model.UserRole
+import me.onetwo.growsnap.domain.user.model.UserStatus
+import me.onetwo.growsnap.domain.user.model.UserStatusHistory
+import java.time.LocalDateTime
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
+import me.onetwo.growsnap.domain.user.repository.UserStatusHistoryRepository
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -32,6 +36,7 @@ class UserServiceTest {
     private lateinit var userRepository: UserRepository
     private lateinit var userProfileRepository: UserProfileRepository
     private lateinit var followRepository: FollowRepository
+    private lateinit var userStatusHistoryRepository: UserStatusHistoryRepository
     private lateinit var userService: UserService
 
     @BeforeEach
@@ -39,12 +44,13 @@ class UserServiceTest {
         userRepository = mockk()
         userProfileRepository = mockk()
         followRepository = mockk()
-        userService = UserServiceImpl(userRepository, userProfileRepository, followRepository)
+        userStatusHistoryRepository = mockk()
+        userService = UserServiceImpl(userRepository, userProfileRepository, followRepository, userStatusHistoryRepository)
     }
 
     @Test
-    @DisplayName("OAuth 사용자 조회 또는 생성 - 기존 사용자 반환")
-    fun findOrCreateOAuthUser_ExistingUser_ReturnsUser() {
+    @DisplayName("OAuth 사용자 조회 또는 생성 - 기존 활성 사용자 반환")
+    fun findOrCreateOAuthUser_ExistingActiveUser_ReturnsUser() {
         // Given
         val email = "test@example.com"
         val provider = OAuthProvider.GOOGLE
@@ -57,22 +63,25 @@ class UserServiceTest {
             email = email,
             provider = provider,
             providerId = providerId,
-            role = UserRole.USER
+            role = UserRole.USER,
+            status = UserStatus.ACTIVE
         )
 
         every {
-            userRepository.findByProviderAndProviderId(provider, providerId)
+            userRepository.findByEmailIncludingDeleted(email)
         } returns Mono.just(existingUser)
+
         // When
         val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl).block()!!
 
         // Then
         assertEquals(existingUser, result)
         verify(exactly = 1) {
-            userRepository.findByProviderAndProviderId(provider, providerId)
+            userRepository.findByEmailIncludingDeleted(email)
         }
         verify(exactly = 0) { userRepository.save(any()) }
-        verify(exactly = 0) { userProfileRepository.save(any()) }  // 기존 사용자는 프로필 생성 안함
+        verify(exactly = 0) { userProfileRepository.save(any()) }
+        verify(exactly = 0) { userStatusHistoryRepository.save(any()) }
     }
 
     @Test
@@ -91,7 +100,8 @@ class UserServiceTest {
             email = email,
             provider = provider,
             providerId = providerId,
-            role = UserRole.USER
+            role = UserRole.USER,
+            status = UserStatus.ACTIVE
         )
 
         val mockProfile = UserProfile(
@@ -102,22 +112,159 @@ class UserServiceTest {
             bio = null
         )
 
+        val mockHistory = UserStatusHistory(
+            id = 1L,
+            userId = userId,
+            previousStatus = null,
+            newStatus = UserStatus.ACTIVE,
+            reason = "Initial signup via $provider OAuth",
+            changedBy = userId.toString()
+        )
+
         every {
-            userRepository.findByProviderAndProviderId(provider, providerId)
+            userRepository.findByEmailIncludingDeleted(email)
         } returns Mono.empty()
         every { userRepository.save(any()) } returns Mono.just(newUser)
-        every { userProfileRepository.existsByNickname(any()) } returns Mono.just(false)  // 닉네임 중복 없음
+        every { userProfileRepository.existsByNickname(any()) } returns Mono.just(false)
         every { userProfileRepository.save(any()) } returns Mono.just(mockProfile)
+        every { userStatusHistoryRepository.save(any()) } returns Mono.just(mockHistory)
+
         // When
         val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl).block()!!
 
         // Then
         assertEquals(newUser, result)
         verify(exactly = 1) {
-            userRepository.findByProviderAndProviderId(provider, providerId)
+            userRepository.findByEmailIncludingDeleted(email)
         }
         verify(exactly = 1) { userRepository.save(any()) }
-        verify(exactly = 1) { userProfileRepository.save(any()) }  // 신규 사용자는 프로필 자동 생성
+        verify(exactly = 1) { userProfileRepository.save(any()) }
+        verify(exactly = 1) { userStatusHistoryRepository.save(any()) }
+    }
+
+    @Test
+    @DisplayName("OAuth 사용자 조회 또는 생성 - 탈퇴한 사용자 복원")
+    fun findOrCreateOAuthUser_DeletedUser_RestoresUser() {
+        // Given
+        val email = "deleted@example.com"
+        val provider = OAuthProvider.GOOGLE
+        val providerId = "google-789"
+        val name = "Restored User"
+        val profileImageUrl = "https://example.com/restored-profile.jpg"
+
+        val userId = UUID.randomUUID()
+        val deletedUser = User(
+            id = userId,
+            email = email,
+            provider = provider,
+            providerId = providerId,
+            role = UserRole.USER,
+            status = UserStatus.DELETED,
+            deletedAt = LocalDateTime.now().minusDays(1)
+        )
+
+        val restoredUser = deletedUser.copy(
+            status = UserStatus.ACTIVE,
+            deletedAt = null
+        )
+
+        val mockHistory = UserStatusHistory(
+            id = 1L,
+            userId = userId,
+            previousStatus = UserStatus.DELETED,
+            newStatus = UserStatus.ACTIVE,
+            reason = "User re-registration via OAuth",
+            changedBy = userId.toString()
+        )
+
+        every {
+            userRepository.findByEmailIncludingDeleted(email)
+        } returns Mono.just(deletedUser)
+        every {
+            userRepository.findByIdIncludingDeleted(userId)
+        } returns Mono.just(deletedUser)
+        every {
+            userRepository.updateStatus(userId, UserStatus.ACTIVE, userId)
+        } returns Mono.just(restoredUser)
+        every {
+            userStatusHistoryRepository.save(any())
+        } returns Mono.just(mockHistory)
+        every {
+            userProfileRepository.restore(userId)
+        } returns Mono.empty()
+
+        // When
+        val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl).block()!!
+
+        // Then
+        assertEquals(UserStatus.ACTIVE, result.status)
+        assertNull(result.deletedAt)
+        verify(exactly = 1) {
+            userRepository.findByEmailIncludingDeleted(email)
+        }
+        verify(exactly = 1) {
+            userRepository.updateStatus(userId, UserStatus.ACTIVE, userId)
+        }
+        verify(exactly = 1) {
+            userStatusHistoryRepository.save(any())
+        }
+        verify(exactly = 1) {
+            userProfileRepository.restore(userId)
+        }
+        verify(exactly = 0) {
+            userRepository.save(any())
+        }
+    }
+
+    @Test
+    @DisplayName("OAuth 사용자 조회 또는 생성 - OAuth 제공자 변경 시 업데이트")
+    fun findOrCreateOAuthUser_ProviderChanged_UpdatesProvider() {
+        // Given
+        val email = "user@example.com"
+        val oldProvider = OAuthProvider.GOOGLE
+        val newProvider = OAuthProvider.KAKAO
+        val oldProviderId = "google-111"
+        val newProviderId = "kakao-222"
+        val name = "User"
+        val profileImageUrl = "https://example.com/profile.jpg"
+
+        val userId = UUID.randomUUID()
+        val existingUser = User(
+            id = userId,
+            email = email,
+            provider = oldProvider,
+            providerId = oldProviderId,
+            role = UserRole.USER,
+            status = UserStatus.ACTIVE
+        )
+
+        val updatedUser = existingUser.copy(
+            provider = newProvider,
+            providerId = newProviderId
+        )
+
+        every {
+            userRepository.findByEmailIncludingDeleted(email)
+        } returns Mono.just(existingUser)
+        every {
+            userRepository.updateProvider(userId, newProvider, newProviderId)
+        } returns Mono.just(updatedUser)
+
+        // When
+        val result = userService.findOrCreateOAuthUser(email, newProvider, newProviderId, name, profileImageUrl).block()!!
+
+        // Then
+        assertEquals(newProvider, result.provider)
+        assertEquals(newProviderId, result.providerId)
+        verify(exactly = 1) {
+            userRepository.findByEmailIncludingDeleted(email)
+        }
+        verify(exactly = 1) {
+            userRepository.updateProvider(userId, newProvider, newProviderId)
+        }
+        verify(exactly = 0) {
+            userStatusHistoryRepository.save(any())
+        }
     }
 
     @Test

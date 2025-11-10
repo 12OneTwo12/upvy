@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS content_photos CASCADE;
 DROP TABLE IF EXISTS contents CASCADE;
 DROP TABLE IF EXISTS follows CASCADE;
 DROP TABLE IF EXISTS user_profiles CASCADE;
+DROP TABLE IF EXISTS user_status_history CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 -- Users Table
@@ -23,6 +24,7 @@ CREATE TABLE users (
     provider VARCHAR(50) NOT NULL DEFAULT 'GOOGLE',
     provider_id VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -33,6 +35,7 @@ CREATE TABLE users (
 
 CREATE INDEX idx_email ON users(email);
 CREATE INDEX idx_provider_id ON users(provider_id);
+CREATE INDEX idx_users_status ON users(status);
 CREATE INDEX idx_deleted_at ON users(deleted_at);
 
 -- User Profiles Table
@@ -55,6 +58,22 @@ CREATE TABLE user_profiles (
 CREATE INDEX idx_nickname ON user_profiles(nickname);
 CREATE INDEX idx_user_id ON user_profiles(user_id);
 CREATE INDEX idx_profile_deleted_at ON user_profiles(deleted_at);
+
+-- User Status History Table
+CREATE TABLE user_status_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    previous_status VARCHAR(20) NULL,
+    new_status VARCHAR(20) NOT NULL,
+    reason VARCHAR(255) NULL,
+    metadata JSON NULL,
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    changed_by VARCHAR(36) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_user_status_history_user_id ON user_status_history(user_id);
+CREATE INDEX idx_user_status_history_changed_at ON user_status_history(changed_at);
 
 -- Follows Table
 CREATE TABLE follows (

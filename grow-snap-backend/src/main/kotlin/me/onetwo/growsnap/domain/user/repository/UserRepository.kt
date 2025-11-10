@@ -4,6 +4,7 @@ import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
+import me.onetwo.growsnap.domain.user.model.UserStatus
 import me.onetwo.growsnap.jooq.generated.tables.records.UsersRecord
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
@@ -37,11 +38,12 @@ class UserRepository(
                 .set(USERS.PROVIDER, user.provider.name)
                 .set(USERS.PROVIDER_ID, user.providerId)
                 .set(USERS.ROLE, user.role.name)
+                .set(USERS.STATUS, user.status.name)
         ).thenReturn(user.copy(id = userId))
     }
 
     /**
-     * 이메일로 사용자 조회
+     * 이메일로 사용자 조회 (ACTIVE 상태만)
      *
      * @param email 이메일
      * @return 사용자 정보 (존재하지 않으면 null)
@@ -50,7 +52,7 @@ class UserRepository(
         return Mono.from(
             dsl.selectFrom(USERS)
                 .where(USERS.EMAIL.eq(email))
-                .and(USERS.DELETED_AT.isNull)  // Soft delete 필터링
+                .and(USERS.STATUS.ne(UserStatus.DELETED.name))
         ).map { record -> mapToUser(record) }
     }
 
@@ -66,7 +68,7 @@ class UserRepository(
             dsl.selectFrom(USERS)
                 .where(USERS.PROVIDER.eq(provider.name))
                 .and(USERS.PROVIDER_ID.eq(providerId))
-                .and(USERS.DELETED_AT.isNull)  // Soft delete 필터링
+                .and(USERS.STATUS.ne(UserStatus.DELETED.name))
         ).map { record -> mapToUser(record) }
     }
 
@@ -87,22 +89,37 @@ class UserRepository(
     }
 
     /**
-     * 사용자 계정 복원 (Soft Delete 취소)
-     *
-     * 탈퇴한 사용자가 재가입할 때 기존 계정을 복원합니다.
+     * 사용자 상태 업데이트
      *
      * @param id 사용자 ID
-     * @return 복원된 사용자 정보
+     * @param status 새로운 상태
+     * @param updatedBy 업데이트한 사용자 ID
+     * @return 업데이트된 사용자 정보
      */
-    fun restore(id: UUID): Mono<User> {
+    fun updateStatus(id: UUID, status: UserStatus, updatedBy: UUID): Mono<User> {
+        val now = LocalDateTime.now()
         return Mono.from(
             dsl.update(USERS)
-                .set(USERS.DELETED_AT, null as LocalDateTime?)
-                .set(USERS.UPDATED_AT, LocalDateTime.now())
-                .set(USERS.UPDATED_BY, id.toString())
+                .set(USERS.STATUS, status.name)
+                .set(USERS.UPDATED_AT, now)
+                .set(USERS.UPDATED_BY, updatedBy.toString())
+                // DELETED로 변경 시 deleted_at 설정
+                .set(USERS.DELETED_AT, if (status == UserStatus.DELETED) now else null as LocalDateTime?)
                 .where(USERS.ID.eq(id.toString()))
-                .and(USERS.DELETED_AT.isNotNull)  // 삭제된 데이터만 복원
-        ).then(findById(id))
+        ).then(findByIdIncludingDeleted(id))
+    }
+
+    /**
+     * ID로 사용자 조회 (상태 무관)
+     *
+     * @param id 사용자 ID
+     * @return 사용자 정보 (존재하지 않으면 null)
+     */
+    fun findByIdIncludingDeleted(id: UUID): Mono<User> {
+        return Mono.from(
+            dsl.selectFrom(USERS)
+                .where(USERS.ID.eq(id.toString()))
+        ).map { record -> mapToUser(record) }
     }
 
     /**
@@ -127,7 +144,7 @@ class UserRepository(
     }
 
     /**
-     * ID로 사용자 조회
+     * ID로 사용자 조회 (ACTIVE/SUSPENDED만)
      *
      * @param id 사용자 ID
      * @return 사용자 정보 (존재하지 않으면 null)
@@ -136,7 +153,7 @@ class UserRepository(
         return Mono.from(
             dsl.selectFrom(USERS)
                 .where(USERS.ID.eq(id.toString()))
-                .and(USERS.DELETED_AT.isNull)  // Soft delete 필터링
+                .and(USERS.STATUS.ne(UserStatus.DELETED.name))
         ).map { record -> mapToUser(record) }
     }
 
@@ -167,9 +184,10 @@ class UserRepository(
             provider = OAuthProvider.valueOf(record.provider!!),
             providerId = record.providerId!!,
             role = UserRole.valueOf(record.role!!),
+            status = UserStatus.valueOf(record.status ?: "ACTIVE"),
             createdAt = record.createdAt!!,
             updatedAt = record.updatedAt!!,
-            deletedAt = record.deletedAt  // Soft delete 지원
+            deletedAt = record.deletedAt
         )
     }
 }

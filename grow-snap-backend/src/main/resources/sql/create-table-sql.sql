@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     provider VARCHAR(50) NOT NULL DEFAULT 'GOOGLE',
     provider_id VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(36) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -15,7 +16,24 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_provider_id ON users(provider_id);
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_deleted_at ON users(deleted_at);
+
+-- User Status History Table (Audit Trail)
+CREATE TABLE IF NOT EXISTS user_status_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    previous_status VARCHAR(20) NULL,
+    new_status VARCHAR(20) NOT NULL,
+    reason VARCHAR(255) NULL,
+    metadata JSON NULL,
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    changed_by VARCHAR(36) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_status_history_user_id ON user_status_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_status_history_changed_at ON user_status_history(changed_at);
 
 -- User Profiles Table
 CREATE TABLE IF NOT EXISTS user_profiles (
