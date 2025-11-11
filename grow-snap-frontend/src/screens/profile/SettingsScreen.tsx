@@ -197,7 +197,7 @@ export default function SettingsScreen() {
               }
             );
 
-            if (result) {
+            if (result !== null) {
               // 탈퇴 성공 시 즉시 로그아웃 (로그인 화면으로 자동 이동)
               await logout();
             }
