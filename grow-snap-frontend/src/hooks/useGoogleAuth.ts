@@ -28,6 +28,9 @@ export const useGoogleAuth = () => {
 
         // growsnap://oauth/callback?accessToken=...&refreshToken=...
         if (url.startsWith('growsnap://oauth/callback')) {
+          // OAuth 브라우저 자동으로 닫기
+          WebBrowser.dismissBrowser();
+
           const parsed = Linking.parse(url);
           const { accessToken, refreshToken, userId, email, error: errorParam } = parsed.queryParams as {
             accessToken?: string;
@@ -82,6 +85,9 @@ export const useGoogleAuth = () => {
         setError(message);
         logError(err, 'useGoogleAuth.handleDeepLink');
         setIsLoading(false);
+
+        // 에러 발생 시에도 브라우저 닫기
+        WebBrowser.dismissBrowser();
       }
     };
 

@@ -26,7 +26,7 @@ fun createUserWithProfile(
     provider: OAuthProvider = OAuthProvider.GOOGLE,
     providerId: String = UUID.randomUUID().toString(),
     role: UserRole = UserRole.USER,
-    nickname: String = "user${System.currentTimeMillis() % 1000000000}"
+    nickname: String = "user${UUID.randomUUID().toString().substring(0, 8)}"
 ): Pair<User, UserProfile> {
     val user = userRepository.save(
         User(

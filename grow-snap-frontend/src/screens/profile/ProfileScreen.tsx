@@ -173,8 +173,7 @@ export default function ProfileScreen() {
 
   // 설정 화면으로 이동
   const handleSettings = () => {
-    // TODO: 설정 화면 구현 후 연결
-    Alert.alert('설정', '설정 화면은 추후 구현 예정입니다.');
+    navigation.navigate('Settings');
   };
 
   // 팔로워 목록으로 이동

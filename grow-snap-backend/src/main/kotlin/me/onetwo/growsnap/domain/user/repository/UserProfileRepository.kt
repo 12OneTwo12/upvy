@@ -8,6 +8,8 @@ import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -24,6 +26,7 @@ class UserProfileRepository(
                 .set(USER_PROFILES.NICKNAME, profile.nickname)
                 .set(USER_PROFILES.PROFILE_IMAGE_URL, profile.profileImageUrl)
                 .set(USER_PROFILES.BIO, profile.bio)
+                .set(USER_PROFILES.DELETED_AT_UNIX, 0L)
                 .returningResult(USER_PROFILES.ID)
         ).map { record ->
             profile.copy(id = record.getValue(USER_PROFILES.ID))
@@ -92,10 +95,14 @@ class UserProfileRepository(
      * @param deletedBy 삭제한 사용자 ID
      */
     fun softDelete(userId: UUID, deletedBy: UUID): Mono<Void> {
+        val now = LocalDateTime.now()
+        val deletedAtUnix = now.atZone(ZoneId.systemDefault()).toEpochSecond()
+
         return Mono.from(
             dsl.update(USER_PROFILES)
-                .set(USER_PROFILES.DELETED_AT, java.time.LocalDateTime.now())
-                .set(USER_PROFILES.UPDATED_AT, java.time.LocalDateTime.now())
+                .set(USER_PROFILES.DELETED_AT, now)
+                .set(USER_PROFILES.DELETED_AT_UNIX, deletedAtUnix)
+                .set(USER_PROFILES.UPDATED_AT, now)
                 .set(USER_PROFILES.UPDATED_BY, deletedBy.toString())
                 .where(USER_PROFILES.USER_ID.eq(userId.toString()))
                 .and(USER_PROFILES.DELETED_AT.isNull)
@@ -163,7 +170,9 @@ class UserProfileRepository(
             followerCount = record.followerCount ?: 0,
             followingCount = record.followingCount ?: 0,
             createdAt = record.createdAt!!,
-            updatedAt = record.updatedAt!!
+            updatedAt = record.updatedAt!!,
+            deletedAt = record.deletedAt,
+            deletedAtUnix = record.deletedAtUnix ?: 0L
         )
     }
 }
