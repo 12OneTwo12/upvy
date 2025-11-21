@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 import java.security.Principal
 import java.util.UUID
 
@@ -72,7 +73,11 @@ class UserController(
             .toUserId()
             .flatMap { userId ->
                 userService.withdrawUser(userId)
-                    .doOnSuccess { refreshTokenRepository.deleteByUserId(userId) }
+                    .then(
+                        Mono.fromCallable { refreshTokenRepository.deleteByUserId(userId) }
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .then()
+                    )
             }
             .thenReturn(ResponseEntity.noContent().build())
     }

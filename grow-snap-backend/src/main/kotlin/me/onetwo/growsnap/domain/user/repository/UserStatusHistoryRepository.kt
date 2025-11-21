@@ -51,19 +51,29 @@ class UserStatusHistoryRepository(
      */
     fun findByUserId(userId: UUID): Flux<UserStatusHistory> {
         return Flux.from(
-            dsl.selectFrom(USER_STATUS_HISTORY)
+            dsl.select(
+                USER_STATUS_HISTORY.ID,
+                USER_STATUS_HISTORY.USER_ID,
+                USER_STATUS_HISTORY.PREVIOUS_STATUS,
+                USER_STATUS_HISTORY.NEW_STATUS,
+                USER_STATUS_HISTORY.REASON,
+                USER_STATUS_HISTORY.METADATA,
+                USER_STATUS_HISTORY.CHANGED_AT,
+                USER_STATUS_HISTORY.CHANGED_BY
+            )
+                .from(USER_STATUS_HISTORY)
                 .where(USER_STATUS_HISTORY.USER_ID.eq(userId.toString()))
                 .orderBy(USER_STATUS_HISTORY.CHANGED_AT.desc())
         ).map { record ->
             UserStatusHistory(
-                id = record.id,
-                userId = UUID.fromString(record.userId!!),
-                previousStatus = record.previousStatus?.let { UserStatus.valueOf(it) },
-                newStatus = UserStatus.valueOf(record.newStatus!!),
-                reason = record.reason,
-                metadata = record.metadata?.data(),
-                changedAt = record.changedAt!!,
-                changedBy = record.changedBy
+                id = record.getValue(USER_STATUS_HISTORY.ID),
+                userId = UUID.fromString(record.getValue(USER_STATUS_HISTORY.USER_ID)!!),
+                previousStatus = record.getValue(USER_STATUS_HISTORY.PREVIOUS_STATUS)?.let { UserStatus.valueOf(it) },
+                newStatus = UserStatus.valueOf(record.getValue(USER_STATUS_HISTORY.NEW_STATUS)!!),
+                reason = record.getValue(USER_STATUS_HISTORY.REASON),
+                metadata = record.getValue(USER_STATUS_HISTORY.METADATA)?.data(),
+                changedAt = record.getValue(USER_STATUS_HISTORY.CHANGED_AT)!!,
+                changedBy = record.getValue(USER_STATUS_HISTORY.CHANGED_BY)
             )
         }
     }
@@ -76,20 +86,30 @@ class UserStatusHistoryRepository(
      */
     fun findLatestByUserId(userId: UUID): Mono<UserStatusHistory> {
         return Mono.from(
-            dsl.selectFrom(USER_STATUS_HISTORY)
+            dsl.select(
+                USER_STATUS_HISTORY.ID,
+                USER_STATUS_HISTORY.USER_ID,
+                USER_STATUS_HISTORY.PREVIOUS_STATUS,
+                USER_STATUS_HISTORY.NEW_STATUS,
+                USER_STATUS_HISTORY.REASON,
+                USER_STATUS_HISTORY.METADATA,
+                USER_STATUS_HISTORY.CHANGED_AT,
+                USER_STATUS_HISTORY.CHANGED_BY
+            )
+                .from(USER_STATUS_HISTORY)
                 .where(USER_STATUS_HISTORY.USER_ID.eq(userId.toString()))
                 .orderBy(USER_STATUS_HISTORY.CHANGED_AT.desc())
                 .limit(1)
         ).map { record ->
             UserStatusHistory(
-                id = record.id,
-                userId = UUID.fromString(record.userId!!),
-                previousStatus = record.previousStatus?.let { UserStatus.valueOf(it) },
-                newStatus = UserStatus.valueOf(record.newStatus!!),
-                reason = record.reason,
-                metadata = record.metadata?.data(),
-                changedAt = record.changedAt!!,
-                changedBy = record.changedBy
+                id = record.getValue(USER_STATUS_HISTORY.ID),
+                userId = UUID.fromString(record.getValue(USER_STATUS_HISTORY.USER_ID)!!),
+                previousStatus = record.getValue(USER_STATUS_HISTORY.PREVIOUS_STATUS)?.let { UserStatus.valueOf(it) },
+                newStatus = UserStatus.valueOf(record.getValue(USER_STATUS_HISTORY.NEW_STATUS)!!),
+                reason = record.getValue(USER_STATUS_HISTORY.REASON),
+                metadata = record.getValue(USER_STATUS_HISTORY.METADATA)?.data(),
+                changedAt = record.getValue(USER_STATUS_HISTORY.CHANGED_AT)!!,
+                changedBy = record.getValue(USER_STATUS_HISTORY.CHANGED_BY)
             )
         }
     }

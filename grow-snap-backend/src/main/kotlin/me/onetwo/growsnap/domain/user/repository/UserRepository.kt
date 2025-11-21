@@ -140,7 +140,7 @@ class UserRepository(
                 .set(USERS.UPDATED_AT, LocalDateTime.now())
                 .set(USERS.UPDATED_BY, id.toString())
                 .where(USERS.ID.eq(id.toString()))
-        ).then(findById(id))
+        ).then(findByIdIncludingDeleted(id))
     }
 
     /**
