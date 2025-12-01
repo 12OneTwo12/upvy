@@ -14,7 +14,7 @@ export type RootStackParamList = {
   HelpSupport: undefined;
   UserProfile: { userId: string };
   FollowList: { userId: string; initialTab?: 'followers' | 'following' };
-  ContentViewer: { contentId: string };
+  ContentViewer: { contentId: string; initialIndex?: number };
 };
 
 /**

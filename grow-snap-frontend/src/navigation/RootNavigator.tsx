@@ -62,6 +62,7 @@ export default function RootNavigator() {
             <Stack.Screen
               name="ContentViewer"
               component={ContentViewerScreen}
+              options={{ presentation: 'fullScreenModal' }}
             />
           </>
         )}

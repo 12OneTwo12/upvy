@@ -266,7 +266,10 @@ export default function SearchScreen() {
     const itemSize = (screenWidth - 3) / 3; // 3 columns with 1px gaps
 
     return (
-      <TouchableOpacity style={[styles.gridItem, { width: itemSize, height: itemSize }]}>
+      <TouchableOpacity
+        style={[styles.gridItem, { width: itemSize, height: itemSize }]}
+        onPress={() => navigation.navigate('ContentViewer', { contentId: item.contentId })}
+      >
         <Image
           source={{ uri: item.thumbnailUrl }}
           style={styles.gridThumbnail}
