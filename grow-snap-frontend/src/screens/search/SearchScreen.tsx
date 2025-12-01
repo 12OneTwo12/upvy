@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Keyboard,
@@ -15,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Video, ResizeMode } from 'expo-av';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import {
@@ -38,6 +40,113 @@ import { withErrorHandling } from '@/utils/errorHandler';
 
 type TabType = 'creators' | 'shorts';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+/**
+ * 그리드 아이템 컴포넌트 (Instagram Explore 스타일)
+ */
+interface ExploreGridItemProps {
+  item: FeedItem;
+  index: number;
+  totalItems: number;
+  videoIndex?: number; // 비디오 순서 (사진은 undefined)
+  onPress: (contentId: string) => void;
+}
+
+const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalItems, videoIndex, onPress }) => {
+  const [mediaLoading, setMediaLoading] = React.useState(true);
+  const screenWidth = Dimensions.get('window').width;
+  const gap = 2;
+
+  // 기본 아이템 크기 (1/3 폭)
+  const baseItemWidth = (screenWidth - gap * 2) / 3;
+
+  // 사진은 무조건 짧게, 비디오만 다이나믹하게
+  const isNotNearEnd = index < totalItems - 6;
+  let isLarge = false;
+
+  if (item.contentType === 'VIDEO' && videoIndex !== undefined && isNotNearEnd) {
+    if (videoIndex === 0) {
+      // 첫 번째 비디오: 무조건 길게
+      isLarge = true;
+    } else if (videoIndex === 1) {
+      // 두 번째 비디오: 무조건 짧게
+      isLarge = false;
+    } else {
+      // 세 번째부터: 매 3개마다 랜덤하게 하나씩 길게
+      const positionInGroup = (videoIndex - 2) % 3;
+      // contentId 기반 deterministic random (같은 비디오는 항상 같은 결과)
+      const hash = item.contentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const selectedPosition = hash % 3; // 0, 1, 2 중 하나
+      isLarge = positionInGroup === selectedPosition;
+    }
+  }
+
+  // 너비와 높이 계산 (모두 1/3 폭)
+  // isLarge: 큰 아이템 (1/3 폭, 2배 높이)
+  // 일반: 1/3 폭, 1배 높이
+  const itemWidth = baseItemWidth;
+  const itemHeight = isLarge ? baseItemWidth * 2 + gap : baseItemWidth;
+
+  // item이 바뀔 때마다 로딩 상태 초기화
+  React.useEffect(() => {
+    setMediaLoading(true);
+  }, [item.contentId]);
+
+  const styles = useStyles();
+
+  return (
+    <TouchableOpacity
+      style={[styles.exploreGridItem, { width: itemWidth, height: itemHeight }]}
+      onPress={() => onPress(item.contentId)}
+      activeOpacity={0.95}
+    >
+      {/* 비디오 또는 이미지 */}
+      {item.contentType === 'VIDEO' ? (
+        <Video
+          source={{ uri: item.url }}
+          style={styles.exploreGridThumbnail}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay={isLarge}
+          isLooping
+          isMuted
+          useNativeControls={false}
+          onLoad={() => setMediaLoading(false)}
+          onReadyForDisplay={() => setMediaLoading(false)}
+          onError={() => setMediaLoading(false)}
+        />
+      ) : (
+        <Image
+          source={{ uri: item.photoUrls?.[0] || item.thumbnailUrl }}
+          style={styles.exploreGridThumbnail}
+          resizeMode="cover"
+          onLoad={() => setMediaLoading(false)}
+          onError={() => setMediaLoading(false)}
+        />
+      )}
+
+      {/* 로딩 스피너 */}
+      {mediaLoading && (
+        <View style={styles.exploreLoadingOverlay}>
+          <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+        </View>
+      )}
+
+      {/* 비디오 타입 인디케이터 */}
+      {!mediaLoading && item.contentType === 'VIDEO' && (
+        <View style={styles.exploreVideoIndicator}>
+          <Ionicons name="play" size={16} color={theme.colors.text.inverse} />
+        </View>
+      )}
+
+      {/* 멀티 포토 인디케이터 */}
+      {!mediaLoading && item.contentType === 'PHOTO' && item.photoUrls && item.photoUrls.length > 1 && (
+        <View style={styles.explorePhotoIndicator}>
+          <Ionicons name="copy-outline" size={16} color={theme.colors.text.inverse} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 export default function SearchScreen() {
   const styles = useStyles();
@@ -260,64 +369,65 @@ export default function SearchScreen() {
     </View>
   );
 
-  // 콘텐츠 결과 아이템 렌더 (Instagram 그리드 스타일)
-  const renderContentResult = ({ item }: { item: FeedItem }) => {
-    const screenWidth = Dimensions.get('window').width;
-    const itemSize = (screenWidth - 3) / 3; // 3 columns with 1px gaps
+  // 콘텐츠 클릭 핸들러
+  const handleContentPress = (contentId: string) => {
+    navigation.navigate('ContentViewer', { contentId });
+  };
+
+  // 사용자 결과 아이템 렌더 (Instagram 스타일 - 컴팩트)
+  const renderUserResult = ({ item }: { item: UserSearchResult }) => {
+    // 팔로워 수 포맷팅 (Instagram 스타일)
+    const formatFollowerCount = (count: number) => {
+      if (count >= 1000000) {
+        return `${(count / 1000000).toFixed(1)}M`;
+      }
+      if (count >= 10000) {
+        return `${(count / 10000).toFixed(1)}만`;
+      }
+      if (count >= 1000) {
+        return `${(count / 1000).toFixed(1)}K`;
+      }
+      return count.toString();
+    };
 
     return (
       <TouchableOpacity
-        style={[styles.gridItem, { width: itemSize, height: itemSize }]}
-        onPress={() => navigation.navigate('ContentViewer', { contentId: item.contentId })}
+        style={styles.userResultItem}
+        onPress={() => navigation.navigate('UserProfile', { userId: item.userId })}
+        activeOpacity={0.9}
       >
-        <Image
-          source={{ uri: item.thumbnailUrl }}
-          style={styles.gridThumbnail}
-          resizeMode="cover"
-        />
-        <View style={styles.gridOverlay}>
-          <View style={styles.gridStats}>
-            <Ionicons name="play" size={16} color={theme.colors.text.inverse} />
-            <Text style={styles.gridStatsText}>
-              {item.interactions.viewCount >= 10000
-                ? `${(item.interactions.viewCount / 10000).toFixed(1)}만`
-                : item.interactions.viewCount || 0}
+        {/* 프로필 이미지 */}
+        {item.profileImageUrl ? (
+          <Image
+            source={{ uri: item.profileImageUrl }}
+            style={styles.userAvatar}
+          />
+        ) : (
+          <View style={[styles.userAvatar, styles.userAvatarPlaceholder]}>
+            <Text style={styles.userAvatarText}>
+              {item.nickname.charAt(0).toUpperCase()}
             </Text>
           </View>
+        )}
+
+        {/* 사용자 정보 */}
+        <View style={styles.userInfo}>
+          <Text style={styles.userNickname} numberOfLines={1}>
+            {item.nickname}
+          </Text>
+          {item.bio ? (
+            <Text style={styles.userBio} numberOfLines={1}>
+              {item.bio}
+            </Text>
+          ) : (
+            <Text style={styles.userFollowers}>
+              팔로워 {formatFollowerCount(item.followerCount)}
+            </Text>
+          )}
         </View>
       </TouchableOpacity>
     );
   };
-
-  // 사용자 결과 아이템 렌더
-  const renderUserResult = ({ item }: { item: UserSearchResult }) => (
-    <TouchableOpacity
-      style={styles.userResultItem}
-      onPress={() => navigation.navigate('UserProfile', { userId: item.userId })}
-    >
-      {item.profileImageUrl ? (
-        <Image
-          source={{ uri: item.profileImageUrl }}
-          style={styles.userAvatar}
-        />
-      ) : (
-        <View style={[styles.userAvatar, styles.userAvatarPlaceholder]}>
-          <Text style={styles.userAvatarText}>
-            {item.nickname.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-      )}
-      <View style={styles.userInfo}>
-        <Text style={styles.userNickname}>{item.nickname}</Text>
-        {item.bio && (
-          <Text style={styles.userBio} numberOfLines={1}>
-            {item.bio}
-          </Text>
-        )}
-        <Text style={styles.userFollowers}>팔로워 {item.followerCount}명</Text>
-      </View>
-    </TouchableOpacity>
-  );
 
   // 탭 렌더
   const renderTabs = () => {
@@ -365,24 +475,91 @@ export default function SearchScreen() {
           ListEmptyComponent={
             <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
           }
+          contentContainerStyle={styles.creatorListContainer}
         />
       );
     }
 
     if (activeTab === 'shorts') {
-      return (
-        <FlatList
-          key="shorts-grid"
-          data={contentResults}
-          renderItem={renderContentResult}
-          keyExtractor={(item) => item.contentId}
-          numColumns={3}
-          columnWrapperStyle={styles.gridRow}
-          ListEmptyComponent={
+      // 비디오 인덱스 매핑 (사진 제외, 비디오만 카운트)
+      const videoIndexMap = new Map<string, number>();
+      let videoCount = 0;
+      contentResults.forEach(item => {
+        if (item.contentType === 'VIDEO') {
+          videoIndexMap.set(item.contentId, videoCount);
+          videoCount++;
+        }
+      });
+
+      if (contentResults.length === 0) {
+        return (
+          <View style={styles.loadingContainer}>
             <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
+          </View>
+        );
+      }
+
+      // 3개 컬럼에 아이템 분배 (Masonry Layout - 가장 짧은 컬럼에 추가)
+      const columns: FeedItem[][] = [[], [], []];
+      const columnHeights = [0, 0, 0]; // 각 컬럼의 현재 높이 추적
+
+      const screenWidth = Dimensions.get('window').width;
+      const gap = 2;
+      const baseItemWidth = (screenWidth - gap * 2) / 3;
+      const baseItemHeight = baseItemWidth;
+
+      contentResults.forEach((item, idx) => {
+        // 이 아이템의 높이를 미리 계산
+        let itemHeight = baseItemHeight;
+
+        const videoIndex = item.contentType === 'VIDEO' ? videoIndexMap.get(item.contentId) : undefined;
+        const isNotNearEnd = idx < contentResults.length - 6;
+
+        if (item.contentType === 'VIDEO' && videoIndex !== undefined && isNotNearEnd) {
+          if (videoIndex === 0) {
+            itemHeight = baseItemHeight * 2 + gap;
+          } else if (videoIndex === 1) {
+            itemHeight = baseItemHeight;
+          } else {
+            const positionInGroup = (videoIndex - 2) % 3;
+            const hash = item.contentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const selectedPosition = hash % 3;
+            if (positionInGroup === selectedPosition) {
+              itemHeight = baseItemHeight * 2 + gap;
+            }
           }
+        }
+
+        // 가장 짧은 컬럼 찾기
+        const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+
+        // 해당 컬럼에 아이템 추가
+        columns[shortestColumnIndex].push(item);
+        columnHeights[shortestColumnIndex] += itemHeight + gap; // gap 포함
+      });
+
+      return (
+        <ScrollView
           showsVerticalScrollIndicator={false}
-        />
+          contentContainerStyle={styles.exploreGridContainer}
+        >
+          <View style={styles.exploreMasonryContainer}>
+            {columns.map((columnItems, colIndex) => (
+              <View key={`col-${colIndex}`} style={styles.exploreMasonryColumn}>
+                {columnItems.map((item) => (
+                  <ExploreGridItem
+                    key={item.contentId}
+                    item={item}
+                    index={contentResults.indexOf(item)}
+                    totalItems={contentResults.length}
+                    videoIndex={item.contentType === 'VIDEO' ? videoIndexMap.get(item.contentId) : undefined}
+                    onPress={handleContentPress}
+                  />
+                ))}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       );
     }
 
@@ -702,19 +879,26 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.tertiary,
   },
 
-  // 사용자 결과
+  // 크리에이터 목록 컨테이너 (탭과 간격)
+  creatorListContainer: {
+    paddingTop: theme.spacing[3],
+  },
+
+  // 사용자 결과 (Instagram 스타일 - 컴팩트)
   userResultItem: {
     flexDirection: 'row',
-    padding: theme.spacing[4],
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[2.5],
     gap: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
+    backgroundColor: theme.colors.background.primary,
   },
 
   userAvatar: {
-    width: 56,
-    height: 56,
+    width: 54,
+    height: 54,
     borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.gray[100],
   },
 
   userAvatarPlaceholder: {
@@ -724,7 +908,7 @@ const useStyles = createStyleSheet({
   },
 
   userAvatarText: {
-    fontSize: theme.typography.fontSize.xl,
+    fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.primary[500],
   },
@@ -732,6 +916,7 @@ const useStyles = createStyleSheet({
   userInfo: {
     flex: 1,
     justifyContent: 'center',
+    gap: theme.spacing[0.5],
   },
 
   userNickname: {
@@ -740,17 +925,18 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.primary,
   },
 
-  userBio: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing[1],
-  },
-
   userFollowers: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.tertiary,
-    marginTop: theme.spacing[1],
+    fontWeight: theme.typography.fontWeight.normal,
+    color: theme.colors.text.secondary,
   },
+
+  userBio: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.normal,
+    color: theme.colors.text.secondary,
+  },
+
 
   // 로딩 및 빈 상태
   loadingContainer: {
@@ -771,41 +957,51 @@ const useStyles = createStyleSheet({
     paddingVertical: theme.spacing[8],
   },
 
-  // Instagram 그리드 스타일
-  gridRow: {
-    gap: 1, // 1px gaps between columns
+  // Instagram Explore 그리드 스타일 (Masonry Layout)
+  exploreGridContainer: {
+    paddingTop: theme.spacing[2],
   },
 
-  gridItem: {
+  exploreMasonryContainer: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+
+  exploreMasonryColumn: {
+    flex: 1,
+    gap: 2,
+  },
+
+  exploreGridItem: {
     position: 'relative',
     backgroundColor: theme.colors.gray[200],
   },
 
-  gridThumbnail: {
+  exploreGridThumbnail: {
     width: '100%',
     height: '100%',
   },
 
-  gridOverlay: {
+  exploreLoadingOverlay: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    padding: theme.spacing[2],
-  },
-
-  gridStats: {
-    flexDirection: 'row',
+    bottom: 0,
+    backgroundColor: theme.colors.gray[100],
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: theme.spacing[1],
   },
 
-  gridStatsText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.inverse,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+  exploreVideoIndicator: {
+    position: 'absolute',
+    top: theme.spacing[2],
+    right: theme.spacing[2],
+  },
+
+  explorePhotoIndicator: {
+    position: 'absolute',
+    top: theme.spacing[2],
+    right: theme.spacing[2],
   },
 });
