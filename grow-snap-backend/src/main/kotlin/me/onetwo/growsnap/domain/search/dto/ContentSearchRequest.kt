@@ -28,7 +28,7 @@ import java.time.LocalDate
  * - POPULAR: 인기순
  *
  * ## Validation
- * - q: 필수, 최소 2글자 이상
+ * - q: 필수, 최소 1글자 이상
  * - limit: 최소 1, 최대 100 (기본값 20)
  * - minDuration, maxDuration: 최소 0
  *
@@ -46,7 +46,7 @@ import java.time.LocalDate
  */
 data class ContentSearchRequest(
     @field:NotBlank(message = "검색 키워드는 필수입니다")
-    @field:Size(min = 2, message = "검색 키워드는 최소 2글자 이상이어야 합니다")
+    @field:Size(min = 1, message = "검색 키워드는 최소 1글자 이상이어야 합니다")
     val q: String,
 
     val category: Category? = null,
