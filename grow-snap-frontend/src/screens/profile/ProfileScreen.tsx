@@ -9,20 +9,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, CompositeNavigationProp, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
-import { ProfileHeader } from '@/components/profile';
+import { useQuery } from '@tanstack/react-query';
+import { RootStackParamList, ProfileStackParamList } from '@/types/navigation.types';
+import { ProfileHeader, ContentGrid } from '@/components/profile';
 import { Button, LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
 import { getMyProfile } from '@/api/auth.api';
+import { getMyContents } from '@/api/content.api';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
+import type { ContentResponse } from '@/types/content.types';
 
 type NavigationProp = CompositeNavigationProp<
-  BottomTabNavigationProp<MainTabParamList, 'Profile'>,
+  NativeStackNavigationProp<ProfileStackParamList, 'ProfileMain'>,
   NativeStackNavigationProp<RootStackParamList>
 >;
 
@@ -117,54 +119,35 @@ const useStyles = createStyleSheet({
 export default function ProfileScreen() {
   const styles = useStyles();
   const navigation = useNavigation<NavigationProp>();
-  const { profile: storeProfile, user, updateProfile, logout } = useAuthStore();
-  const [profile, setProfile] = useState(storeProfile);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const { profile: storeProfile, user, updateProfile } = useAuthStore();
 
-  // 프로필 데이터 로드
-  const loadProfile = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
+  // 프로필 데이터 로드 (React Query)
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
+    queryKey: ['myProfile'],
+    queryFn: async () => {
+      const data = await getMyProfile();
+      updateProfile(data);
+      return data;
+    },
+    initialData: storeProfile || undefined,
+    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
+  });
 
-    const result = await withErrorHandling(
-      async () => {
-        const data = await getMyProfile();
-        setProfile(data);
-        updateProfile(data);
-        return data;
-      },
-      {
-        showAlert: true,
-        alertTitle: '프로필 조회 실패',
-        logContext: 'ProfileScreen.loadProfile',
-      }
-    );
-
-    if (showLoading) setLoading(false);
-    return result;
-  };
+  // 콘텐츠 목록 로드 (React Query - 캐싱 활성화)
+  const { data: contents = [], isLoading: contentsLoading, refetch: refetchContents } = useQuery({
+    queryKey: ['myContents'],
+    queryFn: getMyContents,
+    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지 (다시 로드하지 않음)
+    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+  });
 
   // 새로고침
+  const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadProfile(false);
+    await Promise.all([refetchProfile(), refetchContents()]);
     setRefreshing(false);
   };
-
-  // 화면이 포커스될 때마다 프로필 리로드
-  useFocusEffect(
-    useCallback(() => {
-      // 화면에 진입할 때 프로필 새로고침
-      loadProfile(false);
-    }, [])
-  );
-
-  // 초기 로드
-  useEffect(() => {
-    if (!profile) {
-      loadProfile();
-    }
-  }, []);
 
   // 프로필 수정 화면으로 이동
   const handleEditProfile = () => {
@@ -194,8 +177,12 @@ export default function ProfileScreen() {
     });
   };
 
+  // 콘텐츠 클릭 핸들러
+  const handleContentPress = (content: ContentResponse) => {
+    navigation.navigate('ProfileContentViewer', { contentId: content.id });
+  };
 
-  if (loading || !profile) {
+  if (profileLoading || !profile) {
     return (
       <SafeAreaView style={styles.loadingContainer} edges={['top']}>
         <LoadingSpinner />
@@ -241,21 +228,18 @@ export default function ProfileScreen() {
 
         </View>
 
-        {/* 콘텐츠 그리드 (추후 구현) */}
+        {/* 콘텐츠 그리드 */}
         <View style={styles.contentSection}>
           <View style={styles.contentHeader}>
             <Ionicons name="grid-outline" size={24} color={theme.colors.text.primary} />
           </View>
-          <View style={styles.emptyContent}>
-            <Ionicons
-              name="images-outline"
-              size={64}
-              color={theme.colors.gray[300]}
-              style={styles.emptyIcon}
-            />
-            <Text style={styles.emptyText}>아직 업로드한 콘텐츠가 없습니다</Text>
-            <Text style={styles.emptySubtext}>첫 콘텐츠를 업로드해보세요!</Text>
-          </View>
+          {contentsLoading ? (
+            <View style={styles.emptyContent}>
+              <LoadingSpinner />
+            </View>
+          ) : (
+            <ContentGrid contents={contents} onContentPress={handleContentPress} />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -6,7 +6,7 @@ import { theme } from '@/theme';
 import FeedScreen from '@/screens/feed/FeedScreen';
 import SearchScreen from '@/screens/search/SearchScreen';
 import UploadNavigator from '@/navigation/UploadNavigator';
-import ProfileScreen from '@/screens/profile/ProfileScreen';
+import ProfileNavigator from '@/navigation/ProfileNavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -61,7 +61,7 @@ export default function MainNavigator() {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileNavigator}
         options={{ tabBarLabel: '프로필' }}
       />
     </Tab.Navigator>

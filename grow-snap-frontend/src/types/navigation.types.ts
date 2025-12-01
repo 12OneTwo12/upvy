@@ -14,6 +14,7 @@ export type RootStackParamList = {
   HelpSupport: undefined;
   UserProfile: { userId: string };
   FollowList: { userId: string; initialTab?: 'followers' | 'following' };
+  ContentViewer: { contentId: string };
 };
 
 /**
@@ -29,8 +30,8 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Feed: undefined;
   Search: undefined;
-  Upload: undefined;
-  Profile: undefined;
+  Upload: NavigatorScreenParams<UploadStackParamList>;
+  Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 /**
@@ -71,4 +72,12 @@ export type UploadStackParamList = {
     };
   };
   ContentManagement: undefined;
+};
+
+/**
+ * Profile Stack Navigator Params
+ */
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  ProfileContentViewer: { contentId: string };
 };

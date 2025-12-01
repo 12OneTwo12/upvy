@@ -4,15 +4,24 @@
  * 비디오 플레이어 + 오버레이를 결합한 완전한 피드 아이템
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useContext } from 'react';
 import { View, Dimensions, Animated, PanResponder, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
 import { PhotoGallery } from './PhotoGallery';
 import { FeedOverlay } from './FeedOverlay';
 import { LikeAnimation } from './LikeAnimation';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
+
+/**
+ * Bottom Tab Bar Height를 안전하게 가져오는 Hook
+ * Bottom Tab Navigator 외부에서 사용될 때 0 반환
+ */
+const useSafeBottomTabBarHeight = (): number => {
+  const height = useContext(BottomTabBarHeightContext);
+  return height ?? 0;
+};
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -48,7 +57,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   onFollow,
   onCreatorPress,
 }) => {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useSafeBottomTabBarHeight();
   const [isExpanded, setIsExpanded] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);

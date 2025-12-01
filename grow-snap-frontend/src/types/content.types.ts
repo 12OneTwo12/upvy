@@ -186,8 +186,23 @@ export interface ContentResponse {
   category: Category;
   tags: string[];
   language: string;
+  interactions?: InteractionInfoResponse; // 인터랙션 정보 (인증된 사용자의 경우 isLiked, isSaved 포함)
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * 인터랙션 정보 응답
+ * 백엔드: InteractionInfoResponse
+ */
+export interface InteractionInfoResponse {
+  likeCount: number;
+  commentCount: number;
+  saveCount: number;
+  shareCount: number;
+  viewCount: number;
+  isLiked: boolean;
+  isSaved: boolean;
 }
 
 /**

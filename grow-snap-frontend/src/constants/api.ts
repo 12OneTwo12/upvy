@@ -120,3 +120,9 @@ export const API_ENDPOINTS = {
  * API Timeout (ms)
  */
 export const API_TIMEOUT = 10000; // 10 seconds
+
+/**
+ * Upload API Timeout (ms)
+ * 파일 업로드는 일반 API보다 오래 걸리므로 별도 타임아웃 설정
+ */
+export const API_UPLOAD_TIMEOUT = 120000; // 120 seconds (2 minutes)

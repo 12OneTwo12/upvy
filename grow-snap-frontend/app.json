@@ -31,7 +31,8 @@
     "scheme": "growsnap",
     "plugins": [
       "expo-web-browser",
-      "expo-dev-client"
+      "expo-dev-client",
+      "./plugins/withVideoAssetExporter"
     ],
     "extra": {
       "apiUrl": "http://localhost:8080"

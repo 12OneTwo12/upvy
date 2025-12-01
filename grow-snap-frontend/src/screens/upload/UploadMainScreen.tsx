@@ -128,7 +128,7 @@ export default function UploadMainScreen({ navigation }: Props) {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (selectedAssets.length === 0) {
       Alert.alert('알림', '미디어를 선택해주세요.');
       return;
@@ -145,8 +145,28 @@ export default function UploadMainScreen({ navigation }: Props) {
         );
       }
 
+      // ph:// URI인 경우 localUri를 미리 가져오기
+      let assetWithLocalUri = asset;
+      if (asset.uri && asset.uri.startsWith('ph://')) {
+        try {
+          console.log('📹 Getting localUri for video asset...');
+          const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+
+          if (assetInfo.localUri) {
+            console.log('✅ Got localUri:', assetInfo.localUri);
+            assetWithLocalUri = {
+              ...asset,
+              uri: assetInfo.localUri, // localUri로 교체
+            };
+          }
+        } catch (error) {
+          console.error('Failed to get localUri:', error);
+          // 실패해도 계속 진행 (VideoEditScreen에서 재시도)
+        }
+      }
+
       navigation.navigate('VideoEdit', {
-        asset: asset,
+        asset: assetWithLocalUri,
         type: 'video',
       });
     } else {

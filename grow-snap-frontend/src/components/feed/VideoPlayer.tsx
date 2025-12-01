@@ -7,12 +7,12 @@
  * - 자동재생
  */
 
-import React, { useRef, useState, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useState, useEffect, useMemo, forwardRef, useImperativeHandle, useContext } from 'react';
 import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const NAVIGATION_BAR_HEIGHT = 60;
@@ -56,7 +56,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const lastTap = useRef<number>(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
 
   // 빈 URL인 경우 (스켈레톤 로딩 상태)
   const isLoadingSkeleton = !uri || uri === '';

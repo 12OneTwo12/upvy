@@ -355,7 +355,7 @@ class ContentServiceImpl(
                 }
             }
             .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
-                Flux.fromIterable(contentWithMetadataList).flatMap { contentWithMetadata ->
+                Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
                     val photoUrls = if (content.contentType == ContentType.PHOTO) {

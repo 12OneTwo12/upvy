@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "postinstall": "node scripts/register-video-module.js || true"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -25,11 +26,13 @@
     "expo-av": "~16.0.7",
     "expo-crypto": "~15.0.7",
     "expo-dev-client": "^6.0.16",
+    "expo-file-system": "^19.0.17",
     "expo-image-manipulator": "^14.0.7",
     "expo-image-picker": "^17.0.8",
     "expo-linear-gradient": "^15.0.7",
     "expo-media-library": "^18.2.0",
     "expo-status-bar": "~3.0.8",
+    "expo-video-thumbnails": "^10.0.7",
     "expo-web-browser": "~15.0.8",
     "nativewind": "^4.2.1",
     "react": "19.1.0",
@@ -38,7 +41,9 @@
     "react-native-gesture-handler": "~2.28.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+    "react-native-video-trim": "^6.0.9",
     "tailwindcss": "^3.4.18",
+    "video-asset-exporter": "file:./modules/video-asset-exporter",
     "zod": "^3.25.76",
     "zustand": "^5.0.8"
   },
