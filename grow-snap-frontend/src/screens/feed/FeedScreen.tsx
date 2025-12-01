@@ -509,8 +509,7 @@ export default function FeedScreen() {
   };
 
   const handleCreatorPress = (userId: string) => {
-    console.log('Creator:', userId);
-    // TODO: 프로필 화면으로 이동
+    navigation.navigate('UserProfile', { userId });
   };
 
   // Video 로드 완료 콜백
