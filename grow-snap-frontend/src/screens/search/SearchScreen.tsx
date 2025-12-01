@@ -454,24 +454,26 @@ export default function SearchScreen() {
               )}
 
               {/* 인기 검색어 */}
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>인기 검색어</Text>
+              {(loadingTrending || trendingKeywords.length > 0) && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>인기 검색어</Text>
+                  </View>
+                  {loadingTrending ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.primary[500]}
+                      style={styles.loadingIndicator}
+                    />
+                  ) : (
+                    trendingKeywords.map((item, index) => (
+                      <View key={`${item.keyword}-${index}`}>
+                        {renderTrendingKeyword({ item } as any)}
+                      </View>
+                    ))
+                  )}
                 </View>
-                {loadingTrending ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={theme.colors.primary[500]}
-                    style={styles.loadingIndicator}
-                  />
-                ) : (
-                  trendingKeywords.map((item, index) => (
-                    <View key={`${item.keyword}-${index}`}>
-                      {renderTrendingKeyword({ item } as any)}
-                    </View>
-                  ))
-                )}
-              </View>
+              )}
             </>
           }
         />
