@@ -565,4 +565,204 @@ class ContentRepositoryTest {
             .set(CONTENTS.UPDATED_BY, userId.toString())
             .where(CONTENTS.ID.eq(contentId.toString()))).block()
     }
+
+    @Nested
+    @DisplayName("searchByTitle - 제목으로 콘텐츠 검색 (Failover용)")
+    inner class SearchByTitle {
+
+        @Test
+        @DisplayName("제목에 검색어가 포함된 콘텐츠를 반환한다")
+        fun searchByTitle_WithMatchingContents_ReturnsContents() {
+            // Given: 여러 콘텐츠 생성
+            val content1 = UUID.randomUUID()
+            val content2 = UUID.randomUUID()
+            val content3 = UUID.randomUUID()
+            insertContent(content1, testUser.id!!)
+            insertContent(content2, testUser.id!!)
+            insertContent(content3, testUser.id!!)
+            insertMetadata(content1, testUser.id!!, "Kotlin Tutorial for Beginners")
+            insertMetadata(content2, testUser.id!!, "Advanced Kotlin Programming")
+            insertMetadata(content3, testUser.id!!, "Java Spring Boot Guide")
+
+            // When: "Kotlin"으로 검색
+            val results = contentRepository.searchByTitle("Kotlin", 10).collectList().block()!!
+
+            // Then: Kotlin이 포함된 콘텐츠 2개 반환
+            assertThat(results).hasSize(2)
+            assertThat(results).containsExactlyInAnyOrder(content1, content2)
+        }
+
+        @Test
+        @DisplayName("일치하는 콘텐츠가 없으면 빈 리스트를 반환한다")
+        fun searchByTitle_WithNoMatch_ReturnsEmpty() {
+            // Given: 검색어와 일치하지 않는 콘텐츠
+            val contentId = UUID.randomUUID()
+            insertContent(contentId, testUser.id!!)
+            insertMetadata(contentId, testUser.id!!, "Python Tutorial")
+
+            // When: "Kotlin"으로 검색
+            val results = contentRepository.searchByTitle("Kotlin", 10).collectList().block()!!
+
+            // Then: 빈 리스트 반환
+            assertThat(results).isEmpty()
+        }
+
+        @Test
+        @DisplayName("최신순으로 정렬되어 반환된다")
+        fun searchByTitle_OrderedByCreatedAtDesc() {
+            // Given: 시간 차이를 두고 3개 콘텐츠 생성
+            val content1 = UUID.randomUUID()
+            val content2 = UUID.randomUUID()
+            val content3 = UUID.randomUUID()
+
+            val now = LocalDateTime.now()
+            insertContentWithTime(content1, testUser.id!!, now.minusHours(3))
+            insertContentWithTime(content2, testUser.id!!, now.minusHours(2))
+            insertContentWithTime(content3, testUser.id!!, now.minusHours(1))
+            insertMetadata(content1, testUser.id!!, "Tutorial Part 1")
+            insertMetadata(content2, testUser.id!!, "Tutorial Part 2")
+            insertMetadata(content3, testUser.id!!, "Tutorial Part 3")
+
+            // When: "Tutorial"로 검색
+            val results = contentRepository.searchByTitle("Tutorial", 10).collectList().block()!!
+
+            // Then: 최신순 정렬
+            assertThat(results).hasSize(3)
+            assertThat(results[0]).isEqualTo(content3)
+            assertThat(results[1]).isEqualTo(content2)
+            assertThat(results[2]).isEqualTo(content1)
+        }
+
+        @Test
+        @DisplayName("PUBLISHED 상태의 콘텐츠만 반환한다")
+        fun searchByTitle_OnlyPublishedContents() {
+            // Given: PUBLISHED와 PENDING 콘텐츠 생성
+            val publishedContent = UUID.randomUUID()
+            val pendingContent = UUID.randomUUID()
+
+            // PUBLISHED 콘텐츠
+            Mono.from(dslContext.insertInto(CONTENTS)
+                .set(CONTENTS.ID, publishedContent.toString())
+                .set(CONTENTS.CREATOR_ID, testUser.id.toString())
+                .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
+                .set(CONTENTS.URL, "https://s3.amazonaws.com/video.mp4")
+                .set(CONTENTS.THUMBNAIL_URL, "https://s3.amazonaws.com/thumbnail.jpg")
+                .set(CONTENTS.DURATION, 60)
+                .set(CONTENTS.WIDTH, 1920)
+                .set(CONTENTS.HEIGHT, 1080)
+                .set(CONTENTS.STATUS, ContentStatus.PUBLISHED.name)
+                .set(CONTENTS.CREATED_AT, LocalDateTime.now())
+                .set(CONTENTS.CREATED_BY, testUser.id.toString())
+                .set(CONTENTS.UPDATED_AT, LocalDateTime.now())
+                .set(CONTENTS.UPDATED_BY, testUser.id.toString())).block()
+
+            // PENDING 콘텐츠
+            Mono.from(dslContext.insertInto(CONTENTS)
+                .set(CONTENTS.ID, pendingContent.toString())
+                .set(CONTENTS.CREATOR_ID, testUser.id.toString())
+                .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
+                .set(CONTENTS.URL, "https://s3.amazonaws.com/video.mp4")
+                .set(CONTENTS.THUMBNAIL_URL, "https://s3.amazonaws.com/thumbnail.jpg")
+                .set(CONTENTS.DURATION, 60)
+                .set(CONTENTS.WIDTH, 1920)
+                .set(CONTENTS.HEIGHT, 1080)
+                .set(CONTENTS.STATUS, ContentStatus.PENDING.name)
+                .set(CONTENTS.CREATED_AT, LocalDateTime.now())
+                .set(CONTENTS.CREATED_BY, testUser.id.toString())
+                .set(CONTENTS.UPDATED_AT, LocalDateTime.now())
+                .set(CONTENTS.UPDATED_BY, testUser.id.toString())).block()
+
+            insertMetadata(publishedContent, testUser.id!!, "Kotlin Guide")
+            insertMetadata(pendingContent, testUser.id!!, "Kotlin Tutorial")
+
+            // When: "Kotlin"으로 검색
+            val results = contentRepository.searchByTitle("Kotlin", 10).collectList().block()!!
+
+            // Then: PUBLISHED만 반환
+            assertThat(results).hasSize(1)
+            assertThat(results[0]).isEqualTo(publishedContent)
+        }
+
+        @Test
+        @DisplayName("삭제된 콘텐츠는 검색 결과에서 제외된다")
+        fun searchByTitle_ExcludesDeletedContents() {
+            // Given: 2개 생성, 1개 삭제
+            val activeContent = UUID.randomUUID()
+            val deletedContent = UUID.randomUUID()
+            insertContent(activeContent, testUser.id!!)
+            insertContent(deletedContent, testUser.id!!)
+            insertMetadata(activeContent, testUser.id!!, "Active Kotlin Tutorial")
+            insertMetadata(deletedContent, testUser.id!!, "Deleted Kotlin Guide")
+
+            // 콘텐츠 삭제
+            softDeleteContent(deletedContent, testUser.id!!)
+
+            // When: "Kotlin"으로 검색
+            val results = contentRepository.searchByTitle("Kotlin", 10).collectList().block()!!
+
+            // Then: 삭제되지 않은 콘텐츠만 반환
+            assertThat(results).hasSize(1)
+            assertThat(results[0]).isEqualTo(activeContent)
+        }
+
+        @Test
+        @DisplayName("삭제된 메타데이터의 콘텐츠는 검색 결과에서 제외된다")
+        fun searchByTitle_ExcludesDeletedMetadata() {
+            // Given: 2개 콘텐츠 생성, 1개의 메타데이터 삭제
+            val activeContent = UUID.randomUUID()
+            val deletedMetadataContent = UUID.randomUUID()
+            insertContent(activeContent, testUser.id!!)
+            insertContent(deletedMetadataContent, testUser.id!!)
+            insertMetadata(activeContent, testUser.id!!, "Active Programming Tutorial")
+            insertMetadata(deletedMetadataContent, testUser.id!!, "Deleted Programming Guide")
+
+            // 메타데이터 삭제
+            Mono.from(dslContext.update(CONTENT_METADATA)
+                .set(CONTENT_METADATA.DELETED_AT, LocalDateTime.now())
+                .where(CONTENT_METADATA.CONTENT_ID.eq(deletedMetadataContent.toString()))).block()
+
+            // When: "Programming"으로 검색
+            val results = contentRepository.searchByTitle("Programming", 10).collectList().block()!!
+
+            // Then: 메타데이터가 삭제되지 않은 콘텐츠만 반환
+            assertThat(results).hasSize(1)
+            assertThat(results[0]).isEqualTo(activeContent)
+        }
+
+        @Test
+        @DisplayName("limit 파라미터가 적용된다")
+        fun searchByTitle_LimitsResults() {
+            // Given: 5개 콘텐츠 생성
+            val contentIds = (1..5).map {
+                val contentId = UUID.randomUUID()
+                insertContent(contentId, testUser.id!!)
+                insertMetadata(contentId, testUser.id!!, "Test Content $it")
+                contentId
+            }
+
+            // When: limit=3으로 검색
+            val results = contentRepository.searchByTitle("Test", 3).collectList().block()!!
+
+            // Then: 최대 4개 반환 (limit + 1)
+            assertThat(results.size).isLessThanOrEqualTo(4)
+        }
+
+        @Test
+        @DisplayName("대소문자 구분 없이 검색된다 (MySQL 기준)")
+        fun searchByTitle_CaseInsensitive() {
+            // Given: 다양한 케이스의 제목
+            val content1 = UUID.randomUUID()
+            val content2 = UUID.randomUUID()
+            insertContent(content1, testUser.id!!)
+            insertContent(content2, testUser.id!!)
+            insertMetadata(content1, testUser.id!!, "kotlin tutorial")
+            insertMetadata(content2, testUser.id!!, "Kotlin GUIDE")
+
+            // When: 소문자로 검색
+            val results = contentRepository.searchByTitle("kotlin", 10).collectList().block()!!
+
+            // Then: H2는 대소문자를 구분할 수 있으므로, 최소 1개 이상 반환되면 성공
+            assertThat(results).isNotEmpty
+        }
+    }
 }

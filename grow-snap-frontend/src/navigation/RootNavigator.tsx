@@ -12,9 +12,6 @@ import SettingsScreen from '@/screens/profile/SettingsScreen';
 import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
 import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
-import UserProfileScreen from '@/screens/profile/UserProfileScreen';
-import FollowListScreen from '@/screens/profile/FollowListScreen';
-import ContentViewerScreen from '@/screens/content/ContentViewerScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -40,7 +37,11 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
         {!isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         ) : !profile ? (
@@ -57,12 +58,6 @@ export default function RootNavigator() {
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
-            <Stack.Screen name="UserProfile" component={UserProfileScreen} />
-            <Stack.Screen name="FollowList" component={FollowListScreen} />
-            <Stack.Screen
-              name="ContentViewer"
-              component={ContentViewerScreen}
-            />
           </>
         )}
       </Stack.Navigator>

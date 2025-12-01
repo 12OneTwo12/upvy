@@ -439,4 +439,29 @@ class ContentRepositoryImpl(
         }
             .defaultIfEmpty(false)
     }
+
+    /**
+     * 제목으로 콘텐츠 검색 (LIKE 검색)
+     *
+     * Manticore Search Failover용 DB 검색 메서드입니다.
+     * 제목에 검색어가 포함된 콘텐츠를 조회합니다.
+     *
+     * @param query 검색 키워드
+     * @param limit 최대 조회 개수
+     * @return 콘텐츠 ID 목록 (최신순)
+     */
+    override fun searchByTitle(query: String, limit: Int): Flux<UUID> {
+        return Flux.from(
+            dslContext
+                .select(CONTENT_METADATA.CONTENT_ID)
+                .from(CONTENT_METADATA)
+                .innerJoin(CONTENTS).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
+                .where(CONTENT_METADATA.TITLE.like("%$query%"))
+                .and(CONTENT_METADATA.DELETED_AT.isNull)
+                .and(CONTENTS.DELETED_AT.isNull)
+                .and(CONTENTS.STATUS.eq("PUBLISHED"))  // 발행된 콘텐츠만
+                .orderBy(CONTENTS.CREATED_AT.desc())
+                .limit(limit + 1)  // hasNext 확인을 위해 +1
+        ).map { record -> UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)) }
+    }
 }

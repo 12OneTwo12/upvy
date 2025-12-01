@@ -19,7 +19,7 @@ import jakarta.validation.constraints.Size
  * - 관련도 (relevance) 내림차순
  *
  * ## Validation
- * - q: 필수, 최소 2글자 이상
+ * - q: 필수, 최소 1글자 이상
  * - limit: 최소 1, 최대 100 (기본값 20)
  *
  * @property q 검색 키워드 (필수)
@@ -28,7 +28,7 @@ import jakarta.validation.constraints.Size
  */
 data class UserSearchRequest(
     @field:NotBlank(message = "검색 키워드는 필수입니다")
-    @field:Size(min = 2, message = "검색 키워드는 최소 2글자 이상이어야 합니다")
+    @field:Size(min = 1, message = "검색 키워드는 최소 1글자 이상이어야 합니다")
     val q: String,
 
     val cursor: String? = null,

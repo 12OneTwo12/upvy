@@ -1,22 +1,22 @@
 /**
- * 프로필 네비게이터
+ * 피드 네비게이터
  *
- * 프로필 탭 내에서의 화면 전환을 관리하는 네비게이터
- * 탭바를 유지하면서 콘텐츠 뷰어로 이동할 수 있습니다.
+ * 피드 탭 내에서의 화면 전환을 관리하는 네비게이터
+ * 탭바를 유지하면서 콘텐츠 뷰어 및 프로필로 이동할 수 있습니다.
  */
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import type { ProfileStackParamList } from '@/types/navigation.types';
+import type { FeedStackParamList } from '@/types/navigation.types';
 
-import ProfileScreen from '@/screens/profile/ProfileScreen';
+import FeedScreen from '@/screens/feed/FeedScreen';
 import ContentViewerScreen from '@/screens/content/ContentViewerScreen';
 import UserProfileScreen from '@/screens/profile/UserProfileScreen';
 import FollowListScreen from '@/screens/profile/FollowListScreen';
 
-const Stack = createNativeStackNavigator<ProfileStackParamList>();
+const Stack = createNativeStackNavigator<FeedStackParamList>();
 
-export default function ProfileNavigator() {
+export default function FeedNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
@@ -24,9 +24,9 @@ export default function ProfileNavigator() {
       }}
     >
       <Stack.Screen
-        name="ProfileMain"
-        component={ProfileScreen}
-        options={{ title: '프로필' }}
+        name="FeedMain"
+        component={FeedScreen}
+        options={{ title: '피드' }}
       />
       <Stack.Screen
         name="ContentViewer"

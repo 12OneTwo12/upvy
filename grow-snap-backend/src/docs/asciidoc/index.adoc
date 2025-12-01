@@ -87,6 +87,7 @@ include::profile/get-by-nickname.adoc[]
 include::profile/update.adoc[]
 include::profile/check-nickname.adoc[]
 include::profile/upload-image.adoc[]
+include::profile/get-user-contents.adoc[]
 
 [[follow-api]]
 == Follow API

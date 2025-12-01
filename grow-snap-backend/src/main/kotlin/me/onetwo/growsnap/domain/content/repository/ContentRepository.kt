@@ -89,4 +89,16 @@ interface ContentRepository {
      * @return 수정 성공 여부 (Mono)
      */
     fun updateMetadata(metadata: ContentMetadata): Mono<Boolean>
+
+    /**
+     * 제목으로 콘텐츠 검색 (LIKE 검색)
+     *
+     * Manticore Search Failover용 DB 검색 메서드입니다.
+     * 제목에 검색어가 포함된 콘텐츠를 조회합니다.
+     *
+     * @param query 검색 키워드
+     * @param limit 최대 조회 개수
+     * @return 콘텐츠 ID 목록 (최신순)
+     */
+    fun searchByTitle(query: String, limit: Int): Flux<UUID>
 }

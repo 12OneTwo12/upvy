@@ -3,8 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '@/types/navigation.types';
 import { theme } from '@/theme';
-import FeedScreen from '@/screens/feed/FeedScreen';
-import SearchScreen from '@/screens/search/SearchScreen';
+import FeedNavigator from '@/navigation/FeedNavigator';
+import SearchNavigator from '@/navigation/SearchNavigator';
 import UploadNavigator from '@/navigation/UploadNavigator';
 import ProfileNavigator from '@/navigation/ProfileNavigator';
 
@@ -46,12 +46,12 @@ export default function MainNavigator() {
     >
       <Tab.Screen
         name="Feed"
-        component={FeedScreen}
+        component={FeedNavigator}
         options={{ tabBarLabel: '피드' }}
       />
       <Tab.Screen
         name="Search"
-        component={SearchScreen}
+        component={SearchNavigator}
         options={{ tabBarLabel: '검색' }}
       />
       <Tab.Screen

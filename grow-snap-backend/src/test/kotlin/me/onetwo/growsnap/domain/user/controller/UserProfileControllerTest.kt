@@ -6,6 +6,12 @@ import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import io.mockk.verify
 import me.onetwo.growsnap.config.TestSecurityConfig
+import me.onetwo.growsnap.domain.content.dto.ContentResponse
+import me.onetwo.growsnap.domain.content.model.Category
+import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.content.model.ContentStatus
+import me.onetwo.growsnap.domain.content.service.ContentService
+import me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.growsnap.domain.user.dto.UpdateProfileRequest
 import me.onetwo.growsnap.domain.user.exception.DuplicateNicknameException
 import me.onetwo.growsnap.domain.user.exception.UserProfileNotFoundException
@@ -46,6 +52,9 @@ class UserProfileControllerTest {
 
     @MockkBean
     private lateinit var userProfileService: UserProfileService
+
+    @MockkBean
+    private lateinit var contentService: ContentService
 
     private val testUserId = UUID.randomUUID()
     private val testProfile = UserProfile(
@@ -339,6 +348,150 @@ class UserProfileControllerTest {
             .body(BodyInserters.fromMultipartData(multipartBodyBuilder.build()))
             .exchange()
             .expectStatus().is4xxClientError
+    }
+
+    @Test
+    @DisplayName("사용자의 콘텐츠 목록 조회 성공 - 인증된 사용자")
+    fun getUserContents_AuthenticatedUser_Success() {
+        // Given
+        val targetUserId = UUID.randomUUID()
+        val contentId1 = UUID.randomUUID()
+        val contentId2 = UUID.randomUUID()
+
+        val testContents = listOf(
+            ContentResponse(
+                id = contentId1.toString(),
+                creatorId = targetUserId.toString(),
+                contentType = ContentType.VIDEO,
+                url = "https://example.com/video1.mp4",
+                photoUrls = null,
+                thumbnailUrl = "https://example.com/thumb1.jpg",
+                duration = 30,
+                width = 1080,
+                height = 1920,
+                status = ContentStatus.PUBLISHED,
+                title = "Test Video 1",
+                description = "Test Description 1",
+                category = Category.PROGRAMMING,
+                tags = listOf("test", "video"),
+                language = "ko",
+                interactions = InteractionInfoResponse(
+                    likeCount = 10,
+                    commentCount = 5,
+                    saveCount = 3,
+                    shareCount = 2,
+                    viewCount = 100,
+                    isLiked = true,
+                    isSaved = false
+                ),
+                createdAt = java.time.LocalDateTime.now(),
+                updatedAt = java.time.LocalDateTime.now()
+            ),
+            ContentResponse(
+                id = contentId2.toString(),
+                creatorId = targetUserId.toString(),
+                contentType = ContentType.PHOTO,
+                url = "https://example.com/photo1.jpg",
+                photoUrls = listOf("https://example.com/photo1.jpg", "https://example.com/photo2.jpg"),
+                thumbnailUrl = "https://example.com/photo1.jpg",
+                duration = null,
+                width = 1080,
+                height = 1350,
+                status = ContentStatus.PUBLISHED,
+                title = "Test Photo Album",
+                description = "Test Photo Description",
+                category = Category.TRAVEL,
+                tags = listOf("test", "photo"),
+                language = "ko",
+                interactions = InteractionInfoResponse(
+                    likeCount = 20,
+                    commentCount = 8,
+                    saveCount = 5,
+                    shareCount = 3,
+                    viewCount = 200,
+                    isLiked = false,
+                    isSaved = true
+                ),
+                createdAt = java.time.LocalDateTime.now(),
+                updatedAt = java.time.LocalDateTime.now()
+            )
+        )
+
+        every { contentService.getContentsByCreator(targetUserId, testUserId) } returns
+                reactor.core.publisher.Flux.fromIterable(testContents)
+
+        // When & Then
+        webTestClient
+            .mutateWith(mockUser(testUserId))
+            .get()
+            .uri("${ApiPaths.API_V1_PROFILES}/{targetUserId}/contents", targetUserId)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.length()").isEqualTo(2)
+            .jsonPath("$[0].id").isEqualTo(contentId1.toString())
+            .jsonPath("$[0].interactions.isLiked").isEqualTo(true)
+            .jsonPath("$[1].id").isEqualTo(contentId2.toString())
+            .jsonPath("$[1].interactions.isSaved").isEqualTo(true)
+            .consumeWith(
+                document(
+                    "profile-get-user-contents",
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("targetUserId").description("조회할 사용자 ID (UUID)")
+                    ),
+                    responseFields(
+                        fieldWithPath("[].id").description("콘텐츠 ID"),
+                        fieldWithPath("[].creatorId").description("크리에이터 ID"),
+                        fieldWithPath("[].contentType").description("콘텐츠 타입 (VIDEO | PHOTO)"),
+                        fieldWithPath("[].url").description("비디오 URL (VIDEO 타입만)").optional(),
+                        fieldWithPath("[].photoUrls").description("사진 URL 목록 (PHOTO 타입만)").optional(),
+                        fieldWithPath("[].thumbnailUrl").description("썸네일 URL"),
+                        fieldWithPath("[].duration").description("비디오 길이 (초, VIDEO 타입만)").optional(),
+                        fieldWithPath("[].width").description("미디어 너비"),
+                        fieldWithPath("[].height").description("미디어 높이"),
+                        fieldWithPath("[].status").description("콘텐츠 상태 (DRAFT | PUBLISHED | ARCHIVED)"),
+                        fieldWithPath("[].title").description("콘텐츠 제목"),
+                        fieldWithPath("[].description").description("콘텐츠 설명").optional(),
+                        fieldWithPath("[].category").description("카테고리"),
+                        fieldWithPath("[].tags").description("태그 목록"),
+                        fieldWithPath("[].language").description("언어 코드"),
+                        fieldWithPath("[].interactions").description("인터랙션 정보"),
+                        fieldWithPath("[].interactions.likeCount").description("좋아요 수"),
+                        fieldWithPath("[].interactions.commentCount").description("댓글 수"),
+                        fieldWithPath("[].interactions.saveCount").description("저장 수"),
+                        fieldWithPath("[].interactions.shareCount").description("공유 수"),
+                        fieldWithPath("[].interactions.viewCount").description("조회 수"),
+                        fieldWithPath("[].interactions.isLiked").description("사용자의 좋아요 여부 (인증된 경우)"),
+                        fieldWithPath("[].interactions.isSaved").description("사용자의 저장 여부 (인증된 경우)"),
+                        fieldWithPath("[].createdAt").description("생성일시"),
+                        fieldWithPath("[].updatedAt").description("수정일시")
+                    )
+                )
+            )
+
+        verify(exactly = 1) {
+            contentService.getContentsByCreator(targetUserId, testUserId)
+        }
+    }
+
+    @Test
+    @DisplayName("사용자의 콘텐츠 목록 조회 성공 - 빈 목록")
+    fun getUserContents_EmptyList_Success() {
+        // Given
+        val targetUserId = UUID.randomUUID()
+        every { contentService.getContentsByCreator(targetUserId, testUserId) } returns
+                reactor.core.publisher.Flux.empty()
+
+        // When & Then
+        webTestClient
+            .mutateWith(mockUser(testUserId))
+            .get()
+            .uri("${ApiPaths.API_V1_PROFILES}/{targetUserId}/contents", targetUserId)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.length()").isEqualTo(0)
     }
 
     /**

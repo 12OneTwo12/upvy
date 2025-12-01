@@ -2,9 +2,11 @@ package me.onetwo.growsnap.domain.search.repository
 
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.DifficultyLevel
+import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.search.dto.AutocompleteSuggestion
 import me.onetwo.growsnap.domain.search.dto.SuggestionType
 import me.onetwo.growsnap.domain.search.model.SearchSortType
+import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.infrastructure.manticore.ManticoreSearchClient
 import me.onetwo.growsnap.infrastructure.manticore.ManticoreSearchProperties
 import me.onetwo.growsnap.infrastructure.manticore.dto.ManticoreSearchRequest
@@ -17,20 +19,27 @@ import java.util.UUID
 /**
  * SearchRepository 구현체
  *
- * Manticore Search를 사용한 검색 기능을 제공합니다.
+ * Manticore Search를 사용한 검색 기능을 제공하며, 장애 시 DB Fallback을 지원합니다.
  *
- * ## 검색 전략
- * - **콘텐츠 검색**: Manticore Search content_index 사용
- * - **사용자 검색**: Manticore Search user_index 사용
- * - **자동완성**: Manticore Search autocomplete_index 사용
+ * ## 검색 전략 (Failover 적용)
+ * - **1차**: Manticore Search 사용 (content_index, user_index, autocomplete_index)
+ * - **2차**: Manticore Search 실패 시 DB LIKE 검색으로 Fallback
+ *
+ * ## Failover 이점
+ * - Manticore Search 미구성 시에도 검색 기능 작동
+ * - 운영 환경에서 Manticore Search 장애 시 서비스 지속성 보장
  *
  * @property manticoreSearchClient Manticore Search 클라이언트
  * @property properties Manticore Search 설정
+ * @property contentRepository 콘텐츠 Repository (Fallback용)
+ * @property userProfileRepository 사용자 프로필 Repository (Fallback용)
  */
 @Repository
 class SearchRepositoryImpl(
     private val manticoreSearchClient: ManticoreSearchClient,
-    private val properties: ManticoreSearchProperties
+    private val properties: ManticoreSearchProperties,
+    private val contentRepository: ContentRepository,
+    private val userProfileRepository: UserProfileRepository
 ) : SearchRepository {
 
     /**
@@ -132,10 +141,19 @@ class SearchRepositoryImpl(
                 }
             }
             .doOnSuccess { contentIds ->
-                logger.debug("Content search completed: count={}", contentIds.size)
+                logger.debug("Content search completed via Manticore: count={}", contentIds.size)
             }
             .doOnError { error ->
-                logger.error("Content search failed: query={}", query, error)
+                logger.warn("Manticore search failed, falling back to DB: query={}", query, error)
+            }
+            .onErrorResume { error ->
+                logger.info("Using DB fallback for content search: query={}", query)
+                // Failover: DB LIKE 검색
+                contentRepository.searchByTitle(query, limit + 1)
+                    .collectList()
+                    .doOnSuccess { contentIds ->
+                        logger.debug("Content search completed via DB fallback: count={}", contentIds.size)
+                    }
             }
     }
 
@@ -178,10 +196,19 @@ class SearchRepositoryImpl(
                 }
             }
             .doOnSuccess { userIds ->
-                logger.debug("User search completed: count={}", userIds.size)
+                logger.debug("User search completed via Manticore: count={}", userIds.size)
             }
             .doOnError { error ->
-                logger.error("User search failed: query={}", query, error)
+                logger.warn("Manticore search failed, falling back to DB: query={}", query, error)
+            }
+            .onErrorResume { error ->
+                logger.info("Using DB fallback for user search: query={}", query)
+                // Failover: DB LIKE 검색
+                userProfileRepository.searchByNickname(query, limit + 1)
+                    .collectList()
+                    .doOnSuccess { userIds ->
+                        logger.debug("User search completed via DB fallback: count={}", userIds.size)
+                    }
             }
     }
 
@@ -228,10 +255,15 @@ class SearchRepositoryImpl(
                 }
             }
             .doOnSuccess { suggestions ->
-                logger.debug("Autocomplete completed: count={}", suggestions.size)
+                logger.debug("Autocomplete completed via Manticore: count={}", suggestions.size)
             }
             .doOnError { error ->
-                logger.error("Autocomplete failed: query={}", query, error)
+                logger.warn("Manticore autocomplete failed, returning empty list: query={}", query, error)
+            }
+            .onErrorResume { error ->
+                logger.info("Autocomplete fallback: returning empty list for query={}", query)
+                // Failover: 자동완성은 Manticore 없이는 구현 복잡하므로 빈 리스트 반환
+                Mono.just(emptyList())
             }
     }
 

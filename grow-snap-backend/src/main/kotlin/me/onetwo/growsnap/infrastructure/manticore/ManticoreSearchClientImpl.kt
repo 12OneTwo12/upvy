@@ -21,9 +21,8 @@ import reactor.core.publisher.Mono
  * - POST /replace: Document replace (upsert)
  *
  * ## 에러 처리
- * - 4xx, 5xx 응답 시 로그 출력 후 빈 결과 반환
- * - 네트워크 에러 시 로그 출력 후 빈 결과 반환
- * - Mono.empty() 또는 Mono.just(false) 반환
+ * - **search()**: 에러를 상위 레이어로 전파 (SearchRepositoryImpl에서 failover 처리)
+ * - **insert/update/delete/replace**: 에러 발생 시 로그 출력 후 false 반환
  *
  * @property webClient Manticore Search WebClient
  */
@@ -34,6 +33,10 @@ class ManticoreSearchClientImpl(
 
     /**
      * 전체 검색
+     *
+     * ## 에러 처리
+     * - 에러 발생 시 로그를 남기고 에러를 전파합니다.
+     * - 상위 레이어(SearchRepositoryImpl)에서 failover 처리를 담당합니다.
      *
      * @param request 검색 요청
      * @return 검색 결과
@@ -63,17 +66,7 @@ class ManticoreSearchClientImpl(
             .doOnError { error ->
                 logger.error("Manticore search failed: index={}", request.index, error)
             }
-            .onErrorResume { error ->
-                logger.warn("Returning empty search result due to error: {}", error.message)
-                Mono.just(
-                    ManticoreSearchResponse(
-                        hits = me.onetwo.growsnap.infrastructure.manticore.dto.Hits(
-                            hits = emptyList(),
-                            total = 0
-                        )
-                    )
-                )
-            }
+            // 에러를 상위 레이어로 전파하여 failover 처리가 작동하도록 함
     }
 
     /**

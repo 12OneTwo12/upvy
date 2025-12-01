@@ -11,8 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RootStackParamList } from '@/types/navigation.types';
-import { ProfileHeader, FollowButton } from '@/components/profile';
+import { ProfileHeader, FollowButton, ContentGrid } from '@/components/profile';
 import { LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -21,7 +22,9 @@ import {
   followUser,
   unfollowUser,
 } from '@/api/auth.api';
+import { getUserContents } from '@/api/content.api';
 import { UserProfile } from '@/types/auth.types';
+import type { ContentResponse } from '@/types/content.types';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
@@ -120,60 +123,65 @@ export default function UserProfileScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'UserProfile'>>();
   const { userId } = route.params;
   const { user: currentUser } = useAuthStore();
+  const queryClient = useQueryClient();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
-  // 프로필 및 팔로우 상태 로드
-  const loadProfile = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
+  // 사용자 프로필 조회 (React Query)
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
+    queryKey: ['userProfile', userId],
+    queryFn: () => getProfileByUserId(userId),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+  });
 
-    // 프로필 조회
-    const profileResult = await withErrorHandling(
-      async () => await getProfileByUserId(userId),
-      {
-        showAlert: true,
-        alertTitle: '프로필 조회 실패',
-        logContext: 'UserProfileScreen.loadProfile',
-      }
-    );
+  // 사용자 콘텐츠 목록 조회 (React Query)
+  const { data: userContents = [], isLoading: contentsLoading, refetch: refetchContents } = useQuery({
+    queryKey: ['userContents', userId],
+    queryFn: () => getUserContents(userId),
+    enabled: !!userId, // userId가 있으면 즉시 조회
+    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
+    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+  });
 
-    if (profileResult) {
-      setProfile(profileResult);
-
-      // 팔로우 상태 확인 (본인이 아닐 때만)
-      if (currentUser?.id !== userId) {
-        const followResult = await withErrorHandling(
-          async () => await checkFollowing(userId),
-          {
-            showAlert: false,
-            logContext: 'UserProfileScreen.checkFollowing',
-          }
-        );
-
-        if (followResult) {
-          setIsFollowing(followResult.isFollowing);
+  // 팔로우 상태 로드
+  const loadFollowStatus = async () => {
+    // 본인이 아닐 때만 팔로우 상태 확인
+    if (currentUser?.id !== userId && profile) {
+      const followResult = await withErrorHandling(
+        async () => await checkFollowing(userId),
+        {
+          showAlert: false,
+          logContext: 'UserProfileScreen.checkFollowing',
         }
+      );
+
+      if (followResult) {
+        setIsFollowing(followResult.isFollowing);
       }
     }
-
-    if (showLoading) setLoading(false);
   };
 
   // 새로고침
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadProfile(false);
+    await Promise.all([
+      refetchProfile(),
+      refetchContents(),
+    ]);
+    await loadFollowStatus();
     setRefreshing(false);
   };
 
-  // 초기 로드
+  // 프로필 로드 후 팔로우 상태 확인
   useEffect(() => {
-    loadProfile();
-  }, [userId]);
+    if (profile && currentUser?.id !== userId) {
+      loadFollowStatus();
+    }
+  }, [userId, profile?.id]); // profile 대신 profile.id 사용
 
   // 팔로우/언팔로우 토글
   const handleFollowToggle = async () => {
@@ -196,7 +204,7 @@ export default function UserProfileScreen() {
       setIsFollowing(!isFollowing);
 
       // 프로필 재로드 (팔로워 수 업데이트)
-      await loadProfile(false);
+      await refetchProfile();
     }
 
     setFollowLoading(false);
@@ -223,7 +231,12 @@ export default function UserProfileScreen() {
     Alert.alert('메시지', '메시지 기능은 추후 구현 예정입니다.');
   };
 
-  if (loading || !profile) {
+  // 콘텐츠 클릭 핸들러
+  const handleContentPress = (content: ContentResponse) => {
+    navigation.navigate('ContentViewer', { contentId: content.id });
+  };
+
+  if (profileLoading || !profile) {
     return (
       <SafeAreaView style={styles.loadingContainer} edges={['top']}>
         <LoadingSpinner />
@@ -256,6 +269,7 @@ export default function UserProfileScreen() {
         <ProfileHeader
           profile={profile}
           isOwnProfile={false}
+          contentCount={userContents.length}
           onFollowersPress={handleFollowersPress}
           onFollowingPress={handleFollowingPress}
         />
@@ -278,20 +292,16 @@ export default function UserProfileScreen() {
           </View>
         )}
 
-        {/* 콘텐츠 그리드 (추후 구현) */}
+        {/* 콘텐츠 그리드 */}
         <View style={styles.contentSection}>
           <View style={styles.contentHeader}>
             <Ionicons name="grid-outline" size={24} color={theme.colors.text.primary} />
           </View>
-          <View style={styles.emptyContent}>
-            <Ionicons
-              name="images-outline"
-              size={64}
-              color={theme.colors.gray[300]}
-              style={styles.emptyIcon}
-            />
-            <Text style={styles.emptyText}>아직 업로드한 콘텐츠가 없습니다</Text>
-          </View>
+          <ContentGrid
+            contents={userContents}
+            loading={contentsLoading}
+            onContentPress={handleContentPress}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -6,6 +6,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.DifficultyLevel
+import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.search.dto.AutocompleteRequest
 import me.onetwo.growsnap.domain.search.dto.AutocompleteSuggestion
 import me.onetwo.growsnap.domain.search.dto.ContentSearchRequest
@@ -43,12 +44,14 @@ class SearchServiceImplTest {
     private val searchRepository: SearchRepository = mockk()
     private val searchHistoryRepository: me.onetwo.growsnap.domain.search.repository.SearchHistoryRepository = mockk()
     private val userProfileRepository: UserProfileRepository = mockk()
+    private val feedRepository: FeedRepository = mockk()
     private val eventPublisher: ReactiveEventPublisher = mockk(relaxed = true)
 
     private val searchService: SearchService = SearchServiceImpl(
         searchRepository = searchRepository,
         searchHistoryRepository = searchHistoryRepository,
         userProfileRepository = userProfileRepository,
+        feedRepository = feedRepository,
         eventPublisher = eventPublisher
     )
 

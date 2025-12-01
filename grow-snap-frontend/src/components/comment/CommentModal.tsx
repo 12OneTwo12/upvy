@@ -266,7 +266,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         parentCommentId: parentCommentId || null,
         createdAt: new Date().toISOString(),
         replyCount: 0,
-        isDeleted: false,
+        likeCount: 0,
+        isLiked: false,
       };
 
       if (isReply && parentCommentId) {

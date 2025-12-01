@@ -179,7 +179,7 @@ export default function ProfileScreen() {
 
   // 콘텐츠 클릭 핸들러
   const handleContentPress = (content: ContentResponse) => {
-    navigation.navigate('ProfileContentViewer', { contentId: content.id });
+    navigation.navigate('ContentViewer', { contentId: content.id });
   };
 
   if (profileLoading || !profile) {
@@ -211,6 +211,7 @@ export default function ProfileScreen() {
         <ProfileHeader
           profile={profile}
           isOwnProfile={true}
+          contentCount={contents.length}
           onFollowersPress={handleFollowersPress}
           onFollowingPress={handleFollowingPress}
         />
@@ -233,13 +234,11 @@ export default function ProfileScreen() {
           <View style={styles.contentHeader}>
             <Ionicons name="grid-outline" size={24} color={theme.colors.text.primary} />
           </View>
-          {contentsLoading ? (
-            <View style={styles.emptyContent}>
-              <LoadingSpinner />
-            </View>
-          ) : (
-            <ContentGrid contents={contents} onContentPress={handleContentPress} />
-          )}
+          <ContentGrid
+            contents={contents}
+            loading={contentsLoading}
+            onContentPress={handleContentPress}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

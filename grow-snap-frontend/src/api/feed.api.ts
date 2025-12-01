@@ -7,7 +7,7 @@
 
 import apiClient from './client';
 import { API_ENDPOINTS } from '@/constants/api';
-import type { FeedResponse, FeedRequest } from '@/types/feed.types';
+import type { FeedResponse, FeedRequest, FeedItem } from '@/types/feed.types';
 
 /**
  * 메인 피드 조회 (추천 알고리즘)
@@ -55,4 +55,17 @@ export const getFollowingFeed = async (params?: FeedRequest): Promise<FeedRespon
  */
 export const refreshFeed = async (): Promise<void> => {
   await apiClient.post(API_ENDPOINTS.FEED.REFRESH);
+};
+
+/**
+ * 특정 콘텐츠 조회
+ *
+ * 백엔드: GET /api/v1/contents/:contentId
+ *
+ * @param contentId 콘텐츠 ID
+ * @returns 콘텐츠 상세 정보
+ */
+export const getContentById = async (contentId: string): Promise<FeedItem> => {
+  const response = await apiClient.get<FeedItem>(`/api/v1/contents/${contentId}`);
+  return response.data;
 };

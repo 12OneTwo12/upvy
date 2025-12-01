@@ -267,10 +267,10 @@ class SearchControllerTest {
         }
 
         @Test
-        @DisplayName("검색 키워드가 2글자 미만이면, 400을 반환한다")
-        fun searchContents_WithShortQuery_Returns400() {
-            // Given: 짧은 검색 키워드
-            val query = "a"
+        @DisplayName("검색 키워드가 빈 문자열이면, 400을 반환한다")
+        fun searchContents_WithEmptyQuery_Returns400() {
+            // Given: 빈 검색 키워드
+            val query = ""
             val userId = UUID.randomUUID()
 
             // When & Then: 400 응답

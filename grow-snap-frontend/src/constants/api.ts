@@ -114,6 +114,22 @@ export const API_ENDPOINTS = {
     // 콘텐츠 삭제
     DELETE: (contentId: string) => `/contents/${contentId}`,
   },
+
+  // Search (검색)
+  SEARCH: {
+    // 콘텐츠 검색
+    CONTENTS: '/search/contents',
+    // 사용자 검색
+    USERS: '/search/users',
+    // 자동완성
+    AUTOCOMPLETE: '/search/autocomplete',
+    // 인기 검색어
+    TRENDING: '/search/trending',
+    // 검색 기록 조회
+    HISTORY: '/search/history',
+    // 특정 검색어 삭제
+    DELETE_HISTORY: (keyword: string) => `/search/history/${keyword}`,
+  },
 } as const;
 
 /**
