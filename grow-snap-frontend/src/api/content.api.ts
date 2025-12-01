@@ -166,3 +166,18 @@ export const updateContent = async (
 export const deleteContent = async (contentId: string): Promise<void> => {
   await apiClient.delete(API_ENDPOINTS.CONTENT.DELETE(contentId));
 };
+
+/**
+ * 사용자의 콘텐츠 목록을 조회합니다.
+ *
+ * 백엔드: GET /api/v1/profiles/{userId}/contents
+ *
+ * @param userId 사용자 ID
+ * @returns 콘텐츠 목록
+ */
+export const getUserContents = async (userId: string): Promise<ContentResponse[]> => {
+  const { data } = await apiClient.get<ContentResponse[]>(
+    `/profiles/${userId}/contents`
+  );
+  return data;
+};

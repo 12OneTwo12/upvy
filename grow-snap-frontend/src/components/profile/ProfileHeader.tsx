@@ -9,6 +9,7 @@ import { UserProfile } from '@/types/auth.types';
 interface ProfileHeaderProps {
   profile: UserProfile;
   isOwnProfile?: boolean;
+  contentCount?: number;
   onAvatarPress?: () => void;
   onFollowersPress?: () => void;
   onFollowingPress?: () => void;
@@ -56,6 +57,7 @@ const useStyles = createStyleSheet({
 export default function ProfileHeader({
   profile,
   isOwnProfile = false,
+  contentCount = 0,
   onAvatarPress,
   onFollowersPress,
   onFollowingPress,
@@ -65,7 +67,7 @@ export default function ProfileHeader({
   const stats = [
     {
       label: '콘텐츠',
-      value: 0, // TODO: 콘텐츠 수 추가 필요
+      value: contentCount,
     },
     {
       label: '팔로워',

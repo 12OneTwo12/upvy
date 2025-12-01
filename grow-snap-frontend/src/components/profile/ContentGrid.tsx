@@ -7,6 +7,7 @@ import type { ContentResponse } from '@/types/content.types';
 
 interface ContentGridProps {
   contents: ContentResponse[];
+  loading?: boolean;
   onContentPress?: (content: ContentResponse) => void;
   numColumns?: number;
 }
@@ -24,8 +25,12 @@ interface GridItemProps {
 
 const GridItem: React.FC<GridItemProps> = ({ item, width, onPress }) => {
   const styles = useStyles();
-  const [imageLoading, setImageLoading] = React.useState(true);
   const [imageError, setImageError] = React.useState(false);
+
+  // item이 바뀔 때마다 에러 상태 초기화 (FlatList 재사용 대응)
+  React.useEffect(() => {
+    setImageError(false);
+  }, [item.id, item.thumbnailUrl]);
 
   return (
     <TouchableOpacity
@@ -39,20 +44,8 @@ const GridItem: React.FC<GridItemProps> = ({ item, width, onPress }) => {
           source={{ uri: item.thumbnailUrl }}
           style={styles.thumbnail}
           resizeMode="cover"
-          onLoadStart={() => setImageLoading(true)}
-          onLoadEnd={() => setImageLoading(false)}
-          onError={() => {
-            setImageLoading(false);
-            setImageError(true);
-          }}
+          onError={() => setImageError(true)}
         />
-      )}
-
-      {/* 로딩 인디케이터 */}
-      {imageLoading && !imageError && (
-        <View style={styles.overlay}>
-          <ActivityIndicator size="small" color={theme.colors.text.inverse} />
-        </View>
       )}
 
       {/* 에러 상태 */}
@@ -140,10 +133,17 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing[12],
+  },
 });
 
 export const ContentGrid: React.FC<ContentGridProps> = ({
   contents,
+  loading = false,
   onContentPress,
   numColumns = 3,
 }) => {
@@ -160,8 +160,17 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
     />
   );
 
+  // Loading state
+  if (loading && contents.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+      </View>
+    );
+  }
+
   // Empty state
-  if (contents.length === 0) {
+  if (!loading && contents.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons

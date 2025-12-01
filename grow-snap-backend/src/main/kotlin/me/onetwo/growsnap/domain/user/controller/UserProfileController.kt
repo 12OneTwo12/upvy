@@ -1,6 +1,8 @@
 package me.onetwo.growsnap.domain.user.controller
 
 import jakarta.validation.Valid
+import me.onetwo.growsnap.domain.content.dto.ContentResponse
+import me.onetwo.growsnap.domain.content.service.ContentService
 import me.onetwo.growsnap.domain.user.dto.ImageUploadResponse
 import me.onetwo.growsnap.domain.user.dto.NicknameCheckResponse
 import me.onetwo.growsnap.domain.user.dto.UpdateProfileRequest
@@ -33,7 +35,8 @@ import java.util.UUID
 @RestController
 @RequestMapping(ApiPaths.API_V1_PROFILES)
 class UserProfileController(
-    private val userProfileService: UserProfileService
+    private val userProfileService: UserProfileService,
+    private val contentService: ContentService
 ) {
 
     /**
@@ -143,5 +146,32 @@ class UserProfileController(
             .map { imageUrl ->
                 ResponseEntity.status(HttpStatus.CREATED).body(ImageUploadResponse(imageUrl))
             }
+    }
+
+    /**
+     * 사용자의 콘텐츠 목록 조회
+     *
+     * 프로필 화면의 콘텐츠 그리드에서 사용됩니다.
+     * 인증된 사용자의 경우 인터랙션 정보에 사용자별 상태 (isLiked, isSaved)가 포함됩니다.
+     *
+     * @param targetUserId 조회할 사용자 ID
+     * @param principal 인증된 사용자 Principal (선택, 인터랙션 정보용)
+     * @return 콘텐츠 목록
+     */
+    @GetMapping("/{targetUserId}/contents")
+    fun getUserContents(
+        @PathVariable targetUserId: UUID,
+        principal: Mono<Principal>?
+    ): Mono<ResponseEntity<List<ContentResponse>>> {
+        // Principal에서 userId 추출 (비인증 사용자는 null)
+        val userIdMono = principal?.toUserId() ?: Mono.empty()
+
+        return userIdMono
+            .defaultIfEmpty(UUID(0, 0)) // 비인증 사용자용 기본 UUID
+            .flatMapMany { userId ->
+                contentService.getContentsByCreator(targetUserId, userId)
+            }
+            .collectList()
+            .map { contents -> ResponseEntity.ok(contents) }
     }
 }
