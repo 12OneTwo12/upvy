@@ -40,7 +40,6 @@ export default function RootNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          contentStyle: { borderRadius: 0 },
         }}
       >
         {!isAuthenticated ? (

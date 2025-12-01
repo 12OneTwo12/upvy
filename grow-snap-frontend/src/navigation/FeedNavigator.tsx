@@ -21,7 +21,6 @@ export default function FeedNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        contentStyle: { borderRadius: 0 },
       }}
     >
       <Stack.Screen
@@ -42,6 +41,7 @@ export default function FeedNavigator() {
         component={UserProfileScreen}
         options={{
           title: '프로필',
+          animation: 'simple_push',
         }}
       />
       <Stack.Screen
