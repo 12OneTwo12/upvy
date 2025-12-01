@@ -8,9 +8,11 @@ import {
   ActivityIndicator,
   Keyboard,
   StatusBar,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
@@ -30,19 +32,21 @@ import type {
   UserSearchResult,
 } from '@/types/search.types';
 import type { FeedItem } from '@/types/feed.types';
+import type { RootStackParamList } from '@/types/navigation.types';
 import { withErrorHandling } from '@/utils/errorHandler';
 
-type TabType = 'all' | 'videos' | 'creators';
+type TabType = 'creators' | 'shorts';
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SearchScreen() {
   const styles = useStyles();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
 
   // 검색 상태
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [activeTab, setActiveTab] = useState<TabType>('creators');
 
   // 자동완성
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
@@ -275,12 +279,22 @@ export default function SearchScreen() {
 
   // 사용자 결과 아이템 렌더
   const renderUserResult = ({ item }: { item: UserSearchResult }) => (
-    <TouchableOpacity style={styles.userResultItem}>
-      <View style={styles.userAvatar}>
-        <Text style={styles.userAvatarText}>
-          {item.nickname.charAt(0).toUpperCase()}
-        </Text>
-      </View>
+    <TouchableOpacity
+      style={styles.userResultItem}
+      onPress={() => navigation.navigate('UserProfile', { userId: item.userId })}
+    >
+      {item.profileImageUrl ? (
+        <Image
+          source={{ uri: item.profileImageUrl }}
+          style={styles.userAvatar}
+        />
+      ) : (
+        <View style={[styles.userAvatar, styles.userAvatarPlaceholder]}>
+          <Text style={styles.userAvatarText}>
+            {item.nickname.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
       <View style={styles.userInfo}>
         <Text style={styles.userNickname}>{item.nickname}</Text>
         {item.bio && (
@@ -300,27 +314,19 @@ export default function SearchScreen() {
     return (
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'all' && styles.tabActive]}
-          onPress={() => setActiveTab('all')}
-        >
-          <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>
-            전체
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'videos' && styles.tabActive]}
-          onPress={() => setActiveTab('videos')}
-        >
-          <Text style={[styles.tabText, activeTab === 'videos' && styles.tabTextActive]}>
-            비디오
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
           style={[styles.tab, activeTab === 'creators' && styles.tabActive]}
           onPress={() => setActiveTab('creators')}
         >
           <Text style={[styles.tabText, activeTab === 'creators' && styles.tabTextActive]}>
             크리에이터
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'shorts' && styles.tabActive]}
+          onPress={() => setActiveTab('shorts')}
+        >
+          <Text style={[styles.tabText, activeTab === 'shorts' && styles.tabTextActive]}>
+            쇼츠
           </Text>
         </TouchableOpacity>
       </View>
@@ -337,38 +343,25 @@ export default function SearchScreen() {
       );
     }
 
-    if (activeTab === 'all') {
-      return (
-        <FlatList
-          data={contentResults}
-          renderItem={renderContentResult}
-          keyExtractor={(item) => item.contentId}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
-          }
-        />
-      );
-    }
-
-    if (activeTab === 'videos') {
-      return (
-        <FlatList
-          data={contentResults}
-          renderItem={renderContentResult}
-          keyExtractor={(item) => item.contentId}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
-          }
-        />
-      );
-    }
-
     if (activeTab === 'creators') {
       return (
         <FlatList
           data={userResults}
           renderItem={renderUserResult}
           keyExtractor={(item) => item.userId}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
+          }
+        />
+      );
+    }
+
+    if (activeTab === 'shorts') {
+      return (
+        <FlatList
+          data={contentResults}
+          renderItem={renderContentResult}
+          keyExtractor={(item) => item.contentId}
           ListEmptyComponent={
             <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
           }
@@ -705,6 +698,9 @@ const useStyles = createStyleSheet({
     width: 56,
     height: 56,
     borderRadius: theme.borderRadius.full,
+  },
+
+  userAvatarPlaceholder: {
     backgroundColor: theme.colors.primary[100],
     alignItems: 'center',
     justifyContent: 'center',
