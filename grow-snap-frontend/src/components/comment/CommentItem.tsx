@@ -100,6 +100,8 @@ export const CommentItem: React.FC<CommentItemProps> = ({
         onClearNewReplies(comment.id);
       }
 
+      // 첫 페이지부터 다시 로드하도록 커서 초기화
+      setRepliesCursor(null);
       setShowReplies(true);
       const result = await refetchReplies();
 
@@ -119,10 +121,13 @@ export const CommentItem: React.FC<CommentItemProps> = ({
         setRepliesLikes(likesData);
       }
     } else {
-      // 답글 숨기기
+      // 답글 숨기기 - 상태 모두 초기화 (다음에 다시 열 때 첫 페이지부터 로드)
       setShowReplies(false);
+      setRepliesCursor(null);
+      setLoadedReplies([]);
+      setRepliesLikes({});
     }
-  }, [showReplies, comment.id, repliesCursor, refetchReplies, onClearNewReplies]);
+  }, [showReplies, comment.id, refetchReplies, onClearNewReplies]);
 
   // 더 많은 답글 로드
   const handleLoadMoreReplies = useCallback(async () => {

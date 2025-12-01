@@ -7,8 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Keyboard,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import {
@@ -33,6 +36,8 @@ type TabType = 'all' | 'videos' | 'creators';
 
 export default function SearchScreen() {
   const styles = useStyles();
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   // 검색 상태
   const [searchQuery, setSearchQuery] = useState('');
@@ -375,24 +380,36 @@ export default function SearchScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* 검색창 */}
-      <View style={styles.searchBar}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" />
+
+      {/* 헤더 (Instagram 스타일) */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+        </TouchableOpacity>
+
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search-outline" size={20} color={theme.colors.text.tertiary} />
+          <Ionicons name="search-outline" size={18} color={theme.colors.text.tertiary} />
           <TextInput
             style={styles.searchInput}
             placeholder="검색"
+            placeholderTextColor={theme.colors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={() => handleSearch(searchQuery)}
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
+            autoFocus
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={handleClearSearch}>
-              <Ionicons name="close-circle" size={20} color={theme.colors.text.tertiary} />
+              <Ionicons name="close-circle" size={18} color={theme.colors.text.tertiary} />
             </TouchableOpacity>
           )}
         </View>
@@ -467,29 +484,39 @@ const useStyles = createStyleSheet({
     backgroundColor: theme.colors.background.primary,
   },
 
-  // 검색창
-  searchBar: {
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
+  // 헤더 (Instagram 스타일)
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
     backgroundColor: theme.colors.background.primary,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: theme.colors.border.light,
+    gap: theme.spacing[2],
+  },
+
+  backButton: {
+    padding: theme.spacing[1],
   },
 
   searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.gray[100],
+    borderRadius: theme.borderRadius.xl,
     paddingHorizontal: theme.spacing[3],
-    height: 48,
+    paddingVertical: theme.spacing[2],
+    gap: theme.spacing[2],
+    height: 36,
   },
 
   searchInput: {
     flex: 1,
-    marginLeft: theme.spacing[2],
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
+    padding: 0,
   },
 
   // 탭

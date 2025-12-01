@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, Clipboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,8 @@ import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'HelpSupport'>;
+
+const SUPPORT_EMAIL = 'app.grow.snap@gmail.com';
 
 const useStyles = createStyleSheet({
   container: {
@@ -99,6 +101,39 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.inverse,
     marginLeft: theme.spacing[2],
   },
+  emailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.background.secondary,
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+    paddingVertical: theme.spacing[4],
+    borderRadius: theme.borderRadius.base,
+    marginTop: theme.spacing[3],
+  },
+  emailButtonText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing[2],
+  },
+  emailInfo: {
+    marginTop: theme.spacing[3],
+    padding: theme.spacing[3],
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.base,
+  },
+  emailLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing[1],
+  },
+  emailAddress: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.primary[500],
+  },
   faqItem: {
     marginBottom: theme.spacing[4],
     paddingBottom: theme.spacing[4],
@@ -134,6 +169,19 @@ export default function HelpSupportScreen() {
     const url = 'https://github.com/12OneTwo12/grow-snap/issues';
     Linking.openURL(url).catch(() => {
       Alert.alert('오류', 'GitHub Issues를 열 수 없습니다.');
+    });
+  };
+
+  const handleEmailContact = () => {
+    const mailtoUrl = `mailto:${SUPPORT_EMAIL}`;
+    Linking.openURL(mailtoUrl).catch(() => {
+      // 이메일 클라이언트가 없으면 이메일 주소 복사
+      Clipboard.setString(SUPPORT_EMAIL);
+      Alert.alert(
+        '이메일 주소 복사됨',
+        `${SUPPORT_EMAIL}\n\n이메일 주소가 클립보드에 복사되었습니다.`,
+        [{ text: '확인' }]
+      );
     });
   };
 
@@ -285,8 +333,24 @@ export default function HelpSupportScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>문의하기</Text>
             <Text style={styles.answer}>
-              추가 문의사항이 있거나 버그를 발견하셨다면 GitHub Issues를 통해 제보해주세요.
+              추가 문의사항이 있거나 버그를 발견하셨다면 아래 방법으로 연락해주세요.
             </Text>
+
+            {/* Email Contact */}
+            <TouchableOpacity
+              style={styles.emailButton}
+              onPress={handleEmailContact}
+            >
+              <Ionicons name="mail-outline" size={20} color={theme.colors.text.primary} />
+              <Text style={styles.emailButtonText}>이메일로 문의하기</Text>
+            </TouchableOpacity>
+
+            <View style={styles.emailInfo}>
+              <Text style={styles.emailLabel}>이메일 주소</Text>
+              <Text style={styles.emailAddress}>{SUPPORT_EMAIL}</Text>
+            </View>
+
+            {/* GitHub Issues */}
             <TouchableOpacity
               style={styles.contactButton}
               onPress={handleContactSupport}
