@@ -179,7 +179,7 @@ export default function ProfileScreen() {
 
   // 콘텐츠 클릭 핸들러
   const handleContentPress = (content: ContentResponse) => {
-    navigation.navigate('ProfileContentViewer', { contentId: content.id });
+    navigation.navigate('ContentViewer', { contentId: content.id });
   };
 
   if (profileLoading || !profile) {

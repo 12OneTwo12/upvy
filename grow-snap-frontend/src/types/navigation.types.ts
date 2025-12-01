@@ -12,9 +12,6 @@ export type RootStackParamList = {
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   HelpSupport: undefined;
-  UserProfile: { userId: string };
-  FollowList: { userId: string; initialTab?: 'followers' | 'following' };
-  ContentViewer: { contentId: string; initialIndex?: number };
 };
 
 /**
@@ -28,8 +25,8 @@ export type AuthStackParamList = {
  * Main Tab Navigator Params
  */
 export type MainTabParamList = {
-  Feed: undefined;
-  Search: undefined;
+  Feed: NavigatorScreenParams<FeedStackParamList>;
+  Search: NavigatorScreenParams<SearchStackParamList>;
   Upload: NavigatorScreenParams<UploadStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
@@ -75,9 +72,31 @@ export type UploadStackParamList = {
 };
 
 /**
+ * Feed Stack Navigator Params
+ */
+export type FeedStackParamList = {
+  FeedMain: undefined;
+  ContentViewer: { contentId: string };
+  UserProfile: { userId: string };
+  FollowList: { userId: string; initialTab?: 'followers' | 'following' };
+};
+
+/**
+ * Search Stack Navigator Params
+ */
+export type SearchStackParamList = {
+  SearchMain: undefined;
+  ContentViewer: { contentId: string };
+  UserProfile: { userId: string };
+  FollowList: { userId: string; initialTab?: 'followers' | 'following' };
+};
+
+/**
  * Profile Stack Navigator Params
  */
 export type ProfileStackParamList = {
   ProfileMain: undefined;
-  ProfileContentViewer: { contentId: string };
+  ContentViewer: { contentId: string };
+  UserProfile: { userId: string };
+  FollowList: { userId: string; initialTab?: 'followers' | 'following' };
 };
