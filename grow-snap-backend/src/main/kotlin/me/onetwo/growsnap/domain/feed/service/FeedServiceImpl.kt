@@ -1,6 +1,8 @@
 package me.onetwo.growsnap.domain.feed.service
 
+import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.feed.dto.FeedResponse
+import me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType
 import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.feed.service.recommendation.RecommendationService
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
@@ -187,6 +189,81 @@ class FeedServiceImpl(
                     limit = limit,
                     getCursor = { it.contentId.toString() }
                 )
+            }
+    }
+
+    /**
+     * 카테고리별 피드 조회
+     *
+     * 특정 카테고리의 콘텐츠를 정렬 옵션에 따라 조회합니다.
+     * 선택적 인증을 지원하며, 인증되지 않은 사용자도 조회할 수 있습니다.
+     *
+     * ### 정렬 옵션
+     * - POPULAR: 인기순 (인터랙션 가중치 기반 인기도 점수)
+     * - RECENT: 최신순 (created_at DESC)
+     *
+     * ### 처리 흐름
+     * 1. Repository에서 카테고리별 콘텐츠 ID 조회 (정렬 옵션 적용, limit + 1개 조회)
+     * 2. findByContentIds()로 상세 정보 조회
+     * 3. CursorPageResponse로 변환 (offset 기반 커서)
+     *
+     * @param userId 사용자 ID (Optional, 비인증 시 null)
+     * @param category 조회할 카테고리
+     * @param sortBy 정렬 타입 (POPULAR 또는 RECENT)
+     * @param pageRequest 페이지네이션 요청 (cursor는 offset으로 해석)
+     * @return 피드 응답
+     */
+    override fun getCategoryFeed(
+        userId: UUID?,
+        category: Category,
+        sortBy: CategoryFeedSortType,
+        pageRequest: CursorPageRequest
+    ): Mono<FeedResponse> {
+        val cursor = pageRequest.cursor
+        val limit = pageRequest.limit
+
+        logger.debug(
+            "Fetching category feed - userId: {}, category: {}, sortBy: {}, cursor: {}, limit: {}",
+            userId, category.name, sortBy.name, cursor, limit
+        )
+
+        // Repository에서 contentIds 조회 (limit + 1개를 조회하여 hasNext 판단)
+        return feedRepository.findContentIdsByCategory(
+            category = category,
+            sortBy = sortBy,
+            cursor = cursor,
+            limit = limit + 1
+        )
+            .collectList()
+            .flatMap { contentIds ->
+                if (contentIds.isEmpty()) {
+                    logger.debug("No content found for category: {}", category.name)
+                    return@flatMap Mono.just(
+                        CursorPageResponse(
+                            content = emptyList(),
+                            nextCursor = null,
+                            hasNext = false,
+                            count = 0
+                        )
+                    )
+                }
+
+                logger.debug("Found {} content IDs for category: {}", contentIds.size, category.name)
+
+                // findByContentIds()로 상세 정보 조회
+                // userId가 null이면 랜덤 UUID 사용 (비인증 사용자)
+                val effectiveUserId = userId ?: UUID.randomUUID()
+                feedRepository.findByContentIds(effectiveUserId, contentIds)
+                    .collectList()
+                    .map { feedItems ->
+                        // offset 기반 커서로 CursorPageResponse 생성
+                        val currentOffset = cursor?.toLongOrNull() ?: 0L
+                        CursorPageResponse.of(
+                            content = feedItems,
+                            limit = limit,
+                            getCursor = { (currentOffset + feedItems.indexOf(it) + 1).toString() }
+                        )
+                    }
             }
     }
 

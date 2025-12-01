@@ -906,6 +906,294 @@ class FeedRepositoryImplTest {
     }
 
     @Nested
+    @DisplayName("findContentIdsByCategory - 카테고리별 콘텐츠 ID 조회")
+    inner class FindContentIdsByCategory {
+
+        @Test
+        @DisplayName("POPULAR 정렬 시, 인기도 순으로 콘텐츠 ID를 반환한다")
+        fun findContentIdsByCategory_WithPopularSort_ReturnsOrderedByPopularity() {
+            // Given: setUp()의 기존 콘텐츠 삭제
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+
+            // Given: PROGRAMMING 카테고리의 콘텐츠 3개 (인기도 다름)
+            val highPopularityId = UUID.randomUUID()
+            val mediumPopularityId = UUID.randomUUID()
+            val lowPopularityId = UUID.randomUUID()
+
+            // 고인기: 35000
+            insertContentWithCategory(highPopularityId, creator1.id!!, "High Popularity", Category.PROGRAMMING, 10000, 1000, 1000, 1000, 1000)
+            // 중인기: 17500
+            insertContentWithCategory(mediumPopularityId, creator1.id!!, "Medium Popularity", Category.PROGRAMMING, 5000, 500, 500, 500, 500)
+            // 저인기: 3500
+            insertContentWithCategory(lowPopularityId, creator2.id!!, "Low Popularity", Category.PROGRAMMING, 1000, 100, 100, 100, 100)
+
+            // When: PROGRAMMING 카테고리, POPULAR 정렬로 조회
+            val result = feedRepository.findContentIdsByCategory(
+                category = Category.PROGRAMMING,
+                sortBy = me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR,
+                cursor = null,
+                limit = 10
+            ).collectList().block()!!
+
+            // Then: 인기도 순으로 정렬
+            assertEquals(3, result.size)
+            assertEquals(highPopularityId, result[0])
+            assertEquals(mediumPopularityId, result[1])
+            assertEquals(lowPopularityId, result[2])
+        }
+
+        @Test
+        @DisplayName("RECENT 정렬 시, 최신순으로 콘텐츠 ID를 반환한다")
+        fun findContentIdsByCategory_WithRecentSort_ReturnsOrderedByCreatedAt() {
+            // Given: setUp()의 기존 콘텐츠 삭제
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+
+            // Given: PROGRAMMING 카테고리의 콘텐츠 3개 (생성 시각 다름)
+            val now = LocalDateTime.now()
+            val newestId = UUID.randomUUID()
+            val middleId = UUID.randomUUID()
+            val oldestId = UUID.randomUUID()
+
+            insertContentWithCategory(oldestId, creator1.id!!, "Oldest", Category.PROGRAMMING, 0, 0, 0, 0, 0, now.minusDays(3))
+            insertContentWithCategory(middleId, creator1.id!!, "Middle", Category.PROGRAMMING, 0, 0, 0, 0, 0, now.minusDays(2))
+            insertContentWithCategory(newestId, creator2.id!!, "Newest", Category.PROGRAMMING, 0, 0, 0, 0, 0, now.minusDays(1))
+
+            // When: PROGRAMMING 카테고리, RECENT 정렬로 조회
+            val result = feedRepository.findContentIdsByCategory(
+                category = Category.PROGRAMMING,
+                sortBy = me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.RECENT,
+                cursor = null,
+                limit = 10
+            ).collectList().block()!!
+
+            // Then: 최신순으로 정렬
+            assertEquals(3, result.size)
+            assertEquals(newestId, result[0])
+            assertEquals(middleId, result[1])
+            assertEquals(oldestId, result[2])
+        }
+
+        @Test
+        @DisplayName("특정 카테고리의 콘텐츠만 반환하고, 다른 카테고리는 제외한다")
+        fun findContentIdsByCategory_ReturnsOnlySpecifiedCategory() {
+            // Given: setUp()의 기존 콘텐츠 삭제
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+
+            // Given: 여러 카테고리의 콘텐츠
+            val programmingId1 = UUID.randomUUID()
+            val programmingId2 = UUID.randomUUID()
+            val artId = UUID.randomUUID()
+            val fitnessId = UUID.randomUUID()
+
+            insertContentWithCategory(programmingId1, creator1.id!!, "Programming 1", Category.PROGRAMMING, 100, 10, 10, 10, 10)
+            insertContentWithCategory(programmingId2, creator1.id!!, "Programming 2", Category.PROGRAMMING, 200, 20, 20, 20, 20)
+            insertContentWithCategory(artId, creator2.id!!, "Art", Category.ART, 300, 30, 30, 30, 30)
+            insertContentWithCategory(fitnessId, creator2.id!!, "Health", Category.HEALTH, 400, 40, 40, 40, 40)
+
+            // When: PROGRAMMING 카테고리만 조회
+            val result = feedRepository.findContentIdsByCategory(
+                category = Category.PROGRAMMING,
+                sortBy = me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR,
+                cursor = null,
+                limit = 10
+            ).collectList().block()!!
+
+            // Then: PROGRAMMING 카테고리의 콘텐츠만 반환
+            assertEquals(2, result.size)
+            assertTrue(result.contains(programmingId1))
+            assertTrue(result.contains(programmingId2))
+            assertFalse(result.contains(artId))
+            assertFalse(result.contains(fitnessId))
+        }
+
+        @Test
+        @DisplayName("커서(offset)를 사용하여 페이지네이션이 작동한다")
+        fun findContentIdsByCategory_WithCursor_ReturnsPaginatedResults() {
+            // Given: setUp()의 기존 콘텐츠 삭제
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+
+            // Given: PROGRAMMING 카테고리의 콘텐츠 5개
+            val ids = (1..5).map { UUID.randomUUID() }
+            ids.forEachIndexed { index, id ->
+                insertContentWithCategory(id, creator1.id!!, "Content $index", Category.PROGRAMMING, 1000 - (index * 100), 100, 100, 100, 100)
+            }
+
+            // When: cursor=null, limit=2 (첫 페이지)
+            val page1 = feedRepository.findContentIdsByCategory(
+                category = Category.PROGRAMMING,
+                sortBy = me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR,
+                cursor = null,
+                limit = 2
+            ).collectList().block()!!
+
+            // Then: 첫 2개 반환
+            assertEquals(2, page1.size)
+            assertEquals(ids[0], page1[0])
+            assertEquals(ids[1], page1[1])
+
+            // When: cursor=2, limit=2 (두 번째 페이지)
+            val page2 = feedRepository.findContentIdsByCategory(
+                category = Category.PROGRAMMING,
+                sortBy = me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR,
+                cursor = "2",
+                limit = 2
+            ).collectList().block()!!
+
+            // Then: 다음 2개 반환 (offset=2부터)
+            assertEquals(2, page2.size)
+            assertEquals(ids[2], page2[0])
+            assertEquals(ids[3], page2[1])
+        }
+
+        @Test
+        @DisplayName("limit만큼만 콘텐츠를 반환한다")
+        fun findContentIdsByCategory_ReturnsUpToLimit() {
+            // Given: setUp()의 기존 콘텐츠 삭제
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+
+            // Given: PROGRAMMING 카테고리의 콘텐츠 10개
+            repeat(10) { index ->
+                insertContentWithCategory(UUID.randomUUID(), creator1.id!!, "Content $index", Category.PROGRAMMING, 100, 10, 10, 10, 10)
+            }
+
+            // When: limit=5로 조회
+            val result = feedRepository.findContentIdsByCategory(
+                category = Category.PROGRAMMING,
+                sortBy = me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.RECENT,
+                cursor = null,
+                limit = 5
+            ).collectList().block()!!
+
+            // Then: 5개만 반환
+            assertEquals(5, result.size)
+        }
+
+        @Test
+        @DisplayName("삭제된 콘텐츠는 조회되지 않는다")
+        fun findContentIdsByCategory_ExcludesDeletedContent() {
+            // Given: setUp()의 기존 콘텐츠 삭제
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+
+            // Given: PROGRAMMING 카테고리의 콘텐츠 2개 (1개는 삭제됨)
+            val activeId = UUID.randomUUID()
+            val deletedId = UUID.randomUUID()
+
+            insertContentWithCategory(activeId, creator1.id!!, "Active", Category.PROGRAMMING, 100, 10, 10, 10, 10)
+            insertContentWithCategory(deletedId, creator1.id!!, "Deleted", Category.PROGRAMMING, 200, 20, 20, 20, 20)
+
+            // 콘텐츠 삭제 (Soft Delete)
+            Mono.from(dslContext.update(CONTENTS)
+                .set(CONTENTS.DELETED_AT, LocalDateTime.now())
+                .where(CONTENTS.ID.eq(deletedId.toString()))).block()
+
+            // When: PROGRAMMING 카테고리 조회
+            val result = feedRepository.findContentIdsByCategory(
+                category = Category.PROGRAMMING,
+                sortBy = me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR,
+                cursor = null,
+                limit = 10
+            ).collectList().block()!!
+
+            // Then: 삭제되지 않은 콘텐츠만 반환
+            assertEquals(1, result.size)
+            assertEquals(activeId, result[0])
+        }
+
+        @Test
+        @DisplayName("해당 카테고리의 콘텐츠가 없으면, 빈 목록을 반환한다")
+        fun findContentIdsByCategory_WithNoContent_ReturnsEmptyList() {
+            // Given: setUp()의 기존 콘텐츠 삭제
+            Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)).block()
+            Mono.from(dslContext.deleteFrom(CONTENT_METADATA)).block()
+            Mono.from(dslContext.deleteFrom(CONTENTS)).block()
+
+            // Given: 다른 카테고리의 콘텐츠만 있음
+            insertContentWithCategory(UUID.randomUUID(), creator1.id!!, "Art Content", Category.ART, 100, 10, 10, 10, 10)
+
+            // When: PROGRAMMING 카테고리 조회 (콘텐츠 없음)
+            val result = feedRepository.findContentIdsByCategory(
+                category = Category.PROGRAMMING,
+                sortBy = me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR,
+                cursor = null,
+                limit = 10
+            ).collectList().block()!!
+
+            // Then: 빈 목록 반환
+            assertEquals(0, result.size)
+        }
+
+        /**
+         * 특정 카테고리의 콘텐츠 + 인터랙션 정보 삽입 헬퍼 메서드
+         */
+        private fun insertContentWithCategory(
+            contentId: UUID,
+            creatorId: UUID,
+            title: String,
+            category: Category,
+            viewCount: Int,
+            likeCount: Int,
+            commentCount: Int,
+            saveCount: Int,
+            shareCount: Int,
+            createdAt: LocalDateTime = LocalDateTime.now()
+        ) {
+            // Contents 테이블
+            Mono.from(dslContext.insertInto(CONTENTS)
+                .set(CONTENTS.ID, contentId.toString())
+                .set(CONTENTS.CREATOR_ID, creatorId.toString())
+                .set(CONTENTS.CONTENT_TYPE, ContentType.VIDEO.name)
+                .set(CONTENTS.URL, "https://example.com/$contentId.mp4")
+                .set(CONTENTS.THUMBNAIL_URL, "https://example.com/$contentId-thumb.jpg")
+                .set(CONTENTS.DURATION, 60)
+                .set(CONTENTS.WIDTH, 1920)
+                .set(CONTENTS.HEIGHT, 1080)
+                .set(CONTENTS.STATUS, ContentStatus.PUBLISHED.name)
+                .set(CONTENTS.CREATED_AT, createdAt)
+                .set(CONTENTS.CREATED_BY, creatorId.toString())
+                .set(CONTENTS.UPDATED_AT, createdAt)
+                .set(CONTENTS.UPDATED_BY, creatorId.toString())).block()
+
+            // Content_Metadata 테이블 (카테고리 지정)
+            Mono.from(dslContext.insertInto(CONTENT_METADATA)
+                .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
+                .set(CONTENT_METADATA.TITLE, title)
+                .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
+                .set(CONTENT_METADATA.CATEGORY, category.name)
+                .set(CONTENT_METADATA.TAGS, JSON.valueOf("[\"test\", \"video\"]"))
+                .set(CONTENT_METADATA.LANGUAGE, "ko")
+                .set(CONTENT_METADATA.CREATED_AT, createdAt)
+                .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())
+                .set(CONTENT_METADATA.UPDATED_AT, createdAt)
+                .set(CONTENT_METADATA.UPDATED_BY, creatorId.toString())).block()
+
+            // Content_Interactions 테이블
+            Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
+                .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
+                .set(CONTENT_INTERACTIONS.VIEW_COUNT, viewCount)
+                .set(CONTENT_INTERACTIONS.LIKE_COUNT, likeCount)
+                .set(CONTENT_INTERACTIONS.COMMENT_COUNT, commentCount)
+                .set(CONTENT_INTERACTIONS.SAVE_COUNT, saveCount)
+                .set(CONTENT_INTERACTIONS.SHARE_COUNT, shareCount)
+                .set(CONTENT_INTERACTIONS.CREATED_AT, createdAt)
+                .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
+                .set(CONTENT_INTERACTIONS.UPDATED_AT, createdAt)
+                .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
+        }
+    }
+
+    @Nested
     @DisplayName("findByContentIds - 콘텐츠 ID 목록으로 피드 조회")
     inner class FindByContentIds {
 

@@ -694,6 +694,75 @@ class FeedRepositoryImpl(
         ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
 
+    /**
+     * 카테고리별 콘텐츠 ID 조회
+     *
+     * 특정 카테고리의 콘텐츠를 정렬 옵션에 따라 조회합니다.
+     *
+     * ### 정렬 옵션
+     * - POPULAR: 인기순 (인터랙션 가중치 기반 인기도 점수)
+     * - RECENT: 최신순 (created_at DESC)
+     *
+     * ### 인기도 계산 공식 (POPULAR 정렬 시)
+     * ```
+     * popularity_score = view_count * 1.0
+     *                  + like_count * 5.0
+     *                  + comment_count * 3.0
+     *                  + save_count * 7.0
+     *                  + share_count * 10.0
+     * ```
+     *
+     * @param category 조회할 카테고리
+     * @param sortBy 정렬 타입 (POPULAR 또는 RECENT)
+     * @param cursor 커서 (offset으로 해석, null이면 0)
+     * @param limit 조회할 항목 수
+     * @return 콘텐츠 ID 목록
+     */
+    override fun findContentIdsByCategory(
+        category: Category,
+        sortBy: me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType,
+        cursor: String?,
+        limit: Int
+    ): Flux<UUID> {
+        // cursor를 offset으로 변환
+        val offset = cursor?.toLongOrNull() ?: 0L
+
+        // 기본 쿼리 구성
+        val baseQuery = dslContext
+            .select(CONTENTS.ID)
+            .from(CONTENTS)
+            .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
+            .join(CONTENT_INTERACTIONS).on(CONTENT_INTERACTIONS.CONTENT_ID.eq(CONTENTS.ID))
+            .where(CONTENT_METADATA.CATEGORY.eq(category.name))
+            .and(CONTENTS.STATUS.eq("PUBLISHED"))
+            .and(CONTENTS.DELETED_AT.isNull)
+            .and(CONTENT_METADATA.DELETED_AT.isNull)
+
+        // 정렬 타입에 따른 orderBy 적용
+        val orderedQuery = when (sortBy) {
+            me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR -> {
+                // 인기도 점수 계산
+                val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
+                    .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
+                    .plus(CONTENT_INTERACTIONS.COMMENT_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_COMMENT))
+                    .plus(CONTENT_INTERACTIONS.SAVE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SAVE))
+                    .plus(CONTENT_INTERACTIONS.SHARE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SHARE))
+
+                baseQuery.orderBy(popularityScore.desc())
+            }
+            me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.RECENT -> {
+                baseQuery.orderBy(CONTENTS.CREATED_AT.desc())
+            }
+        }
+
+        // offset과 limit 적용
+        return Flux.from(
+            orderedQuery
+                .offset(offset.toInt())
+                .limit(limit)
+        ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
+    }
+
     companion object {
         /**
          * 인기도 점수 계산 가중치

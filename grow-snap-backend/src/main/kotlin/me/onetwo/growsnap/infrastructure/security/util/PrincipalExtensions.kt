@@ -35,3 +35,25 @@ fun Mono<Principal>.toUserId(): Mono<UUID> {
         }
     }
 }
+
+/**
+ * Principal에서 UUID 형식의 사용자 ID를 추출합니다. (Optional)
+ *
+ * JWT 토큰이 없거나 subject가 UUID 형식이 아닌 경우 null을 반환합니다.
+ * 선택적 인증이 필요한 API에서 사용됩니다.
+ *
+ * @return 사용자 ID를 담은 Mono<UUID?> (인증되지 않은 경우 null)
+ */
+fun Mono<Principal>.toUserIdOrNull(): Mono<UUID?> {
+    return this
+        .map { principal ->
+            logger.debug("Principal type: ${principal.javaClass.name}, name: ${principal.name}")
+            try {
+                UUID.fromString(principal.name)
+            } catch (e: IllegalArgumentException) {
+                logger.warn("Invalid UUID format in principal: ${principal.name}")
+                null
+            }
+        }
+        .switchIfEmpty(Mono.fromSupplier { null })
+}

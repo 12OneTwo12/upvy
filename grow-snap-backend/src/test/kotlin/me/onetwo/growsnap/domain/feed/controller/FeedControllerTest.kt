@@ -25,6 +25,7 @@ import org.springframework.http.MediaType
 import org.springframework.restdocs.operation.preprocess.Preprocessors.*
 import org.springframework.restdocs.payload.PayloadDocumentation.*
 import org.springframework.restdocs.request.RequestDocumentation.*
+import org.springframework.restdocs.request.RequestDocumentation.pathParameters
 import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
@@ -383,6 +384,174 @@ class FeedControllerTest {
                 .uri("${ApiPaths.API_V1_FEED}/refresh")
                 .exchange()
                 .expectStatus().isUnauthorized
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/feed/categories/{category} - 카테고리별 피드 조회")
+    inner class GetCategoryFeed {
+
+        @Test
+        @DisplayName("유효한 카테고리로 조회 시, 200 OK와 피드 목록을 반환한다")
+        fun getCategoryFeed_WithValidCategory_ReturnsOkAndFeedItems() {
+            // Given: 카테고리별 피드 데이터
+            val userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+            val feedItems = createMockFeedItems(10)
+            val response = CursorPageResponse.of(
+                content = feedItems,
+                limit = 20,
+                getCursor = { it.contentId.toString() }
+            )
+
+            every { feedService.getCategoryFeed(userId, Category.PROGRAMMING, any(), any()) } returns Mono.just(response)
+
+            // When & Then: 카테고리 피드 조회 API 호출
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=POPULAR&limit=20", "PROGRAMMING")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content.length()").isEqualTo(10)
+                .consumeWith(
+                    document("feed-category",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        pathParameters(
+                            parameterWithName("category")
+                                .description("조회할 카테고리 (PROGRAMMING, LANGUAGE, ART, SCIENCE 등)")
+                        ),
+                        queryParameters(
+                            parameterWithName("sortBy")
+                                .description("정렬 옵션 (POPULAR: 인기순, RECENT: 최신순, 기본값: POPULAR)")
+                                .optional(),
+                            parameterWithName("cursor")
+                                .description("커서 (마지막 조회 위치, 첫 페이지는 null)")
+                                .optional(),
+                            parameterWithName("limit")
+                                .description("페이지당 항목 수 (기본값: 20, 최대: 100)")
+                                .optional()
+                        ),
+                        responseFields(
+                            fieldWithPath("content[]").description("피드 아이템 목록"),
+                            fieldWithPath("content[].contentId").description("콘텐츠 ID"),
+                            fieldWithPath("content[].contentType").description("콘텐츠 타입 (VIDEO, PHOTO)"),
+                            fieldWithPath("content[].url").description("콘텐츠 URL"),
+                            fieldWithPath("content[].photoUrls").description("사진 URL 목록 (PHOTO 타입인 경우)").optional(),
+                            fieldWithPath("content[].thumbnailUrl").description("썸네일 이미지 URL"),
+                            fieldWithPath("content[].duration").description("비디오 길이 (초, 사진인 경우 null)").optional(),
+                            fieldWithPath("content[].width").description("콘텐츠 가로 크기 (픽셀)"),
+                            fieldWithPath("content[].height").description("콘텐츠 세로 크기 (픽셀)"),
+                            fieldWithPath("content[].title").description("제목"),
+                            fieldWithPath("content[].description").description("설명").optional(),
+                            fieldWithPath("content[].category").description("카테고리"),
+                            fieldWithPath("content[].tags[]").description("태그 목록"),
+                            fieldWithPath("content[].creator").description("크리에이터 정보"),
+                            fieldWithPath("content[].creator.userId").description("크리에이터 사용자 ID"),
+                            fieldWithPath("content[].creator.nickname").description("크리에이터 닉네임"),
+                            fieldWithPath("content[].creator.profileImageUrl").description("크리에이터 프로필 이미지 URL").optional(),
+                            fieldWithPath("content[].creator.followerCount").description("크리에이터 팔로워 수"),
+                            fieldWithPath("content[].interactions").description("인터랙션 정보"),
+                            fieldWithPath("content[].interactions.likeCount").description("좋아요 수"),
+                            fieldWithPath("content[].interactions.commentCount").description("댓글 수"),
+                            fieldWithPath("content[].interactions.saveCount").description("저장 수"),
+                            fieldWithPath("content[].interactions.shareCount").description("공유 수"),
+                            fieldWithPath("content[].interactions.viewCount").description("조회수"),
+                            fieldWithPath("content[].interactions.isLiked").description("현재 사용자의 좋아요 여부"),
+                            fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부"),
+                            fieldWithPath("content[].subtitles[]").description("자막 정보 목록"),
+                            fieldWithPath("nextCursor").description("다음 페이지 커서 (마지막 페이지인 경우 null)").optional(),
+                            fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
+                            fieldWithPath("count").description("현재 페이지의 항목 수")
+                        )
+                    )
+                )
+        }
+
+        @Test
+        @DisplayName("POPULAR 정렬로 조회 시, 인기순으로 정렬된 피드를 반환한다")
+        fun getCategoryFeed_WithPopularSort_ReturnsSortedByPopularity() {
+            // Given: POPULAR 정렬로 조회
+            val userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+            val feedItems = createMockFeedItems(5)
+            val response = CursorPageResponse.of(
+                content = feedItems,
+                limit = 20,
+                getCursor = { it.contentId.toString() }
+            )
+
+            every { feedService.getCategoryFeed(userId, Category.PROGRAMMING, me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR, any()) } returns Mono.just(response)
+
+            // When & Then: POPULAR 정렬 조회
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=POPULAR&limit=20", "PROGRAMMING")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content.length()").isEqualTo(5)
+        }
+
+        @Test
+        @DisplayName("RECENT 정렬로 조회 시, 최신순으로 정렬된 피드를 반환한다")
+        fun getCategoryFeed_WithRecentSort_ReturnsSortedByCreatedAt() {
+            // Given: RECENT 정렬로 조회
+            val userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+            val feedItems = createMockFeedItems(8)
+            val response = CursorPageResponse.of(
+                content = feedItems,
+                limit = 20,
+                getCursor = { it.contentId.toString() }
+            )
+
+            every { feedService.getCategoryFeed(userId, Category.LANGUAGE, me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.RECENT, any()) } returns Mono.just(response)
+
+            // When & Then: RECENT 정렬 조회
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=RECENT&limit=20", "LANGUAGE")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content.length()").isEqualTo(8)
+        }
+
+        @Test
+        @DisplayName("커서와 함께 요청 시, 페이지네이션된 결과를 반환한다")
+        fun getCategoryFeed_WithCursor_ReturnsPaginatedResults() {
+            // Given: 커서 기반 페이지네이션
+            val userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+            val cursor = "20"
+            val feedItems = createMockFeedItems(15)
+            val response = CursorPageResponse.of(
+                content = feedItems,
+                limit = 20,
+                getCursor = { (cursor.toLong() + feedItems.indexOf(it) + 1).toString() }
+            )
+
+            every { feedService.getCategoryFeed(userId, Category.ART, any(), any()) } returns Mono.just(response)
+
+            // When & Then: 커서와 함께 조회
+            webTestClient
+                .mutateWith(mockUser(userId))
+                .get()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?cursor=$cursor&limit=20", "ART")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content.length()").isEqualTo(15)
+                .jsonPath("$.hasNext").isEqualTo(false)
         }
     }
 
