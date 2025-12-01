@@ -160,6 +160,27 @@ class UserProfileRepository(
         ).map { record -> mapToUserProfile(record) }
     }
 
+    /**
+     * 닉네임으로 사용자 검색 (LIKE 검색)
+     *
+     * Manticore Search Failover용 DB 검색 메서드입니다.
+     * 닉네임에 검색어가 포함된 사용자를 조회합니다.
+     *
+     * @param query 검색 키워드
+     * @param limit 최대 조회 개수
+     * @return 사용자 ID 목록 (팔로워 수 내림차순)
+     */
+    fun searchByNickname(query: String, limit: Int): Flux<UUID> {
+        return Flux.from(
+            dsl.select(USER_PROFILES.USER_ID)
+                .from(USER_PROFILES)
+                .where(USER_PROFILES.NICKNAME.like("%$query%"))
+                .and(USER_PROFILES.DELETED_AT.isNull)
+                .orderBy(USER_PROFILES.FOLLOWER_COUNT.desc())
+                .limit(limit + 1)  // hasNext 확인을 위해 +1
+        ).map { record -> UUID.fromString(record.getValue(USER_PROFILES.USER_ID)) }
+    }
+
     private fun mapToUserProfile(record: UserProfilesRecord): UserProfile {
         return UserProfile(
             id = record.id,
