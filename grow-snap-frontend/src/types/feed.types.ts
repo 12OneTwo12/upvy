@@ -21,20 +21,24 @@ export type ContentType = 'VIDEO' | 'PHOTO';
  * 백엔드: me.onetwo.growsnap.domain.content.model.Category
  */
 export type Category =
-  | 'TECH'
-  | 'SCIENCE'
-  | 'HEALTH'
   | 'LANGUAGE'
-  | 'BUSINESS'
-  | 'FINANCE'
-  | 'DESIGN'
+  | 'SCIENCE'
+  | 'HISTORY'
+  | 'MATHEMATICS'
+  | 'ART'
+  | 'STARTUP'
   | 'MARKETING'
-  | 'LIFESTYLE'
-  | 'ARTS'
-  | 'MUSIC'
-  | 'SPORTS'
+  | 'PROGRAMMING'
+  | 'DESIGN'
+  | 'PRODUCTIVITY'
+  | 'PSYCHOLOGY'
+  | 'FINANCE'
+  | 'HEALTH'
+  | 'PARENTING'
   | 'COOKING'
   | 'TRAVEL'
+  | 'HOBBY'
+  | 'TREND'
   | 'OTHER';
 
 /**

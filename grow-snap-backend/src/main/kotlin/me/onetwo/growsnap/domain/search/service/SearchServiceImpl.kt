@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.search.service
 
+import me.onetwo.growsnap.domain.feed.dto.FeedItemResponse
 import me.onetwo.growsnap.domain.search.dto.AutocompleteRequest
 import me.onetwo.growsnap.domain.search.dto.AutocompleteResponse
 import me.onetwo.growsnap.domain.search.dto.ContentSearchRequest
@@ -74,7 +75,7 @@ class SearchServiceImpl(
                 } else {
                     // FeedRepository를 사용하여 FeedItemResponse 조회
                     // 간단히 mainFeed 사용 (실제로는 별도 메서드가 필요)
-                    Mono.just(CursorPageResponse.empty<me.onetwo.growsnap.domain.feed.dto.FeedItemResponse>())
+                    Mono.just(CursorPageResponse.empty<FeedItemResponse>())
                 }
             }
             .doOnSuccess { response ->
@@ -90,6 +91,9 @@ class SearchServiceImpl(
             }
             .doOnError { error ->
                 logger.error("Content search failed: query={}", request.q, error)
+            }
+            .onErrorResume {
+                Mono.just(CursorPageResponse.empty<FeedItemResponse>())
             }
     }
 
@@ -150,6 +154,9 @@ class SearchServiceImpl(
             .doOnError { error ->
                 logger.error("User search failed: query={}", request.q, error)
             }
+            .onErrorResume {
+                Mono.just(CursorPageResponse.empty<UserSearchResult>())
+            }
     }
 
     /**
@@ -176,6 +183,9 @@ class SearchServiceImpl(
             .doOnError { error ->
                 logger.error("Autocomplete failed: query={}", request.q, error)
             }
+            .onErrorResume {
+                Mono.just(AutocompleteResponse.empty())
+            }
     }
 
     /**
@@ -193,6 +203,12 @@ class SearchServiceImpl(
         return Mono.just(TrendingSearchResponse.empty())
             .doOnSuccess { response ->
                 logger.debug("Trending keywords completed: count={}", response.keywords.size)
+            }
+            .doOnError { error ->
+                logger.error("Trending keywords failed", error)
+            }
+            .onErrorResume {
+                Mono.just(TrendingSearchResponse.empty())
             }
     }
 
@@ -222,6 +238,12 @@ class SearchServiceImpl(
             }
             .doOnSuccess { response ->
                 logger.debug("Recent searches completed: count={}", response.keywords.size)
+            }
+            .doOnError { error ->
+                logger.error("Recent searches failed: userId={}", userId, error)
+            }
+            .onErrorResume {
+                Mono.just(SearchHistoryResponse(emptyList()))
             }
     }
 

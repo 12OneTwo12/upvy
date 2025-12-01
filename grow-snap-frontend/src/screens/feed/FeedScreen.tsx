@@ -288,7 +288,7 @@ export default function FeedScreen() {
     height: 1920,
     title: '',
     description: '',
-    category: 'TECH',
+    category: 'OTHER',
     tags: [],
     creator: {
       userId: 'loading',

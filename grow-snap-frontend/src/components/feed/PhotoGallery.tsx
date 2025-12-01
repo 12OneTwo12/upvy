@@ -13,7 +13,6 @@ import {
   Image,
   ScrollView,
   Dimensions,
-  NativeSynchedScrollEvent,
   NativeScrollEvent,
   StyleSheet,
   TouchableWithoutFeedback,
@@ -42,7 +41,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
 
   // 스크롤 이벤트 처리
   const handleScroll = useCallback(
-    (event: NativeSynchedScrollEvent<NativeScrollEvent>) => {
+    (event: { nativeEvent: NativeScrollEvent }) => {
       const contentOffsetX = event.nativeEvent.contentOffset.x;
       const index = Math.round(contentOffsetX / width);
       setCurrentIndex(index);
