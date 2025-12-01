@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.search.service
 
 import me.onetwo.growsnap.domain.feed.dto.FeedItemResponse
+import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.search.dto.AutocompleteRequest
 import me.onetwo.growsnap.domain.search.dto.AutocompleteResponse
 import me.onetwo.growsnap.domain.search.dto.ContentSearchRequest
@@ -33,6 +34,7 @@ import java.util.UUID
  * @property searchRepository 검색 Repository
  * @property searchHistoryRepository 검색 기록 Repository
  * @property userProfileRepository 사용자 프로필 Repository (사용자 검색용)
+ * @property feedRepository 피드 Repository (콘텐츠 상세 정보 조회용)
  * @property eventPublisher Reactive Event Publisher (검색 기록 저장용)
  */
 @Service
@@ -40,6 +42,7 @@ class SearchServiceImpl(
     private val searchRepository: SearchRepository,
     private val searchHistoryRepository: SearchHistoryRepository,
     private val userProfileRepository: UserProfileRepository,
+    private val feedRepository: FeedRepository,
     private val eventPublisher: ReactiveEventPublisher
 ) : SearchService {
 
@@ -74,8 +77,18 @@ class SearchServiceImpl(
                     Mono.just(CursorPageResponse.empty())
                 } else {
                     // FeedRepository를 사용하여 FeedItemResponse 조회
-                    // 간단히 mainFeed 사용 (실제로는 별도 메서드가 필요)
-                    Mono.just(CursorPageResponse.empty<FeedItemResponse>())
+                    // userId가 없으면 UUID(0, 0) 사용 (비로그인 사용자)
+                    val searchUserId = userId ?: UUID(0, 0)
+
+                    feedRepository.findByContentIds(searchUserId, contentIds)
+                        .collectList()
+                        .map { feedItems ->
+                            CursorPageResponse.of(
+                                content = feedItems,
+                                limit = request.limit,
+                                getCursor = { it.contentId.toString() }
+                            )
+                        }
                 }
             }
             .doOnSuccess { response ->
