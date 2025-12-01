@@ -9,6 +9,7 @@ import {
   Keyboard,
   StatusBar,
   Image,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -259,23 +260,31 @@ export default function SearchScreen() {
     </View>
   );
 
-  // 콘텐츠 결과 아이템 렌더 (간단히)
-  const renderContentResult = ({ item }: { item: FeedItem }) => (
-    <TouchableOpacity style={styles.contentResultItem}>
-      <View style={styles.contentThumbnail}>
-        <Text style={styles.contentThumbnailText}>썸네일</Text>
-      </View>
-      <View style={styles.contentInfo}>
-        <Text style={styles.contentTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.contentCreator}>{item.creator.nickname}</Text>
-        <Text style={styles.contentStats}>
-          조회수 {item.interactions.viewCount || 0}회
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+  // 콘텐츠 결과 아이템 렌더 (Instagram 그리드 스타일)
+  const renderContentResult = ({ item }: { item: FeedItem }) => {
+    const screenWidth = Dimensions.get('window').width;
+    const itemSize = (screenWidth - 3) / 3; // 3 columns with 1px gaps
+
+    return (
+      <TouchableOpacity style={[styles.gridItem, { width: itemSize, height: itemSize }]}>
+        <Image
+          source={{ uri: item.thumbnailUrl }}
+          style={styles.gridThumbnail}
+          resizeMode="cover"
+        />
+        <View style={styles.gridOverlay}>
+          <View style={styles.gridStats}>
+            <Ionicons name="play" size={16} color={theme.colors.text.inverse} />
+            <Text style={styles.gridStatsText}>
+              {item.interactions.viewCount >= 10000
+                ? `${(item.interactions.viewCount / 10000).toFixed(1)}만`
+                : item.interactions.viewCount || 0}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   // 사용자 결과 아이템 렌더
   const renderUserResult = ({ item }: { item: UserSearchResult }) => (
@@ -346,6 +355,7 @@ export default function SearchScreen() {
     if (activeTab === 'creators') {
       return (
         <FlatList
+          key="creators-list"
           data={userResults}
           renderItem={renderUserResult}
           keyExtractor={(item) => item.userId}
@@ -359,12 +369,16 @@ export default function SearchScreen() {
     if (activeTab === 'shorts') {
       return (
         <FlatList
+          key="shorts-grid"
           data={contentResults}
           renderItem={renderContentResult}
           keyExtractor={(item) => item.contentId}
+          numColumns={3}
+          columnWrapperStyle={styles.gridRow}
           ListEmptyComponent={
             <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
           }
+          showsVerticalScrollIndicator={false}
         />
       );
     }
@@ -752,5 +766,43 @@ const useStyles = createStyleSheet({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.tertiary,
     paddingVertical: theme.spacing[8],
+  },
+
+  // Instagram 그리드 스타일
+  gridRow: {
+    gap: 1, // 1px gaps between columns
+  },
+
+  gridItem: {
+    position: 'relative',
+    backgroundColor: theme.colors.gray[200],
+  },
+
+  gridThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+
+  gridOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: theme.spacing[2],
+  },
+
+  gridStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[1],
+  },
+
+  gridStatsText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.inverse,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });
