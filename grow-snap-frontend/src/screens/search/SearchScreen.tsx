@@ -455,7 +455,9 @@ export default function SearchScreen() {
 
               {/* 인기 검색어 */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>인기 검색어</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>인기 검색어</Text>
+                </View>
                 {loadingTrending ? (
                   <ActivityIndicator
                     size="small"
