@@ -169,192 +169,6 @@ class FeedRepositoryImplTest {
     }
 
     @Nested
-    @DisplayName("findMainFeed - 메인 피드 조회")
-    inner class FindMainFeed {
-
-        @Test
-        @DisplayName("커서 없이 조회 시, 최신 콘텐츠부터 반환한다")
-        fun findMainFeed_WithoutCursor_ReturnsLatestContent() {
-            // When
-            val result = feedRepository.findMainFeed(
-                userId = viewer.id!!,
-                cursor = null,
-                limit = 10,
-                excludeContentIds = emptyList()
-            ).collectList().block()!!
-
-            // Then
-            assertEquals(3, result.size)
-            assertEquals(content1Id, result[0].contentId) // 가장 최신
-            assertEquals(content2Id, result[1].contentId)
-            assertEquals(content3Id, result[2].contentId)
-            assertEquals("Test Video 1", result[0].title)
-        }
-
-        @Test
-        @DisplayName("커서와 함께 조회 시, 커서 이후 콘텐츠를 반환한다")
-        fun findMainFeed_WithCursor_ReturnsContentAfterCursor() {
-            // When: content1을 커서로 사용
-            val result = feedRepository.findMainFeed(
-                userId = viewer.id!!,
-                cursor = content1Id,
-                limit = 10,
-                excludeContentIds = emptyList()
-            ).collectList().block()!!
-
-            // Then: content1 이후의 콘텐츠만 반환
-            assertEquals(2, result.size)
-            assertEquals(content2Id, result[0].contentId)
-            assertEquals(content3Id, result[1].contentId)
-        }
-
-        @Test
-        @DisplayName("제외할 콘텐츠 ID 목록이 있으면, 해당 콘텐츠를 제외한다")
-        fun findMainFeed_WithExcludeIds_ExcludesSpecifiedContent() {
-            // When: content1과 content3을 제외
-            val result = feedRepository.findMainFeed(
-                userId = viewer.id!!,
-                cursor = null,
-                limit = 10,
-                excludeContentIds = listOf(content1Id, content3Id)
-            ).collectList().block()!!
-
-            // Then: content2만 반환
-            assertEquals(1, result.size)
-            assertEquals(content2Id, result[0].contentId)
-        }
-
-        @Test
-        @DisplayName("limit 이하의 결과만 반환한다")
-        fun findMainFeed_WithLimit_ReturnsLimitedResults() {
-            // When: limit=2
-            val result = feedRepository.findMainFeed(
-                userId = viewer.id!!,
-                cursor = null,
-                limit = 2,
-                excludeContentIds = emptyList()
-            ).collectList().block()!!
-
-            // Then: 2개만 반환
-            assertEquals(2, result.size)
-            assertEquals(content1Id, result[0].contentId)
-            assertEquals(content2Id, result[1].contentId)
-        }
-
-        @Test
-        @DisplayName("자막 정보가 있으면 함께 반환한다")
-        fun findMainFeed_WithSubtitles_ReturnsSubtitles() {
-            // Given: content1에 자막 추가
-            insertSubtitle(
-                contentId = content1Id,
-                language = "ko",
-                subtitleUrl = "https://example.com/subtitle-ko.vtt"
-            )
-            insertSubtitle(
-                contentId = content1Id,
-                language = "en",
-                subtitleUrl = "https://example.com/subtitle-en.vtt"
-            )
-
-            // When
-            val result = feedRepository.findMainFeed(
-                userId = viewer.id!!,
-                cursor = null,
-                limit = 10,
-                excludeContentIds = emptyList()
-            ).collectList().block()!!
-
-            // Then
-            val content1 = result.find { it.contentId == content1Id }!!
-            assertEquals(2, content1.subtitles.size)
-            assertTrue(content1.subtitles.any { it.language == "ko" })
-            assertTrue(content1.subtitles.any { it.language == "en" })
-        }
-
-        @Test
-        @DisplayName("PHOTO 타입 콘텐츠 조회 시, photoUrls가 함께 반환된다")
-        fun findMainFeed_WithPhotoContent_ReturnsPhotoUrls() {
-            // Given: PHOTO 타입 콘텐츠 생성
-            val photoContentId = UUID.randomUUID()
-            insertPhotoContent(
-                contentId = photoContentId,
-                creatorId = creator1.id!!,
-                title = "Test Photo Content",
-                createdAt = Instant.now()
-            )
-            insertContentPhoto(
-                contentId = photoContentId,
-                photoUrl = "https://example.com/photo1.jpg",
-                displayOrder = 0,
-                createdBy = creator1.id!!
-            )
-            insertContentPhoto(
-                contentId = photoContentId,
-                photoUrl = "https://example.com/photo2.jpg",
-                displayOrder = 1,
-                createdBy = creator1.id!!
-            )
-            insertContentPhoto(
-                contentId = photoContentId,
-                photoUrl = "https://example.com/photo3.jpg",
-                displayOrder = 2,
-                createdBy = creator1.id!!
-            )
-
-            // When
-            val result = feedRepository.findMainFeed(
-                userId = viewer.id!!,
-                cursor = null,
-                limit = 10,
-                excludeContentIds = emptyList()
-            ).collectList().block()!!
-
-            // Then: PHOTO 콘텐츠의 photoUrls가 display_order 순으로 반환됨
-            val photoContent = result.find { it.contentId == photoContentId }!!
-            assertNotNull(photoContent.photoUrls)
-            assertEquals(3, photoContent.photoUrls!!.size)
-            assertEquals("https://example.com/photo1.jpg", photoContent.photoUrls!![0])
-            assertEquals("https://example.com/photo2.jpg", photoContent.photoUrls!![1])
-            assertEquals("https://example.com/photo3.jpg", photoContent.photoUrls!![2])
-        }
-
-        @Test
-        @DisplayName("VIDEO와 PHOTO 혼합 조회 시, PHOTO만 photoUrls를 가진다")
-        fun findMainFeed_WithMixedContent_ReturnsPhotoUrlsOnlyForPhoto() {
-            // Given: PHOTO 타입 콘텐츠 생성
-            val photoContentId = UUID.randomUUID()
-            insertPhotoContent(
-                contentId = photoContentId,
-                creatorId = creator1.id!!,
-                title = "Test Photo Content",
-                createdAt = Instant.now().minus(30, ChronoUnit.MINUTES)
-            )
-            insertContentPhoto(
-                contentId = photoContentId,
-                photoUrl = "https://example.com/photo1.jpg",
-                displayOrder = 0,
-                createdBy = creator1.id!!
-            )
-
-            // When
-            val result = feedRepository.findMainFeed(
-                userId = viewer.id!!,
-                cursor = null,
-                limit = 10,
-                excludeContentIds = emptyList()
-            ).collectList().block()!!
-
-            // Then: PHOTO는 photoUrls를 가지고, VIDEO는 null
-            val photoContent = result.find { it.contentId == photoContentId }!!
-            assertNotNull(photoContent.photoUrls)
-            assertEquals(1, photoContent.photoUrls!!.size)
-
-            val videoContent = result.find { it.contentId == content1Id }!!
-            assertNull(videoContent.photoUrls)
-        }
-    }
-
-    @Nested
     @DisplayName("findFollowingFeed - 팔로잉 피드 조회")
     inner class FindFollowingFeed {
 
@@ -578,7 +392,7 @@ class FeedRepositoryImplTest {
             insertContentWithInteractions(lowPopularityId, creator2.id!!, "Low Popularity", 1000, 100, 100, 100, 100)
 
             // When: 인기 콘텐츠 조회
-            val result = feedRepository.findPopularContentIds(10, emptyList())
+            val result = feedRepository.findPopularContentIds(viewer.id!!, 10, emptyList())
                 .collectList()
                 .block()!!
 
@@ -607,7 +421,7 @@ class FeedRepositoryImplTest {
             insertContentWithInteractions(id3, creator2.id!!, "Content 3", 1000, 100, 100, 100, 100)
 
             // When: id2를 제외하고 조회
-            val result = feedRepository.findPopularContentIds(10, listOf(id2))
+            val result = feedRepository.findPopularContentIds(viewer.id!!, 10, listOf(id2))
                 .collectList()
                 .block()!!
 
@@ -634,7 +448,7 @@ class FeedRepositoryImplTest {
             insertContentWithInteractions(id2, creator1.id!!, "Content 2", 1000, 100, 100, 100, 100)
 
             // When: limit=10으로 조회 (실제 콘텐츠는 2개)
-            val result = feedRepository.findPopularContentIds(10, emptyList())
+            val result = feedRepository.findPopularContentIds(viewer.id!!, 10, emptyList())
                 .collectList()
                 .block()!!
 
@@ -663,7 +477,7 @@ class FeedRepositoryImplTest {
                 .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 인기 콘텐츠 조회
-            val result = feedRepository.findPopularContentIds(10, emptyList())
+            val result = feedRepository.findPopularContentIds(viewer.id!!, 10, emptyList())
                 .collectList()
                 .block()!!
 
@@ -696,7 +510,7 @@ class FeedRepositoryImplTest {
             insertContent(newestId, creator2.id!!, "Newest Content", now.minus(1, ChronoUnit.DAYS))
 
             // When: 신규 콘텐츠 조회
-            val result = feedRepository.findNewContentIds(10, emptyList())
+            val result = feedRepository.findNewContentIds(viewer.id!!, 10, emptyList())
                 .collectList()
                 .block()!!
 
@@ -726,7 +540,7 @@ class FeedRepositoryImplTest {
             insertContent(id3, creator2.id!!, "Content 3", now.minus(3, ChronoUnit.DAYS))
 
             // When: id2를 제외하고 조회
-            val result = feedRepository.findNewContentIds(10, listOf(id2))
+            val result = feedRepository.findNewContentIds(viewer.id!!, 10, listOf(id2))
                 .collectList()
                 .block()!!
 
@@ -752,7 +566,7 @@ class FeedRepositoryImplTest {
             }
 
             // When: limit=3으로 조회
-            val result = feedRepository.findNewContentIds(3, emptyList())
+            val result = feedRepository.findNewContentIds(viewer.id!!, 3, emptyList())
                 .collectList()
                 .block()!!
 
@@ -782,7 +596,7 @@ class FeedRepositoryImplTest {
                 .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 신규 콘텐츠 조회
-            val result = feedRepository.findNewContentIds(10, emptyList())
+            val result = feedRepository.findNewContentIds(viewer.id!!, 10, emptyList())
                 .collectList()
                 .block()!!
 
@@ -811,11 +625,11 @@ class FeedRepositoryImplTest {
             }
 
             // When: 랜덤 콘텐츠 조회 (여러 번 실행하여 순서가 다른지 확인)
-            val result1 = feedRepository.findRandomContentIds(10, emptyList())
+            val result1 = feedRepository.findRandomContentIds(viewer.id!!, 10, emptyList())
                 .collectList()
                 .block()!!
 
-            val result2 = feedRepository.findRandomContentIds(10, emptyList())
+            val result2 = feedRepository.findRandomContentIds(viewer.id!!, 10, emptyList())
                 .collectList()
                 .block()!!
 
@@ -842,7 +656,7 @@ class FeedRepositoryImplTest {
             }
 
             // When: ids[2]를 제외하고 조회
-            val result = feedRepository.findRandomContentIds(10, listOf(ids[2]))
+            val result = feedRepository.findRandomContentIds(viewer.id!!, 10, listOf(ids[2]))
                 .collectList()
                 .block()!!
 
@@ -865,7 +679,7 @@ class FeedRepositoryImplTest {
             }
 
             // When: limit=5로 조회
-            val result = feedRepository.findRandomContentIds(5, emptyList())
+            val result = feedRepository.findRandomContentIds(viewer.id!!, 5, emptyList())
                 .collectList()
                 .block()!!
 
@@ -896,7 +710,7 @@ class FeedRepositoryImplTest {
                 .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 랜덤 콘텐츠 조회
-            val result = feedRepository.findRandomContentIds(10, emptyList())
+            val result = feedRepository.findRandomContentIds(viewer.id!!, 10, emptyList())
                 .collectList()
                 .block()!!
 
