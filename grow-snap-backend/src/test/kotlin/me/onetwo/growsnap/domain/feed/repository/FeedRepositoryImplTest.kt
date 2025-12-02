@@ -905,6 +905,8 @@ class FeedRepositoryImplTest {
         }
     }
 
+    // TODO: Commented out - findContentIdsByCategory method was deleted during CategoryFeedSortType refactoring
+    /*
     @Nested
     @DisplayName("findContentIdsByCategory - 카테고리별 콘텐츠 ID 조회")
     inner class FindContentIdsByCategory {
@@ -1203,6 +1205,7 @@ class FeedRepositoryImplTest {
                 .set(CONTENT_INTERACTIONS.UPDATED_BY, creatorId.toString())).block()
         }
     }
+    */
 
     @Nested
     @DisplayName("findByContentIds - 콘텐츠 ID 목록으로 피드 조회")

@@ -2,7 +2,6 @@ package me.onetwo.growsnap.domain.feed.repository
 
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.feed.dto.FeedItemResponse
-import me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType
 import reactor.core.publisher.Flux
 import java.util.UUID
 
@@ -135,24 +134,21 @@ interface FeedRepository {
     ): Flux<UUID>
 
     /**
-     * 카테고리별 콘텐츠 ID 조회
+     * 팔로잉 콘텐츠 ID 목록 조회 (특정 카테고리)
      *
-     * 특정 카테고리의 콘텐츠를 정렬 옵션에 따라 조회합니다.
+     * 사용자가 팔로우한 크리에이터의 최신 콘텐츠 중 특정 카테고리만 조회합니다.
+     * 카테고리별 추천 알고리즘에서 사용됩니다.
      *
-     * ### 정렬 옵션
-     * - POPULAR: 인기순 (인터랙션 가중치 기반)
-     * - RECENT: 최신순 (created_at DESC)
-     *
+     * @param userId 사용자 ID
      * @param category 조회할 카테고리
-     * @param sortBy 정렬 타입
-     * @param cursor 커서 (offset으로 해석, null이면 0)
      * @param limit 조회할 항목 수
-     * @return 콘텐츠 ID 목록
+     * @param excludeIds 제외할 콘텐츠 ID 목록
+     * @return 팔로잉 콘텐츠 ID 목록 (최신순 정렬)
      */
-    fun findContentIdsByCategory(
+    fun findFollowingContentIdsByCategory(
+        userId: UUID,
         category: Category,
-        sortBy: CategoryFeedSortType,
-        cursor: String?,
-        limit: Int
+        limit: Int,
+        excludeIds: List<UUID>
     ): Flux<UUID>
 }

@@ -2,7 +2,6 @@ package me.onetwo.growsnap.domain.feed.service
 
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.feed.dto.FeedResponse
-import me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType
 import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.feed.service.recommendation.RecommendationService
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
@@ -195,76 +194,157 @@ class FeedServiceImpl(
     /**
      * 카테고리별 피드 조회
      *
-     * 특정 카테고리의 콘텐츠를 정렬 옵션에 따라 조회합니다.
+     * 특정 카테고리의 콘텐츠를 추천 알고리즘 기반으로 조회합니다.
+     * 메인 피드와 동일한 추천 알고리즘을 사용하되, 해당 카테고리로 필터링합니다.
      * 선택적 인증을 지원하며, 인증되지 않은 사용자도 조회할 수 있습니다.
      *
-     * ### 정렬 옵션
-     * - POPULAR: 인기순 (인터랙션 가중치 기반 인기도 점수)
-     * - RECENT: 최신순 (created_at DESC)
+     * ### TikTok/Instagram Reels 방식의 추천 피드
+     * - Redis에 250개 배치를 미리 생성하여 캐싱 (TTL: 30분)
+     * - 50% 소진 시 다음 배치를 백그라운드에서 prefetch
+     * - 일관된 피드 경험 제공 (세션 기반)
+     *
+     * ### 추천 전략 (메인 피드와 동일한 비율)
+     * - 팔로잉 콘텐츠 (40%): 팔로우한 크리에이터의 해당 카테고리 콘텐츠
+     * - 인기 콘텐츠 (30%): 해당 카테고리의 인기 콘텐츠
+     * - 신규 콘텐츠 (10%): 해당 카테고리의 최신 콘텐츠
+     * - 랜덤 콘텐츠 (20%): 해당 카테고리의 랜덤 콘텐츠
      *
      * ### 처리 흐름
-     * 1. Repository에서 카테고리별 콘텐츠 ID 조회 (정렬 옵션 적용, limit + 1개 조회)
-     * 2. findByContentIds()로 상세 정보 조회
-     * 3. CursorPageResponse로 변환 (offset 기반 커서)
+     * 1. cursor를 offset으로 변환
+     * 2. batchNumber 계산 (offset / 250)
+     * 3. Redis에서 캐싱된 배치 조회
+     * 4. 캐시 미스 시 추천 알고리즘 실행 (250개 생성)
+     * 5. 배치에서 필요한 범위만 조회
+     * 6. 상세 정보 조회
+     * 7. Prefetch 체크 (50% 소진 시 다음 배치 생성)
      *
      * @param userId 사용자 ID (Optional, 비인증 시 null)
      * @param category 조회할 카테고리
-     * @param sortBy 정렬 타입 (POPULAR 또는 RECENT)
      * @param pageRequest 페이지네이션 요청 (cursor는 offset으로 해석)
      * @return 피드 응답
      */
     override fun getCategoryFeed(
         userId: UUID?,
         category: Category,
-        sortBy: CategoryFeedSortType,
         pageRequest: CursorPageRequest
     ): Mono<FeedResponse> {
-        val cursor = pageRequest.cursor
+        // userId가 null이면 ANONYMOUS_USER_ID 사용 (비인증 사용자)
+        val effectiveUserId = userId ?: ANONYMOUS_USER_ID
+
+        // cursor를 offset으로 변환 (cursor가 없으면 0부터 시작)
+        val offset = pageRequest.cursor?.toLongOrNull() ?: 0L
         val limit = pageRequest.limit
 
+        // 배치 번호 계산 (offset / BATCH_SIZE)
+        val batchNumber = (offset / FeedCacheService.BATCH_SIZE).toInt()
+        val offsetInBatch = offset % FeedCacheService.BATCH_SIZE
+
         logger.debug(
-            "Fetching category feed - userId: {}, category: {}, sortBy: {}, cursor: {}, limit: {}",
-            userId, category.name, sortBy.name, cursor, limit
+            "Fetching category feed - userId: {}, category: {}, offset: {}, batchNumber: {}, offsetInBatch: {}",
+            effectiveUserId, category.name, offset, batchNumber, offsetInBatch
         )
 
-        // Repository에서 contentIds 조회 (limit + 1개를 조회하여 hasNext 판단)
-        return feedRepository.findContentIdsByCategory(
-            category = category,
-            sortBy = sortBy,
-            cursor = cursor,
-            limit = limit + 1
-        )
-            .collectList()
-            .flatMap { contentIds ->
-                if (contentIds.isEmpty()) {
-                    logger.debug("No content found for category: {}", category.name)
-                    return@flatMap Mono.just(
-                        CursorPageResponse(
-                            content = emptyList(),
-                            nextCursor = null,
-                            hasNext = false,
-                            count = 0
-                        )
-                    )
-                }
+        return feedCacheService.getCategoryRecommendationBatch(effectiveUserId, category, batchNumber)
+            .switchIfEmpty(
+                // 캐시 미스: 새 배치 생성
+                generateAndCacheCategoryBatch(effectiveUserId, category, batchNumber)
+            )
+            .flatMap { cachedBatch ->
+                // 배치에서 필요한 범위만 추출
+                val startIndex = offsetInBatch.toInt()
+                val endIndex = (startIndex + limit + 1).coerceAtMost(cachedBatch.size)
+                val contentIds = cachedBatch.subList(startIndex, endIndex)
 
-                logger.debug("Found {} content IDs for category: {}", contentIds.size, category.name)
+                // Prefetch 체크 (50% 소진 시 다음 배치 생성)
+                checkAndPrefetchNextCategoryBatch(effectiveUserId, category, batchNumber, offset, cachedBatch.size)
 
-                // findByContentIds()로 상세 정보 조회
-                // userId가 null이면 ANONYMOUS_USER_ID 사용 (비인증 사용자)
-                val effectiveUserId = userId ?: ANONYMOUS_USER_ID
+                // 상세 정보 조회
                 feedRepository.findByContentIds(effectiveUserId, contentIds)
                     .collectList()
                     .map { feedItems ->
-                        // offset 기반 커서로 CursorPageResponse 생성
-                        val currentOffset = cursor?.toLongOrNull() ?: 0L
                         CursorPageResponse.of(
                             content = feedItems,
                             limit = limit,
-                            getCursor = { (currentOffset + feedItems.indexOf(it) + 1).toString() }
+                            getCursor = { (offset + feedItems.indexOf(it) + 1).toString() }
                         )
                     }
             }
+    }
+
+    /**
+     * 새로운 카테고리별 추천 배치 생성 및 캐싱
+     *
+     * 카테고리별 추천 알고리즘을 실행하여 250개의 콘텐츠 ID를 생성하고 Redis에 저장합니다.
+     *
+     * @param userId 사용자 ID
+     * @param category 카테고리
+     * @param batchNumber 배치 번호
+     * @return 생성된 콘텐츠 ID 목록
+     */
+    private fun generateAndCacheCategoryBatch(userId: UUID, category: Category, batchNumber: Int): Mono<List<UUID>> {
+        return feedRepository.findRecentlyViewedContentIds(userId, RECENTLY_VIEWED_LIMIT)
+            .collectList()
+            .flatMap { recentlyViewedIds ->
+                // 카테고리별 추천 알고리즘으로 250개 생성
+                recommendationService.getRecommendedContentIdsByCategory(
+                    userId = userId,
+                    category = category,
+                    limit = FeedCacheService.BATCH_SIZE,
+                    excludeContentIds = recentlyViewedIds
+                )
+                    .collectList()
+                    .flatMap { recommendedIds ->
+                        // Redis에 저장
+                        feedCacheService.saveCategoryRecommendationBatch(userId, category, batchNumber, recommendedIds)
+                            .thenReturn(recommendedIds)
+                    }
+            }
+    }
+
+    /**
+     * 카테고리별 Prefetch 체크 및 다음 배치 백그라운드 생성
+     *
+     * 사용자가 현재 배치의 50%를 소진했으면, 다음 배치를 백그라운드에서 미리 생성합니다.
+     *
+     * @param userId 사용자 ID
+     * @param category 카테고리
+     * @param currentBatch 현재 배치 번호
+     * @param currentOffset 현재 offset
+     * @param batchSize 현재 배치 크기
+     */
+    private fun checkAndPrefetchNextCategoryBatch(
+        userId: UUID,
+        category: Category,
+        currentBatch: Int,
+        currentOffset: Long,
+        batchSize: Int
+    ) {
+        val consumedPercentage = (currentOffset % FeedCacheService.BATCH_SIZE) / batchSize.toDouble()
+
+        // 50% 이상 소진했으면 다음 배치 prefetch
+        if (consumedPercentage >= FeedCacheService.PREFETCH_THRESHOLD) {
+            val nextBatch = currentBatch + 1
+
+            // 이미 캐시되어 있는지 확인
+            feedCacheService.getCategoryBatchSize(userId, category, nextBatch)
+                .filter { it == 0L }  // 캐시가 없을 때만
+                .flatMap {
+                    // 백그라운드에서 비동기로 생성 (응답 지연 방지)
+                    generateAndCacheCategoryBatch(userId, category, nextBatch)
+                }
+                .subscribeOn(Schedulers.boundedElastic())  // 백그라운드 스레드
+                .subscribe(
+                    { },  // onNext: 성공 시 아무것도 하지 않음
+                    { error ->
+                        logger.error(
+                            "Failed to prefetch next category batch for user {} in category {}",
+                            userId,
+                            category.name,
+                            error
+                        )
+                    }  // onError
+                )
+        }
     }
 
     companion object {

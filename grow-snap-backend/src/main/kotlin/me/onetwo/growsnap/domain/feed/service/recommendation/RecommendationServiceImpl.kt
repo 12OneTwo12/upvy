@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.feed.service.recommendation
 
+import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.feed.service.collaborative.CollaborativeFilteringService
 import org.slf4j.LoggerFactory
@@ -186,6 +187,169 @@ class RecommendationServiceImpl(
         excludeContentIds: List<UUID>
     ): Flux<UUID> {
         return feedRepository.findRandomContentIds(limit, excludeContentIds)
+    }
+
+    /**
+     * 카테고리별 추천 콘텐츠 ID 목록 조회
+     *
+     * 특정 카테고리로 필터링된 추천 콘텐츠를 제공합니다.
+     * 메인 피드와 동일한 추천 알고리즘을 사용하되, 해당 카테고리만 반환합니다.
+     *
+     * ### 추천 전략 (메인 피드와 동일한 비율)
+     * - 팔로잉 콘텐츠 (40%): 팔로우한 크리에이터의 해당 카테고리 콘텐츠
+     * - 인기 콘텐츠 (30%): 해당 카테고리의 인기 콘텐츠
+     * - 신규 콘텐츠 (10%): 해당 카테고리의 최신 콘텐츠
+     * - 랜덤 콘텐츠 (20%): 해당 카테고리의 랜덤 콘텐츠
+     *
+     * ### 처리 흐름
+     * 1. 각 전략별로 가져올 콘텐츠 수 계산
+     * 2. **병렬로** 각 전략별 콘텐츠 조회 (Mono.zip 사용)
+     * 3. 결과 합치기 및 무작위 섞기
+     *
+     * @param userId 사용자 ID
+     * @param category 필터링할 카테고리
+     * @param limit 조회할 콘텐츠 수
+     * @param excludeContentIds 제외할 콘텐츠 ID 목록
+     * @return 추천 콘텐츠 ID 목록 (순서 무작위)
+     */
+    override fun getRecommendedContentIdsByCategory(
+        userId: UUID,
+        category: Category,
+        limit: Int,
+        excludeContentIds: List<UUID>
+    ): Flux<UUID> {
+        // 메인 피드와 동일한 비율 사용 (COLLABORATIVE 대신 FOLLOWING 사용)
+        val strategyLimits = RecommendationStrategy.calculateLimits(limit)
+
+        // 병렬로 모든 전략 실행
+        return Mono.zip(
+            getFollowingContentIdsByCategory(userId, category, strategyLimits[RecommendationStrategy.COLLABORATIVE]!!, excludeContentIds).collectList(),
+            getPopularContentIdsByCategory(category, strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds).collectList(),
+            getNewContentIdsByCategory(category, strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds).collectList(),
+            getRandomContentIdsByCategory(category, strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds).collectList()
+        ).flatMapMany { tuple ->
+            // 모든 결과 합치기 및 무작위 섞기
+            val allIds = tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4
+            Flux.fromIterable(allIds.shuffled())
+        }
+    }
+
+    /**
+     * 특정 카테고리의 팔로잉 콘텐츠 ID 조회
+     *
+     * @param userId 사용자 ID
+     * @param category 조회할 카테고리
+     * @param limit 조회할 콘텐츠 수
+     * @param excludeContentIds 제외할 콘텐츠 ID 목록
+     * @return 팔로잉 콘텐츠 ID 목록 (최신순 정렬)
+     */
+    private fun getFollowingContentIdsByCategory(
+        userId: UUID,
+        category: Category,
+        limit: Int,
+        excludeContentIds: List<UUID>
+    ): Flux<UUID> {
+        return feedRepository.findFollowingContentIdsByCategory(userId, category, limit, excludeContentIds)
+            .collectList()
+            .flatMapMany { followingIds ->
+                if (followingIds.isEmpty()) {
+                    // 팔로잉 콘텐츠가 없으면 인기 콘텐츠로 fallback
+                    logger.debug("No following content for user {} in category {}, falling back to popular content", userId, category.name)
+                    getPopularContentIdsByCategory(category, limit, excludeContentIds)
+                } else if (followingIds.size < limit) {
+                    // 팔로잉 콘텐츠가 부족하면 인기 콘텐츠로 보충
+                    val remaining = limit - followingIds.size
+                    logger.debug(
+                        "Following content ({}) < limit ({}) for category {}, adding {} popular contents",
+                        followingIds.size,
+                        limit,
+                        category.name,
+                        remaining
+                    )
+                    Flux.concat(
+                        Flux.fromIterable(followingIds),
+                        getPopularContentIdsByCategory(category, remaining, excludeContentIds + followingIds)
+                    )
+                } else {
+                    // 팔로잉 콘텐츠가 충분함
+                    logger.debug("Returning {} following contents for user {} in category {}", followingIds.size, userId, category.name)
+                    Flux.fromIterable(followingIds.take(limit))
+                }
+            }
+    }
+
+    /**
+     * 특정 카테고리의 인기 콘텐츠 ID 조회
+     *
+     * @param category 조회할 카테고리
+     * @param limit 조회할 콘텐츠 수
+     * @param excludeContentIds 제외할 콘텐츠 ID 목록
+     * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
+     */
+    private fun getPopularContentIdsByCategory(
+        category: Category,
+        limit: Int,
+        excludeContentIds: List<UUID>
+    ): Flux<UUID> {
+        return feedRepository.findPopularContentIdsByCategories(listOf(category.name), limit, excludeContentIds)
+    }
+
+    /**
+     * 특정 카테고리의 신규 콘텐츠 ID 조회
+     *
+     * FeedRepository에는 카테고리별 신규 콘텐츠 조회 메서드가 없으므로,
+     * 전체 신규 콘텐츠를 조회한 후 카테고리로 필터링합니다.
+     *
+     * @param category 조회할 카테고리
+     * @param limit 조회할 콘텐츠 수
+     * @param excludeContentIds 제외할 콘텐츠 ID 목록
+     * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
+     */
+    private fun getNewContentIdsByCategory(
+        category: Category,
+        limit: Int,
+        excludeContentIds: List<UUID>
+    ): Flux<UUID> {
+        // 카테고리 필터링을 위해 더 많은 콘텐츠를 조회 (limit * 3)
+        return feedRepository.findNewContentIds(limit * 3, excludeContentIds)
+            .collectList()
+            .flatMapMany { contentIds ->
+                // 카테고리별로 필터링
+                feedRepository.findCategoriesByContentIds(contentIds)
+                    .zipWith(Flux.fromIterable(contentIds))
+                    .filter { it.t1 == category.name }
+                    .map { it.t2 }
+                    .take(limit.toLong())
+            }
+    }
+
+    /**
+     * 특정 카테고리의 랜덤 콘텐츠 ID 조회
+     *
+     * FeedRepository에는 카테고리별 랜덤 콘텐츠 조회 메서드가 없으므로,
+     * 전체 랜덤 콘텐츠를 조회한 후 카테고리로 필터링합니다.
+     *
+     * @param category 조회할 카테고리
+     * @param limit 조회할 콘텐츠 수
+     * @param excludeContentIds 제외할 콘텐츠 ID 목록
+     * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
+     */
+    private fun getRandomContentIdsByCategory(
+        category: Category,
+        limit: Int,
+        excludeContentIds: List<UUID>
+    ): Flux<UUID> {
+        // 카테고리 필터링을 위해 더 많은 콘텐츠를 조회 (limit * 3)
+        return feedRepository.findRandomContentIds(limit * 3, excludeContentIds)
+            .collectList()
+            .flatMapMany { contentIds ->
+                // 카테고리별로 필터링
+                feedRepository.findCategoriesByContentIds(contentIds)
+                    .zipWith(Flux.fromIterable(contentIds))
+                    .filter { it.t1 == category.name }
+                    .map { it.t2 }
+                    .take(limit.toLong())
+            }
     }
 
     companion object {
