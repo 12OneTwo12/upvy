@@ -14,7 +14,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/authStore';
 import { ReportModal } from '@/components/report/ReportModal';
 import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
+import { BlockConfirmModal } from '@/components/block/BlockConfirmModal';
 import type { CreatorInfo, InteractionInfo } from '@/types/feed.types';
+import type { BlockType } from '@/types/block.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_EXPAND_HEIGHT = 150; // 최대 확장 높이
@@ -69,6 +71,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const [expandedHeight, setExpandedHeight] = useState(0);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [blockType, setBlockType] = useState<BlockType>('content');
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   // 하단 패딩 = 탭바 높이 + 재생바 영역 + 여유 공간
@@ -108,22 +112,28 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const actionSheetOptions: ActionSheetOption[] = useMemo(
     () => [
       {
+        label: '이 콘텐츠 관심없음',
+        icon: 'eye-off-outline',
+        onPress: () => {
+          setBlockType('content');
+          setShowBlockModal(true);
+        },
+      },
+      {
+        label: '사용자 차단하기',
+        icon: 'person-remove-outline',
+        onPress: () => {
+          setBlockType('user');
+          setShowBlockModal(true);
+        },
+        destructive: true,
+      },
+      {
         label: '신고하기',
         icon: 'alert-circle-outline',
         onPress: () => setShowReportModal(true),
         destructive: true,
       },
-      // 추후 추가 가능한 옵션들:
-      // {
-      //   label: '링크 복사',
-      //   icon: 'link-outline',
-      //   onPress: () => {},
-      // },
-      // {
-      //   label: '공유하기',
-      //   icon: 'share-outline',
-      //   onPress: onShare,
-      // },
     ],
     []
   );
@@ -286,6 +296,19 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           targetType="content"
           targetId={contentId}
           targetName={title}
+        />
+
+        {/* 차단 확인 모달 */}
+        <BlockConfirmModal
+          visible={showBlockModal}
+          onClose={() => setShowBlockModal(false)}
+          blockType={blockType}
+          targetId={blockType === 'user' ? creator.userId : contentId}
+          targetName={blockType === 'user' ? creator.nickname : title}
+          onSuccess={() => {
+            // 차단 성공 시 피드에서 제거 (부모 컴포넌트에서 처리)
+            // 여기서는 모달만 닫음
+          }}
         />
 
         {/* 확장 시 전체 설명 영역 */}
