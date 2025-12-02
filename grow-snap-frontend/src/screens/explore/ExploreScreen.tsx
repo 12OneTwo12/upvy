@@ -12,17 +12,14 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, type Category } from '@/types/content.types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ExploreStackParamList } from '@/types/navigation.types';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_MARGIN = 8;
-const CARD_WIDTH = (SCREEN_WIDTH - 48 - CARD_MARGIN) / 2; // 48 = padding 32 + gap 16
 
 type ExploreScreenNavigationProp = NativeStackNavigationProp<
   ExploreStackParamList,
@@ -32,40 +29,48 @@ type ExploreScreenNavigationProp = NativeStackNavigationProp<
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ExploreScreenNavigationProp>();
+  const { width: screenWidth, fontScale } = useWindowDimensions();
+
+  // 글자 크기 스케일 제한 (최대 1.3배까지만)
+  const adjustedFontScale = Math.min(fontScale, 1.3);
+
+  // 카드 너비 계산 (2개씩 배치)
+  const CARD_MARGIN = 8;
+  const CARD_WIDTH = (screenWidth - 48 - CARD_MARGIN) / 2; // 48 = padding 32 + gap 16
 
   const handleCategoryPress = (category: Category) => {
     navigation.navigate('CategoryFeed', { category });
   };
 
-  // 카테고리 아이콘 이모지 매핑 (간단한 아이콘 대신 사용)
-  const getCategoryEmoji = (category: Category): string => {
-    const emojiMap: Record<Category, string> = {
-      LANGUAGE: '🗣️',
-      SCIENCE: '🔬',
-      HISTORY: '📜',
-      MATHEMATICS: '🔢',
-      ART: '🎨',
-      STARTUP: '🚀',
-      MARKETING: '📈',
-      PROGRAMMING: '💻',
-      DESIGN: '✨',
-      PRODUCTIVITY: '⚡',
-      PSYCHOLOGY: '🧠',
-      FINANCE: '💰',
-      HEALTH: '💪',
-      PARENTING: '👨‍👩‍👧',
-      COOKING: '🍳',
-      TRAVEL: '✈️',
-      HOBBY: '🎯',
-      TREND: '🔥',
-      OTHER: '📦',
+  // 카테고리 아이콘 매핑 (Ionicons)
+  const getCategoryIcon = (category: Category): keyof typeof Ionicons.glyphMap => {
+    const iconMap: Record<Category, keyof typeof Ionicons.glyphMap> = {
+      LANGUAGE: 'language',
+      SCIENCE: 'flask',
+      HISTORY: 'book',
+      MATHEMATICS: 'calculator',
+      ART: 'color-palette',
+      STARTUP: 'rocket',
+      MARKETING: 'trending-up',
+      PROGRAMMING: 'code-slash',
+      DESIGN: 'brush',
+      PRODUCTIVITY: 'flash',
+      PSYCHOLOGY: 'pulse',
+      FINANCE: 'wallet',
+      HEALTH: 'fitness',
+      PARENTING: 'people',
+      COOKING: 'restaurant',
+      TRAVEL: 'airplane',
+      HOBBY: 'game-controller',
+      TREND: 'flame',
+      OTHER: 'grid',
     };
-    return emojiMap[category] || '📦';
+    return iconMap[category] || 'grid';
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000000' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
 
       {/* 헤더 */}
       <View style={{
@@ -74,15 +79,15 @@ export default function ExploreScreen() {
         paddingBottom: 16,
       }}>
         <Text style={{
-          color: '#FFFFFF',
-          fontSize: 28,
+          color: '#000000',
+          fontSize: 28 * adjustedFontScale,
           fontWeight: '700',
         }}>
           탐색
         </Text>
         <Text style={{
           color: '#666666',
-          fontSize: 14,
+          fontSize: 14 * adjustedFontScale,
           marginTop: 4,
         }}>
           관심있는 카테고리를 선택하세요
@@ -110,36 +115,41 @@ export default function ExploreScreen() {
               style={{
                 width: CARD_WIDTH,
                 aspectRatio: 1,
-                backgroundColor: '#0a0a0a',
+                backgroundColor: '#F8F9FA',
                 borderRadius: 12,
                 padding: 16,
                 justifyContent: 'space-between',
                 borderWidth: 1,
-                borderColor: '#1a1a1a',
+                borderColor: '#E9ECEF',
               }}
             >
-              {/* 이모지 아이콘 */}
+              {/* 아이콘 */}
               <View>
-                <Text style={{ fontSize: 40 }}>
-                  {getCategoryEmoji(categoryInfo.value)}
-                </Text>
+                <Ionicons
+                  name={getCategoryIcon(categoryInfo.value)}
+                  size={32}
+                  color="#22c55e"
+                />
               </View>
 
               {/* 카테고리 정보 */}
               <View>
                 <Text style={{
-                  color: '#FFFFFF',
-                  fontSize: 16,
+                  color: '#000000',
+                  fontSize: 17,
                   fontWeight: '700',
                   marginBottom: 4,
-                }}>
+                }}
+                allowFontScaling={true}
+                >
                   {categoryInfo.displayName}
                 </Text>
                 <Text style={{
-                  color: '#666666',
-                  fontSize: 12,
+                  color: '#6C757D',
+                  fontSize: 13,
                 }}
                 numberOfLines={2}
+                allowFontScaling={true}
                 >
                   {categoryInfo.description}
                 </Text>
