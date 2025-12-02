@@ -39,14 +39,14 @@ data class ReportResponse(
          */
         fun from(report: Report): ReportResponse {
             return ReportResponse(
-                id = report.id ?: throw IllegalStateException("신고 ID가 없습니다"),
+                id = report.id ?: error("신고 ID가 없습니다"),
                 reporterId = report.reporterId.toString(),
                 targetType = report.targetType,
                 targetId = report.targetId.toString(),
                 reportType = report.reportType,
                 description = report.description,
                 status = report.status,
-                createdAt = report.createdAt ?: Instant.now()
+                createdAt = report.createdAt ?: error("신고 생성 시각이 없습니다")
             )
         }
     }

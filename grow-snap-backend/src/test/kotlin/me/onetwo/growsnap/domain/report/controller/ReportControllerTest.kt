@@ -104,7 +104,10 @@ class ReportControllerTest {
                             parameterWithName("targetId").description("신고 대상 ID")
                         ),
                         requestFields(
-                            fieldWithPath("reportType").description("신고 타입 (OFF_TOPIC, SPAM, INAPPROPRIATE_CONTENT, COPYRIGHT, HARASSMENT, HATE_SPEECH, MISINFORMATION, OTHER)"),
+                            fieldWithPath("reportType").description(
+                                "신고 타입 (OFF_TOPIC, SPAM, INAPPROPRIATE_CONTENT, COPYRIGHT, " +
+                                    "HARASSMENT, HATE_SPEECH, MISINFORMATION, OTHER)"
+                            ),
                             fieldWithPath("description").description("신고 상세 설명 (최대 500자, 선택)").optional()
                         ),
                         responseFields(
@@ -173,7 +176,10 @@ class ReportControllerTest {
                             parameterWithName("targetId").description("신고 대상 ID")
                         ),
                         requestFields(
-                            fieldWithPath("reportType").description("신고 타입 (OFF_TOPIC, SPAM, INAPPROPRIATE_CONTENT, COPYRIGHT, HARASSMENT, HATE_SPEECH, MISINFORMATION, OTHER)"),
+                            fieldWithPath("reportType").description(
+                                "신고 타입 (OFF_TOPIC, SPAM, INAPPROPRIATE_CONTENT, COPYRIGHT, " +
+                                    "HARASSMENT, HATE_SPEECH, MISINFORMATION, OTHER)"
+                            ),
                             fieldWithPath("description").description("신고 상세 설명 (최대 500자, 선택)").optional()
                         ),
                         responseFields(
@@ -242,7 +248,10 @@ class ReportControllerTest {
                             parameterWithName("targetId").description("신고 대상 ID")
                         ),
                         requestFields(
-                            fieldWithPath("reportType").description("신고 타입 (OFF_TOPIC, SPAM, INAPPROPRIATE_CONTENT, COPYRIGHT, HARASSMENT, HATE_SPEECH, MISINFORMATION, OTHER)"),
+                            fieldWithPath("reportType").description(
+                                "신고 타입 (OFF_TOPIC, SPAM, INAPPROPRIATE_CONTENT, COPYRIGHT, " +
+                                    "HARASSMENT, HATE_SPEECH, MISINFORMATION, OTHER)"
+                            ),
                             fieldWithPath("description").description("신고 상세 설명 (최대 500자, 선택)").optional()
                         ),
                         responseFields(

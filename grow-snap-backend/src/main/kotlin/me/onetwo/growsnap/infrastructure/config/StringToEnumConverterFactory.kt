@@ -2,7 +2,6 @@ package me.onetwo.growsnap.infrastructure.config
 
 import org.springframework.core.convert.converter.Converter
 import org.springframework.core.convert.converter.ConverterFactory
-import java.lang.Enum.*
 
 /**
  * 문자열을 Enum으로 변환하는 Converter Factory
@@ -60,7 +59,7 @@ class StringToEnumConverterFactory : ConverterFactory<String, Enum<*>> {
 
             return try {
                 @Suppress("UNCHECKED_CAST")
-                valueOf(enumType as Class<out Enum<*>>, normalizedSource) as T
+                java.lang.Enum.valueOf(enumType as Class<out Enum<*>>, normalizedSource) as T
             } catch (e: IllegalArgumentException) {
                 throw IllegalArgumentException(
                     "Invalid value '$source' for enum type ${enumType.simpleName}. " +
