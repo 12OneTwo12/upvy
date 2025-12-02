@@ -25,13 +25,14 @@ data class ContentBlockResponse(
          *
          * @param contentBlock 콘텐츠 차단 모델
          * @return 콘텐츠 차단 응답 DTO
+         * @throws IllegalArgumentException id 또는 createdAt이 null인 경우
          */
         fun from(contentBlock: ContentBlock): ContentBlockResponse {
             return ContentBlockResponse(
-                id = contentBlock.id ?: error("차단 ID가 없습니다"),
+                id = requireNotNull(contentBlock.id) { "차단 ID는 null일 수 없습니다" },
                 userId = contentBlock.userId.toString(),
                 contentId = contentBlock.contentId.toString(),
-                createdAt = contentBlock.createdAt ?: error("차단 생성 시각이 없습니다")
+                createdAt = requireNotNull(contentBlock.createdAt) { "차단 생성 시각은 null일 수 없습니다" }
             )
         }
     }

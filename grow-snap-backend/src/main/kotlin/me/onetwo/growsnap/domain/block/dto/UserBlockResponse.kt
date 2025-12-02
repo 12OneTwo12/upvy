@@ -25,13 +25,14 @@ data class UserBlockResponse(
          *
          * @param userBlock 사용자 차단 모델
          * @return 사용자 차단 응답 DTO
+         * @throws IllegalArgumentException id 또는 createdAt이 null인 경우
          */
         fun from(userBlock: UserBlock): UserBlockResponse {
             return UserBlockResponse(
-                id = userBlock.id ?: error("차단 ID가 없습니다"),
+                id = requireNotNull(userBlock.id) { "차단 ID는 null일 수 없습니다" },
                 blockerId = userBlock.blockerId.toString(),
                 blockedId = userBlock.blockedId.toString(),
-                createdAt = userBlock.createdAt ?: error("차단 생성 시각이 없습니다")
+                createdAt = requireNotNull(userBlock.createdAt) { "차단 생성 시각은 null일 수 없습니다" }
             )
         }
     }

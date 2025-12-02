@@ -15,9 +15,12 @@ import java.util.UUID
  * 콘텐츠 차단 서비스 구현체
  *
  * ## 처리 흐름
- * 1. 중복 차단 확인 (exists 체크)
- * 2. 차단 저장 또는 삭제 (트랜잭션)
- * 3. 응답 반환
+ * 1. 차단 저장 시도 (DB UPSERT로 중복 방지)
+ * 2. 응답 반환
+ *
+ * ## 동시성 처리
+ * - Repository의 UPSERT 패턴이 자동으로 중복 처리
+ * - DB 제약 조건으로 안전성 보장
  *
  * @property contentBlockRepository 콘텐츠 차단 레포지토리
  */
@@ -32,10 +35,11 @@ class ContentBlockServiceImpl(
      * ### 비즈니스 규칙
      * - 로그인한 사용자만 차단 가능 (Controller에서 Principal 체크)
      * - 자신의 콘텐츠도 차단 가능 (관심없음 기능)
-     * - 중복 차단 방지 (동일 사용자가 동일 콘텐츠를 여러 번 차단 불가)
+     * - 중복 차단 자동 처리 (DB UPSERT 패턴)
      *
-     * ### 예외
-     * - DuplicateContentBlockException: 이미 차단한 콘텐츠인 경우
+     * ### 동시성 안정성
+     * - Repository UPSERT 패턴이 중복을 자동으로 처리
+     * - 차단 해제 후 재차단 시 기존 레코드 재사용
      *
      * @param userId 차단한 사용자 ID
      * @param contentId 차단된 콘텐츠 ID
@@ -48,15 +52,7 @@ class ContentBlockServiceImpl(
     ): Mono<ContentBlockResponse> {
         logger.debug("Blocking content: userId={}, contentId={}", userId, contentId)
 
-        return contentBlockRepository.exists(userId, contentId)
-            .flatMap { exists ->
-                if (exists) {
-                    logger.warn("Duplicate content block detected: userId={}, contentId={}", userId, contentId)
-                    Mono.error(BlockException.DuplicateContentBlockException(userId.toString(), contentId.toString()))
-                } else {
-                    contentBlockRepository.save(userId, contentId)
-                }
-            }
+        return contentBlockRepository.save(userId, contentId)
             .map { contentBlock ->
                 logger.info("Content blocked successfully: blockId={}, userId={}, contentId={}", contentBlock.id, userId, contentId)
                 ContentBlockResponse.from(contentBlock)

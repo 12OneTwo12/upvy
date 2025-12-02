@@ -52,7 +52,6 @@ class ContentBlockServiceImplTest {
                 deletedAt = null
             )
 
-            every { contentBlockRepository.exists(userId, contentId) } returns Mono.just(false)
             every { contentBlockRepository.save(userId, contentId) } returns Mono.just(contentBlock)
 
             // When: 콘텐츠 차단
@@ -68,29 +67,7 @@ class ContentBlockServiceImplTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 1) { contentBlockRepository.exists(userId, contentId) }
             verify(exactly = 1) { contentBlockRepository.save(userId, contentId) }
-        }
-
-        @Test
-        @DisplayName("이미 차단한 콘텐츠인 경우 DuplicateContentBlockException을 발생시킨다")
-        fun blockContent_WhenAlreadyBlocked_ThrowsDuplicateContentBlockException() {
-            // Given: 이미 차단한 콘텐츠
-            val userId = UUID.randomUUID()
-            val contentId = UUID.randomUUID()
-
-            every { contentBlockRepository.exists(userId, contentId) } returns Mono.just(true)
-
-            // When: 중복 차단 시도
-            val result = contentBlockService.blockContent(userId, contentId)
-
-            // Then: DuplicateContentBlockException 발생
-            StepVerifier.create(result)
-                .expectError(BlockException.DuplicateContentBlockException::class.java)
-                .verify()
-
-            verify(exactly = 1) { contentBlockRepository.exists(userId, contentId) }
-            verify(exactly = 0) { contentBlockRepository.save(any(), any()) }
         }
     }
 

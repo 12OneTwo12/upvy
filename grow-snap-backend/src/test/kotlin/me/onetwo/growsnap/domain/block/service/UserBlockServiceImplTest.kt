@@ -52,7 +52,6 @@ class UserBlockServiceImplTest {
                 deletedAt = null
             )
 
-            every { userBlockRepository.exists(blockerId, blockedId) } returns Mono.just(false)
             every { userBlockRepository.save(blockerId, blockedId) } returns Mono.just(userBlock)
 
             // When: 사용자 차단
@@ -68,7 +67,6 @@ class UserBlockServiceImplTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 1) { userBlockRepository.exists(blockerId, blockedId) }
             verify(exactly = 1) { userBlockRepository.save(blockerId, blockedId) }
         }
 
@@ -86,28 +84,6 @@ class UserBlockServiceImplTest {
                 .expectError(BlockException.SelfBlockException::class.java)
                 .verify()
 
-            verify(exactly = 0) { userBlockRepository.exists(any(), any()) }
-            verify(exactly = 0) { userBlockRepository.save(any(), any()) }
-        }
-
-        @Test
-        @DisplayName("이미 차단한 사용자인 경우 DuplicateUserBlockException을 발생시킨다")
-        fun blockUser_WhenAlreadyBlocked_ThrowsDuplicateUserBlockException() {
-            // Given: 이미 차단한 사용자
-            val blockerId = UUID.randomUUID()
-            val blockedId = UUID.randomUUID()
-
-            every { userBlockRepository.exists(blockerId, blockedId) } returns Mono.just(true)
-
-            // When: 중복 차단 시도
-            val result = userBlockService.blockUser(blockerId, blockedId)
-
-            // Then: DuplicateUserBlockException 발생
-            StepVerifier.create(result)
-                .expectError(BlockException.DuplicateUserBlockException::class.java)
-                .verify()
-
-            verify(exactly = 1) { userBlockRepository.exists(blockerId, blockedId) }
             verify(exactly = 0) { userBlockRepository.save(any(), any()) }
         }
     }

@@ -16,9 +16,13 @@ import java.util.UUID
  *
  * ## 처리 흐름
  * 1. 자기 자신 차단 확인 (SelfBlockException)
- * 2. 중복 차단 확인 (exists 체크)
- * 3. 차단 저장 또는 삭제 (트랜잭션)
+ * 2. 차단 저장 시도 (DB 제약 조건으로 중복 방지)
+ * 3. DataIntegrityViolationException → DuplicateUserBlockException 변환
  * 4. 응답 반환
+ *
+ * ## 동시성 처리
+ * - DB UNIQUE 제약 조건을 활용하여 race condition 방지
+ * - exists 체크 없이 바로 save 시도하여 불필요한 DB 조회 제거
  *
  * @property userBlockRepository 사용자 차단 레포지토리
  */
@@ -33,11 +37,14 @@ class UserBlockServiceImpl(
      * ### 비즈니스 규칙
      * - 로그인한 사용자만 차단 가능 (Controller에서 Principal 체크)
      * - 자기 자신은 차단할 수 없음 (SelfBlockException)
-     * - 중복 차단 방지 (동일 사용자가 동일 사용자를 여러 번 차단 불가)
+     * - 중복 차단 자동 처리 (DB UPSERT 패턴)
+     *
+     * ### 동시성 안정성
+     * - Repository UPSERT 패턴이 중복을 자동으로 처리
+     * - 차단 해제 후 재차단 시 기존 레코드 재사용
      *
      * ### 예외
      * - SelfBlockException: 자기 자신을 차단하려는 경우
-     * - DuplicateUserBlockException: 이미 차단한 사용자인 경우
      *
      * @param blockerId 차단한 사용자 ID
      * @param blockedId 차단된 사용자 ID
@@ -55,15 +62,7 @@ class UserBlockServiceImpl(
             return Mono.error(BlockException.SelfBlockException(blockerId.toString()))
         }
 
-        return userBlockRepository.exists(blockerId, blockedId)
-            .flatMap { exists ->
-                if (exists) {
-                    logger.warn("Duplicate user block detected: blockerId={}, blockedId={}", blockerId, blockedId)
-                    Mono.error(BlockException.DuplicateUserBlockException(blockerId.toString(), blockedId.toString()))
-                } else {
-                    userBlockRepository.save(blockerId, blockedId)
-                }
-            }
+        return userBlockRepository.save(blockerId, blockedId)
             .map { userBlock ->
                 logger.info("User blocked successfully: blockId={}, blockerId={}, blockedId={}", userBlock.id, blockerId, blockedId)
                 UserBlockResponse.from(userBlock)

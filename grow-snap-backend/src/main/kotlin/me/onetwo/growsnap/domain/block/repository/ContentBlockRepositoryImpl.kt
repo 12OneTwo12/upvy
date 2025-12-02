@@ -28,19 +28,26 @@ class ContentBlockRepositoryImpl(
 ) : ContentBlockRepository {
 
     /**
-     * 콘텐츠 차단 생성
+     * 콘텐츠 차단 생성 또는 복구 (UPSERT 패턴)
      *
      * ### 처리 흐름
-     * 1. content_blocks 테이블에 INSERT
-     * 2. created_at, created_by, updated_at, updated_by 자동 설정
+     * - `INSERT ... ON DUPLICATE KEY UPDATE` 사용
+     * - 새 차단: INSERT 실행
+     * - 기존 차단 (soft deleted 포함): deleted_at = NULL로 복구
      *
-     * ### 비즈니스 규칙
-     * - 중복 차단 방지는 Service 계층에서 처리 (exists 체크)
-     * - Soft Delete 지원 (deleted_at)
+     * ### 성능 최적화
+     * - 1번의 DB 쿼리로 처리 (Atomic operation)
+     * - Race condition 완전 방지
+     * - SELECT 없이 UPSERT 직접 실행
+     *
+     * ### Soft Delete 지원
+     * - UNIQUE 제약 조건: (user_id, content_id)
+     * - 중복 키 발생 시 deleted_at을 NULL로 업데이트하여 차단 복구
+     * - 이력 유지를 위해 레코드는 삭제하지 않음
      *
      * @param userId 차단한 사용자 ID
      * @param contentId 차단된 콘텐츠 ID
-     * @return 생성된 콘텐츠 차단 (Mono)
+     * @return 생성 또는 복구된 콘텐츠 차단 (Mono)
      */
     override fun save(
         userId: UUID,
@@ -59,19 +66,32 @@ class ContentBlockRepositoryImpl(
                 .set(CONTENT_BLOCKS.CREATED_BY, userIdStr)
                 .set(CONTENT_BLOCKS.UPDATED_AT, now)
                 .set(CONTENT_BLOCKS.UPDATED_BY, userIdStr)
+                .onDuplicateKeyUpdate()
+                .set(CONTENT_BLOCKS.DELETED_AT, null as Instant?)
+                .set(CONTENT_BLOCKS.UPDATED_AT, now)
+                .set(CONTENT_BLOCKS.UPDATED_BY, userIdStr)
                 .returningResult(CONTENT_BLOCKS.ID)
-        ).map { record ->
-            ContentBlock(
-                id = record.getValue(CONTENT_BLOCKS.ID),
-                userId = userId,
-                contentId = contentId,
-                createdAt = now,
-                createdBy = userIdStr,
-                updatedAt = now,
-                updatedBy = userIdStr,
-                deletedAt = null
+        ).flatMap { record ->
+            val blockId = record.getValue(CONTENT_BLOCKS.ID)
+
+            // UPSERT 후 최신 데이터 조회
+            findByUserIdAndContentId(userId, contentId)
+                .map { it.copy(id = blockId) }
+        }.switchIfEmpty(
+            // returningResult가 실패한 경우 (일부 DB 드라이버 제한)
+            Mono.just(
+                ContentBlock(
+                    id = null,
+                    userId = userId,
+                    contentId = contentId,
+                    createdAt = now,
+                    createdBy = userIdStr,
+                    updatedAt = now,
+                    updatedBy = userIdStr,
+                    deletedAt = null
+                )
             )
-        }
+        )
     }
 
     /**
@@ -106,12 +126,16 @@ class ContentBlockRepositoryImpl(
     }
 
     /**
-     * 콘텐츠 차단 조회
+     * 콘텐츠 차단 조회 (deleted_at 상관없이)
      *
      * ### 처리 흐름
      * 1. content_blocks 테이블에서 user_id, content_id로 검색
-     * 2. deleted_at IS NULL 조건으로 삭제되지 않은 차단만 조회
+     * 2. deleted_at 상관없이 조회 (UPSERT 패턴 지원)
      * 3. 결과를 ContentBlock 모델로 매핑
+     *
+     * ### 참고
+     * - UPSERT 패턴에서 사용되므로 deleted_at 조건 없이 조회
+     * - exists 메서드는 deleted_at IS NULL 조건 사용
      *
      * @param userId 차단한 사용자 ID
      * @param contentId 차단된 콘텐츠 ID
@@ -136,7 +160,6 @@ class ContentBlockRepositoryImpl(
                 .from(CONTENT_BLOCKS)
                 .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
                 .and(CONTENT_BLOCKS.CONTENT_ID.eq(contentId.toString()))
-                .and(CONTENT_BLOCKS.DELETED_AT.isNull)
         ).map { record ->
             ContentBlock(
                 id = record.getValue(CONTENT_BLOCKS.ID),

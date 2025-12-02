@@ -80,7 +80,7 @@ class UserBlockController(
             .flatMap { blockerId ->
                 userBlockService.unblockUser(blockerId, userId)
             }
-            .map { ResponseEntity.status(HttpStatus.NO_CONTENT).build<Void>() }
+            .thenReturn(ResponseEntity.status(HttpStatus.NO_CONTENT).build<Void>())
     }
 
     /**

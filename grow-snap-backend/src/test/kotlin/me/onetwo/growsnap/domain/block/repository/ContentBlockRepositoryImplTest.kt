@@ -112,6 +112,49 @@ class ContentBlockRepositoryImplTest {
                 }
                 .verifyComplete()
         }
+
+        @Test
+        @DisplayName("삭제된 차단을 다시 차단하면 복원된다 (UPSERT)")
+        fun save_WhenBlockIsDeleted_ResurrectBlock() {
+            // Given: 콘텐츠 차단 생성 후 삭제
+            contentBlockRepository.save(userId, contentId).block()!!
+            contentBlockRepository.delete(userId, contentId).block()
+
+            // When: 삭제된 차단을 다시 차단
+            val result = contentBlockRepository.save(userId, contentId)
+
+            // Then: 차단이 복원됨 (deleted_at = NULL)
+            StepVerifier.create(result)
+                .assertNext { contentBlock ->
+                    assertThat(contentBlock.userId).isEqualTo(userId)
+                    assertThat(contentBlock.contentId).isEqualTo(contentId)
+                    assertThat(contentBlock.deletedAt).isNull()  // 복원됨
+                }
+                .verifyComplete()
+
+            // Then: exists()로 확인해도 존재함
+            val exists = contentBlockRepository.exists(userId, contentId).block()
+            assertThat(exists).isTrue()
+        }
+
+        @Test
+        @DisplayName("이미 차단한 콘텐츠를 다시 차단해도 성공한다 (Idempotent)")
+        fun save_WhenAlreadyBlocked_IsIdempotent() {
+            // Given: 이미 차단한 콘텐츠
+            contentBlockRepository.save(userId, contentId).block()
+
+            // When: 동일한 콘텐츠를 다시 차단 시도
+            val result = contentBlockRepository.save(userId, contentId)
+
+            // Then: 성공적으로 완료됨 (중복 에러 없음)
+            StepVerifier.create(result)
+                .assertNext { contentBlock ->
+                    assertThat(contentBlock.userId).isEqualTo(userId)
+                    assertThat(contentBlock.contentId).isEqualTo(contentId)
+                    assertThat(contentBlock.deletedAt).isNull()
+                }
+                .verifyComplete()
+        }
     }
 
     @Nested
@@ -202,8 +245,8 @@ class ContentBlockRepositoryImplTest {
         }
 
         @Test
-        @DisplayName("삭제된 차단은 조회되지 않는다")
-        fun findByUserIdAndContentId_WhenBlockIsDeleted_ReturnsEmpty() {
+        @DisplayName("삭제된 차단도 조회된다 (UPSERT 지원)")
+        fun findByUserIdAndContentId_WhenBlockIsDeleted_ReturnsDeletedBlock() {
             // Given: 콘텐츠 차단 생성 후 삭제
             contentBlockRepository.save(userId, contentId).block()
             contentBlockRepository.delete(userId, contentId).block()
@@ -211,8 +254,13 @@ class ContentBlockRepositoryImplTest {
             // When: 차단 조회
             val result = contentBlockRepository.findByUserIdAndContentId(userId, contentId)
 
-            // Then: empty 반환 (Soft Delete)
+            // Then: 삭제된 차단 반환 (UPSERT 패턴 지원)
             StepVerifier.create(result)
+                .assertNext { contentBlock ->
+                    assertThat(contentBlock.userId).isEqualTo(userId)
+                    assertThat(contentBlock.contentId).isEqualTo(contentId)
+                    assertThat(contentBlock.deletedAt).isNotNull()  // 삭제된 상태
+                }
                 .verifyComplete()
         }
     }

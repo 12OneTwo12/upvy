@@ -80,7 +80,7 @@ class ContentBlockController(
             .flatMap { userId ->
                 contentBlockService.unblockContent(userId, contentId)
             }
-            .map { ResponseEntity.status(HttpStatus.NO_CONTENT).build<Void>() }
+            .thenReturn(ResponseEntity.status(HttpStatus.NO_CONTENT).build<Void>())
     }
 
     /**
