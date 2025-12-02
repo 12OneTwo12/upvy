@@ -423,7 +423,6 @@ export default function CategoryFeedScreen() {
         paddingTop: insets.top + 10,
         paddingBottom: 12,
         paddingHorizontal: 16,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         flexDirection: 'row',
         alignItems: 'center',
         pointerEvents: 'box-none',
@@ -437,7 +436,13 @@ export default function CategoryFeedScreen() {
             pointerEvents: 'auto',
           }}
         >
-          <Text style={{ color: '#FFFFFF', fontSize: 28 }}>‹</Text>
+          <Text style={{
+            color: '#FFFFFF',
+            fontSize: 28,
+            textShadowColor: 'rgba(0, 0, 0, 0.8)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 4,
+          }}>‹</Text>
         </TouchableOpacity>
 
         {/* 카테고리 이름 */}
@@ -445,6 +450,9 @@ export default function CategoryFeedScreen() {
           color: '#FFFFFF',
           fontSize: 20,
           fontWeight: '700',
+          textShadowColor: 'rgba(0, 0, 0, 0.8)',
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 4,
         }}>
           {categoryInfo?.displayName || '카테고리'}
         </Text>
