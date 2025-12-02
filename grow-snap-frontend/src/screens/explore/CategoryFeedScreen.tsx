@@ -1,13 +1,13 @@
 /**
- * 피드 화면
+ * 카테고리 피드 화면
  *
+ * 선택된 카테고리의 콘텐츠를 표시하는 화면
  * Instagram Reels 스타일의 세로 스크롤 숏폼 비디오 피드
  * - FlatList로 무한 스크롤 구현
- * - 추천/팔로잉 탭 전환
  * - 커서 기반 페이지네이션
  */
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -16,43 +16,45 @@ import {
   Text,
   ActivityIndicator,
   StatusBar,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
 } from 'react-native';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { ExploreStackParamList } from '@/types/navigation.types';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
-import { getMainFeed, getFollowingFeed, refreshFeed as refreshFeedApi } from '@/api/feed.api';
+import { getCategoryFeed } from '@/api/feed.api';
 import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
 import { shareContent } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
-import type { FeedTab, FeedItem as FeedItemType } from '@/types/feed.types';
+import type { FeedItem as FeedItemType } from '@/types/feed.types';
+import { CATEGORIES, type Category } from '@/types/content.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export default function FeedScreen() {
-  const insets = useSafeAreaInsets();
-  const [currentTab, setCurrentTab] = useState<FeedTab>('recommended');
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
-  const [autoRefreshing, setAutoRefreshing] = useState(false);
-  const [pullDistance, setPullDistance] = useState(0);
-  const [commentModalVisible, setCommentModalVisible] = useState(false);
-  const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
-  const flatListRef = useRef<FlatList>(null);
-  const scrollYRef = useRef(0);
-  const hasAutoRefreshed = useRef(false);
+type CategoryFeedScreenRouteProp = RouteProp<ExploreStackParamList, 'CategoryFeed'>;
 
-  // Video 로드 상태를 contentId별로 캐싱 (FlatList 재활용과 무관하게 유지)
+export default function CategoryFeedScreen() {
+  const route = useRoute<CategoryFeedScreenRouteProp>();
+  const { category } = route.params;
+
+  const insets = useSafeAreaInsets();
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [commentModalVisible, setCommentModalVisible] = React.useState(false);
+  const [selectedContentId, setSelectedContentId] = React.useState<string | null>(null);
+  const flatListRef = useRef<FlatList>(null);
+
+  // Video 로드 상태를 contentId별로 캐싱
   const videoLoadedCache = useRef<Map<string, boolean>>(new Map());
 
   const queryClient = useQueryClient();
   const navigation = useNavigation();
 
-  // 피드 데이터 fetching (무한 스크롤)
+  // 선택된 카테고리 정보
+  const categoryInfo = CATEGORIES.find(c => c.value === category);
+
+  // 카테고리별 피드 데이터 fetching (무한 스크롤)
   const {
     data,
     fetchNextPage,
@@ -61,22 +63,14 @@ export default function FeedScreen() {
     refetch,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ['feed', currentTab],
+    queryKey: ['categoryFeed', category],
     queryFn: ({ pageParam }) => {
-      const fetchFn = currentTab === 'recommended' ? getMainFeed : getFollowingFeed;
-      return fetchFn({ cursor: pageParam, limit: 10 });
+      return getCategoryFeed(category, { cursor: pageParam, limit: 10 });
     },
     getNextPageParam: (lastPage) => lastPage.hasNext ? lastPage.nextCursor : undefined,
     initialPageParam: null as string | null,
-  });
-
-  // 피드 새로고침 mutation
-  const refreshMutation = useMutation({
-    mutationFn: refreshFeedApi,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
-      refetch();
-    },
+    staleTime: 5 * 60 * 1000, // 5분
+    gcTime: 10 * 60 * 1000, // 10분
   });
 
   // 좋아요 mutation (Optimistic update)
@@ -89,12 +83,10 @@ export default function FeedScreen() {
       }
     },
     onMutate: async ({ contentId }) => {
-      // Optimistic update
-      await queryClient.cancelQueries({ queryKey: ['feed', currentTab] });
+      await queryClient.cancelQueries({ queryKey: ['categoryFeed', category] });
+      const previousData = queryClient.getQueryData(['categoryFeed', category]);
 
-      const previousData = queryClient.getQueryData(['feed', currentTab]);
-
-      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -121,8 +113,7 @@ export default function FeedScreen() {
       return { previousData };
     },
     onSuccess: (response) => {
-      // 백엔드 응답으로 정확한 값 업데이트
-      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -145,9 +136,8 @@ export default function FeedScreen() {
       });
     },
     onError: (err, variables, context) => {
-      // Rollback on error
       if (context?.previousData) {
-        queryClient.setQueryData(['feed', currentTab], context.previousData);
+        queryClient.setQueryData(['categoryFeed', category], context.previousData);
       }
     },
   });
@@ -162,11 +152,10 @@ export default function FeedScreen() {
       }
     },
     onMutate: async ({ contentId }) => {
-      await queryClient.cancelQueries({ queryKey: ['feed', currentTab] });
+      await queryClient.cancelQueries({ queryKey: ['categoryFeed', category] });
+      const previousData = queryClient.getQueryData(['categoryFeed', category]);
 
-      const previousData = queryClient.getQueryData(['feed', currentTab]);
-
-      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -193,8 +182,7 @@ export default function FeedScreen() {
       return { previousData };
     },
     onSuccess: (response) => {
-      // 백엔드 응답으로 정확한 값 업데이트
-      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -218,7 +206,7 @@ export default function FeedScreen() {
     },
     onError: (err, variables, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(['feed', currentTab], context.previousData);
+        queryClient.setQueryData(['categoryFeed', category], context.previousData);
       }
     },
   });
@@ -233,11 +221,10 @@ export default function FeedScreen() {
       }
     },
     onMutate: async ({ userId }) => {
-      await queryClient.cancelQueries({ queryKey: ['feed', currentTab] });
+      await queryClient.cancelQueries({ queryKey: ['categoryFeed', category] });
+      const previousData = queryClient.getQueryData(['categoryFeed', category]);
 
-      const previousData = queryClient.getQueryData(['feed', currentTab]);
-
-      queryClient.setQueryData(['feed', currentTab], (old: any) => {
+      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -262,7 +249,7 @@ export default function FeedScreen() {
     },
     onError: (err, variables, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(['feed', currentTab], context.previousData);
+        queryClient.setQueryData(['categoryFeed', category], context.previousData);
       }
     },
   });
@@ -288,7 +275,7 @@ export default function FeedScreen() {
     height: 1920,
     title: '',
     description: '',
-    category: 'OTHER',
+    category: category,
     tags: [],
     creator: {
       userId: 'loading',
@@ -306,8 +293,8 @@ export default function FeedScreen() {
   };
 
   // 데이터 상태 처리
-  // 로딩 중이거나 자동 새로고침 중이면 스켈레톤, 아니면 실제 데이터 (빈 배열일 수 있음)
-  const displayItems = (isLoading || autoRefreshing) ? [loadingFeedItem] : feedItems;
+  // 로딩 중이면 스켈레톤, 로딩 끝났는데 데이터 없으면 빈 배열, 있으면 실제 데이터
+  const displayItems = isLoading ? [loadingFeedItem] : feedItems;
 
   // 스크롤 이벤트: 현재 보이는 아이템 인덱스 추적
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -331,156 +318,6 @@ export default function FeedScreen() {
     }
   }, [currentIndex, hasNextPage, isFetchingNextPage, displayItems.length, fetchNextPage]);
 
-  // 콘텐츠 끝 도달 시 자동 새로고침
-  useEffect(() => {
-    const performAutoRefresh = async () => {
-      // 마지막 아이템에 도달했고, 다음 페이지가 없고, 아직 자동 새로고침 안했을 때
-      if (
-        !hasNextPage &&
-        !isFetchingNextPage &&
-        !isLoading &&
-        displayItems.length > 0 &&
-        currentIndex >= displayItems.length - 1 &&
-        !hasAutoRefreshed.current &&
-        !autoRefreshing
-      ) {
-        hasAutoRefreshed.current = true;
-        setAutoRefreshing(true);
-
-        // 스켈레톤 화면 잠깐 표시 (1초)
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        try {
-          // 새로고침 실행
-          await queryClient.invalidateQueries({ queryKey: ['feed'] });
-          await refetch();
-
-          // 맨 위로 스크롤
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-          setCurrentIndex(0);
-        } finally {
-          setAutoRefreshing(false);
-        }
-      }
-    };
-
-    performAutoRefresh();
-  }, [
-    currentIndex,
-    displayItems.length,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    autoRefreshing,
-    queryClient,
-    refetch,
-  ]);
-
-  // 탭 전환 시 자동 새로고침 플래그 리셋 및 비디오 캐시 초기화
-  useEffect(() => {
-    hasAutoRefreshed.current = false;
-    videoLoadedCache.current.clear();
-  }, [currentTab]);
-
-  // 네비게이션 탭 재클릭 시 새로고침 (Instagram 스타일)
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress' as any, async () => {
-      // 이미 피드 화면에 있을 때 탭을 다시 누르면
-      if (navigation.isFocused()) {
-        // 첫 번째부터 새로고침
-        setRefreshing(true);
-        try {
-          // 기존 데이터 완전히 리셋하고 첫 페이지부터 다시 로드
-          await queryClient.resetQueries({ queryKey: ['feed', currentTab] });
-          // 첫 번째 아이템으로 이동
-          setCurrentIndex(0);
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-        } finally {
-          setRefreshing(false);
-        }
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, queryClient, currentTab]);
-
-  // Pull-to-Refresh - 첫 번째부터 새로고침
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setPullDistance(0);
-    try {
-      // 1. 백엔드 Redis 캐시 삭제 (추천 피드만)
-      if (currentTab === 'recommended') {
-        await refreshFeedApi();
-      }
-
-      // 2. 프론트엔드 React Query 캐시 리셋
-      await queryClient.resetQueries({ queryKey: ['feed', currentTab] });
-
-      // 3. 첫 번째 아이템으로 이동
-      setCurrentIndex(0);
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-    } finally {
-      setRefreshing(false);
-    }
-  }, [queryClient, currentTab]);
-
-  // 스크롤 이벤트 - Pull-to-Refresh 감지 (Instagram 스타일: 첫 번째 아이템에서만)
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    scrollYRef.current = offsetY;
-
-    // Pull-to-Refresh 거리 계산 (첫 번째 아이템에서만)
-    if (currentIndex === 0 && offsetY < 0) {
-      setPullDistance(Math.abs(offsetY));
-    } else {
-      setPullDistance(0);
-    }
-  }, [currentIndex]);
-
-  // 스크롤 종료 시 - 페이지 스냅 및 새로고침 트리거 (Instagram 스타일: 첫 번째에서만)
-  const handleScrollEnd = useCallback(async (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-
-    // Pull-to-Refresh 트리거 (첫 번째 아이템에서만)
-    if (pullDistance > 60 && offsetY <= 0 && currentIndex === 0) {
-      await handleRefresh();
-      return;
-    }
-
-    // 인덱스 계산
-    const index = Math.max(0, Math.round(offsetY / SCREEN_HEIGHT));
-    setCurrentIndex(index);
-  }, [pullDistance, currentIndex, handleRefresh]);
-
-  // 무한 스크롤: 끝에 도달 시 다음 페이지 로드
-  const handleEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  // 탭 전환 (Instagram 스타일: 같은 탭 재클릭 시 새로고침)
-  const handleTabChange = async (tab: FeedTab) => {
-    if (tab === currentTab) {
-      // 같은 탭을 다시 클릭하면 첫 번째부터 새로고침
-      setRefreshing(true);
-      try {
-        await queryClient.resetQueries({ queryKey: ['feed', currentTab] });
-        // 첫 번째 아이템으로 이동
-        setCurrentIndex(0);
-        flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-      } finally {
-        setRefreshing(false);
-      }
-    } else {
-      // 다른 탭으로 전환
-      setCurrentTab(tab);
-      setCurrentIndex(0);
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-    }
-  };
-
   // 인터랙션 핸들러
   const handleLike = (contentId: string, isLiked: boolean = false) => {
     likeMutation.mutate({ contentId, isLiked });
@@ -498,7 +335,6 @@ export default function FeedScreen() {
   const handleShare = async (contentId: string) => {
     try {
       await shareContent(contentId);
-      // TODO: 공유 UI (공유 링크 가져오기, 클립보드 복사 등)
     } catch (error) {
       console.error('Share failed:', error);
     }
@@ -522,12 +358,17 @@ export default function FeedScreen() {
     return videoLoadedCache.current.get(contentId) ?? false;
   }, []);
 
+  // 무한 스크롤: 끝에 도달 시 다음 페이지 로드
+  const handleEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   // 렌더링
   const renderItem = ({ item, index }: { item: FeedItemType; index: number }) => {
     const isLoadingItem = item.contentId === 'loading';
-    // Pre-loading: 현재 인덱스 기준 ±2 범위의 비디오 미리 로드
     const shouldPreload = Math.abs(index - currentIndex) <= 2;
-    // 이미 로드된 비디오인지 확인
     const hasBeenLoaded = isVideoLoaded(item.contentId);
 
     return (
@@ -550,7 +391,6 @@ export default function FeedScreen() {
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
         />
 
-        {/* 로딩 중일 때 이 아이템 중앙에 인디케이터 표시 */}
         {isLoadingItem && (
           <View style={{
             position: 'absolute',
@@ -573,91 +413,45 @@ export default function FeedScreen() {
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
 
-      {/* Instagram Reels 스타일 탭 */}
+      {/* 상단 헤더 - 카테고리 이름 */}
       <View style={{
         position: 'absolute',
-        top: 50,
+        top: 0,
         left: 0,
         right: 0,
         zIndex: 10,
+        paddingTop: insets.top + 10,
+        paddingBottom: 12,
+        paddingHorizontal: 16,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         flexDirection: 'row',
-        justifyContent: 'center',
         alignItems: 'center',
         pointerEvents: 'box-none',
       }}>
+        {/* 뒤로가기 버튼 */}
         <TouchableOpacity
-          onPress={() => handleTabChange('following')}
-          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+          onPress={() => navigation.goBack()}
+          style={{
+            marginRight: 12,
+            padding: 4,
+            pointerEvents: 'auto',
+          }}
         >
-          <Text style={{
-            fontSize: 17,
-            fontWeight: currentTab === 'following' ? '700' : '400',
-            color: currentTab === 'following' ? '#FFFFFF' : '#888888',
-          }}>
-            팔로잉
-          </Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 28 }}>‹</Text>
         </TouchableOpacity>
 
-        <View style={{
-          width: 1,
-          height: 12,
-          backgroundColor: '#666666',
-          marginHorizontal: 4,
-        }} />
-
-        <TouchableOpacity
-          onPress={() => handleTabChange('recommended')}
-          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
-        >
-          <Text style={{
-            fontSize: 17,
-            fontWeight: currentTab === 'recommended' ? '700' : '400',
-            color: currentTab === 'recommended' ? '#FFFFFF' : '#888888',
-          }}>
-            추천
-          </Text>
-        </TouchableOpacity>
+        {/* 카테고리 이름 */}
+        <Text style={{
+          color: '#FFFFFF',
+          fontSize: 20,
+          fontWeight: '700',
+        }}>
+          {categoryInfo?.displayName || '카테고리'}
+        </Text>
       </View>
 
-      {/* Pull-to-Refresh 인디케이터 */}
-      {pullDistance > 30 && currentIndex === 0 && (
-        <View style={{
-          position: 'absolute',
-          top: 60 + pullDistance * 0.5,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          alignItems: 'center',
-        }}>
-          <View style={{
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            borderRadius: 20,
-            padding: 10,
-            paddingHorizontal: 20,
-          }}>
-            <Text style={{ color: 'white', fontSize: 14 }}>
-              {pullDistance > 60 ? '🔄 놓아서 새로고침' : '⬇️ 당겨서 새로고침'}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* 새로고침 중 인디케이터 */}
-      {refreshing && (
-        <View style={{
-          position: 'absolute',
-          top: 80,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          alignItems: 'center',
-        }}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
-        </View>
-      )}
-
       {/* 빈 콘텐츠 상태 */}
-      {!isLoading && !autoRefreshing && feedItems.length === 0 ? (
+      {!isLoading && feedItems.length === 0 ? (
         <View style={{
           flex: 1,
           justifyContent: 'center',
@@ -665,7 +459,7 @@ export default function FeedScreen() {
           paddingHorizontal: 32,
         }}>
           <Text style={{ fontSize: 48, marginBottom: 16 }}>
-            {currentTab === 'following' ? '👥' : '📭'}
+            📭
           </Text>
           <Text style={{
             color: '#FFFFFF',
@@ -674,10 +468,7 @@ export default function FeedScreen() {
             textAlign: 'center',
             marginBottom: 8,
           }}>
-            {currentTab === 'following'
-              ? '팔로우한 크리에이터가 없어요'
-              : '아직 콘텐츠가 없어요'
-            }
+            아직 콘텐츠가 없어요
           </Text>
           <Text style={{
             color: '#666666',
@@ -685,10 +476,8 @@ export default function FeedScreen() {
             textAlign: 'center',
             lineHeight: 20,
           }}>
-            {currentTab === 'following'
-              ? '관심있는 크리에이터를 팔로우하고\n최신 콘텐츠를 받아보세요!'
-              : '곧 멋진 콘텐츠가 업로드될 거예요!'
-            }
+            {categoryInfo?.displayName} 카테고리에{'\n'}
+            곧 멋진 콘텐츠가 업로드될 거예요!
           </Text>
         </View>
       ) : (
@@ -705,10 +494,6 @@ export default function FeedScreen() {
           decelerationRate="fast"
           bounces={true}
           scrollEventThrottle={16}
-          onScroll={handleScroll}
-          onScrollBeginDrag={handleScroll}
-          onScrollEndDrag={handleScrollEnd}
-          onMomentumScrollEnd={handleScrollEnd}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           onEndReached={handleEndReached}
