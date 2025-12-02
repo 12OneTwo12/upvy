@@ -17,7 +17,7 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient, InfiniteData } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ExploreStackParamList } from '@/types/navigation.types';
@@ -28,7 +28,7 @@ import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
 import { shareContent } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
-import type { FeedItem as FeedItemType } from '@/types/feed.types';
+import type { FeedItem as FeedItemType, FeedResponse } from '@/types/feed.types';
 import { CATEGORIES, type Category } from '@/types/content.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -86,13 +86,13 @@ export default function CategoryFeedScreen() {
       await queryClient.cancelQueries({ queryKey: ['categoryFeed', category] });
       const previousData = queryClient.getQueryData(['categoryFeed', category]);
 
-      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
+      queryClient.setQueryData<InfiniteData<FeedResponse>>(['categoryFeed', category], (old) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: any) => ({
+          pages: old.pages.map((page) => ({
             ...page,
-            content: page.content.map((item: FeedItemType) =>
+            content: page.content.map((item) =>
               item.contentId === contentId
                 ? {
                     ...item,
@@ -113,13 +113,13 @@ export default function CategoryFeedScreen() {
       return { previousData };
     },
     onSuccess: (response) => {
-      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
+      queryClient.setQueryData<InfiniteData<FeedResponse>>(['categoryFeed', category], (old) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: any) => ({
+          pages: old.pages.map((page) => ({
             ...page,
-            content: page.content.map((item: FeedItemType) =>
+            content: page.content.map((item) =>
               item.contentId === response.contentId
                 ? {
                     ...item,
@@ -155,13 +155,13 @@ export default function CategoryFeedScreen() {
       await queryClient.cancelQueries({ queryKey: ['categoryFeed', category] });
       const previousData = queryClient.getQueryData(['categoryFeed', category]);
 
-      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
+      queryClient.setQueryData<InfiniteData<FeedResponse>>(['categoryFeed', category], (old) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: any) => ({
+          pages: old.pages.map((page) => ({
             ...page,
-            content: page.content.map((item: FeedItemType) =>
+            content: page.content.map((item) =>
               item.contentId === contentId
                 ? {
                     ...item,
@@ -182,13 +182,13 @@ export default function CategoryFeedScreen() {
       return { previousData };
     },
     onSuccess: (response) => {
-      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
+      queryClient.setQueryData<InfiniteData<FeedResponse>>(['categoryFeed', category], (old) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: any) => ({
+          pages: old.pages.map((page) => ({
             ...page,
-            content: page.content.map((item: FeedItemType) =>
+            content: page.content.map((item) =>
               item.contentId === response.contentId
                 ? {
                     ...item,
@@ -224,13 +224,13 @@ export default function CategoryFeedScreen() {
       await queryClient.cancelQueries({ queryKey: ['categoryFeed', category] });
       const previousData = queryClient.getQueryData(['categoryFeed', category]);
 
-      queryClient.setQueryData(['categoryFeed', category], (old: any) => {
+      queryClient.setQueryData<InfiniteData<FeedResponse>>(['categoryFeed', category], (old) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: any) => ({
+          pages: old.pages.map((page) => ({
             ...page,
-            content: page.content.map((item: FeedItemType) =>
+            content: page.content.map((item) =>
               item.creator.userId === userId
                 ? {
                     ...item,

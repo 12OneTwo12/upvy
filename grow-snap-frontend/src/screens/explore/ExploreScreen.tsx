@@ -21,6 +21,29 @@ import { CATEGORIES, type Category } from '@/types/content.types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ExploreStackParamList } from '@/types/navigation.types';
 
+// 카테고리 아이콘 매핑 (Ionicons)
+const CATEGORY_ICON_MAP: Record<Category, keyof typeof Ionicons.glyphMap> = {
+  LANGUAGE: 'language',
+  SCIENCE: 'flask',
+  HISTORY: 'book',
+  MATHEMATICS: 'calculator',
+  ART: 'color-palette',
+  STARTUP: 'rocket',
+  MARKETING: 'trending-up',
+  PROGRAMMING: 'code-slash',
+  DESIGN: 'brush',
+  PRODUCTIVITY: 'flash',
+  PSYCHOLOGY: 'pulse',
+  FINANCE: 'wallet',
+  HEALTH: 'fitness',
+  PARENTING: 'people',
+  COOKING: 'restaurant',
+  TRAVEL: 'airplane',
+  HOBBY: 'game-controller',
+  TREND: 'flame',
+  OTHER: 'grid',
+};
+
 type ExploreScreenNavigationProp = NativeStackNavigationProp<
   ExploreStackParamList,
   'ExploreMain'
@@ -35,37 +58,10 @@ export default function ExploreScreen() {
   const adjustedFontScale = Math.min(fontScale, 1.3);
 
   // 카드 너비 계산 (2개씩 배치)
-  const CARD_MARGIN = 8;
-  const CARD_WIDTH = (screenWidth - 48 - CARD_MARGIN) / 2; // 48 = padding 32 + gap 16
+  const CARD_WIDTH = (screenWidth - 48) / 2; // 48 = paddingHorizontal (16*2) + gap (16)
 
   const handleCategoryPress = (category: Category) => {
     navigation.navigate('CategoryFeed', { category });
-  };
-
-  // 카테고리 아이콘 매핑 (Ionicons)
-  const getCategoryIcon = (category: Category): keyof typeof Ionicons.glyphMap => {
-    const iconMap: Record<Category, keyof typeof Ionicons.glyphMap> = {
-      LANGUAGE: 'language',
-      SCIENCE: 'flask',
-      HISTORY: 'book',
-      MATHEMATICS: 'calculator',
-      ART: 'color-palette',
-      STARTUP: 'rocket',
-      MARKETING: 'trending-up',
-      PROGRAMMING: 'code-slash',
-      DESIGN: 'brush',
-      PRODUCTIVITY: 'flash',
-      PSYCHOLOGY: 'pulse',
-      FINANCE: 'wallet',
-      HEALTH: 'fitness',
-      PARENTING: 'people',
-      COOKING: 'restaurant',
-      TRAVEL: 'airplane',
-      HOBBY: 'game-controller',
-      TREND: 'flame',
-      OTHER: 'grid',
-    };
-    return iconMap[category] || 'grid';
   };
 
   return (
@@ -126,7 +122,7 @@ export default function ExploreScreen() {
               {/* 아이콘 */}
               <View>
                 <Ionicons
-                  name={getCategoryIcon(categoryInfo.value)}
+                  name={CATEGORY_ICON_MAP[categoryInfo.value] || 'grid'}
                   size={32}
                   color="#22c55e"
                 />
@@ -136,20 +132,17 @@ export default function ExploreScreen() {
               <View>
                 <Text style={{
                   color: '#000000',
-                  fontSize: 17,
+                  fontSize: 17 * adjustedFontScale,
                   fontWeight: '700',
                   marginBottom: 4,
-                }}
-                allowFontScaling={true}
-                >
+                }}>
                   {categoryInfo.displayName}
                 </Text>
                 <Text style={{
                   color: '#6C757D',
-                  fontSize: 13,
+                  fontSize: 13 * adjustedFontScale,
                 }}
                 numberOfLines={2}
-                allowFontScaling={true}
                 >
                   {categoryInfo.description}
                 </Text>
