@@ -384,9 +384,13 @@ export default function FeedScreen() {
 
   // 네비게이션 탭 재클릭 시 새로고침 (Instagram 스타일)
   useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress' as any, async () => {
-      // 이미 피드 화면에 있을 때 탭을 다시 누르면
-      if (navigation.isFocused()) {
+    // Stack Navigator 안에 있으므로 부모 Tab Navigator의 이벤트를 들어야 함
+    const parent = navigation.getParent();
+    if (!parent) return;
+
+    const unsubscribe = parent.addListener('tabPress' as any, async (e: any) => {
+      // Feed 탭을 눌렀고, 현재 FeedMain 화면에 있을 때만
+      if (e.target?.split('-')[0] === 'Feed' && navigation.isFocused()) {
         // 첫 번째부터 새로고침
         setRefreshing(true);
         try {

@@ -16,6 +16,8 @@ import {
   Text,
   ActivityIndicator,
   StatusBar,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { useInfiniteQuery, useMutation, useQueryClient, InfiniteData } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -41,9 +43,12 @@ export default function CategoryFeedScreen() {
 
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [pullDistance, setPullDistance] = React.useState(0);
   const [commentModalVisible, setCommentModalVisible] = React.useState(false);
   const [selectedContentId, setSelectedContentId] = React.useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const scrollYRef = useRef(0);
 
   // Video 로드 상태를 contentId별로 캐싱
   const videoLoadedCache = useRef<Map<string, boolean>>(new Map());
@@ -358,6 +363,50 @@ export default function CategoryFeedScreen() {
     return videoLoadedCache.current.get(contentId) ?? false;
   }, []);
 
+  // Pull-to-Refresh - 첫 번째부터 새로고침
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setPullDistance(0);
+    try {
+      // React Query 캐시 리셋
+      await queryClient.resetQueries({ queryKey: ['categoryFeed', category] });
+
+      // 첫 번째 아이템으로 이동
+      setCurrentIndex(0);
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient, category]);
+
+  // 스크롤 이벤트 - Pull-to-Refresh 감지 (첫 번째 아이템에서만)
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    scrollYRef.current = offsetY;
+
+    // Pull-to-Refresh 거리 계산 (첫 번째 아이템에서만)
+    if (currentIndex === 0 && offsetY < 0) {
+      setPullDistance(Math.abs(offsetY));
+    } else {
+      setPullDistance(0);
+    }
+  }, [currentIndex]);
+
+  // 스크롤 종료 시 - 페이지 스냅 및 새로고침 트리거 (첫 번째에서만)
+  const handleScrollEnd = useCallback(async (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+
+    // Pull-to-Refresh 트리거 (첫 번째 아이템에서만)
+    if (pullDistance > 60 && offsetY <= 0 && currentIndex === 0) {
+      await handleRefresh();
+      return;
+    }
+
+    // 인덱스 계산
+    const index = Math.max(0, Math.round(offsetY / SCREEN_HEIGHT));
+    setCurrentIndex(index);
+  }, [pullDistance, currentIndex, handleRefresh]);
+
   // 무한 스크롤: 끝에 도달 시 다음 페이지 로드
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -458,6 +507,43 @@ export default function CategoryFeedScreen() {
         </Text>
       </View>
 
+      {/* Pull-to-Refresh 인디케이터 */}
+      {pullDistance > 30 && currentIndex === 0 && (
+        <View style={{
+          position: 'absolute',
+          top: 60 + pullDistance * 0.5,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          alignItems: 'center',
+        }}>
+          <View style={{
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            borderRadius: 20,
+            padding: 10,
+            paddingHorizontal: 20,
+          }}>
+            <Text style={{ color: 'white', fontSize: 14 }}>
+              {pullDistance > 60 ? '🔄 놓아서 새로고침' : '⬇️ 당겨서 새로고침'}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* 새로고침 중 인디케이터 */}
+      {refreshing && (
+        <View style={{
+          position: 'absolute',
+          top: 80,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          alignItems: 'center',
+        }}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
+
       {/* 빈 콘텐츠 상태 */}
       {!isLoading && feedItems.length === 0 ? (
         <View style={{
@@ -502,6 +588,10 @@ export default function CategoryFeedScreen() {
           decelerationRate="fast"
           bounces={true}
           scrollEventThrottle={16}
+          onScroll={handleScroll}
+          onScrollBeginDrag={handleScroll}
+          onScrollEndDrag={handleScrollEnd}
+          onMomentumScrollEnd={handleScrollEnd}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           onEndReached={handleEndReached}
