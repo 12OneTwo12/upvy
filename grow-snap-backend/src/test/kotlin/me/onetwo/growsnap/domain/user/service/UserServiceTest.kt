@@ -14,7 +14,7 @@ import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.model.UserStatus
 import me.onetwo.growsnap.domain.user.model.UserStatusHistory
 import java.time.Instant
-import ChronoUnit
+import java.time.temporal.ChronoUnit
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository

@@ -250,7 +250,7 @@ class CommentRepositoryImpl(
 ) : CommentRepository {
 
     override fun save(comment: Comment): Mono<Comment> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         val commentId = comment.id ?: UUID.randomUUID()
 
         return Mono.from(

@@ -31,7 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import java.time.Instant
-import ChronoUnit
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /**
@@ -748,7 +748,7 @@ class FeedRepositoryImplTest {
             // Given: 5개의 콘텐츠
             val now = Instant.now()
             repeat(5) { index ->
-                insertContent(UUID.randomUUID(), creator1.id!!, "Content $index", now.minus(index.toLong(, ChronoUnit.DAYS)))
+                insertContent(UUID.randomUUID(), creator1.id!!, "Content $index", now.minus(index.toLong(), ChronoUnit.DAYS))
             }
 
             // When: limit=3으로 조회

@@ -36,7 +36,7 @@ import software.amazon.awssdk.services.s3.model.HeadObjectRequest
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import java.time.Instant
-import ChronoUnit
+import java.time.temporal.ChronoUnit
 import java.util.Optional
 import java.util.UUID
 import java.util.function.Consumer

@@ -79,8 +79,8 @@ class UserRepository(
     fun softDelete(id: UUID, deletedBy: UUID): Mono<Void> {
         return Mono.from(  // ✅ Mono.from()으로 UPDATE 실행
             dsl.update(USERS)
-                .set(USERS.DELETED_AT, LocalDateTime.now())
-                .set(USERS.UPDATED_AT, LocalDateTime.now())
+                .set(USERS.DELETED_AT, Instant.now())
+                .set(USERS.UPDATED_AT, Instant.now())
                 .set(USERS.UPDATED_BY, deletedBy.toString())
                 .where(USERS.ID.eq(id.toString()))
                 .and(USERS.DELETED_AT.isNull)
@@ -151,7 +151,7 @@ fun update(userId: UUID, email: String): Mono<Void> {
     return Mono.from(
         dsl.update(USERS)
             .set(USERS.EMAIL, email)
-            .set(USERS.UPDATED_AT, LocalDateTime.now())
+            .set(USERS.UPDATED_AT, Instant.now())
             .where(USERS.ID.eq(userId.toString()))
     ).then()
 }
@@ -165,7 +165,7 @@ fun incrementViewCount(contentId: UUID): Mono<Void> {
     return Mono.from(
         dsl.update(CONTENT_INTERACTIONS)
             .set(CONTENT_INTERACTIONS.VIEW_COUNT, CONTENT_INTERACTIONS.VIEW_COUNT.plus(1))
-            .set(CONTENT_INTERACTIONS.UPDATED_AT, LocalDateTime.now())
+            .set(CONTENT_INTERACTIONS.UPDATED_AT, Instant.now())
             .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
             .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
     ).then()
@@ -266,8 +266,8 @@ fun findActiveUsers(): List<User> {
 fun deleteUser(userId: UUID, deletedBy: UUID) {
     dslContext
         .update(USER)
-        .set(USER.DELETED_AT, LocalDateTime.now())
-        .set(USER.UPDATED_AT, LocalDateTime.now())
+        .set(USER.DELETED_AT, Instant.now())
+        .set(USER.UPDATED_AT, Instant.now())
         .set(USER.UPDATED_BY, deletedBy)  // 삭제자 기록
         .where(USER.ID.eq(userId))
         .and(USER.DELETED_AT.isNull)  // 이미 삭제된 데이터는 제외
@@ -289,11 +289,11 @@ fun deleteUser(userId: UUID) {
 
 ### 필수 Audit Trail 필드
 
-1. **createdAt**: `LocalDateTime` - 생성 시각
+1. **createdAt**: `Instant` - 생성 시각
 2. **createdBy**: `UUID?` - 생성한 사용자 ID
-3. **updatedAt**: `LocalDateTime` - 최종 수정 시각
+3. **updatedAt**: `Instant` - 최종 수정 시각
 4. **updatedBy**: `UUID?` - 최종 수정한 사용자 ID
-5. **deletedAt**: `LocalDateTime?` - 삭제 시각 (Soft Delete)
+5. **deletedAt**: `Instant?` - 삭제 시각 (Soft Delete)
 
 ### 생성 (INSERT) 시 Audit Trail 설정
 
@@ -304,9 +304,9 @@ fun createUser(userId: UUID, email: String): User {
         .insertInto(USER)
         .set(USER.ID, UUID.randomUUID())
         .set(USER.EMAIL, email)
-        .set(USER.CREATED_AT, LocalDateTime.now())
+        .set(USER.CREATED_AT, Instant.now())
         .set(USER.CREATED_BY, userId)  // 생성자 기록
-        .set(USER.UPDATED_AT, LocalDateTime.now())
+        .set(USER.UPDATED_AT, Instant.now())
         .set(USER.UPDATED_BY, userId)
         .returning()
         .fetchOne()!!
@@ -322,7 +322,7 @@ fun updateUser(userId: UUID, updatedBy: String, email: String) {
     dslContext
         .update(USER)
         .set(USER.EMAIL, email)
-        .set(USER.UPDATED_AT, LocalDateTime.now())
+        .set(USER.UPDATED_AT, Instant.now())
         .set(USER.UPDATED_BY, updatedBy)  // 수정자 기록
         .where(USER.ID.eq(userId))
         .and(USER.DELETED_AT.isNull)
@@ -337,8 +337,8 @@ fun updateUser(userId: UUID, updatedBy: String, email: String) {
 fun deleteUser(userId: UUID, deletedBy: UUID) {
     dslContext
         .update(USER)
-        .set(USER.DELETED_AT, LocalDateTime.now())
-        .set(USER.UPDATED_AT, LocalDateTime.now())
+        .set(USER.DELETED_AT, Instant.now())
+        .set(USER.UPDATED_AT, Instant.now())
         .set(USER.UPDATED_BY, deletedBy)  // 삭제자 기록
         .where(USER.ID.eq(userId))
         .and(USER.DELETED_AT.isNull)  // 이미 삭제된 데이터는 제외

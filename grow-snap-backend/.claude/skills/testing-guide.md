@@ -31,9 +31,9 @@ await.atMost(2, TimeUnit.SECONDS).untilAsserted {
 }
 
 // 2. 명시적 타임스탬프 (시간 차이가 필요한 테스트)
-insertSearchHistory(userId, "Java", SearchType.CONTENT, LocalDateTime.now().minusHours(3))
-insertSearchHistory(userId, "Kotlin", SearchType.CONTENT, LocalDateTime.now().minusHours(2))
-insertSearchHistory(userId, "Python", SearchType.CONTENT, LocalDateTime.now().minusHours(1))
+insertSearchHistory(userId, "Java", SearchType.CONTENT, Instant.now().minusHours(3))
+insertSearchHistory(userId, "Kotlin", SearchType.CONTENT, Instant.now().minusHours(2))
+insertSearchHistory(userId, "Python", SearchType.CONTENT, Instant.now().minusHours(1))
 
 // 3. StepVerifier (Reactive 테스트)
 StepVerifier.create(mono)
@@ -836,7 +836,7 @@ class ContentInteractionRepositoryTest {
         fun incrementViewCount_DeletedContent_DoesNotUpdate() {
             // Given: 콘텐츠 삭제 (Soft Delete)
             dslContext.update(CONTENT_INTERACTIONS)
-                .set(CONTENT_INTERACTIONS.DELETED_AT, LocalDateTime.now())
+                .set(CONTENT_INTERACTIONS.DELETED_AT, Instant.now())
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(testContentId.toString()))
                 .execute()
 
@@ -859,7 +859,7 @@ class ContentInteractionRepositoryTest {
         creatorId: UUID,
         title: String
     ) {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         // Contents 테이블 데이터 삽입
         dslContext.insertInto(CONTENTS)

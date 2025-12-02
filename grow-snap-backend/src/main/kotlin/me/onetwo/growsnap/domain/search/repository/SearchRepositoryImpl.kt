@@ -13,7 +13,7 @@ import me.onetwo.growsnap.infrastructure.manticore.dto.ManticoreSearchRequest
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
-import java.time.LocalDate
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -64,8 +64,8 @@ class SearchRepositoryImpl(
         difficulty: DifficultyLevel?,
         minDuration: Int?,
         maxDuration: Int?,
-        startDate: LocalDate?,
-        endDate: LocalDate?,
+        startDate: Instant?,
+        endDate: Instant?,
         language: String?,
         sortBy: SearchSortType,
         cursor: String?,

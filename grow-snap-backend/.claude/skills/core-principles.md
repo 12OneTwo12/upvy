@@ -52,11 +52,11 @@
 
 모든 엔티티는 다음 5가지 필드를 반드시 포함해야 합니다:
 
-1. **createdAt**: `LocalDateTime` - 생성 시각
+1. **createdAt**: `Instant` - 생성 시각
 2. **createdBy**: `UUID?` - 생성한 사용자 ID
-3. **updatedAt**: `LocalDateTime` - 최종 수정 시각
+3. **updatedAt**: `Instant` - 최종 수정 시각
 4. **updatedBy**: `UUID?` - 최종 수정한 사용자 ID
-5. **deletedAt**: `LocalDateTime?` - 삭제 시각 (Soft Delete)
+5. **deletedAt**: `Instant?` - 삭제 시각 (Soft Delete)
 
 ### Audit Trail 구현 예시
 
@@ -67,11 +67,11 @@ data class User(
     val email: String,
     val name: String,
     // Audit Trail 필드 (필수)
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     val createdBy: String? = null,
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: Instant = Instant.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null  // Soft Delete
+    val deletedAt: Instant? = null  // Soft Delete
 )
 
 // ✅ GOOD: 조회 시 삭제된 데이터 제외
@@ -89,9 +89,9 @@ fun createUser(userId: UUID, email: String): User {
         .insertInto(USER)
         .set(USER.ID, UUID.randomUUID())
         .set(USER.EMAIL, email)
-        .set(USER.CREATED_AT, LocalDateTime.now())
+        .set(USER.CREATED_AT, Instant.now())
         .set(USER.CREATED_BY, userId)  // 생성자 기록
-        .set(USER.UPDATED_AT, LocalDateTime.now())
+        .set(USER.UPDATED_AT, Instant.now())
         .set(USER.UPDATED_BY, userId)
         .returning()
         .fetchOne()!!
@@ -103,7 +103,7 @@ fun updateUser(userId: UUID, updatedBy: String, email: String) {
     dslContext
         .update(USER)
         .set(USER.EMAIL, email)
-        .set(USER.UPDATED_AT, LocalDateTime.now())
+        .set(USER.UPDATED_AT, Instant.now())
         .set(USER.UPDATED_BY, updatedBy)  // 수정자 기록
         .where(USER.ID.eq(userId))
         .and(USER.DELETED_AT.isNull)
@@ -114,8 +114,8 @@ fun updateUser(userId: UUID, updatedBy: String, email: String) {
 fun deleteUser(userId: UUID, deletedBy: UUID) {
     dslContext
         .update(USER)
-        .set(USER.DELETED_AT, LocalDateTime.now())
-        .set(USER.UPDATED_AT, LocalDateTime.now())
+        .set(USER.DELETED_AT, Instant.now())
+        .set(USER.UPDATED_AT, Instant.now())
         .set(USER.UPDATED_BY, deletedBy)  // 삭제자 기록
         .where(USER.ID.eq(userId))
         .and(USER.DELETED_AT.isNull)  // 이미 삭제된 데이터는 제외
