@@ -10,12 +10,14 @@ import me.onetwo.growsnap.domain.feed.dto.FeedItemResponse
 import me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.growsnap.domain.feed.dto.SubtitleInfoResponse
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_BLOCKS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_SUBTITLES
 import me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS
 import me.onetwo.growsnap.jooq.generated.tables.references.USERS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_BLOCKS
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_LIKES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_SAVES
@@ -115,6 +117,20 @@ class FeedRepositoryImpl(
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
                 .and(USERS.DELETED_AT.isNull)
                 .and(USER_PROFILES.DELETED_AT.isNull)
+                // 차단한 사용자의 콘텐츠 제외
+                .and(CONTENTS.CREATOR_ID.notIn(
+                    dslContext.select(USER_BLOCKS.BLOCKED_ID)
+                        .from(USER_BLOCKS)
+                        .where(USER_BLOCKS.BLOCKER_ID.eq(userId.toString()))
+                        .and(USER_BLOCKS.DELETED_AT.isNull)
+                ))
+                // 차단한 콘텐츠 제외
+                .and(CONTENTS.ID.notIn(
+                    dslContext.select(CONTENT_BLOCKS.CONTENT_ID)
+                        .from(CONTENT_BLOCKS)
+                        .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
+                        .and(CONTENT_BLOCKS.DELETED_AT.isNull)
+                ))
 
         // 제외할 콘텐츠 필터링
         if (excludeContentIds.isNotEmpty()) {
@@ -231,6 +247,20 @@ class FeedRepositoryImpl(
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
                 .and(USERS.DELETED_AT.isNull)
                 .and(USER_PROFILES.DELETED_AT.isNull)
+                // 차단한 사용자의 콘텐츠 제외
+                .and(CONTENTS.CREATOR_ID.notIn(
+                    dslContext.select(USER_BLOCKS.BLOCKED_ID)
+                        .from(USER_BLOCKS)
+                        .where(USER_BLOCKS.BLOCKER_ID.eq(userId.toString()))
+                        .and(USER_BLOCKS.DELETED_AT.isNull)
+                ))
+                // 차단한 콘텐츠 제외
+                .and(CONTENTS.ID.notIn(
+                    dslContext.select(CONTENT_BLOCKS.CONTENT_ID)
+                        .from(CONTENT_BLOCKS)
+                        .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
+                        .and(CONTENT_BLOCKS.DELETED_AT.isNull)
+                ))
 
         // 커서 기반 페이지네이션
         if (cursor != null) {

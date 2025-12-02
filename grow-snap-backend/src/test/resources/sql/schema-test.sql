@@ -1,6 +1,8 @@
 -- Drop all tables first to ensure clean state for each test context
 DROP TABLE IF EXISTS search_history CASCADE;
 DROP TABLE IF EXISTS reports CASCADE;
+DROP TABLE IF EXISTS user_blocks CASCADE;
+DROP TABLE IF EXISTS content_blocks CASCADE;
 DROP TABLE IF EXISTS user_comment_likes CASCADE;
 DROP TABLE IF EXISTS user_content_interactions CASCADE;
 DROP TABLE IF EXISTS user_likes CASCADE;
@@ -378,3 +380,41 @@ CREATE INDEX idx_search_history_keyword ON search_history(keyword);
 CREATE INDEX idx_search_history_created_at ON search_history(created_at);
 CREATE INDEX idx_search_history_composite ON search_history(user_id, created_at);
 CREATE INDEX idx_search_history_deleted_at ON search_history(deleted_at);
+
+-- User Blocks Table
+CREATE TABLE user_blocks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    blocker_id CHAR(36) NOT NULL,
+    blocked_id CHAR(36) NOT NULL,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (blocked_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_block UNIQUE (blocker_id, blocked_id)
+);
+
+CREATE INDEX idx_user_block_blocker_id ON user_blocks(blocker_id);
+CREATE INDEX idx_user_block_blocked_id ON user_blocks(blocked_id);
+CREATE INDEX idx_user_block_deleted_at ON user_blocks(deleted_at);
+
+-- Content Blocks Table
+CREATE TABLE content_blocks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    content_id CHAR(36) NOT NULL,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    CONSTRAINT unique_content_block UNIQUE (user_id, content_id)
+);
+
+CREATE INDEX idx_content_block_user_id ON content_blocks(user_id);
+CREATE INDEX idx_content_block_content_id ON content_blocks(content_id);
+CREATE INDEX idx_content_block_deleted_at ON content_blocks(deleted_at);

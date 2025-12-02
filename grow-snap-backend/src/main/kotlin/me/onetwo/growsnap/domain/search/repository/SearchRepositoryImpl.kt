@@ -162,6 +162,10 @@ class SearchRepositoryImpl(
      *
      * Manticore Search user_index에서 닉네임으로 검색합니다.
      *
+     * **Note**: 차단된 사용자 필터링은 Service 계층에서 처리됩니다.
+     * Manticore Search 결과는 Repository에서 직접 필터링할 수 없으므로,
+     * SearchService에서 결과를 받은 후 차단 목록과 비교하여 필터링합니다.
+     *
      * @param query 검색 키워드
      * @param cursor 페이지네이션 커서
      * @param limit 페이지 크기

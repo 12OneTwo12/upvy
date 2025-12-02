@@ -1,0 +1,27 @@
+[[content-block-delete]]
+=== 콘텐츠 차단 해제
+
+차단한 콘텐츠를 해제합니다.
+
+==== Request
+
+include::{snippets}/content-block-delete/http-request.adoc[]
+include::{snippets}/content-block-delete/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/content-block-delete/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X DELETE http://localhost:8080/api/v1/contents/{contentId}/block \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 차단하지 않은 콘텐츠는 해제할 수 없습니다
+* 차단 해제 성공 시 204 No Content를 반환합니다
+* Soft Delete 방식으로 처리됩니다

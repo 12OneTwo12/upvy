@@ -360,3 +360,41 @@ CREATE INDEX IF NOT EXISTS idx_search_history_keyword ON search_history(keyword)
 CREATE INDEX IF NOT EXISTS idx_search_history_created_at ON search_history(created_at);
 CREATE INDEX IF NOT EXISTS idx_search_history_composite ON search_history(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_search_history_deleted_at ON search_history(deleted_at);
+
+-- User Blocks Table (사용자 차단)
+CREATE TABLE IF NOT EXISTS user_blocks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    blocker_id CHAR(36) NOT NULL COMMENT '차단한 사용자 ID',
+    blocked_id CHAR(36) NOT NULL COMMENT '차단된 사용자 ID',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (blocked_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_block UNIQUE (blocker_id, blocked_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_block_blocker_id ON user_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_user_block_blocked_id ON user_blocks(blocked_id);
+CREATE INDEX IF NOT EXISTS idx_user_block_deleted_at ON user_blocks(deleted_at);
+
+-- Content Blocks Table (콘텐츠 차단/관심없음)
+CREATE TABLE IF NOT EXISTS content_blocks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL COMMENT '차단한 사용자 ID',
+    content_id CHAR(36) NOT NULL COMMENT '차단된 콘텐츠 ID',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    CONSTRAINT unique_content_block UNIQUE (user_id, content_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_content_block_user_id ON content_blocks(user_id);
+CREATE INDEX IF NOT EXISTS idx_content_block_content_id ON content_blocks(content_id);
+CREATE INDEX IF NOT EXISTS idx_content_block_deleted_at ON content_blocks(deleted_at);
