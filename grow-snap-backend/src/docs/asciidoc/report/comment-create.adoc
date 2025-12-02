@@ -1,0 +1,35 @@
+[[report-comment-create]]
+=== 댓글 신고
+
+부적절한 댓글을 신고합니다.
+
+==== Request
+
+include::{snippets}/report-comment-create/http-request.adoc[]
+include::{snippets}/report-comment-create/path-parameters.adoc[]
+include::{snippets}/report-comment-create/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/report-comment-create/http-response.adoc[]
+include::{snippets}/report-comment-create/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/reports/comment/{targetId} \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reportType": "HARASSMENT",
+    "description": "괴롭힘 댓글입니다"
+  }'
+----
+
+==== Notes
+
+* 인증된 사용자만 신고할 수 있습니다
+* 동일한 사용자는 같은 댓글을 중복 신고할 수 없습니다
+* 신고 타입은 필수이며, 설명은 선택 사항입니다 (최대 500자)
+* 신고는 PENDING 상태로 생성되며, 관리자가 검토합니다

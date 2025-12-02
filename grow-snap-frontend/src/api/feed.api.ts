@@ -73,7 +73,7 @@ export const getCategoryFeed = async (
   params?: FeedRequest
 ): Promise<FeedResponse> => {
   const response = await apiClient.get<FeedResponse>(
-    API_ENDPOINTS.FEED.CATEGORY(category),
+    API_ENDPOINTS.FEED.CATEGORY(category.toLowerCase()),
     {
       params: {
         cursor: params?.cursor || undefined,

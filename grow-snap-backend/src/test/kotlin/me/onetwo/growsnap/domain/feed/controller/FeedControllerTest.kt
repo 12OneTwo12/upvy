@@ -409,7 +409,7 @@ class FeedControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=POPULAR&limit=20", "PROGRAMMING")
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=POPULAR&limit=20", Category.PROGRAMMING.name.lowercase())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk
@@ -495,7 +495,7 @@ class FeedControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=POPULAR&limit=20", "PROGRAMMING")
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=POPULAR&limit=20", Category.PROGRAMMING.name.lowercase())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk
@@ -528,7 +528,7 @@ class FeedControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=RECENT&limit=20", "LANGUAGE")
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?sortBy=RECENT&limit=20", Category.LANGUAGE.name.lowercase())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk
@@ -556,7 +556,7 @@ class FeedControllerTest {
             webTestClient
                 .mutateWith(mockUser(userId))
                 .get()
-                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?cursor=$cursor&limit=20", "ART")
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}?cursor=$cursor&limit=20", Category.ART.name.lowercase())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk

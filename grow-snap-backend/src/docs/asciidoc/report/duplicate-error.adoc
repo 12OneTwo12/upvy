@@ -1,0 +1,33 @@
+[[report-duplicate-error]]
+=== 중복 신고 오류
+
+이미 신고한 대상을 다시 신고하려고 할 때 발생하는 오류입니다.
+
+==== Request
+
+include::{snippets}/report-duplicate-error/http-request.adoc[]
+include::{snippets}/report-duplicate-error/path-parameters.adoc[]
+include::{snippets}/report-duplicate-error/request-fields.adoc[]
+
+==== Response (409 Conflict)
+
+include::{snippets}/report-duplicate-error/http-response.adoc[]
+include::{snippets}/report-duplicate-error/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/reports/content/{targetId} \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reportType": "SPAM"
+  }'
+----
+
+==== Notes
+
+* 동일한 사용자가 동일한 대상(콘텐츠, 댓글, 사용자)을 중복 신고할 수 없습니다
+* HTTP 상태 코드 409 Conflict가 반환됩니다
+* errorCode는 "DUPLICATE_REPORT"입니다
