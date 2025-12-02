@@ -6,7 +6,7 @@ import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -36,8 +36,8 @@ class FollowRepository(
     fun softDelete(followerId: UUID, followingId: UUID): Mono<Void> {
         return Mono.from(
             dsl.update(FOLLOWS)
-                .set(FOLLOWS.DELETED_AT, LocalDateTime.now())
-                .set(FOLLOWS.UPDATED_AT, LocalDateTime.now())
+                .set(FOLLOWS.DELETED_AT, Instant.now())
+                .set(FOLLOWS.UPDATED_AT, Instant.now())
                 .set(FOLLOWS.UPDATED_BY, followerId.toString())  // 언팔로우를 수행한 사용자
                 .where(FOLLOWS.FOLLOWER_ID.eq(followerId.toString()))
                 .and(FOLLOWS.FOLLOWING_ID.eq(followingId.toString()))
@@ -85,7 +85,7 @@ class FollowRepository(
      * @param deletedBy 삭제한 사용자 ID
      */
     fun softDeleteAllByUserId(userId: UUID, deletedBy: UUID): Mono<Void> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         // 사용자가 팔로우한 관계 삭제
         val deleteFollowing = Mono.from(

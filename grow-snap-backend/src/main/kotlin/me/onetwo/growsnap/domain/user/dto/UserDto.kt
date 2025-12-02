@@ -3,7 +3,7 @@ package me.onetwo.growsnap.domain.user.dto
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserRole
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -14,8 +14,8 @@ data class UserResponse(
     val email: String,
     val provider: OAuthProvider,
     val role: UserRole,
-    val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime
+    val createdAt: Instant,
+    val updatedAt: Instant
 ) {
     companion object {
         fun from(user: User): UserResponse {

@@ -25,6 +25,8 @@ import org.springframework.http.MediaType
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -92,7 +94,7 @@ class AnalyticsControllerIntegrationTest : AbstractIntegrationTest() {
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {
                 val viewedContentIds = userViewHistoryRepository.findRecentViewedContentIds(
                     user.id!!,
-                    java.time.LocalDateTime.now().minusHours(1),
+                    java.time.Instant.now().minus(1, ChronoUnit.HOURS),
                     100
                 ).collectList().block()!!
                 assertThat(viewedContentIds).contains(contentId)

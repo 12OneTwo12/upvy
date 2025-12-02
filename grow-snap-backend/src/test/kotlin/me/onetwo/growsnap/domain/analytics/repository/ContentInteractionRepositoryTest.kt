@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -102,7 +102,7 @@ class ContentInteractionRepositoryTest {
             val newContentId = UUID.randomUUID()
 
             // 콘텐츠 먼저 생성 (FK 제약조건)
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             Mono.from(dslContext.insertInto(CONTENTS)
                 .set(CONTENTS.ID, newContentId.toString())
                 .set(CONTENTS.CREATOR_ID, testUser.id.toString())
@@ -157,7 +157,7 @@ class ContentInteractionRepositoryTest {
             val newContentId = UUID.randomUUID()
 
             // 콘텐츠 먼저 생성
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             Mono.from(dslContext.insertInto(CONTENTS)
                 .set(CONTENTS.ID, newContentId.toString())
                 .set(CONTENTS.CREATOR_ID, testUser.id.toString())
@@ -238,7 +238,7 @@ class ContentInteractionRepositoryTest {
         fun incrementViewCount_DeletedContent_DoesNotUpdate() {
             // Given: 콘텐츠 삭제 (Soft Delete)
             Mono.from(dslContext.update(CONTENT_INTERACTIONS)
-                .set(CONTENT_INTERACTIONS.DELETED_AT, LocalDateTime.now())
+                .set(CONTENT_INTERACTIONS.DELETED_AT, Instant.now())
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(testContentId.toString())))
                 .block()
 
@@ -401,7 +401,7 @@ class ContentInteractionRepositoryTest {
         creatorId: UUID,
         title: String
     ) {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         // Contents 테이블
         Mono.from(dslContext.insertInto(CONTENTS)

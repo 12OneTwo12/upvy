@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -43,9 +43,9 @@ class ContentInteractionServiceImpl(
             saveCount = 0,
             shareCount = 0,
             viewCount = 0,
-            createdAt = LocalDateTime.now(),
+            createdAt = Instant.now(),
             createdBy = creatorId.toString(),
-            updatedAt = LocalDateTime.now(),
+            updatedAt = Instant.now(),
             updatedBy = creatorId.toString()
         )
 

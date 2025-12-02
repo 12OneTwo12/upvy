@@ -13,7 +13,8 @@ import me.onetwo.growsnap.domain.user.model.UserProfile
 import me.onetwo.growsnap.domain.user.model.UserRole
 import me.onetwo.growsnap.domain.user.model.UserStatus
 import me.onetwo.growsnap.domain.user.model.UserStatusHistory
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import me.onetwo.growsnap.domain.user.repository.FollowRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
@@ -160,7 +161,7 @@ class UserServiceTest {
             providerId = providerId,
             role = UserRole.USER,
             status = UserStatus.DELETED,
-            deletedAt = LocalDateTime.now().minusDays(1)
+            deletedAt = Instant.now().minus(1, ChronoUnit.DAYS)
         )
 
         val restoredUser = deletedUser.copy(

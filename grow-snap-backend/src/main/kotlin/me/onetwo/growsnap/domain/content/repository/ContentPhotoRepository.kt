@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Flux
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -90,7 +91,7 @@ class ContentPhotoRepository(
     fun deleteByContentId(contentId: UUID, deletedBy: String): Mono<Int> {
         return Mono.from(dslContext
             .update(CONTENT_PHOTOS)
-            .set(CONTENT_PHOTOS.DELETED_AT, java.time.LocalDateTime.now())
+            .set(CONTENT_PHOTOS.DELETED_AT, Instant.now())
             .set(CONTENT_PHOTOS.UPDATED_BY, deletedBy)
             .where(CONTENT_PHOTOS.CONTENT_ID.eq(contentId.toString()))
             .and(CONTENT_PHOTOS.DELETED_AT.isNull))

@@ -30,7 +30,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /**
@@ -133,7 +134,7 @@ class FeedRepositoryImplTest {
             contentId = content1Id,
             creatorId = creator1.id!!,
             title = "Test Video 1",
-            createdAt = LocalDateTime.now().minusHours(1)
+            createdAt = Instant.now().minus(1, ChronoUnit.HOURS)
         )
 
         // Content 2 (Creator2, 중간)
@@ -141,7 +142,7 @@ class FeedRepositoryImplTest {
             contentId = content2Id,
             creatorId = creator2.id!!,
             title = "Test Video 2",
-            createdAt = LocalDateTime.now().minusHours(2)
+            createdAt = Instant.now().minus(2, ChronoUnit.HOURS)
         )
 
         // Content 3 (Creator1, 가장 오래됨)
@@ -149,7 +150,7 @@ class FeedRepositoryImplTest {
             contentId = content3Id,
             creatorId = creator1.id!!,
             title = "Test Video 3",
-            createdAt = LocalDateTime.now().minusHours(3)
+            createdAt = Instant.now().minus(3, ChronoUnit.HOURS)
         )
     }
 
@@ -279,7 +280,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContentId,
                 creatorId = creator1.id!!,
                 title = "Test Photo Content",
-                createdAt = LocalDateTime.now()
+                createdAt = Instant.now()
             )
             insertContentPhoto(
                 contentId = photoContentId,
@@ -326,7 +327,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContentId,
                 creatorId = creator1.id!!,
                 title = "Test Photo Content",
-                createdAt = LocalDateTime.now().minusMinutes(30)
+                createdAt = Instant.now().minus(30, ChronoUnit.MINUTES)
             )
             insertContentPhoto(
                 contentId = photoContentId,
@@ -444,7 +445,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContentId,
                 creatorId = creator1.id!!,
                 title = "Test Photo Content",
-                createdAt = LocalDateTime.now()
+                createdAt = Instant.now()
             )
             // display_order 역순으로 삽입 (정렬 테스트)
             insertContentPhoto(
@@ -494,17 +495,17 @@ class FeedRepositoryImplTest {
             insertViewHistory(
                 userId = viewer.id!!,
                 contentId = content3Id,
-                watchedAt = LocalDateTime.now().minusHours(3)
+                watchedAt = Instant.now().minus(3, ChronoUnit.HOURS)
             )
             insertViewHistory(
                 userId = viewer.id!!,
                 contentId = content1Id,
-                watchedAt = LocalDateTime.now().minusHours(1)
+                watchedAt = Instant.now().minus(1, ChronoUnit.HOURS)
             )
             insertViewHistory(
                 userId = viewer.id!!,
                 contentId = content2Id,
-                watchedAt = LocalDateTime.now()
+                watchedAt = Instant.now()
             )
 
             // When
@@ -524,9 +525,9 @@ class FeedRepositoryImplTest {
         @DisplayName("limit 이하의 결과만 반환한다")
         fun findRecentlyViewedContentIds_WithLimit_ReturnsLimitedResults() {
             // Given: 시청 기록 3개
-            insertViewHistory(viewer.id!!, content1Id, LocalDateTime.now().minusHours(3))
-            insertViewHistory(viewer.id!!, content2Id, LocalDateTime.now().minusHours(2))
-            insertViewHistory(viewer.id!!, content3Id, LocalDateTime.now().minusHours(1))
+            insertViewHistory(viewer.id!!, content1Id, Instant.now().minus(3, ChronoUnit.HOURS))
+            insertViewHistory(viewer.id!!, content2Id, Instant.now().minus(2, ChronoUnit.HOURS))
+            insertViewHistory(viewer.id!!, content3Id, Instant.now().minus(1, ChronoUnit.HOURS))
 
             // When: limit=2
             val result = feedRepository.findRecentlyViewedContentIds(
@@ -658,7 +659,7 @@ class FeedRepositoryImplTest {
 
             // 콘텐츠 삭제 (Soft Delete)
             Mono.from(dslContext.update(CONTENTS)
-                .set(CONTENTS.DELETED_AT, LocalDateTime.now())
+                .set(CONTENTS.DELETED_AT, Instant.now())
                 .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 인기 콘텐츠 조회
@@ -685,14 +686,14 @@ class FeedRepositoryImplTest {
             Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 생성 시각이 다른 3개의 콘텐츠
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             val newestId = UUID.randomUUID()
             val middleId = UUID.randomUUID()
             val oldestId = UUID.randomUUID()
 
-            insertContent(oldestId, creator1.id!!, "Oldest Content", now.minusDays(3))
-            insertContent(middleId, creator1.id!!, "Middle Content", now.minusDays(2))
-            insertContent(newestId, creator2.id!!, "Newest Content", now.minusDays(1))
+            insertContent(oldestId, creator1.id!!, "Oldest Content", now.minus(3, ChronoUnit.DAYS))
+            insertContent(middleId, creator1.id!!, "Middle Content", now.minus(2, ChronoUnit.DAYS))
+            insertContent(newestId, creator2.id!!, "Newest Content", now.minus(1, ChronoUnit.DAYS))
 
             // When: 신규 콘텐츠 조회
             val result = feedRepository.findNewContentIds(10, emptyList())
@@ -715,14 +716,14 @@ class FeedRepositoryImplTest {
             Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 3개의 콘텐츠
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             val id1 = UUID.randomUUID()
             val id2 = UUID.randomUUID()
             val id3 = UUID.randomUUID()
 
-            insertContent(id1, creator1.id!!, "Content 1", now.minusDays(1))
-            insertContent(id2, creator1.id!!, "Content 2", now.minusDays(2))
-            insertContent(id3, creator2.id!!, "Content 3", now.minusDays(3))
+            insertContent(id1, creator1.id!!, "Content 1", now.minus(1, ChronoUnit.DAYS))
+            insertContent(id2, creator1.id!!, "Content 2", now.minus(2, ChronoUnit.DAYS))
+            insertContent(id3, creator2.id!!, "Content 3", now.minus(3, ChronoUnit.DAYS))
 
             // When: id2를 제외하고 조회
             val result = feedRepository.findNewContentIds(10, listOf(id2))
@@ -745,9 +746,9 @@ class FeedRepositoryImplTest {
             Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 5개의 콘텐츠
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             repeat(5) { index ->
-                insertContent(UUID.randomUUID(), creator1.id!!, "Content $index", now.minusDays(index.toLong()))
+                insertContent(UUID.randomUUID(), creator1.id!!, "Content $index", now.minus(index.toLong(), ChronoUnit.DAYS))
             }
 
             // When: limit=3으로 조회
@@ -768,16 +769,16 @@ class FeedRepositoryImplTest {
             Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 정상 콘텐츠 1개, 삭제된 콘텐츠 1개
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             val activeId = UUID.randomUUID()
             val deletedId = UUID.randomUUID()
 
-            insertContent(activeId, creator1.id!!, "Active Content", now.minusDays(1))
+            insertContent(activeId, creator1.id!!, "Active Content", now.minus(1, ChronoUnit.DAYS))
             insertContent(deletedId, creator1.id!!, "Deleted Content", now)
 
             // 콘텐츠 삭제 (Soft Delete)
             Mono.from(dslContext.update(CONTENTS)
-                .set(CONTENTS.DELETED_AT, LocalDateTime.now())
+                .set(CONTENTS.DELETED_AT, Instant.now())
                 .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 신규 콘텐츠 조회
@@ -806,7 +807,7 @@ class FeedRepositoryImplTest {
             // Given: 여러 개의 콘텐츠
             val contentIds = (1..10).map { UUID.randomUUID() }
             contentIds.forEach { id ->
-                insertContent(id, creator1.id!!, "Content $id", LocalDateTime.now())
+                insertContent(id, creator1.id!!, "Content $id", Instant.now())
             }
 
             // When: 랜덤 콘텐츠 조회 (여러 번 실행하여 순서가 다른지 확인)
@@ -837,7 +838,7 @@ class FeedRepositoryImplTest {
             // Given: 5개의 콘텐츠
             val ids = (1..5).map { UUID.randomUUID() }
             ids.forEach { id ->
-                insertContent(id, creator1.id!!, "Content $id", LocalDateTime.now())
+                insertContent(id, creator1.id!!, "Content $id", Instant.now())
             }
 
             // When: ids[2]를 제외하고 조회
@@ -860,7 +861,7 @@ class FeedRepositoryImplTest {
 
             // Given: 10개의 콘텐츠
             repeat(10) { index ->
-                insertContent(UUID.randomUUID(), creator1.id!!, "Content $index", LocalDateTime.now())
+                insertContent(UUID.randomUUID(), creator1.id!!, "Content $index", Instant.now())
             }
 
             // When: limit=5로 조회
@@ -885,13 +886,13 @@ class FeedRepositoryImplTest {
             val deletedId = UUID.randomUUID()
 
             activeIds.forEach { id ->
-                insertContent(id, creator1.id!!, "Active Content $id", LocalDateTime.now())
+                insertContent(id, creator1.id!!, "Active Content $id", Instant.now())
             }
-            insertContent(deletedId, creator1.id!!, "Deleted Content", LocalDateTime.now())
+            insertContent(deletedId, creator1.id!!, "Deleted Content", Instant.now())
 
             // 콘텐츠 삭제 (Soft Delete)
             Mono.from(dslContext.update(CONTENTS)
-                .set(CONTENTS.DELETED_AT, LocalDateTime.now())
+                .set(CONTENTS.DELETED_AT, Instant.now())
                 .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: 랜덤 콘텐츠 조회
@@ -958,17 +959,17 @@ class FeedRepositoryImplTest {
             Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: PROGRAMMING 카테고리의 콘텐츠 3개 (생성 시각 다름)
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             val newestId = UUID.randomUUID()
             val middleId = UUID.randomUUID()
             val oldestId = UUID.randomUUID()
 
             insertContentWithCategory(oldestId, creator1.id!!, "Oldest", Category.PROGRAMMING,
-                InteractionCounts(), now.minusDays(3))
+                InteractionCounts(), now.minus(3, ChronoUnit.DAYS))
             insertContentWithCategory(middleId, creator1.id!!, "Middle", Category.PROGRAMMING,
-                InteractionCounts(), now.minusDays(2))
+                InteractionCounts(), now.minus(2, ChronoUnit.DAYS))
             insertContentWithCategory(newestId, creator2.id!!, "Newest", Category.PROGRAMMING,
-                InteractionCounts(), now.minusDays(1))
+                InteractionCounts(), now.minus(1, ChronoUnit.DAYS))
 
             // When: PROGRAMMING 카테고리, RECENT 정렬로 조회
             val result = feedRepository.findContentIdsByCategory(
@@ -1111,7 +1112,7 @@ class FeedRepositoryImplTest {
 
             // 콘텐츠 삭제 (Soft Delete)
             Mono.from(dslContext.update(CONTENTS)
-                .set(CONTENTS.DELETED_AT, LocalDateTime.now())
+                .set(CONTENTS.DELETED_AT, Instant.now())
                 .where(CONTENTS.ID.eq(deletedId.toString()))).block()
 
             // When: PROGRAMMING 카테고리 조회
@@ -1160,7 +1161,7 @@ class FeedRepositoryImplTest {
             title: String,
             category: Category,
             interactions: InteractionCounts,
-            createdAt: LocalDateTime = LocalDateTime.now()
+            createdAt: Instant = Instant.now()
         ) {
             // Contents 테이블
             Mono.from(dslContext.insertInto(CONTENTS)
@@ -1222,7 +1223,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContent1Id,
                 creatorId = creator1.id!!,
                 title = "Photo Content 1",
-                createdAt = LocalDateTime.now().minusHours(1)
+                createdAt = Instant.now().minus(1, ChronoUnit.HOURS)
             )
             insertContentPhoto(photoContent1Id, "https://example.com/content1-photo1.jpg", 0, creator1.id!!)
             insertContentPhoto(photoContent1Id, "https://example.com/content1-photo2.jpg", 1, creator1.id!!)
@@ -1231,7 +1232,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContent2Id,
                 creatorId = creator2.id!!,
                 title = "Photo Content 2",
-                createdAt = LocalDateTime.now().minusHours(2)
+                createdAt = Instant.now().minus(2, ChronoUnit.HOURS)
             )
             insertContentPhoto(photoContent2Id, "https://example.com/content2-photo1.jpg", 0, creator2.id!!)
             insertContentPhoto(photoContent2Id, "https://example.com/content2-photo2.jpg", 1, creator2.id!!)
@@ -1269,7 +1270,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContentId,
                 creatorId = creator1.id!!,
                 title = "Photo Content",
-                createdAt = LocalDateTime.now()
+                createdAt = Instant.now()
             )
             insertContentPhoto(photoContentId, "https://example.com/photo.jpg", 0, creator1.id!!)
 
@@ -1299,7 +1300,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContentId,
                 creatorId = creator1.id!!,
                 title = "Photo Content Without Photos",
-                createdAt = LocalDateTime.now()
+                createdAt = Instant.now()
             )
             // 사진을 삽입하지 않음
 
@@ -1354,7 +1355,7 @@ class FeedRepositoryImplTest {
         commentCount: Int,
         saveCount: Int,
         shareCount: Int,
-        createdAt: LocalDateTime = LocalDateTime.now()
+        createdAt: Instant = Instant.now()
     ) {
         insertContentWithInteractions(
             contentId,
@@ -1373,7 +1374,7 @@ class FeedRepositoryImplTest {
         creatorId: UUID,
         title: String,
         interactions: InteractionCounts,
-        createdAt: LocalDateTime = LocalDateTime.now()
+        createdAt: Instant = Instant.now()
     ) {
         // Contents 테이블
         Mono.from(dslContext.insertInto(CONTENTS)
@@ -1425,7 +1426,7 @@ class FeedRepositoryImplTest {
         contentId: UUID,
         creatorId: UUID,
         title: String,
-        createdAt: LocalDateTime
+        createdAt: Instant
     ) {
         // Contents 테이블
         Mono.from(dslContext.insertInto(CONTENTS)
@@ -1482,8 +1483,8 @@ class FeedRepositoryImplTest {
             .set(CONTENT_SUBTITLES.CONTENT_ID, contentId.toString())
             .set(CONTENT_SUBTITLES.LANGUAGE, language)
             .set(CONTENT_SUBTITLES.SUBTITLE_URL, subtitleUrl)
-            .set(CONTENT_SUBTITLES.CREATED_AT, LocalDateTime.now())
-            .set(CONTENT_SUBTITLES.UPDATED_AT, LocalDateTime.now())).block()
+            .set(CONTENT_SUBTITLES.CREATED_AT, Instant.now())
+            .set(CONTENT_SUBTITLES.UPDATED_AT, Instant.now())).block()
     }
 
     /**
@@ -1492,7 +1493,7 @@ class FeedRepositoryImplTest {
     private fun insertViewHistory(
         userId: UUID,
         contentId: UUID,
-        watchedAt: LocalDateTime
+        watchedAt: Instant
     ) {
         Mono.from(dslContext.insertInto(USER_VIEW_HISTORY)
             .set(USER_VIEW_HISTORY.USER_ID, userId.toString())
@@ -1512,7 +1513,7 @@ class FeedRepositoryImplTest {
         contentId: UUID,
         creatorId: UUID,
         title: String,
-        createdAt: LocalDateTime
+        createdAt: Instant
     ) {
         // Contents 테이블 (PHOTO 타입)
         Mono.from(dslContext.insertInto(CONTENTS)
@@ -1572,9 +1573,9 @@ class FeedRepositoryImplTest {
             .set(CONTENT_PHOTOS.DISPLAY_ORDER, displayOrder)
             .set(CONTENT_PHOTOS.WIDTH, 1080)
             .set(CONTENT_PHOTOS.HEIGHT, 1080)
-            .set(CONTENT_PHOTOS.CREATED_AT, LocalDateTime.now())
+            .set(CONTENT_PHOTOS.CREATED_AT, Instant.now())
             .set(CONTENT_PHOTOS.CREATED_BY, createdBy.toString())
-            .set(CONTENT_PHOTOS.UPDATED_AT, LocalDateTime.now())
+            .set(CONTENT_PHOTOS.UPDATED_AT, Instant.now())
             .set(CONTENT_PHOTOS.UPDATED_BY, createdBy.toString())).block()
     }
 }

@@ -26,7 +26,8 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @SpringBootTest
@@ -85,9 +86,9 @@ class ContentRepositoryTest {
                 width = 1920,
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUser.id.toString()!!,
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUser.id.toString()!!
             )
 
@@ -112,7 +113,7 @@ class ContentRepositoryTest {
         @DisplayName("Audit Trail 필드가 자동으로 설정된다")
         fun save_WithValidContent_SetsAuditTrailFields() {
             // Given: 테스트 콘텐츠
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             val content = Content(
                 id = UUID.randomUUID(),
                 creatorId = testUser.id!!,
@@ -207,9 +208,9 @@ class ContentRepositoryTest {
                 category = Category.PROGRAMMING,
                 tags = listOf("test", "video"),
                 language = "ko",
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUser.id.toString()!!,
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUser.id.toString()!!
             )
 
@@ -412,7 +413,7 @@ class ContentRepositoryTest {
 
             // 메타데이터 삭제
             Mono.from(dslContext.update(CONTENT_METADATA)
-                .set(CONTENT_METADATA.DELETED_AT, LocalDateTime.now())
+                .set(CONTENT_METADATA.DELETED_AT, Instant.now())
                 .where(CONTENT_METADATA.CONTENT_ID.eq(content2.toString()))).block()
 
             // When: 조회
@@ -431,10 +432,10 @@ class ContentRepositoryTest {
             val content2 = UUID.randomUUID()
             val content3 = UUID.randomUUID()
 
-            val now = LocalDateTime.now()
-            insertContentWithTime(content1, testUser.id!!, now.minusHours(3))
-            insertContentWithTime(content2, testUser.id!!, now.minusHours(2))
-            insertContentWithTime(content3, testUser.id!!, now.minusHours(1))
+            val now = Instant.now()
+            insertContentWithTime(content1, testUser.id!!, now.minus(3, ChronoUnit.HOURS))
+            insertContentWithTime(content2, testUser.id!!, now.minus(2, ChronoUnit.HOURS))
+            insertContentWithTime(content3, testUser.id!!, now.minus(1, ChronoUnit.HOURS))
             insertMetadata(content1, testUser.id!!, "Content 1")
             insertMetadata(content2, testUser.id!!, "Content 2")
             insertMetadata(content3, testUser.id!!, "Content 3")
@@ -502,7 +503,7 @@ class ContentRepositoryTest {
         contentId: UUID,
         creatorId: UUID
     ) {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         insertContentWithTime(contentId, creatorId, now)
     }
 
@@ -512,7 +513,7 @@ class ContentRepositoryTest {
     private fun insertContentWithTime(
         contentId: UUID,
         creatorId: UUID,
-        createdAt: LocalDateTime
+        createdAt: Instant
     ) {
         Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
@@ -538,7 +539,7 @@ class ContentRepositoryTest {
         creatorId: UUID,
         title: String
     ) {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         Mono.from(dslContext.insertInto(CONTENT_METADATA)
             .set(CONTENT_METADATA.CONTENT_ID, contentId.toString())
             .set(CONTENT_METADATA.TITLE, title)
@@ -560,8 +561,8 @@ class ContentRepositoryTest {
         userId: UUID
     ) {
         Mono.from(dslContext.update(CONTENTS)
-            .set(CONTENTS.DELETED_AT, LocalDateTime.now())
-            .set(CONTENTS.UPDATED_AT, LocalDateTime.now())
+            .set(CONTENTS.DELETED_AT, Instant.now())
+            .set(CONTENTS.UPDATED_AT, Instant.now())
             .set(CONTENTS.UPDATED_BY, userId.toString())
             .where(CONTENTS.ID.eq(contentId.toString()))).block()
     }
@@ -615,10 +616,10 @@ class ContentRepositoryTest {
             val content2 = UUID.randomUUID()
             val content3 = UUID.randomUUID()
 
-            val now = LocalDateTime.now()
-            insertContentWithTime(content1, testUser.id!!, now.minusHours(3))
-            insertContentWithTime(content2, testUser.id!!, now.minusHours(2))
-            insertContentWithTime(content3, testUser.id!!, now.minusHours(1))
+            val now = Instant.now()
+            insertContentWithTime(content1, testUser.id!!, now.minus(3, ChronoUnit.HOURS))
+            insertContentWithTime(content2, testUser.id!!, now.minus(2, ChronoUnit.HOURS))
+            insertContentWithTime(content3, testUser.id!!, now.minus(1, ChronoUnit.HOURS))
             insertMetadata(content1, testUser.id!!, "Tutorial Part 1")
             insertMetadata(content2, testUser.id!!, "Tutorial Part 2")
             insertMetadata(content3, testUser.id!!, "Tutorial Part 3")
@@ -651,9 +652,9 @@ class ContentRepositoryTest {
                 .set(CONTENTS.WIDTH, 1920)
                 .set(CONTENTS.HEIGHT, 1080)
                 .set(CONTENTS.STATUS, ContentStatus.PUBLISHED.name)
-                .set(CONTENTS.CREATED_AT, LocalDateTime.now())
+                .set(CONTENTS.CREATED_AT, Instant.now())
                 .set(CONTENTS.CREATED_BY, testUser.id.toString())
-                .set(CONTENTS.UPDATED_AT, LocalDateTime.now())
+                .set(CONTENTS.UPDATED_AT, Instant.now())
                 .set(CONTENTS.UPDATED_BY, testUser.id.toString())).block()
 
             // PENDING 콘텐츠
@@ -667,9 +668,9 @@ class ContentRepositoryTest {
                 .set(CONTENTS.WIDTH, 1920)
                 .set(CONTENTS.HEIGHT, 1080)
                 .set(CONTENTS.STATUS, ContentStatus.PENDING.name)
-                .set(CONTENTS.CREATED_AT, LocalDateTime.now())
+                .set(CONTENTS.CREATED_AT, Instant.now())
                 .set(CONTENTS.CREATED_BY, testUser.id.toString())
-                .set(CONTENTS.UPDATED_AT, LocalDateTime.now())
+                .set(CONTENTS.UPDATED_AT, Instant.now())
                 .set(CONTENTS.UPDATED_BY, testUser.id.toString())).block()
 
             insertMetadata(publishedContent, testUser.id!!, "Kotlin Guide")
@@ -718,7 +719,7 @@ class ContentRepositoryTest {
 
             // 메타데이터 삭제
             Mono.from(dslContext.update(CONTENT_METADATA)
-                .set(CONTENT_METADATA.DELETED_AT, LocalDateTime.now())
+                .set(CONTENT_METADATA.DELETED_AT, Instant.now())
                 .where(CONTENT_METADATA.CONTENT_ID.eq(deletedMetadataContent.toString()))).block()
 
             // When: "Programming"으로 검색

@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.interaction.model
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -14,11 +14,11 @@ import java.util.UUID
  * @property userId 작성자 ID
  * @property parentCommentId 부모 댓글 ID (대댓글인 경우)
  * @property content 댓글 내용
- * @property createdAt 생성 시각
+ * @property createdAt 생성 시각 (UTC Instant)
  * @property createdBy 생성한 사용자 ID
- * @property updatedAt 최종 수정 시각
+ * @property updatedAt 최종 수정 시각 (UTC Instant)
  * @property updatedBy 최종 수정한 사용자 ID
- * @property deletedAt 삭제 시각 (Soft Delete)
+ * @property deletedAt 삭제 시각 (Soft Delete, UTC Instant)
  */
 data class Comment(
     val id: UUID? = null,
@@ -26,9 +26,9 @@ data class Comment(
     val userId: UUID,
     val parentCommentId: UUID? = null,
     val content: String,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     val createdBy: String? = null,
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: Instant = Instant.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null
+    val deletedAt: Instant? = null
 )

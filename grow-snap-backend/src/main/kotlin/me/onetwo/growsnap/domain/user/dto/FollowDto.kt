@@ -1,7 +1,7 @@
 package me.onetwo.growsnap.domain.user.dto
 
 import me.onetwo.growsnap.domain.user.model.Follow
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -11,7 +11,7 @@ data class FollowResponse(
     val id: Long,
     val followerId: UUID,
     val followingId: UUID,
-    val createdAt: LocalDateTime
+    val createdAt: Instant
 ) {
     companion object {
         fun from(follow: Follow): FollowResponse {

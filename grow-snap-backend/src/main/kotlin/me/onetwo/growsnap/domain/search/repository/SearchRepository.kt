@@ -5,6 +5,7 @@ import me.onetwo.growsnap.domain.content.model.DifficultyLevel
 import me.onetwo.growsnap.domain.search.dto.AutocompleteSuggestion
 import me.onetwo.growsnap.domain.search.model.SearchSortType
 import reactor.core.publisher.Mono
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -54,8 +55,8 @@ interface SearchRepository {
         difficulty: DifficultyLevel?,
         minDuration: Int?,
         maxDuration: Int?,
-        startDate: LocalDate?,
-        endDate: LocalDate?,
+        startDate: Instant?,
+        endDate: Instant?,
         language: String?,
         sortBy: SearchSortType,
         cursor: String?,

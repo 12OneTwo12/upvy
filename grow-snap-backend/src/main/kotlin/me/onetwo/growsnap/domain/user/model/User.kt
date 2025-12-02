@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.user.model
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 data class User(
@@ -10,11 +10,11 @@ data class User(
     val providerId: String,
     val role: UserRole = UserRole.USER,
     val status: UserStatus = UserStatus.ACTIVE,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     val createdBy: String? = null,
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: Instant = Instant.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null
+    val deletedAt: Instant? = null
 ) {
     fun isDeleted(): Boolean = status == UserStatus.DELETED
     fun isActive(): Boolean = status == UserStatus.ACTIVE

@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -34,7 +34,7 @@ class SearchHistoryRepositoryImpl(
      * @return 저장된 검색 기록 (Mono)
      */
     override fun save(userId: UUID, keyword: String, searchType: SearchType): Mono<SearchHistory> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         val userIdStr = userId.toString()
 
         logger.debug("Saving search history: userId={}, keyword={}, searchType={}", userId, keyword, searchType)
@@ -142,7 +142,7 @@ class SearchHistoryRepositoryImpl(
      * @return 삭제 완료 시그널 (Mono<Void>)
      */
     override fun deleteByUserIdAndKeyword(userId: UUID, keyword: String): Mono<Void> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         val userIdStr = userId.toString()
 
         logger.debug("Deleting search history: userId={}, keyword={}", userId, keyword)
@@ -169,7 +169,7 @@ class SearchHistoryRepositoryImpl(
      * @return 삭제 완료 시그널 (Mono<Void>)
      */
     override fun deleteAllByUserId(userId: UUID): Mono<Void> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         val userIdStr = userId.toString()
 
         logger.debug("Deleting all search history: userId={}", userId)

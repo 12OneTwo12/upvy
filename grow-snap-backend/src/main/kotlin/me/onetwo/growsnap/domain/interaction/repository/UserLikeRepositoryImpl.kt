@@ -5,7 +5,7 @@ import me.onetwo.growsnap.jooq.generated.tables.UserLikes.Companion.USER_LIKES
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -40,7 +40,7 @@ class UserLikeRepositoryImpl(
      * @return 생성된 좋아요 (Mono)
      */
     override fun save(userId: UUID, contentId: UUID): Mono<UserLike> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         val userIdStr = userId.toString()
         val contentIdStr = contentId.toString()
 
@@ -88,8 +88,8 @@ class UserLikeRepositoryImpl(
      * @return 삭제 완료 시그널 (Mono<Void>)
      */
     override fun delete(userId: UUID, contentId: UUID): Mono<Void> {
-        val now = LocalDateTime.now()
-        val nowUnix = now.toEpochSecond(ZoneOffset.UTC)
+        val now = Instant.now()
+        val nowUnix = now.getEpochSecond()
 
         // JOOQ의 type-safe API로 UPDATE 쿼리 생성
         return Mono.from(

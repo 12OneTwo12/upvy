@@ -9,7 +9,7 @@ import me.onetwo.growsnap.jooq.generated.tables.records.UsersRecord
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -97,14 +97,14 @@ class UserRepository(
      * @return 업데이트된 사용자 정보
      */
     fun updateStatus(id: UUID, status: UserStatus, updatedBy: UUID): Mono<User> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         return Mono.from(
             dsl.update(USERS)
                 .set(USERS.STATUS, status.name)
                 .set(USERS.UPDATED_AT, now)
                 .set(USERS.UPDATED_BY, updatedBy.toString())
                 // DELETED로 변경 시 deleted_at 설정
-                .set(USERS.DELETED_AT, if (status == UserStatus.DELETED) now else null as LocalDateTime?)
+                .set(USERS.DELETED_AT, if (status == UserStatus.DELETED) now else null as Instant?)
                 .where(USERS.ID.eq(id.toString()))
         ).then(findByIdIncludingDeleted(id))
     }
@@ -137,7 +137,7 @@ class UserRepository(
             dsl.update(USERS)
                 .set(USERS.PROVIDER, provider.name)
                 .set(USERS.PROVIDER_ID, providerId)
-                .set(USERS.UPDATED_AT, LocalDateTime.now())
+                .set(USERS.UPDATED_AT, Instant.now())
                 .set(USERS.UPDATED_BY, id.toString())
                 .where(USERS.ID.eq(id.toString()))
         ).then(findByIdIncludingDeleted(id))
@@ -164,10 +164,11 @@ class UserRepository(
      * @param deletedBy 삭제를 수행한 사용자 ID
      */
     fun softDelete(id: UUID, deletedBy: UUID): Mono<Void> {
+        val now = Instant.now()
         return Mono.from(
             dsl.update(USERS)
-                .set(USERS.DELETED_AT, LocalDateTime.now())
-                .set(USERS.UPDATED_AT, LocalDateTime.now())
+                .set(USERS.DELETED_AT, now)
+                .set(USERS.UPDATED_AT, now)
                 .set(USERS.UPDATED_BY, deletedBy.toString())
                 .where(USERS.ID.eq(id.toString()))
                 .and(USERS.DELETED_AT.isNull)  // 이미 삭제된 데이터는 제외

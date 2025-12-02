@@ -35,7 +35,8 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.Optional
 import java.util.UUID
 import java.util.function.Consumer
@@ -181,9 +182,9 @@ class ContentServiceImplTest {
                 width = request.width,
                 height = request.height,
                 status = ContentStatus.PUBLISHED,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = userId.toString()
             )
 
@@ -195,9 +196,9 @@ class ContentServiceImplTest {
                 category = request.category,
                 tags = request.tags,
                 language = request.language,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = userId.toString()
             )
 
@@ -287,9 +288,9 @@ class ContentServiceImplTest {
                 width = request.width,
                 height = request.height,
                 status = ContentStatus.PUBLISHED,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = userId.toString()
             )
 
@@ -301,9 +302,9 @@ class ContentServiceImplTest {
                 category = request.category,
                 tags = request.tags,
                 language = request.language,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = userId.toString()
             )
 
@@ -500,9 +501,9 @@ class ContentServiceImplTest {
                 width = 1920,
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = userId.toString()
             )
 
@@ -514,9 +515,9 @@ class ContentServiceImplTest {
                 category = Category.PROGRAMMING,
                 tags = listOf("test"),
                 language = "ko",
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = userId.toString()
             )
 
@@ -566,9 +567,9 @@ class ContentServiceImplTest {
                 width = 1080,
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
-                createdAt = LocalDateTime.now().minusDays(1),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now().minusDays(1),
+                updatedAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedBy = userId.toString()
             )
 
@@ -580,9 +581,9 @@ class ContentServiceImplTest {
                 category = Category.HEALTH,
                 tags = listOf("old"),
                 language = "ko",
-                createdAt = LocalDateTime.now().minusDays(1),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now().minusDays(1),
+                updatedAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedBy = userId.toString()
             )
 
@@ -644,9 +645,9 @@ class ContentServiceImplTest {
                 width = 1080,
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
-                createdAt = LocalDateTime.now().minusDays(1),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now().minusDays(1),
+                updatedAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedBy = userId.toString()
             )
 
@@ -658,9 +659,9 @@ class ContentServiceImplTest {
                 category = Category.HEALTH,
                 tags = listOf("old"),
                 language = "ko",
-                createdAt = LocalDateTime.now().minusDays(1),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 createdBy = userId.toString(),
-                updatedAt = LocalDateTime.now().minusDays(1),
+                updatedAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedBy = userId.toString()
             )
 
@@ -685,9 +686,9 @@ class ContentServiceImplTest {
                     displayOrder = 0,
                     width = 1080,
                     height = 1080,
-                    createdAt = LocalDateTime.now(),
+                    createdAt = Instant.now(),
                     createdBy = userId.toString(),
-                    updatedAt = LocalDateTime.now(),
+                    updatedAt = Instant.now(),
                     updatedBy = userId.toString()
                 ),
                 ContentPhoto(
@@ -696,9 +697,9 @@ class ContentServiceImplTest {
                     displayOrder = 1,
                     width = 1080,
                     height = 1080,
-                    createdAt = LocalDateTime.now(),
+                    createdAt = Instant.now(),
                     createdBy = userId.toString(),
-                    updatedAt = LocalDateTime.now(),
+                    updatedAt = Instant.now(),
                     updatedBy = userId.toString()
                 )
             ))

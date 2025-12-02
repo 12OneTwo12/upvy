@@ -21,7 +21,8 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /**
@@ -156,9 +157,9 @@ class SearchHistoryRepositoryImplTest {
         @DisplayName("사용자의 최근 검색어를 최신순으로 조회한다")
         fun findRecentByUserId_WithSearchHistory_ReturnsRecentSearches() {
             // Given: 3개의 검색 기록 (명시적 시간 설정)
-            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, LocalDateTime.now().minusHours(3))
-            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, LocalDateTime.now().minusHours(2))
-            insertSearchHistory(testUser.id!!, "Python", SearchType.CONTENT, LocalDateTime.now().minusHours(1))
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(3, ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, Instant.now().minus(2, ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Python", SearchType.CONTENT, Instant.now().minus(1, ChronoUnit.HOURS))
 
             // When: 최근 검색어 조회
             val result = searchHistoryRepository.findRecentByUserId(testUser.id!!, 10)
@@ -178,9 +179,9 @@ class SearchHistoryRepositoryImplTest {
         @DisplayName("동일한 키워드는 가장 최근 검색만 반환한다 (중복 제거)")
         fun findRecentByUserId_WithDuplicateKeyword_ReturnsOnlyLatest() {
             // Given: 동일한 키워드로 여러 번 검색 (명시적 시간 설정)
-            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, LocalDateTime.now().minusHours(3))
-            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, LocalDateTime.now().minusHours(2))
-            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, LocalDateTime.now().minusHours(1)) // 중복
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(3, ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, Instant.now().minus(2, ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(1, ChronoUnit.HOURS)) // 중복
 
             // When: 최근 검색어 조회
             val result = searchHistoryRepository.findRecentByUserId(testUser.id!!, 10)
@@ -199,9 +200,9 @@ class SearchHistoryRepositoryImplTest {
         @DisplayName("limit 개수만큼만 반환한다")
         fun findRecentByUserId_WithLimit_ReturnsLimitedResults() {
             // Given: 5개의 검색 기록 (명시적 시간 설정)
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             repeat(5) { i ->
-                insertSearchHistory(testUser.id!!, "Keyword$i", SearchType.CONTENT, now.minusHours((5 - i).toLong()))
+                insertSearchHistory(testUser.id!!, "Keyword$i", SearchType.CONTENT, now.minusSeconds(3600 * (5 - i).toLong()))
             }
 
             // When: limit 3으로 조회
@@ -440,7 +441,7 @@ class SearchHistoryRepositoryImplTest {
         userId: UUID,
         keyword: String,
         searchType: SearchType,
-        createdAt: LocalDateTime
+        createdAt: Instant
     ) {
         val userIdStr = userId.toString()
         Mono.from(

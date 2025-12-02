@@ -3,7 +3,7 @@ package me.onetwo.growsnap.domain.user.dto
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import me.onetwo.growsnap.domain.user.model.UserProfile
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -46,8 +46,8 @@ data class UserProfileResponse(
     val bio: String?,
     val followerCount: Int,
     val followingCount: Int,
-    val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime
+    val createdAt: Instant,
+    val updatedAt: Instant
 ) {
     companion object {
         fun from(profile: UserProfile): UserProfileResponse {

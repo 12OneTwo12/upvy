@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.DifficultyLevel
 import me.onetwo.growsnap.domain.search.model.SearchSortType
-import java.time.LocalDate
+import java.time.Instant
 
 /**
  * 콘텐츠 검색 요청 DTO
@@ -59,9 +59,9 @@ data class ContentSearchRequest(
     @field:Min(value = 0, message = "최대 길이는 0 이상이어야 합니다")
     val maxDuration: Int? = null,
 
-    val startDate: LocalDate? = null,
+    val startDate: Instant? = null,
 
-    val endDate: LocalDate? = null,
+    val endDate: Instant? = null,
 
     @field:Size(min = 2, max = 2, message = "언어 코드는 2글자여야 합니다")
     val language: String? = null,

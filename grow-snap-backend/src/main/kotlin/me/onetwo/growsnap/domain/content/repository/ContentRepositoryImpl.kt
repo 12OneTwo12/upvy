@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -303,8 +303,8 @@ class ContentRepositoryImpl(
         return Mono.from(
             dslContext
                 .update(CONTENTS)
-                .set(CONTENTS.DELETED_AT, LocalDateTime.now())
-                .set(CONTENTS.UPDATED_AT, LocalDateTime.now())
+                .set(CONTENTS.DELETED_AT, Instant.now())
+                .set(CONTENTS.UPDATED_AT, Instant.now())
                 .set(CONTENTS.UPDATED_BY, deletedBy.toString())
                 .where(CONTENTS.ID.eq(contentId.toString()))
                 .and(CONTENTS.DELETED_AT.isNull)

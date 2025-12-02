@@ -143,7 +143,7 @@ dslContext.deleteFrom(USER).where(USER.ID.eq(userId))
 
 // ✅ GOOD
 dslContext.update(USER)
-    .set(USER.DELETED_AT, LocalDateTime.now())
+    .set(USER.DELETED_AT, Instant.now())
     .where(USER.ID.eq(userId))
 ```
 
@@ -156,11 +156,11 @@ data class User(
     val id: UUID,
     val email: String,
     // Audit Trail 필드 (필수)
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     val createdBy: String? = null,
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: Instant = Instant.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null  // Soft Delete
+    val deletedAt: Instant? = null  // Soft Delete
 )
 ```
 

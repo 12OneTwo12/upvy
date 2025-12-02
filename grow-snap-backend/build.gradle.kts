@@ -249,6 +249,18 @@ jooq {
                                 value = "true" // 스키마 이름 제거
                             }
                         )
+
+                        // DATETIME을 Instant로 강제 매핑 (UTC 기준)
+                        // MySQL DATETIME(6) best practice for global apps with UTC
+                        // H2 converts DATETIME to LOCALDATETIME, so we match both patterns
+                        forcedTypes.add(
+                            org.jooq.meta.jaxb.ForcedType().apply {
+                                userType = "java.time.Instant"
+                                converter = "me.onetwo.growsnap.config.jooq.InstantConverter"
+                                // Match both TIMESTAMP and LOCALDATETIME (H2 uses LOCALDATETIME internally)
+                                includeTypes = "TIMESTAMP.*|LOCALDATETIME.*"
+                            }
+                        )
                     }
 
                     generate.apply {

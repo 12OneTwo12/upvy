@@ -44,8 +44,8 @@ export interface ContentSearchRequest {
   difficulty?: DifficultyLevel;
   minDuration?: number;
   maxDuration?: number;
-  startDate?: string; // ISO 8601 형식 (YYYY-MM-DD)
-  endDate?: string; // ISO 8601 형식 (YYYY-MM-DD)
+  startDate?: string; // ISO 8601 Instant 형식 (YYYY-MM-DDTHH:mm:ss.sssZ)
+  endDate?: string; // ISO 8601 Instant 형식 (YYYY-MM-DDTHH:mm:ss.sssZ)
   language?: string; // 2글자 언어 코드 (예: "ko", "en")
   sortBy?: SearchSortType;
   cursor?: string;
