@@ -1,6 +1,5 @@
 package me.onetwo.growsnap.domain.content.controller
 
-import com.ninjasquad.springmockk.MockkBean
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import me.onetwo.growsnap.infrastructure.config.RestDocsConfiguration

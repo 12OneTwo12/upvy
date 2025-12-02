@@ -483,7 +483,14 @@ class FeedControllerTest {
                 getCursor = { it.contentId.toString() }
             )
 
-            every { feedService.getCategoryFeed(userId, Category.PROGRAMMING, me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR, any()) } returns Mono.just(response)
+            every {
+                feedService.getCategoryFeed(
+                    userId,
+                    Category.PROGRAMMING,
+                    me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.POPULAR,
+                    any()
+                )
+            } returns Mono.just(response)
 
             // When & Then: POPULAR 정렬 조회
             webTestClient
@@ -510,7 +517,14 @@ class FeedControllerTest {
                 getCursor = { it.contentId.toString() }
             )
 
-            every { feedService.getCategoryFeed(userId, Category.LANGUAGE, me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.RECENT, any()) } returns Mono.just(response)
+            every {
+                feedService.getCategoryFeed(
+                    userId,
+                    Category.LANGUAGE,
+                    me.onetwo.growsnap.domain.feed.model.CategoryFeedSortType.RECENT,
+                    any()
+                )
+            } returns Mono.just(response)
 
             // When & Then: RECENT 정렬 조회
             webTestClient

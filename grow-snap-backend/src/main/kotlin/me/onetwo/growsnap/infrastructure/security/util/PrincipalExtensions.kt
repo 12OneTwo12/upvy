@@ -51,7 +51,8 @@ fun Mono<Principal>.toUserIdOrNull(): Mono<UUID?> {
             try {
                 UUID.fromString(principal.name)
             } catch (e: IllegalArgumentException) {
-                logger.warn("Invalid UUID format in principal: ${principal.name}")
+                logger.debug("Invalid UUID format in principal: ${principal.name}")
+                logger.trace("UUID parsing exception", e) // 예외 스택 트레이스는 trace 레벨로 로깅
                 null
             }
         }

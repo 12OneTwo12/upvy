@@ -923,11 +923,14 @@ class FeedRepositoryImplTest {
             val lowPopularityId = UUID.randomUUID()
 
             // 고인기: 35000
-            insertContentWithCategory(highPopularityId, creator1.id!!, "High Popularity", Category.PROGRAMMING, 10000, 1000, 1000, 1000, 1000)
+            insertContentWithCategory(highPopularityId, creator1.id!!, "High Popularity", Category.PROGRAMMING,
+                InteractionCounts(10000, 1000, 1000, 1000, 1000))
             // 중인기: 17500
-            insertContentWithCategory(mediumPopularityId, creator1.id!!, "Medium Popularity", Category.PROGRAMMING, 5000, 500, 500, 500, 500)
+            insertContentWithCategory(mediumPopularityId, creator1.id!!, "Medium Popularity", Category.PROGRAMMING,
+                InteractionCounts(5000, 500, 500, 500, 500))
             // 저인기: 3500
-            insertContentWithCategory(lowPopularityId, creator2.id!!, "Low Popularity", Category.PROGRAMMING, 1000, 100, 100, 100, 100)
+            insertContentWithCategory(lowPopularityId, creator2.id!!, "Low Popularity", Category.PROGRAMMING,
+                InteractionCounts(1000, 100, 100, 100, 100))
 
             // When: PROGRAMMING 카테고리, POPULAR 정렬로 조회
             val result = feedRepository.findContentIdsByCategory(
@@ -958,9 +961,12 @@ class FeedRepositoryImplTest {
             val middleId = UUID.randomUUID()
             val oldestId = UUID.randomUUID()
 
-            insertContentWithCategory(oldestId, creator1.id!!, "Oldest", Category.PROGRAMMING, 0, 0, 0, 0, 0, now.minusDays(3))
-            insertContentWithCategory(middleId, creator1.id!!, "Middle", Category.PROGRAMMING, 0, 0, 0, 0, 0, now.minusDays(2))
-            insertContentWithCategory(newestId, creator2.id!!, "Newest", Category.PROGRAMMING, 0, 0, 0, 0, 0, now.minusDays(1))
+            insertContentWithCategory(oldestId, creator1.id!!, "Oldest", Category.PROGRAMMING,
+                InteractionCounts(), now.minusDays(3))
+            insertContentWithCategory(middleId, creator1.id!!, "Middle", Category.PROGRAMMING,
+                InteractionCounts(), now.minusDays(2))
+            insertContentWithCategory(newestId, creator2.id!!, "Newest", Category.PROGRAMMING,
+                InteractionCounts(), now.minusDays(1))
 
             // When: PROGRAMMING 카테고리, RECENT 정렬로 조회
             val result = feedRepository.findContentIdsByCategory(
@@ -991,10 +997,14 @@ class FeedRepositoryImplTest {
             val artId = UUID.randomUUID()
             val fitnessId = UUID.randomUUID()
 
-            insertContentWithCategory(programmingId1, creator1.id!!, "Programming 1", Category.PROGRAMMING, 100, 10, 10, 10, 10)
-            insertContentWithCategory(programmingId2, creator1.id!!, "Programming 2", Category.PROGRAMMING, 200, 20, 20, 20, 20)
-            insertContentWithCategory(artId, creator2.id!!, "Art", Category.ART, 300, 30, 30, 30, 30)
-            insertContentWithCategory(fitnessId, creator2.id!!, "Health", Category.HEALTH, 400, 40, 40, 40, 40)
+            insertContentWithCategory(programmingId1, creator1.id!!, "Programming 1", Category.PROGRAMMING,
+                InteractionCounts(100, 10, 10, 10, 10))
+            insertContentWithCategory(programmingId2, creator1.id!!, "Programming 2", Category.PROGRAMMING,
+                InteractionCounts(200, 20, 20, 20, 20))
+            insertContentWithCategory(artId, creator2.id!!, "Art", Category.ART,
+                InteractionCounts(300, 30, 30, 30, 30))
+            insertContentWithCategory(fitnessId, creator2.id!!, "Health", Category.HEALTH,
+                InteractionCounts(400, 40, 40, 40, 40))
 
             // When: PROGRAMMING 카테고리만 조회
             val result = feedRepository.findContentIdsByCategory(
@@ -1023,7 +1033,8 @@ class FeedRepositoryImplTest {
             // Given: PROGRAMMING 카테고리의 콘텐츠 5개
             val ids = (1..5).map { UUID.randomUUID() }
             ids.forEachIndexed { index, id ->
-                insertContentWithCategory(id, creator1.id!!, "Content $index", Category.PROGRAMMING, 1000 - (index * 100), 100, 100, 100, 100)
+                insertContentWithCategory(id, creator1.id!!, "Content $index", Category.PROGRAMMING,
+                    InteractionCounts(1000 - (index * 100), 100, 100, 100, 100))
             }
 
             // When: cursor=null, limit=2 (첫 페이지)
@@ -1063,7 +1074,8 @@ class FeedRepositoryImplTest {
 
             // Given: PROGRAMMING 카테고리의 콘텐츠 10개
             repeat(10) { index ->
-                insertContentWithCategory(UUID.randomUUID(), creator1.id!!, "Content $index", Category.PROGRAMMING, 100, 10, 10, 10, 10)
+                insertContentWithCategory(UUID.randomUUID(), creator1.id!!, "Content $index", Category.PROGRAMMING,
+                    InteractionCounts(100, 10, 10, 10, 10))
             }
 
             // When: limit=5로 조회
@@ -1090,8 +1102,10 @@ class FeedRepositoryImplTest {
             val activeId = UUID.randomUUID()
             val deletedId = UUID.randomUUID()
 
-            insertContentWithCategory(activeId, creator1.id!!, "Active", Category.PROGRAMMING, 100, 10, 10, 10, 10)
-            insertContentWithCategory(deletedId, creator1.id!!, "Deleted", Category.PROGRAMMING, 200, 20, 20, 20, 20)
+            insertContentWithCategory(activeId, creator1.id!!, "Active", Category.PROGRAMMING,
+                InteractionCounts(100, 10, 10, 10, 10))
+            insertContentWithCategory(deletedId, creator1.id!!, "Deleted", Category.PROGRAMMING,
+                InteractionCounts(200, 20, 20, 20, 20))
 
             // 콘텐츠 삭제 (Soft Delete)
             Mono.from(dslContext.update(CONTENTS)
@@ -1120,7 +1134,8 @@ class FeedRepositoryImplTest {
             Mono.from(dslContext.deleteFrom(CONTENTS)).block()
 
             // Given: 다른 카테고리의 콘텐츠만 있음
-            insertContentWithCategory(UUID.randomUUID(), creator1.id!!, "Art Content", Category.ART, 100, 10, 10, 10, 10)
+            insertContentWithCategory(UUID.randomUUID(), creator1.id!!, "Art Content", Category.ART,
+                InteractionCounts(100, 10, 10, 10, 10))
 
             // When: PROGRAMMING 카테고리 조회 (콘텐츠 없음)
             val result = feedRepository.findContentIdsByCategory(
@@ -1142,11 +1157,7 @@ class FeedRepositoryImplTest {
             creatorId: UUID,
             title: String,
             category: Category,
-            viewCount: Int,
-            likeCount: Int,
-            commentCount: Int,
-            saveCount: Int,
-            shareCount: Int,
+            interactions: InteractionCounts,
             createdAt: LocalDateTime = LocalDateTime.now()
         ) {
             // Contents 테이블
@@ -1181,11 +1192,11 @@ class FeedRepositoryImplTest {
             // Content_Interactions 테이블
             Mono.from(dslContext.insertInto(CONTENT_INTERACTIONS)
                 .set(CONTENT_INTERACTIONS.CONTENT_ID, contentId.toString())
-                .set(CONTENT_INTERACTIONS.VIEW_COUNT, viewCount)
-                .set(CONTENT_INTERACTIONS.LIKE_COUNT, likeCount)
-                .set(CONTENT_INTERACTIONS.COMMENT_COUNT, commentCount)
-                .set(CONTENT_INTERACTIONS.SAVE_COUNT, saveCount)
-                .set(CONTENT_INTERACTIONS.SHARE_COUNT, shareCount)
+                .set(CONTENT_INTERACTIONS.VIEW_COUNT, interactions.viewCount)
+                .set(CONTENT_INTERACTIONS.LIKE_COUNT, interactions.likeCount)
+                .set(CONTENT_INTERACTIONS.COMMENT_COUNT, interactions.commentCount)
+                .set(CONTENT_INTERACTIONS.SAVE_COUNT, interactions.saveCount)
+                .set(CONTENT_INTERACTIONS.SHARE_COUNT, interactions.shareCount)
                 .set(CONTENT_INTERACTIONS.CREATED_AT, createdAt)
                 .set(CONTENT_INTERACTIONS.CREATED_BY, creatorId.toString())
                 .set(CONTENT_INTERACTIONS.UPDATED_AT, createdAt)
