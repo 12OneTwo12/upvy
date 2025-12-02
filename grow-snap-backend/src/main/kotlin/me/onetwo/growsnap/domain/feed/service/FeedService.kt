@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.feed.service
 
+import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.growsnap.domain.feed.dto.FeedResponse
 import reactor.core.publisher.Mono
@@ -34,4 +35,42 @@ interface FeedService {
      * @return 피드 응답
      */
     fun getFollowingFeed(userId: UUID, pageRequest: CursorPageRequest): Mono<FeedResponse>
+
+    /**
+     * 카테고리별 피드 조회
+     *
+     * 특정 카테고리의 콘텐츠를 추천 알고리즘 기반으로 조회합니다.
+     * 메인 피드와 동일한 추천 알고리즘을 사용하되, 해당 카테고리로 필터링합니다.
+     * 선택적 인증을 지원하며, 인증되지 않은 사용자도 조회할 수 있습니다.
+     *
+     * ### TikTok/Instagram Reels 방식의 추천 피드
+     * - Redis에 250개 배치를 미리 생성하여 캐싱 (TTL: 30분)
+     * - 50% 소진 시 다음 배치를 백그라운드에서 prefetch
+     * - 일관된 피드 경험 제공 (세션 기반)
+     *
+     * ### 추천 전략 (메인 피드와 동일한 비율)
+     * - 팔로잉 콘텐츠 (40%): 팔로우한 크리에이터의 해당 카테고리 콘텐츠
+     * - 인기 콘텐츠 (30%): 해당 카테고리의 인기 콘텐츠
+     * - 신규 콘텐츠 (10%): 해당 카테고리의 최신 콘텐츠
+     * - 랜덤 콘텐츠 (20%): 해당 카테고리의 랜덤 콘텐츠
+     *
+     * ### 처리 흐름
+     * 1. cursor를 offset으로 변환
+     * 2. batchNumber 계산 (offset / 250)
+     * 3. Redis에서 캐싱된 배치 조회
+     * 4. 캐시 미스 시 추천 알고리즘 실행 (250개 생성)
+     * 5. 배치에서 필요한 범위만 조회
+     * 6. 상세 정보 조회
+     * 7. Prefetch 체크 (50% 소진 시 다음 배치 생성)
+     *
+     * @param userId 사용자 ID (Optional, 비인증 시 null)
+     * @param category 조회할 카테고리
+     * @param pageRequest 페이지네이션 요청 (cursor는 offset으로 해석)
+     * @return 피드 응답
+     */
+    fun getCategoryFeed(
+        userId: UUID?,
+        category: Category,
+        pageRequest: CursorPageRequest
+    ): Mono<FeedResponse>
 }

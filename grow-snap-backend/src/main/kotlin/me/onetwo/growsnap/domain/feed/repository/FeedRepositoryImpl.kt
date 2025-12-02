@@ -12,6 +12,7 @@ import me.onetwo.growsnap.domain.feed.dto.SubtitleInfoResponse
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_SUBTITLES
 import me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS
 import me.onetwo.growsnap.jooq.generated.tables.references.USERS
@@ -376,9 +377,10 @@ class FeedRepositoryImpl(
      *
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
+     * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
      */
-    override fun findPopularContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID> {
+    override fun findPopularContentIds(limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
         // 인기도 점수 계산식 (부동소수점 연산)
         val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
             .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
@@ -394,6 +396,11 @@ class FeedRepositoryImpl(
             .where(CONTENTS.STATUS.eq("PUBLISHED"))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
+
+        // 카테고리 필터링 (category가 null이 아닐 때만)
+        if (category != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
+        }
 
         // 제외할 콘텐츠 필터링
         if (excludeIds.isNotEmpty()) {
@@ -414,9 +421,10 @@ class FeedRepositoryImpl(
      *
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
+     * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
      */
-    override fun findNewContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID> {
+    override fun findNewContentIds(limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
         var query = dslContext
             .select(CONTENTS.ID)
             .from(CONTENTS)
@@ -424,6 +432,11 @@ class FeedRepositoryImpl(
             .where(CONTENTS.STATUS.eq("PUBLISHED"))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
+
+        // 카테고리 필터링 (category가 null이 아닐 때만)
+        if (category != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
+        }
 
         // 제외할 콘텐츠 필터링
         if (excludeIds.isNotEmpty()) {
@@ -444,9 +457,10 @@ class FeedRepositoryImpl(
      *
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
+     * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
      */
-    override fun findRandomContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID> {
+    override fun findRandomContentIds(limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
         var query = dslContext
             .select(CONTENTS.ID)
             .from(CONTENTS)
@@ -454,6 +468,11 @@ class FeedRepositoryImpl(
             .where(CONTENTS.STATUS.eq("PUBLISHED"))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
+
+        // 카테고리 필터링 (category가 null이 아닐 때만)
+        if (category != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
+        }
 
         // 제외할 콘텐츠 필터링
         if (excludeIds.isNotEmpty()) {
@@ -608,19 +627,19 @@ class FeedRepositoryImpl(
         return Flux.from(
             dslContext
                 .select(
-                    me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.CONTENT_ID,
-                    me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.PHOTO_URL
+                    CONTENT_PHOTOS.CONTENT_ID,
+                    CONTENT_PHOTOS.PHOTO_URL
                 )
-                .from(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS)
-                .where(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.CONTENT_ID.`in`(contentIds.map { it.toString() }))
-                .and(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.DELETED_AT.isNull)
-                .orderBy(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.DISPLAY_ORDER.asc())
+                .from(CONTENT_PHOTOS)
+                .where(CONTENT_PHOTOS.CONTENT_ID.`in`(contentIds.map { it.toString() }))
+                .and(CONTENT_PHOTOS.DELETED_AT.isNull)
+                .orderBy(CONTENT_PHOTOS.DISPLAY_ORDER.asc())
         )
             .collectList()
             .map { records ->
                 records.groupBy(
-                    { UUID.fromString(it.get(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.CONTENT_ID)) },
-                    { it.get(me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS.PHOTO_URL)!! }
+                    { UUID.fromString(it.get(CONTENT_PHOTOS.CONTENT_ID)) },
+                    { it.get(CONTENT_PHOTOS.PHOTO_URL)!! }
                 )
             }
     }
@@ -645,51 +664,47 @@ class FeedRepositoryImpl(
         ).map { record -> record.get(CONTENT_METADATA.CATEGORY)!! }
     }
 
+
     /**
-     * 특정 카테고리의 인기 콘텐츠 ID 조회 (카테고리 기반 추천용)
+     * 팔로잉 콘텐츠 ID 목록 조회 (특정 카테고리)
      *
-     * @param categories 카테고리 목록
+     * 사용자가 팔로우한 크리에이터의 최신 콘텐츠 중 특정 카테고리만 조회합니다.
+     * 카테고리별 추천 알고리즘에서 사용됩니다.
+     *
+     * @param userId 사용자 ID
+     * @param category 조회할 카테고리
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
-     * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
+     * @return 팔로잉 콘텐츠 ID 목록 (최신순 정렬)
      */
-    override fun findPopularContentIdsByCategories(
-        categories: List<String>,
+    override fun findFollowingContentIdsByCategory(
+        userId: UUID,
+        category: Category,
         limit: Int,
         excludeIds: List<UUID>
     ): Flux<UUID> {
-        if (categories.isEmpty()) {
-            return Flux.empty()
-        }
-
-        // 인기도 점수 계산
-        val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
-            .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
-            .plus(CONTENT_INTERACTIONS.COMMENT_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_COMMENT))
-            .plus(CONTENT_INTERACTIONS.SAVE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SAVE))
-            .plus(CONTENT_INTERACTIONS.SHARE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SHARE))
-
-        val query = dslContext
+        var query = dslContext
             .select(CONTENTS.ID)
             .from(CONTENTS)
             .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
-            .join(CONTENT_INTERACTIONS).on(CONTENT_INTERACTIONS.CONTENT_ID.eq(CONTENTS.ID))
-            .where(CONTENT_METADATA.CATEGORY.`in`(categories))
+            .join(USERS).on(USERS.ID.eq(CONTENTS.CREATOR_ID))
+            .join(FOLLOWS).on(FOLLOWS.FOLLOWING_ID.eq(USERS.ID))
+            .where(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
+            .and(FOLLOWS.DELETED_AT.isNull)
+            .and(CONTENT_METADATA.CATEGORY.eq(category.name))
             .and(CONTENTS.STATUS.eq("PUBLISHED"))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
-            .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
+            .and(USERS.DELETED_AT.isNull)
 
-        // 제외할 ID 추가
-        val finalQuery = if (excludeIds.isNotEmpty()) {
-            query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
-        } else {
-            query
+        // 제외할 콘텐츠 필터링
+        if (excludeIds.isNotEmpty()) {
+            query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
         }
 
         return Flux.from(
-            finalQuery
-                .orderBy(popularityScore.desc())
+            query
+                .orderBy(CONTENTS.CREATED_AT.desc())
                 .limit(limit)
         ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
