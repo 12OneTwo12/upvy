@@ -154,7 +154,7 @@ class RecommendationServiceImpl(
         limit: Int,
         excludeContentIds: List<UUID>
     ): Flux<UUID> {
-        return feedRepository.findPopularContentIds(limit, excludeContentIds)
+        return feedRepository.findPopularContentIds(limit, excludeContentIds, category = null)
     }
 
     /**
@@ -170,7 +170,7 @@ class RecommendationServiceImpl(
         limit: Int,
         excludeContentIds: List<UUID>
     ): Flux<UUID> {
-        return feedRepository.findNewContentIds(limit, excludeContentIds)
+        return feedRepository.findNewContentIds(limit, excludeContentIds, category = null)
     }
 
     /**
@@ -186,7 +186,7 @@ class RecommendationServiceImpl(
         limit: Int,
         excludeContentIds: List<UUID>
     ): Flux<UUID> {
-        return feedRepository.findRandomContentIds(limit, excludeContentIds)
+        return feedRepository.findRandomContentIds(limit, excludeContentIds, category = null)
     }
 
     /**
@@ -221,12 +221,12 @@ class RecommendationServiceImpl(
         // 메인 피드와 동일한 비율 사용 (COLLABORATIVE 대신 FOLLOWING 사용)
         val strategyLimits = RecommendationStrategy.calculateLimits(limit)
 
-        // 병렬로 모든 전략 실행
+        // 병렬로 모든 전략 실행 (Repository 메서드 직접 호출)
         return Mono.zip(
             getFollowingContentIdsByCategory(userId, category, strategyLimits[RecommendationStrategy.COLLABORATIVE]!!, excludeContentIds).collectList(),
-            getPopularContentIdsByCategory(category, strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds).collectList(),
-            getNewContentIdsByCategory(category, strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds).collectList(),
-            getRandomContentIdsByCategory(category, strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds).collectList()
+            feedRepository.findPopularContentIds(strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds, category).collectList(),
+            feedRepository.findNewContentIds(strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds, category).collectList(),
+            feedRepository.findRandomContentIds(strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds, category).collectList()
         ).flatMapMany { tuple ->
             // 모든 결과 합치기 및 무작위 섞기
             val allIds = tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4
@@ -255,7 +255,7 @@ class RecommendationServiceImpl(
                 if (followingIds.isEmpty()) {
                     // 팔로잉 콘텐츠가 없으면 인기 콘텐츠로 fallback
                     logger.debug("No following content for user {} in category {}, falling back to popular content", userId, category.name)
-                    getPopularContentIdsByCategory(category, limit, excludeContentIds)
+                    feedRepository.findPopularContentIds(limit, excludeContentIds, category)
                 } else if (followingIds.size < limit) {
                     // 팔로잉 콘텐츠가 부족하면 인기 콘텐츠로 보충
                     val remaining = limit - followingIds.size
@@ -268,87 +268,13 @@ class RecommendationServiceImpl(
                     )
                     Flux.concat(
                         Flux.fromIterable(followingIds),
-                        getPopularContentIdsByCategory(category, remaining, excludeContentIds + followingIds)
+                        feedRepository.findPopularContentIds(remaining, excludeContentIds + followingIds, category)
                     )
                 } else {
                     // 팔로잉 콘텐츠가 충분함
                     logger.debug("Returning {} following contents for user {} in category {}", followingIds.size, userId, category.name)
                     Flux.fromIterable(followingIds.take(limit))
                 }
-            }
-    }
-
-    /**
-     * 특정 카테고리의 인기 콘텐츠 ID 조회
-     *
-     * @param category 조회할 카테고리
-     * @param limit 조회할 콘텐츠 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
-     */
-    private fun getPopularContentIdsByCategory(
-        category: Category,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<UUID> {
-        return feedRepository.findPopularContentIdsByCategories(listOf(category.name), limit, excludeContentIds)
-    }
-
-    /**
-     * 특정 카테고리의 신규 콘텐츠 ID 조회
-     *
-     * FeedRepository에는 카테고리별 신규 콘텐츠 조회 메서드가 없으므로,
-     * 전체 신규 콘텐츠를 조회한 후 카테고리로 필터링합니다.
-     *
-     * @param category 조회할 카테고리
-     * @param limit 조회할 콘텐츠 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
-     */
-    private fun getNewContentIdsByCategory(
-        category: Category,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<UUID> {
-        // 카테고리 필터링을 위해 더 많은 콘텐츠를 조회 (limit * 3)
-        return feedRepository.findNewContentIds(limit * 3, excludeContentIds)
-            .collectList()
-            .flatMapMany { contentIds ->
-                // 카테고리별로 필터링
-                feedRepository.findCategoriesByContentIds(contentIds)
-                    .zipWith(Flux.fromIterable(contentIds))
-                    .filter { it.t1 == category.name }
-                    .map { it.t2 }
-                    .take(limit.toLong())
-            }
-    }
-
-    /**
-     * 특정 카테고리의 랜덤 콘텐츠 ID 조회
-     *
-     * FeedRepository에는 카테고리별 랜덤 콘텐츠 조회 메서드가 없으므로,
-     * 전체 랜덤 콘텐츠를 조회한 후 카테고리로 필터링합니다.
-     *
-     * @param category 조회할 카테고리
-     * @param limit 조회할 콘텐츠 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
-     */
-    private fun getRandomContentIdsByCategory(
-        category: Category,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<UUID> {
-        // 카테고리 필터링을 위해 더 많은 콘텐츠를 조회 (limit * 3)
-        return feedRepository.findRandomContentIds(limit * 3, excludeContentIds)
-            .collectList()
-            .flatMapMany { contentIds ->
-                // 카테고리별로 필터링
-                feedRepository.findCategoriesByContentIds(contentIds)
-                    .zipWith(Flux.fromIterable(contentIds))
-                    .filter { it.t1 == category.name }
-                    .map { it.t2 }
-                    .take(limit.toLong())
             }
     }
 

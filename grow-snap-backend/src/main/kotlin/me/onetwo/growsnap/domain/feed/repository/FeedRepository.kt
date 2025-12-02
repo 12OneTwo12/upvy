@@ -73,9 +73,10 @@ interface FeedRepository {
      *
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
+     * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
      */
-    fun findPopularContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID>
+    fun findPopularContentIds(limit: Int, excludeIds: List<UUID>, category: Category? = null): Flux<UUID>
 
     /**
      * 신규 콘텐츠 ID 목록 조회
@@ -84,9 +85,10 @@ interface FeedRepository {
      *
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
+     * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
      */
-    fun findNewContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID>
+    fun findNewContentIds(limit: Int, excludeIds: List<UUID>, category: Category? = null): Flux<UUID>
 
     /**
      * 랜덤 콘텐츠 ID 목록 조회
@@ -95,9 +97,10 @@ interface FeedRepository {
      *
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
+     * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
      */
-    fun findRandomContentIds(limit: Int, excludeIds: List<UUID>): Flux<UUID>
+    fun findRandomContentIds(limit: Int, excludeIds: List<UUID>, category: Category? = null): Flux<UUID>
 
     /**
      * 콘텐츠 ID 목록 기반 상세 정보 조회
@@ -118,20 +121,6 @@ interface FeedRepository {
      * @return 카테고리 목록 (중복 포함)
      */
     fun findCategoriesByContentIds(contentIds: List<UUID>): Flux<String>
-
-    /**
-     * 특정 카테고리의 인기 콘텐츠 ID 조회 (카테고리 기반 추천용)
-     *
-     * @param categories 카테고리 목록
-     * @param limit 조회할 항목 수
-     * @param excludeIds 제외할 콘텐츠 ID 목록
-     * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
-     */
-    fun findPopularContentIdsByCategories(
-        categories: List<String>,
-        limit: Int,
-        excludeIds: List<UUID>
-    ): Flux<UUID>
 
     /**
      * 팔로잉 콘텐츠 ID 목록 조회 (특정 카테고리)
