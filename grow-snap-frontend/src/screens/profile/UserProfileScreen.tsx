@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,8 @@ import type { ContentResponse } from '@/types/content.types';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
+import { ReportModal } from '@/components/report/ReportModal';
+import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'UserProfile'>;
 
@@ -68,6 +70,9 @@ const useStyles = createStyleSheet({
   },
   headerRight: {
     width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -128,6 +133,8 @@ export default function UserProfileScreen() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // 사용자 프로필 조회 (React Query)
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
@@ -236,6 +243,26 @@ export default function UserProfileScreen() {
     navigation.navigate('ContentViewer', { contentId: content.id });
   };
 
+  // 액션 시트 옵션
+  const actionSheetOptions: ActionSheetOption[] = useMemo(
+    () => [
+      {
+        label: '신고하기',
+        icon: 'alert-circle-outline',
+        onPress: () => setShowReportModal(true),
+        destructive: true,
+      },
+      // 추후 추가 가능한 옵션들:
+      // {
+      //   label: '차단하기',
+      //   icon: 'ban-outline',
+      //   onPress: () => {},
+      //   destructive: true,
+      // },
+    ],
+    []
+  );
+
   if (profileLoading || !profile) {
     return (
       <SafeAreaView style={styles.loadingContainer} edges={['top']}>
@@ -257,7 +284,15 @@ export default function UserProfileScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{profile.nickname}</Text>
-        <View style={styles.headerRight} />
+        {!isOwnProfile && (
+          <TouchableOpacity
+            style={styles.headerRight}
+            onPress={() => setShowActionSheet(true)}
+          >
+            <Ionicons name="ellipsis-vertical" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+        )}
+        {isOwnProfile && <View style={styles.headerRight} />}
       </View>
 
       <ScrollView
@@ -304,6 +339,22 @@ export default function UserProfileScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* 액션 시트 */}
+      <ActionSheet
+        visible={showActionSheet}
+        onClose={() => setShowActionSheet(false)}
+        options={actionSheetOptions}
+      />
+
+      {/* 신고 모달 */}
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        targetType="user"
+        targetId={userId}
+        targetName={profile.nickname}
+      />
     </SafeAreaView>
   );
 }

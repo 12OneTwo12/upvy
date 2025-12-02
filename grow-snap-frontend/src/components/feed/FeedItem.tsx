@@ -189,6 +189,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         title={item.title}
         description={item.description}
         interactions={item.interactions}
+        contentId={item.contentId}
         onLike={onLike}
         onComment={onComment}
         onSave={onSave}
