@@ -52,5 +52,4 @@ curl -X GET "http://localhost:8080/api/v1/feed/categories/PROGRAMMING?sortBy=POP
 * 커서 기반 페이지네이션을 사용하여 무한 스크롤을 지원합니다
 * 비로그인 사용자도 조회 가능하며, 이 경우 좋아요/저장 상태는 모두 false로 반환됩니다
 * 인증된 사용자의 경우, 각 콘텐츠에 대한 좋아요/저장 상태가 함께 반환됩니다
-* 카테고리는 대소문자를 구분하며, 유효한 카테고리 enum 값이어야 합니다 (예: PROGRAMMING, DESIGN, FITNESS 등)
-* Redis 캐싱을 통해 빠른 응답 속도를 보장합니다
+* 카테고리는 대소문자를 구분하며, 유효한 카테고리 enum 값이어야 합니다 (예: PROGRAMMING, DESIGN, HEALTH 등)

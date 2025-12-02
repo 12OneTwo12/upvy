@@ -251,8 +251,8 @@ class FeedServiceImpl(
                 logger.debug("Found {} content IDs for category: {}", contentIds.size, category.name)
 
                 // findByContentIds()로 상세 정보 조회
-                // userId가 null이면 랜덤 UUID 사용 (비인증 사용자)
-                val effectiveUserId = userId ?: UUID.randomUUID()
+                // userId가 null이면 ANONYMOUS_USER_ID 사용 (비인증 사용자)
+                val effectiveUserId = userId ?: ANONYMOUS_USER_ID
                 feedRepository.findByContentIds(effectiveUserId, contentIds)
                     .collectList()
                     .map { feedItems ->
@@ -269,6 +269,13 @@ class FeedServiceImpl(
 
     companion object {
         private val logger = LoggerFactory.getLogger(FeedServiceImpl::class.java)
+
+        /**
+         * 비인증 사용자를 나타내는 UUID
+         *
+         * 매 요청마다 UUID를 생성하는 대신 정적 상수를 재사용하여 성능을 개선합니다.
+         */
+        private val ANONYMOUS_USER_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000000")
 
         /**
          * 최근 본 콘텐츠 조회 개수 (중복 방지용)

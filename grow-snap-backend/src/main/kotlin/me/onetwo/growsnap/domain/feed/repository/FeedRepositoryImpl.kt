@@ -724,8 +724,9 @@ class FeedRepositoryImpl(
         cursor: String?,
         limit: Int
     ): Flux<UUID> {
-        // cursor를 offset으로 변환
+        // cursor를 offset으로 변환 (Int.MAX_VALUE를 초과하면 예외 발생)
         val offset = cursor?.toLongOrNull() ?: 0L
+        require(offset <= Int.MAX_VALUE) { "Offset exceeds maximum value: $offset" }
 
         // 기본 쿼리 구성
         val baseQuery = dslContext
@@ -737,6 +738,7 @@ class FeedRepositoryImpl(
             .and(CONTENTS.STATUS.eq("PUBLISHED"))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
+            .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
 
         // 정렬 타입에 따른 orderBy 적용
         val orderedQuery = when (sortBy) {
