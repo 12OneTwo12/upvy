@@ -36,6 +36,7 @@ import software.amazon.awssdk.services.s3.model.HeadObjectRequest
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import java.time.Instant
+import ChronoUnit
 import java.util.Optional
 import java.util.UUID
 import java.util.function.Consumer
@@ -566,9 +567,9 @@ class ContentServiceImplTest {
                 width = 1080,
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
-                createdAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 createdBy = userId.toString(),
-                updatedAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                updatedAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedBy = userId.toString()
             )
 
@@ -580,9 +581,9 @@ class ContentServiceImplTest {
                 category = Category.HEALTH,
                 tags = listOf("old"),
                 language = "ko",
-                createdAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 createdBy = userId.toString(),
-                updatedAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                updatedAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedBy = userId.toString()
             )
 
@@ -644,9 +645,9 @@ class ContentServiceImplTest {
                 width = 1080,
                 height = 1080,
                 status = ContentStatus.PUBLISHED,
-                createdAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 createdBy = userId.toString(),
-                updatedAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                updatedAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedBy = userId.toString()
             )
 
@@ -658,9 +659,9 @@ class ContentServiceImplTest {
                 category = Category.HEALTH,
                 tags = listOf("old"),
                 language = "ko",
-                createdAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 createdBy = userId.toString(),
-                updatedAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                updatedAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedBy = userId.toString()
             )
 

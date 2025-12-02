@@ -31,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import java.time.Instant
+import ChronoUnit
 import java.util.UUID
 
 /**
@@ -133,7 +134,7 @@ class FeedRepositoryImplTest {
             contentId = content1Id,
             creatorId = creator1.id!!,
             title = "Test Video 1",
-            createdAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS)
+            createdAt = Instant.now().minus(1, ChronoUnit.HOURS)
         )
 
         // Content 2 (Creator2, 중간)
@@ -141,7 +142,7 @@ class FeedRepositoryImplTest {
             contentId = content2Id,
             creatorId = creator2.id!!,
             title = "Test Video 2",
-            createdAt = Instant.now().minus(2, java.time.temporal.ChronoUnit.HOURS)
+            createdAt = Instant.now().minus(2, ChronoUnit.HOURS)
         )
 
         // Content 3 (Creator1, 가장 오래됨)
@@ -149,7 +150,7 @@ class FeedRepositoryImplTest {
             contentId = content3Id,
             creatorId = creator1.id!!,
             title = "Test Video 3",
-            createdAt = Instant.now().minus(3, java.time.temporal.ChronoUnit.HOURS)
+            createdAt = Instant.now().minus(3, ChronoUnit.HOURS)
         )
     }
 
@@ -326,7 +327,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContentId,
                 creatorId = creator1.id!!,
                 title = "Test Photo Content",
-                createdAt = Instant.now().minusSeconds(30 * 60)
+                createdAt = Instant.now().minus(30, ChronoUnit.MINUTES)
             )
             insertContentPhoto(
                 contentId = photoContentId,
@@ -494,12 +495,12 @@ class FeedRepositoryImplTest {
             insertViewHistory(
                 userId = viewer.id!!,
                 contentId = content3Id,
-                watchedAt = Instant.now().minus(3, java.time.temporal.ChronoUnit.HOURS)
+                watchedAt = Instant.now().minus(3, ChronoUnit.HOURS)
             )
             insertViewHistory(
                 userId = viewer.id!!,
                 contentId = content1Id,
-                watchedAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS)
+                watchedAt = Instant.now().minus(1, ChronoUnit.HOURS)
             )
             insertViewHistory(
                 userId = viewer.id!!,
@@ -524,9 +525,9 @@ class FeedRepositoryImplTest {
         @DisplayName("limit 이하의 결과만 반환한다")
         fun findRecentlyViewedContentIds_WithLimit_ReturnsLimitedResults() {
             // Given: 시청 기록 3개
-            insertViewHistory(viewer.id!!, content1Id, Instant.now().minus(3, java.time.temporal.ChronoUnit.HOURS))
-            insertViewHistory(viewer.id!!, content2Id, Instant.now().minus(2, java.time.temporal.ChronoUnit.HOURS))
-            insertViewHistory(viewer.id!!, content3Id, Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS))
+            insertViewHistory(viewer.id!!, content1Id, Instant.now().minus(3, ChronoUnit.HOURS))
+            insertViewHistory(viewer.id!!, content2Id, Instant.now().minus(2, ChronoUnit.HOURS))
+            insertViewHistory(viewer.id!!, content3Id, Instant.now().minus(1, ChronoUnit.HOURS))
 
             // When: limit=2
             val result = feedRepository.findRecentlyViewedContentIds(
@@ -690,9 +691,9 @@ class FeedRepositoryImplTest {
             val middleId = UUID.randomUUID()
             val oldestId = UUID.randomUUID()
 
-            insertContent(oldestId, creator1.id!!, "Oldest Content", now.minus(3, java.time.temporal.ChronoUnit.DAYS))
-            insertContent(middleId, creator1.id!!, "Middle Content", now.minus(2, java.time.temporal.ChronoUnit.DAYS))
-            insertContent(newestId, creator2.id!!, "Newest Content", now.minus(1, java.time.temporal.ChronoUnit.DAYS))
+            insertContent(oldestId, creator1.id!!, "Oldest Content", now.minus(3, ChronoUnit.DAYS))
+            insertContent(middleId, creator1.id!!, "Middle Content", now.minus(2, ChronoUnit.DAYS))
+            insertContent(newestId, creator2.id!!, "Newest Content", now.minus(1, ChronoUnit.DAYS))
 
             // When: 신규 콘텐츠 조회
             val result = feedRepository.findNewContentIds(10, emptyList())
@@ -720,9 +721,9 @@ class FeedRepositoryImplTest {
             val id2 = UUID.randomUUID()
             val id3 = UUID.randomUUID()
 
-            insertContent(id1, creator1.id!!, "Content 1", now.minus(1, java.time.temporal.ChronoUnit.DAYS))
-            insertContent(id2, creator1.id!!, "Content 2", now.minus(2, java.time.temporal.ChronoUnit.DAYS))
-            insertContent(id3, creator2.id!!, "Content 3", now.minus(3, java.time.temporal.ChronoUnit.DAYS))
+            insertContent(id1, creator1.id!!, "Content 1", now.minus(1, ChronoUnit.DAYS))
+            insertContent(id2, creator1.id!!, "Content 2", now.minus(2, ChronoUnit.DAYS))
+            insertContent(id3, creator2.id!!, "Content 3", now.minus(3, ChronoUnit.DAYS))
 
             // When: id2를 제외하고 조회
             val result = feedRepository.findNewContentIds(10, listOf(id2))
@@ -747,7 +748,7 @@ class FeedRepositoryImplTest {
             // Given: 5개의 콘텐츠
             val now = Instant.now()
             repeat(5) { index ->
-                insertContent(UUID.randomUUID(), creator1.id!!, "Content $index", now.minusSeconds(86400 * index.toLong()))
+                insertContent(UUID.randomUUID(), creator1.id!!, "Content $index", now.minus(index.toLong(, ChronoUnit.DAYS)))
             }
 
             // When: limit=3으로 조회
@@ -772,7 +773,7 @@ class FeedRepositoryImplTest {
             val activeId = UUID.randomUUID()
             val deletedId = UUID.randomUUID()
 
-            insertContent(activeId, creator1.id!!, "Active Content", now.minus(1, java.time.temporal.ChronoUnit.DAYS))
+            insertContent(activeId, creator1.id!!, "Active Content", now.minus(1, ChronoUnit.DAYS))
             insertContent(deletedId, creator1.id!!, "Deleted Content", now)
 
             // 콘텐츠 삭제 (Soft Delete)
@@ -964,11 +965,11 @@ class FeedRepositoryImplTest {
             val oldestId = UUID.randomUUID()
 
             insertContentWithCategory(oldestId, creator1.id!!, "Oldest", Category.PROGRAMMING,
-                InteractionCounts(), now.minus(3, java.time.temporal.ChronoUnit.DAYS))
+                InteractionCounts(), now.minus(3, ChronoUnit.DAYS))
             insertContentWithCategory(middleId, creator1.id!!, "Middle", Category.PROGRAMMING,
-                InteractionCounts(), now.minus(2, java.time.temporal.ChronoUnit.DAYS))
+                InteractionCounts(), now.minus(2, ChronoUnit.DAYS))
             insertContentWithCategory(newestId, creator2.id!!, "Newest", Category.PROGRAMMING,
-                InteractionCounts(), now.minus(1, java.time.temporal.ChronoUnit.DAYS))
+                InteractionCounts(), now.minus(1, ChronoUnit.DAYS))
 
             // When: PROGRAMMING 카테고리, RECENT 정렬로 조회
             val result = feedRepository.findContentIdsByCategory(
@@ -1222,7 +1223,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContent1Id,
                 creatorId = creator1.id!!,
                 title = "Photo Content 1",
-                createdAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS)
+                createdAt = Instant.now().minus(1, ChronoUnit.HOURS)
             )
             insertContentPhoto(photoContent1Id, "https://example.com/content1-photo1.jpg", 0, creator1.id!!)
             insertContentPhoto(photoContent1Id, "https://example.com/content1-photo2.jpg", 1, creator1.id!!)
@@ -1231,7 +1232,7 @@ class FeedRepositoryImplTest {
                 contentId = photoContent2Id,
                 creatorId = creator2.id!!,
                 title = "Photo Content 2",
-                createdAt = Instant.now().minus(2, java.time.temporal.ChronoUnit.HOURS)
+                createdAt = Instant.now().minus(2, ChronoUnit.HOURS)
             )
             insertContentPhoto(photoContent2Id, "https://example.com/content2-photo1.jpg", 0, creator2.id!!)
             insertContentPhoto(photoContent2Id, "https://example.com/content2-photo2.jpg", 1, creator2.id!!)

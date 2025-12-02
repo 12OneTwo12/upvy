@@ -22,6 +22,7 @@ import org.springframework.test.context.ActiveProfiles
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
+import ChronoUnit
 import java.util.UUID
 
 /**
@@ -156,9 +157,9 @@ class SearchHistoryRepositoryImplTest {
         @DisplayName("사용자의 최근 검색어를 최신순으로 조회한다")
         fun findRecentByUserId_WithSearchHistory_ReturnsRecentSearches() {
             // Given: 3개의 검색 기록 (명시적 시간 설정)
-            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(3, java.time.temporal.ChronoUnit.HOURS))
-            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, Instant.now().minus(2, java.time.temporal.ChronoUnit.HOURS))
-            insertSearchHistory(testUser.id!!, "Python", SearchType.CONTENT, Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(3, ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, Instant.now().minus(2, ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Python", SearchType.CONTENT, Instant.now().minus(1, ChronoUnit.HOURS))
 
             // When: 최근 검색어 조회
             val result = searchHistoryRepository.findRecentByUserId(testUser.id!!, 10)
@@ -178,9 +179,9 @@ class SearchHistoryRepositoryImplTest {
         @DisplayName("동일한 키워드는 가장 최근 검색만 반환한다 (중복 제거)")
         fun findRecentByUserId_WithDuplicateKeyword_ReturnsOnlyLatest() {
             // Given: 동일한 키워드로 여러 번 검색 (명시적 시간 설정)
-            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(3, java.time.temporal.ChronoUnit.HOURS))
-            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, Instant.now().minus(2, java.time.temporal.ChronoUnit.HOURS))
-            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS)) // 중복
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(3, ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Kotlin", SearchType.CONTENT, Instant.now().minus(2, ChronoUnit.HOURS))
+            insertSearchHistory(testUser.id!!, "Java", SearchType.CONTENT, Instant.now().minus(1, ChronoUnit.HOURS)) // 중복
 
             // When: 최근 검색어 조회
             val result = searchHistoryRepository.findRecentByUserId(testUser.id!!, 10)

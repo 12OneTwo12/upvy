@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import java.time.Instant
+import ChronoUnit
 import java.util.UUID
 
 @SpringBootTest
@@ -432,9 +433,9 @@ class ContentRepositoryTest {
             val content3 = UUID.randomUUID()
 
             val now = Instant.now()
-            insertContentWithTime(content1, testUser.id!!, now.minus(3, java.time.temporal.ChronoUnit.HOURS))
-            insertContentWithTime(content2, testUser.id!!, now.minus(2, java.time.temporal.ChronoUnit.HOURS))
-            insertContentWithTime(content3, testUser.id!!, now.minus(1, java.time.temporal.ChronoUnit.HOURS))
+            insertContentWithTime(content1, testUser.id!!, now.minus(3, ChronoUnit.HOURS))
+            insertContentWithTime(content2, testUser.id!!, now.minus(2, ChronoUnit.HOURS))
+            insertContentWithTime(content3, testUser.id!!, now.minus(1, ChronoUnit.HOURS))
             insertMetadata(content1, testUser.id!!, "Content 1")
             insertMetadata(content2, testUser.id!!, "Content 2")
             insertMetadata(content3, testUser.id!!, "Content 3")
@@ -616,9 +617,9 @@ class ContentRepositoryTest {
             val content3 = UUID.randomUUID()
 
             val now = Instant.now()
-            insertContentWithTime(content1, testUser.id!!, now.minus(3, java.time.temporal.ChronoUnit.HOURS))
-            insertContentWithTime(content2, testUser.id!!, now.minus(2, java.time.temporal.ChronoUnit.HOURS))
-            insertContentWithTime(content3, testUser.id!!, now.minus(1, java.time.temporal.ChronoUnit.HOURS))
+            insertContentWithTime(content1, testUser.id!!, now.minus(3, ChronoUnit.HOURS))
+            insertContentWithTime(content2, testUser.id!!, now.minus(2, ChronoUnit.HOURS))
+            insertContentWithTime(content3, testUser.id!!, now.minus(1, ChronoUnit.HOURS))
             insertMetadata(content1, testUser.id!!, "Tutorial Part 1")
             insertMetadata(content2, testUser.id!!, "Tutorial Part 2")
             insertMetadata(content3, testUser.id!!, "Tutorial Part 3")

@@ -360,7 +360,7 @@ export function useFeed(options: UseFeedOptions) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         try {
-          await queryClient.invalidateQueries({ queryKey: ['feed'] });
+          await queryClient.invalidateQueries({ queryKey: [queryKey[0]] });
           await refetch();
 
           flatListRef.current?.scrollToOffset({ offset: 0, animated: true });

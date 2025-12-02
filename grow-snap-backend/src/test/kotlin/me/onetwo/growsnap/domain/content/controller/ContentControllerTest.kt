@@ -34,6 +34,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
 import java.time.Instant
+import ChronoUnit
 import java.util.UUID
 
 @WebFluxTest(ContentController::class)
@@ -509,7 +510,7 @@ class ContentControllerTest {
                     isLiked = false,
                     isSaved = false
                 ),
-                createdAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                createdAt = Instant.now().minus(1, ChronoUnit.DAYS),
                 updatedAt = Instant.now()
             )
 
