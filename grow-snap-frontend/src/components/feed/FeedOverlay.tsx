@@ -3,7 +3,7 @@
  *
  * Instagram Reels 스타일의 정보 오버레이
  * - 하단 좌측: 크리에이터 정보, 제목, 설명
- * - 하단 우측: 인터랙션 버튼 (좋아요, 댓글, 저장, 공유)
+ * - 하단 우측: 인터랙션 버튼 (좋아요, 댓글, 저장, 공유, 신고)
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/authStore';
+import { ReportModal } from '@/components/report/ReportModal';
+import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
 import type { CreatorInfo, InteractionInfo } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -22,6 +24,7 @@ interface FeedOverlayProps {
   title: string;
   description: string | null;
   interactions: InteractionInfo;
+  contentId: string; // 신고 기능을 위한 콘텐츠 ID
   onLike?: () => void;
   onComment?: () => void;
   onSave?: () => void;
@@ -46,6 +49,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   title,
   description,
   interactions,
+  contentId,
   onLike,
   onComment,
   onSave,
@@ -63,6 +67,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const shouldShowFollowButton = !isLoading && currentUser && currentUser.id !== creator.userId;
   const [collapsedHeight, setCollapsedHeight] = useState(0);
   const [expandedHeight, setExpandedHeight] = useState(0);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   // 하단 패딩 = 탭바 높이 + 재생바 영역 + 여유 공간
@@ -97,6 +103,27 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const displayText = shouldShowMore
     ? `${(description || title).slice(0, 60)}...`
     : (description || title);
+
+  // 액션 시트 옵션
+  const actionSheetOptions: ActionSheetOption[] = [
+    {
+      label: '신고하기',
+      icon: 'alert-circle-outline',
+      onPress: () => setShowReportModal(true),
+      destructive: true,
+    },
+    // 추후 추가 가능한 옵션들:
+    // {
+    //   label: '링크 복사',
+    //   icon: 'link-outline',
+    //   onPress: () => {},
+    // },
+    // {
+    //   label: '공유하기',
+    //   icon: 'share-outline',
+    //   onPress: onShare,
+    // },
+  ];
 
   const formatCount = (count: number): string => {
     if (count >= 1000000) {
@@ -233,11 +260,30 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
             </TouchableOpacity>
 
             {/* 더보기 (점 3개) */}
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => setShowActionSheet(true)}
+            >
               <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* 액션 시트 */}
+        <ActionSheet
+          visible={showActionSheet}
+          onClose={() => setShowActionSheet(false)}
+          options={actionSheetOptions}
+        />
+
+        {/* 신고 모달 */}
+        <ReportModal
+          visible={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          targetType="content"
+          targetId={contentId}
+          targetName={title}
+        />
 
         {/* 확장 시 전체 설명 영역 */}
         {isExpanded && (

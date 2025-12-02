@@ -8,3 +8,6 @@ export { LoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps } from './LoadingSpinner';
 
 export { ErrorBoundary } from './ErrorBoundary';
+
+export { ActionSheet } from './ActionSheet';
+export type { ActionSheetOption } from './ActionSheet';
