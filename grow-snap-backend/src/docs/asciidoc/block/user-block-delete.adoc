@@ -1,0 +1,27 @@
+[[user-block-delete]]
+=== 사용자 차단 해제
+
+차단한 사용자를 해제합니다.
+
+==== Request
+
+include::{snippets}/user-block-delete/http-request.adoc[]
+include::{snippets}/user-block-delete/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/user-block-delete/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X DELETE http://localhost:8080/api/v1/users/{userId}/block \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 차단하지 않은 사용자는 해제할 수 없습니다
+* 차단 해제 성공 시 204 No Content를 반환합니다
+* Soft Delete 방식으로 처리됩니다

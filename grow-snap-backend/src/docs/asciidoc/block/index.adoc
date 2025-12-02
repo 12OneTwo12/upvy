@@ -1,0 +1,20 @@
+[[block-api]]
+== Block API
+
+사용자 및 콘텐츠 차단 관리 API
+
+=== User Block
+
+사용자 차단 관리
+
+include::user-block-create.adoc[]
+include::user-block-delete.adoc[]
+include::user-blocks-list.adoc[]
+
+=== Content Block
+
+콘텐츠 차단 관리
+
+include::content-block-create.adoc[]
+include::content-block-delete.adoc[]
+include::content-blocks-list.adoc[]
