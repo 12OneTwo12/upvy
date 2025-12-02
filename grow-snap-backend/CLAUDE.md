@@ -1,5 +1,26 @@
 # GrowSnap Backend 개발 원칙 (Claude용)
 
+> **⚠️ CRITICAL**: PathVariable에 Enum 사용 시 **반드시 소문자** 사용!
+>
+> **Enum PathVariable 주의사항:**
+> - Controller: `@PathVariable category: Category` ← Enum 타입 허용
+> - Backend Converter: `StringToEnumConverterFactory` 가 대소문자 무관하게 변환
+> - **Test 작성 시**: `Category.PROGRAMMING.name.lowercase()` 패턴 사용 필수!
+> - **Frontend API 호출 시**: `category.toLowerCase()` 로 소문자 변환 필수!
+> - **예시**:
+>   ```kotlin
+>   // Test 코드 - GOOD ✅
+>   .uri("/api/v1/feed/categories/{category}", Category.PROGRAMMING.name.lowercase())
+>
+>   // Test 코드 - BAD ❌
+>   .uri("/api/v1/feed/categories/{category}", "PROGRAMMING")
+>   ```
+>
+> **적용 위치:**
+> - FeedController: `@PathVariable category: Category`
+> - ReportController: `@PathVariable targetType: TargetType`
+> - Frontend: `getCategoryFeed(category.toLowerCase())`
+
 > **⚠️ DEPRECATED**: 이 파일은 더 이상 사용되지 않습니다.
 
 ## 🚀 새로운 Skill 기반 시스템으로 이동

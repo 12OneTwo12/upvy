@@ -188,3 +188,5 @@ include::search/search-trending.adoc[]
 include::search/search-history-get.adoc[]
 include::search/search-history-delete-keyword.adoc[]
 include::search/search-history-delete-all.adoc[]
+
+include::report/index.adoc[]
