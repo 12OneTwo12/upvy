@@ -46,6 +46,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleClose = () => {
+    setSelectedReason(null);
+    setDescription('');
+    setIsSubmitting(false);
+    onClose();
+  };
+
   const handleSubmit = async () => {
     if (!selectedReason) {
       Alert.alert('신고 사유 선택', '신고 사유를 선택해주세요.');
@@ -61,54 +68,21 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       });
 
       // 성공
-      setIsSubmitting(false);
-      Alert.alert(
-        '신고해주셔서 감사해요',
-        '빠르게 검토해볼게요!',
-        [
-          {
-            text: '확인',
-            onPress: () => {
-              setSelectedReason(null);
-              setDescription('');
-              onClose();
-            },
-          },
-        ]
-      );
+      Alert.alert('신고해주셔서 감사해요', '빠르게 검토해볼게요!', [
+        { text: '확인', onPress: handleClose },
+      ]);
     } catch (error: any) {
-      setIsSubmitting(false);
-
       // 409 에러 = 이미 신고한 경우
       if (error?.response?.status === 409) {
-        Alert.alert(
-          '이미 신고해주셨어요',
-          '확인 중이니 조금만 기다려주세요!',
-          [
-            {
-              text: '확인',
-              onPress: () => {
-                setSelectedReason(null);
-                setDescription('');
-                onClose();
-              },
-            },
-          ]
-        );
+        Alert.alert('이미 신고해주셨어요', '확인 중이니 조금만 기다려주세요!', [
+          { text: '확인', onPress: handleClose },
+        ]);
       } else {
-        // 그 외 에러
-        Alert.alert(
-          '앗, 문제가 생겼어요',
-          '잠시 후 다시 시도해주세요.'
-        );
+        // 그 외 에러 - 모달은 닫지 않음
+        setIsSubmitting(false);
+        Alert.alert('앗, 문제가 생겼어요', '잠시 후 다시 시도해주세요.');
       }
     }
-  };
-
-  const handleClose = () => {
-    setSelectedReason(null);
-    setDescription('');
-    onClose();
   };
 
   return (

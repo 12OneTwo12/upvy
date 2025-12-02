@@ -134,10 +134,8 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
                   option.disabled && styles.optionDisabled,
                 ]}
                 onPress={() => {
-                  if (!option.disabled) {
-                    option.onPress();
-                    onClose();
-                  }
+                  option.onPress();
+                  onClose();
                 }}
                 disabled={option.disabled}
               >

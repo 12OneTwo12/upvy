@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -244,21 +244,24 @@ export default function UserProfileScreen() {
   };
 
   // 액션 시트 옵션
-  const actionSheetOptions: ActionSheetOption[] = [
-    {
-      label: '신고하기',
-      icon: 'alert-circle-outline',
-      onPress: () => setShowReportModal(true),
-      destructive: true,
-    },
-    // 추후 추가 가능한 옵션들:
-    // {
-    //   label: '차단하기',
-    //   icon: 'ban-outline',
-    //   onPress: () => {},
-    //   destructive: true,
-    // },
-  ];
+  const actionSheetOptions: ActionSheetOption[] = useMemo(
+    () => [
+      {
+        label: '신고하기',
+        icon: 'alert-circle-outline',
+        onPress: () => setShowReportModal(true),
+        destructive: true,
+      },
+      // 추후 추가 가능한 옵션들:
+      // {
+      //   label: '차단하기',
+      //   icon: 'ban-outline',
+      //   onPress: () => {},
+      //   destructive: true,
+      // },
+    ],
+    []
+  );
 
   if (profileLoading || !profile) {
     return (

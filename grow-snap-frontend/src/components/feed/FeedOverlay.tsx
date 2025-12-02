@@ -6,7 +6,7 @@
  * - 하단 우측: 인터랙션 버튼 (좋아요, 댓글, 저장, 공유, 신고)
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -105,25 +105,28 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
     : (description || title);
 
   // 액션 시트 옵션
-  const actionSheetOptions: ActionSheetOption[] = [
-    {
-      label: '신고하기',
-      icon: 'alert-circle-outline',
-      onPress: () => setShowReportModal(true),
-      destructive: true,
-    },
-    // 추후 추가 가능한 옵션들:
-    // {
-    //   label: '링크 복사',
-    //   icon: 'link-outline',
-    //   onPress: () => {},
-    // },
-    // {
-    //   label: '공유하기',
-    //   icon: 'share-outline',
-    //   onPress: onShare,
-    // },
-  ];
+  const actionSheetOptions: ActionSheetOption[] = useMemo(
+    () => [
+      {
+        label: '신고하기',
+        icon: 'alert-circle-outline',
+        onPress: () => setShowReportModal(true),
+        destructive: true,
+      },
+      // 추후 추가 가능한 옵션들:
+      // {
+      //   label: '링크 복사',
+      //   icon: 'link-outline',
+      //   onPress: () => {},
+      // },
+      // {
+      //   label: '공유하기',
+      //   icon: 'share-outline',
+      //   onPress: onShare,
+      // },
+    ],
+    []
+  );
 
   const formatCount = (count: number): string => {
     if (count >= 1000000) {
