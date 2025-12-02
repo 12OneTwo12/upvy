@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.interaction.model
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -11,19 +11,19 @@ import java.util.UUID
  * @property id 좋아요 ID
  * @property userId 사용자 ID
  * @property contentId 콘텐츠 ID
- * @property createdAt 생성 시각
+ * @property createdAt 생성 시각 (UTC Instant)
  * @property createdBy 생성한 사용자 ID
- * @property updatedAt 최종 수정 시각
+ * @property updatedAt 최종 수정 시각 (UTC Instant)
  * @property updatedBy 최종 수정한 사용자 ID
- * @property deletedAt 삭제 시각 (Soft Delete)
+ * @property deletedAt 삭제 시각 (UTC Instant, Soft Delete)
  */
 data class UserLike(
     val id: Long? = null,
     val userId: UUID,
     val contentId: UUID,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     val createdBy: String? = null,
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: Instant = Instant.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null
+    val deletedAt: Instant? = null
 )

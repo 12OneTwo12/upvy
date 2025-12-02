@@ -7,8 +7,7 @@ import org.jooq.Record
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -42,7 +41,7 @@ class CommentLikeRepositoryImpl(
      * @return 생성된 댓글 좋아요 (Mono)
      */
     override fun save(userId: UUID, commentId: UUID): Mono<CommentLike> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         val userIdStr = userId.toString()
         val commentIdStr = commentId.toString()
 
@@ -88,8 +87,8 @@ class CommentLikeRepositoryImpl(
      * @param commentId 댓글 ID
      */
     override fun delete(userId: UUID, commentId: UUID): Mono<Void> {
-        val now = LocalDateTime.now()
-        val unixTimestamp = now.toEpochSecond(ZoneOffset.UTC)
+        val now = Instant.now()
+        val unixTimestamp = now.epochSecond
 
         // JOOQ의 type-safe API로 UPDATE 쿼리 생성
         return Mono.from(

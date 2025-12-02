@@ -6,7 +6,7 @@ import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -41,7 +41,7 @@ class UserViewHistoryRepositoryImpl(
         watchedDuration: Int,
         completionRate: Int
     ): Mono<Void> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         // JOOQ의 type-safe API로 INSERT 쿼리 생성
         return Mono.from(
@@ -72,7 +72,7 @@ class UserViewHistoryRepositoryImpl(
      */
     override fun findRecentViewedContentIds(
         userId: UUID,
-        since: LocalDateTime,
+        since: Instant,
         limit: Int
     ): Flux<UUID> {
         // JOOQ의 type-safe API로 SELECT 쿼리 생성
@@ -101,7 +101,7 @@ class UserViewHistoryRepositoryImpl(
      */
     override fun findRecentViewHistoryDetails(
         userId: UUID,
-        since: LocalDateTime,
+        since: Instant,
         limit: Int
     ): Flux<ViewHistoryDetail> {
         // JOOQ의 type-safe API로 SELECT 쿼리 생성

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -48,9 +48,9 @@ class CommentLikeServiceTest {
                 id = 1L,
                 userId = testUserId,
                 commentId = testCommentId,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 

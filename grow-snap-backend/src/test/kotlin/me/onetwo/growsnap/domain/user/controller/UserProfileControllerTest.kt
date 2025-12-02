@@ -384,8 +384,8 @@ class UserProfileControllerTest {
                     isLiked = true,
                     isSaved = false
                 ),
-                createdAt = java.time.LocalDateTime.now(),
-                updatedAt = java.time.LocalDateTime.now()
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now()
             ),
             ContentResponse(
                 id = contentId2.toString(),
@@ -412,8 +412,8 @@ class UserProfileControllerTest {
                     isLiked = false,
                     isSaved = true
                 ),
-                createdAt = java.time.LocalDateTime.now(),
-                updatedAt = java.time.LocalDateTime.now()
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now()
             )
         )
 

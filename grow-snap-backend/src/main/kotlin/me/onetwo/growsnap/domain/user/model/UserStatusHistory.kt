@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.user.model
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -14,7 +14,7 @@ import java.util.UUID
  * @property newStatus 새로운 상태
  * @property reason 변경 사유
  * @property metadata 추가 메타데이터 (JSON)
- * @property changedAt 변경 시각
+ * @property changedAt 변경 시각 (UTC Instant)
  * @property changedBy 변경한 사용자 ID (본인 또는 관리자)
  */
 data class UserStatusHistory(
@@ -24,6 +24,6 @@ data class UserStatusHistory(
     val newStatus: UserStatus,
     val reason: String? = null,
     val metadata: String? = null,  // JSON string
-    val changedAt: LocalDateTime = LocalDateTime.now(),
+    val changedAt: Instant = Instant.now(),
     val changedBy: String? = null
 )

@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.user.model
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 data class UserProfile(
@@ -11,10 +11,10 @@ data class UserProfile(
     val bio: String? = null,
     val followerCount: Int = 0,
     val followingCount: Int = 0,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     val createdBy: String? = null,
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: Instant = Instant.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null,
+    val deletedAt: Instant? = null,
     val deletedAtUnix: Long = 0L
 )

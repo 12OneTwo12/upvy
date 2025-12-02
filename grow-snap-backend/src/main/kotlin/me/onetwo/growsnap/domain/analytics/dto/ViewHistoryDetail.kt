@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.analytics.dto
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -17,5 +17,5 @@ data class ViewHistoryDetail(
     val contentId: UUID,
     val watchedDuration: Int,
     val completionRate: Int,
-    val watchedAt: LocalDateTime
+    val watchedAt: Instant
 )

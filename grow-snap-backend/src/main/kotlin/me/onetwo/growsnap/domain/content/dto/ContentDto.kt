@@ -9,7 +9,7 @@ import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.model.DifficultyLevel
 import me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse
-import java.time.LocalDateTime
+import java.time.Instant
 
 /**
  * 콘텐츠 업로드 URL 요청
@@ -184,6 +184,6 @@ data class ContentResponse(
     val tags: List<String>,
     val language: String,
     val interactions: InteractionInfoResponse? = null,
-    val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime
+    val createdAt: Instant,
+    val updatedAt: Instant
 )

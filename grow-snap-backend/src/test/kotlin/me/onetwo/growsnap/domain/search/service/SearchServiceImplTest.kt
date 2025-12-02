@@ -26,7 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -311,8 +311,8 @@ class SearchServiceImplTest {
                 bio = "안녕하세요",
                 followerCount = 10,
                 followingCount = 5,
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
             )
 
             val userProfile2 = UserProfile(
@@ -323,8 +323,8 @@ class SearchServiceImplTest {
                 bio = null,
                 followerCount = 20,
                 followingCount = 10,
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
             )
 
             val request = UserSearchRequest(

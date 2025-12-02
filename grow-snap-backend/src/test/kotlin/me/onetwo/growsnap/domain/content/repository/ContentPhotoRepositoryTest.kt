@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 @SpringBootTest
@@ -81,9 +81,9 @@ class ContentPhotoRepositoryTest {
                 displayOrder = 0,
                 width = 1080,
                 height = 1080,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUser.id!!.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUser.id!!.toString()
             )
 
@@ -110,9 +110,9 @@ class ContentPhotoRepositoryTest {
                 displayOrder = 0,
                 width = 1080,
                 height = 1080,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUser.id!!.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUser.id!!.toString()
             )
             val photo2 = ContentPhoto(
@@ -121,9 +121,9 @@ class ContentPhotoRepositoryTest {
                 displayOrder = 1,
                 width = 1080,
                 height = 1080,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUser.id!!.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUser.id!!.toString()
             )
             val photo3 = ContentPhoto(
@@ -132,9 +132,9 @@ class ContentPhotoRepositoryTest {
                 displayOrder = 2,
                 width = 1080,
                 height = 1080,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUser.id!!.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUser.id!!.toString()
             )
 
@@ -159,7 +159,7 @@ class ContentPhotoRepositoryTest {
         @DisplayName("Audit Trail 필드가 자동으로 설정된다")
         fun save_WithValidPhoto_SetsAuditTrailFields() {
             // Given: 테스트 사진
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             val photo = ContentPhoto(
                 contentId = testContentId,
                 photoUrl = "https://s3.amazonaws.com/photo1.jpg",
@@ -238,7 +238,7 @@ class ContentPhotoRepositoryTest {
 
             // photo2를 Soft Delete
             Mono.from(dslContext.update(CONTENT_PHOTOS)
-                .set(CONTENT_PHOTOS.DELETED_AT, LocalDateTime.now())
+                .set(CONTENT_PHOTOS.DELETED_AT, Instant.now())
                 .set(CONTENT_PHOTOS.UPDATED_BY, testUser.id!!.toString())
                 .where(CONTENT_PHOTOS.CONTENT_ID.eq(testContentId.toString()))
                 .and(CONTENT_PHOTOS.DISPLAY_ORDER.eq(1))).block()
@@ -381,7 +381,7 @@ class ContentPhotoRepositoryTest {
         creatorId: UUID,
         title: String
     ) {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         Mono.from(dslContext.insertInto(CONTENTS)
             .set(CONTENTS.ID, contentId.toString())
@@ -407,7 +407,7 @@ class ContentPhotoRepositoryTest {
         photoUrl: String,
         displayOrder: Int
     ) {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         Mono.from(dslContext.insertInto(CONTENT_PHOTOS)
             .set(CONTENT_PHOTOS.CONTENT_ID, contentId.toString())

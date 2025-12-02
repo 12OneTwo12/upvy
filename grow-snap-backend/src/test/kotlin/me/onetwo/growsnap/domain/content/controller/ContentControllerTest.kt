@@ -33,7 +33,7 @@ import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 @WebFluxTest(ContentController::class)
@@ -155,8 +155,8 @@ class ContentControllerTest {
                     isLiked = false,
                     isSaved = false
                 ),
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
             )
 
             every { contentService.createContent(any(), any()) } returns Mono.just(response)
@@ -258,8 +258,8 @@ class ContentControllerTest {
                     isLiked = false,
                     isSaved = false
                 ),
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
             )
 
             every { contentService.getContent(contentId, any()) } returns Mono.just(response)
@@ -378,8 +378,8 @@ class ContentControllerTest {
                     isLiked = false,
                     isSaved = false
                 ),
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
             )
 
             val response2 = ContentResponse(
@@ -407,8 +407,8 @@ class ContentControllerTest {
                     isLiked = false,
                     isSaved = false
                 ),
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
             )
 
             every { contentService.getContentsByCreator(userId, userId) } returns reactor.core.publisher.Flux.just(response1, response2)
@@ -509,8 +509,8 @@ class ContentControllerTest {
                     isLiked = false,
                     isSaved = false
                 ),
-                createdAt = LocalDateTime.now().minusDays(1),
-                updatedAt = LocalDateTime.now()
+                createdAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+                updatedAt = Instant.now()
             )
 
             every { contentService.updateContent(userId, contentId, request) } returns Mono.just(response)

@@ -92,7 +92,7 @@ class AnalyticsControllerIntegrationTest : AbstractIntegrationTest() {
             await.atMost(2, TimeUnit.SECONDS).untilAsserted {
                 val viewedContentIds = userViewHistoryRepository.findRecentViewedContentIds(
                     user.id!!,
-                    java.time.LocalDateTime.now().minusHours(1),
+                    java.time.Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS),
                     100
                 ).collectList().block()!!
                 assertThat(viewedContentIds).contains(contentId)

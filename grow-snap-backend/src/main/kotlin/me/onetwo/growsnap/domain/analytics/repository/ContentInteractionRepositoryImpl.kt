@@ -7,7 +7,7 @@ import org.jooq.Field
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -229,7 +229,7 @@ class ContentInteractionRepositoryImpl(
             dslContext
                 .update(CONTENT_INTERACTIONS)
                 .set(field, DSL.field("{0} + 1", Int::class.java, field))
-                .set(CONTENT_INTERACTIONS.UPDATED_AT, LocalDateTime.now())
+                .set(CONTENT_INTERACTIONS.UPDATED_AT, Instant.now())
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
         ).then()
@@ -251,7 +251,7 @@ class ContentInteractionRepositoryImpl(
             dslContext
                 .update(CONTENT_INTERACTIONS)
                 .set(field, DSL.field("CASE WHEN {0} > 0 THEN {0} - 1 ELSE 0 END", Int::class.java, field))
-                .set(CONTENT_INTERACTIONS.UPDATED_AT, LocalDateTime.now())
+                .set(CONTENT_INTERACTIONS.UPDATED_AT, Instant.now())
                 .where(CONTENT_INTERACTIONS.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_INTERACTIONS.DELETED_AT.isNull)
         ).then()

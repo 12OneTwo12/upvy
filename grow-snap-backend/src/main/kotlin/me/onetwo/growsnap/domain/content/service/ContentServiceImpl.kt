@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -108,7 +108,7 @@ class ContentServiceImpl(
 
         return Mono.fromCallable {
             val contentId = UUID.fromString(request.contentId)
-            val now = LocalDateTime.now()
+            val now = Instant.now()
 
             // 1. Redis에서 업로드 세션 조회
             val uploadSession = uploadSessionRepository.findById(request.contentId).orElseThrow {
@@ -428,7 +428,7 @@ class ContentServiceImpl(
                     category = request.category ?: metadata.category,
                     tags = request.tags ?: metadata.tags,
                     language = request.language ?: metadata.language,
-                    updatedAt = LocalDateTime.now(),
+                    updatedAt = Instant.now(),
                     updatedBy = userId.toString()
                 )
 
@@ -458,9 +458,9 @@ class ContentServiceImpl(
                                     displayOrder = index,
                                     width = content.width,
                                     height = content.height,
-                                    createdAt = LocalDateTime.now(),
+                                    createdAt = Instant.now(),
                                     createdBy = userId.toString(),
-                                    updatedAt = LocalDateTime.now(),
+                                    updatedAt = Instant.now(),
                                     updatedBy = userId.toString()
                                 )
                             })

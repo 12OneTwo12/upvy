@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.infrastructure.exception
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 /**
  * 에러 응답 DTO
@@ -15,7 +15,7 @@ import java.time.LocalDateTime
  * @property code 애플리케이션 레벨 에러 코드 (선택사항)
  */
 data class ErrorResponse(
-    val timestamp: LocalDateTime = LocalDateTime.now(),
+    val timestamp: Instant = Instant.now(),
     val status: Int,
     val error: String,
     val message: String,

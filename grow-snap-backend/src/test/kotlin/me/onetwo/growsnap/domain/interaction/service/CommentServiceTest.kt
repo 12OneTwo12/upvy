@@ -25,7 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -81,9 +81,9 @@ class CommentServiceTest {
                 userId = testUserId,
                 content = "Test comment",
                 parentCommentId = null,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -151,9 +151,9 @@ class CommentServiceTest {
                 userId = testUserId,
                 content = "Comment 1",
                 parentCommentId = null,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -164,9 +164,9 @@ class CommentServiceTest {
                 userId = testUserId,
                 content = "Comment 2",
                 parentCommentId = null,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -184,9 +184,9 @@ class CommentServiceTest {
                     userId = testUserId,
                     content = "Comment 3",
                     parentCommentId = null,
-                    createdAt = LocalDateTime.now(),
+                    createdAt = Instant.now(),
                     createdBy = testUserId.toString(),
-                    updatedAt = LocalDateTime.now(),
+                    updatedAt = Instant.now(),
                     updatedBy = testUserId.toString()
                 )
             ))
@@ -218,9 +218,9 @@ class CommentServiceTest {
                 userId = testUserId,
                 content = "Parent comment",
                 parentCommentId = null,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -267,9 +267,9 @@ class CommentServiceTest {
                 userId = testUserId,
                 content = "Reply 1",
                 parentCommentId = parentCommentId,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -279,9 +279,9 @@ class CommentServiceTest {
                 userId = testUserId,
                 content = "Reply 2",
                 parentCommentId = parentCommentId,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -298,9 +298,9 @@ class CommentServiceTest {
                     userId = testUserId,
                     content = "Reply 3",
                     parentCommentId = parentCommentId,
-                    createdAt = LocalDateTime.now(),
+                    createdAt = Instant.now(),
                     createdBy = testUserId.toString(),
-                    updatedAt = LocalDateTime.now(),
+                    updatedAt = Instant.now(),
                     updatedBy = testUserId.toString()
                 )
             ))
@@ -334,9 +334,9 @@ class CommentServiceTest {
                 userId = testUserId,
                 content = "Last reply",
                 parentCommentId = parentCommentId,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -378,9 +378,9 @@ class CommentServiceTest {
                 userId = testUserId,
                 content = "Test comment",
                 parentCommentId = null,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -427,9 +427,9 @@ class CommentServiceTest {
                 userId = otherUserId,
                 content = "Test comment",
                 parentCommentId = null,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = otherUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = otherUserId.toString()
             )
 

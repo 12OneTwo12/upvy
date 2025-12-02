@@ -3,7 +3,7 @@ package me.onetwo.growsnap.domain.content.model
 import org.springframework.data.annotation.Id
 import org.springframework.data.redis.core.RedisHash
 import org.springframework.data.redis.core.TimeToLive
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -18,7 +18,7 @@ import java.util.UUID
  * @property contentType 콘텐츠 타입 (VIDEO, PHOTO)
  * @property fileName 원본 파일 이름
  * @property fileSize 파일 크기 (bytes)
- * @property createdAt 세션 생성 시각
+ * @property createdAt 세션 생성 시각 (UTC Instant)
  * @property ttl Time to live (초, 15분 = 900초)
  */
 @RedisHash("upload_session")
@@ -30,7 +30,7 @@ data class UploadSession(
     val contentType: ContentType,
     val fileName: String,
     val fileSize: Long,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     @TimeToLive
     val ttl: Long = 900  // 15분
 )

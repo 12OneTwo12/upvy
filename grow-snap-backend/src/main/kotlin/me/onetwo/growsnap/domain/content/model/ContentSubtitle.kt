@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.content.model
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -12,20 +12,20 @@ import java.util.UUID
  * @property contentId 콘텐츠 ID
  * @property language 자막 언어 코드 (ISO 639-1, 예: ko, en)
  * @property subtitleUrl 자막 파일 URL (VTT 형식)
- * @property createdAt 생성 시각
+ * @property createdAt 생성 시각 (UTC Instant)
  * @property createdBy 생성한 사용자 ID
- * @property updatedAt 최종 수정 시각
+ * @property updatedAt 최종 수정 시각 (UTC Instant)
  * @property updatedBy 최종 수정한 사용자 ID
- * @property deletedAt 삭제 시각 (Soft Delete)
+ * @property deletedAt 삭제 시각 (UTC Instant, Soft Delete)
  */
 data class ContentSubtitle(
     val id: Long? = null,
     val contentId: UUID,
     val language: String,
     val subtitleUrl: String,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     val createdBy: String? = null,
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: Instant = Instant.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null
+    val deletedAt: Instant? = null
 )

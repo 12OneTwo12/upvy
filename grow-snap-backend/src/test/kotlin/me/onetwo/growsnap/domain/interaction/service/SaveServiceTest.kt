@@ -20,7 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -65,9 +65,9 @@ class SaveServiceTest {
                 id = 1L,
                 userId = testUserId,
                 contentId = testContentId,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -187,9 +187,9 @@ class SaveServiceTest {
                 id = 1L,
                 userId = testUserId,
                 contentId = contentId1,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 
@@ -197,9 +197,9 @@ class SaveServiceTest {
                 id = 2L,
                 userId = testUserId,
                 contentId = contentId2,
-                createdAt = LocalDateTime.now(),
+                createdAt = Instant.now(),
                 createdBy = testUserId.toString(),
-                updatedAt = LocalDateTime.now(),
+                updatedAt = Instant.now(),
                 updatedBy = testUserId.toString()
             )
 

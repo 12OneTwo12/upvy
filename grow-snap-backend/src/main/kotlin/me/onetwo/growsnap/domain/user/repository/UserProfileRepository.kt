@@ -8,8 +8,7 @@ import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
-import java.time.ZoneId
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -95,8 +94,8 @@ class UserProfileRepository(
      * @param deletedBy 삭제한 사용자 ID
      */
     fun softDelete(userId: UUID, deletedBy: UUID): Mono<Void> {
-        val now = LocalDateTime.now()
-        val deletedAtUnix = now.atZone(ZoneId.systemDefault()).toEpochSecond()
+        val now = Instant.now()
+        val deletedAtUnix = now.epochSecond
 
         return Mono.from(
             dsl.update(USER_PROFILES)

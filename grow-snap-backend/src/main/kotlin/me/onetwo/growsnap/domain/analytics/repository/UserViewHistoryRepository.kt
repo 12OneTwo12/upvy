@@ -3,7 +3,7 @@ package me.onetwo.growsnap.domain.analytics.repository
 import me.onetwo.growsnap.domain.analytics.dto.ViewHistoryDetail
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -39,7 +39,7 @@ interface UserViewHistoryRepository {
      */
     fun findRecentViewedContentIds(
         userId: UUID,
-        since: LocalDateTime,
+        since: Instant,
         limit: Int
     ): Flux<UUID>
 
@@ -55,7 +55,7 @@ interface UserViewHistoryRepository {
      */
     fun findRecentViewHistoryDetails(
         userId: UUID,
-        since: LocalDateTime,
+        since: Instant,
         limit: Int
     ): Flux<ViewHistoryDetail>
 }

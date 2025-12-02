@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.content.model
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -18,11 +18,11 @@ import java.util.UUID
  * @property width 콘텐츠 가로 크기 (픽셀)
  * @property height 콘텐츠 세로 크기 (픽셀)
  * @property status 콘텐츠 상태
- * @property createdAt 생성 시각
+ * @property createdAt 생성 시각 (UTC Instant)
  * @property createdBy 생성한 사용자 ID
- * @property updatedAt 최종 수정 시각
+ * @property updatedAt 최종 수정 시각 (UTC Instant)
  * @property updatedBy 최종 수정한 사용자 ID
- * @property deletedAt 삭제 시각 (Soft Delete)
+ * @property deletedAt 삭제 시각 (UTC Instant, Soft Delete)
  */
 data class Content(
     val id: UUID? = null,
@@ -34,9 +34,9 @@ data class Content(
     val width: Int,
     val height: Int,
     val status: ContentStatus = ContentStatus.PENDING,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
     val createdBy: String? = null,
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: Instant = Instant.now(),
     val updatedBy: String? = null,
-    val deletedAt: LocalDateTime? = null
+    val deletedAt: Instant? = null
 )

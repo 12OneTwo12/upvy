@@ -9,7 +9,7 @@ import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -27,7 +27,7 @@ class CommentRepositoryImpl(
 ) : CommentRepository {
 
     override fun save(comment: Comment): Mono<Comment> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
         val commentId = comment.id ?: UUID.randomUUID()
 
         // MySQL R2DBC는 단일 자동 생성 값만 지원하므로, returningResult()를 제거하고
@@ -344,7 +344,7 @@ class CommentRepositoryImpl(
     }
 
     override fun delete(commentId: UUID, userId: UUID): Mono<Void> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         return Mono.from(
             dslContext

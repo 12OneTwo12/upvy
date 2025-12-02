@@ -7,7 +7,7 @@ import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -25,7 +25,7 @@ class UserContentInteractionRepositoryImpl(
 ) : UserContentInteractionRepository {
 
     override fun save(userId: UUID, contentId: UUID, interactionType: InteractionType): Mono<Void> {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         // JOOQ의 type-safe API로 INSERT 쿼리 생성
         return Mono.from(

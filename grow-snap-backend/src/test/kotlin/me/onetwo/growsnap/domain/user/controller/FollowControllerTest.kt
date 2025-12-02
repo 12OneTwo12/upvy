@@ -1,6 +1,6 @@
 package me.onetwo.growsnap.domain.user.controller
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 import com.ninjasquad.springmockk.MockkBean
@@ -288,8 +288,8 @@ class FollowControllerTest {
             bio = "follower1 bio",
             followerCount = 10,
             followingCount = 5,
-            createdAt = LocalDateTime.now(),
-            updatedAt = LocalDateTime.now()
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
         val follower2 = UserProfileResponse(
             id = 2L,
@@ -299,8 +299,8 @@ class FollowControllerTest {
             bio = null,
             followerCount = 20,
             followingCount = 15,
-            createdAt = LocalDateTime.now(),
-            updatedAt = LocalDateTime.now()
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
 
         every { followService.getFollowers(targetUserId) } returns Flux.fromIterable(listOf(follower1, follower2))
@@ -374,8 +374,8 @@ class FollowControllerTest {
             bio = "following1 bio",
             followerCount = 100,
             followingCount = 50,
-            createdAt = LocalDateTime.now(),
-            updatedAt = LocalDateTime.now()
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
         val following2 = UserProfileResponse(
             id = 4L,
@@ -385,8 +385,8 @@ class FollowControllerTest {
             bio = "Hello",
             followerCount = 200,
             followingCount = 150,
-            createdAt = LocalDateTime.now(),
-            updatedAt = LocalDateTime.now()
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
 
         every { followService.getFollowing(targetUserId) } returns Flux.fromIterable(listOf(following1, following2))

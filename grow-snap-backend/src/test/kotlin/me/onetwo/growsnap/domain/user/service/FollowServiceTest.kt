@@ -4,7 +4,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 import me.onetwo.growsnap.domain.user.event.FollowEvent
 import me.onetwo.growsnap.domain.user.exception.AlreadyFollowingException
@@ -327,8 +327,8 @@ class FollowServiceTest {
             bio = "follower1 bio",
             followerCount = 10,
             followingCount = 5,
-            createdAt = LocalDateTime.now(),
-            updatedAt = LocalDateTime.now()
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
 
         val follower2Profile = UserProfile(
@@ -339,8 +339,8 @@ class FollowServiceTest {
             bio = null,
             followerCount = 20,
             followingCount = 15,
-            createdAt = LocalDateTime.now(),
-            updatedAt = LocalDateTime.now()
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
 
         every { followRepository.findFollowerUserIds(userId) } returns Flux.fromIterable(setOf(follower1Id, follower2Id))
@@ -390,8 +390,8 @@ class FollowServiceTest {
             bio = "following1 bio",
             followerCount = 100,
             followingCount = 50,
-            createdAt = LocalDateTime.now(),
-            updatedAt = LocalDateTime.now()
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
 
         val following2Profile = UserProfile(
@@ -402,8 +402,8 @@ class FollowServiceTest {
             bio = "Hello",
             followerCount = 200,
             followingCount = 150,
-            createdAt = LocalDateTime.now(),
-            updatedAt = LocalDateTime.now()
+            createdAt = Instant.now(),
+            updatedAt = Instant.now()
         )
 
         every { followRepository.findFollowingUserIds(userId) } returns Flux.fromIterable(setOf(following1Id, following2Id))

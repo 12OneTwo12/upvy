@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -105,7 +105,7 @@ class UserViewHistoryRepositoryTest {
             // Then: 저장 확인
             val result = userViewHistoryRepository.findRecentViewedContentIds(
                 testUser.id!!,
-                LocalDateTime.now().minusDays(1),
+                Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -134,7 +134,7 @@ class UserViewHistoryRepositoryTest {
             // Then: 모두 저장 확인
             val result = userViewHistoryRepository.findRecentViewedContentIds(
                 testUser.id!!,
-                LocalDateTime.now().minusDays(1),
+                Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -164,7 +164,7 @@ class UserViewHistoryRepositoryTest {
             // Then: 2개의 기록 존재
             val result = userViewHistoryRepository.findRecentViewHistoryDetails(
                 testUser.id!!,
-                LocalDateTime.now().minusDays(1),
+                Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -182,15 +182,15 @@ class UserViewHistoryRepositoryTest {
         @DisplayName("최근 시청한 콘텐츠 ID를 반환한다")
         fun findRecentViewedContentIds_ReturnsRecentContents() {
             // Given: 시청 기록 저장
-            val now = LocalDateTime.now()
-            saveViewHistory(testUser.id!!, testContent1Id, now.minusHours(3))
-            saveViewHistory(testUser.id!!, testContent2Id, now.minusHours(2))
-            saveViewHistory(testUser.id!!, testContent3Id, now.minusHours(1))
+            val now = Instant.now()
+            saveViewHistory(testUser.id!!, testContent1Id, now.minus(3, java.time.temporal.ChronoUnit.HOURS))
+            saveViewHistory(testUser.id!!, testContent2Id, now.minus(2, java.time.temporal.ChronoUnit.HOURS))
+            saveViewHistory(testUser.id!!, testContent3Id, now.minus(1, java.time.temporal.ChronoUnit.HOURS))
 
             // When: 최근 시청 콘텐츠 조회
             val result = userViewHistoryRepository.findRecentViewedContentIds(
                 testUser.id!!,
-                now.minusDays(1),
+                now.minus(1, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -205,14 +205,14 @@ class UserViewHistoryRepositoryTest {
         @DisplayName("since 이전의 기록은 제외된다")
         fun findRecentViewedContentIds_BeforeSince_Excluded() {
             // Given: 오래된 기록과 최근 기록
-            val now = LocalDateTime.now()
-            saveViewHistory(testUser.id!!, testContent1Id, now.minusDays(10))  // 오래됨
-            saveViewHistory(testUser.id!!, testContent2Id, now.minusHours(1))  // 최근
+            val now = Instant.now()
+            saveViewHistory(testUser.id!!, testContent1Id, now.minus(10, java.time.temporal.ChronoUnit.DAYS))  // 오래됨
+            saveViewHistory(testUser.id!!, testContent2Id, now.minus(1, java.time.temporal.ChronoUnit.HOURS))  // 최근
 
             // When: 최근 3일 이내 기록만 조회
             val result = userViewHistoryRepository.findRecentViewedContentIds(
                 testUser.id!!,
-                now.minusDays(3),
+                now.minus(3, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -225,7 +225,7 @@ class UserViewHistoryRepositoryTest {
         @DisplayName("limit만큼만 반환한다")
         fun findRecentViewedContentIds_WithLimit_ReturnsLimitedResults() {
             // Given: 5개 시청 기록
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             val contentIds = List(5) { UUID.randomUUID() }
 
             // 콘텐츠 생성
@@ -235,13 +235,13 @@ class UserViewHistoryRepositoryTest {
 
             // 시청 기록 생성
             contentIds.forEachIndexed { index, contentId ->
-                saveViewHistory(testUser.id!!, contentId, now.minusHours(index.toLong()))
+                saveViewHistory(testUser.id!!, contentId, now.minusSeconds(3600 * index.toLong()))
             }
 
             // When: limit=3
             val result = userViewHistoryRepository.findRecentViewedContentIds(
                 testUser.id!!,
-                now.minusDays(1),
+                now.minus(1, java.time.temporal.ChronoUnit.DAYS),
                 3
             ).collectList().block()!!
 
@@ -255,7 +255,7 @@ class UserViewHistoryRepositoryTest {
             // When: 시청 기록 없이 조회
             val result = userViewHistoryRepository.findRecentViewedContentIds(
                 testUser.id!!,
-                LocalDateTime.now().minusDays(1),
+                Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -272,7 +272,7 @@ class UserViewHistoryRepositoryTest {
         @DisplayName("시청 기록 상세 정보를 반환한다")
         fun findRecentViewHistoryDetails_ReturnsDetailedHistory() {
             // Given: 시청 기록 저장
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             userViewHistoryRepository.save(
                 testUser.id!!,
                 testContent1Id,
@@ -283,7 +283,7 @@ class UserViewHistoryRepositoryTest {
             // When: 상세 정보 조회
             val result = userViewHistoryRepository.findRecentViewHistoryDetails(
                 testUser.id!!,
-                now.minusDays(1),
+                now.minus(1, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -293,22 +293,22 @@ class UserViewHistoryRepositoryTest {
             assertEquals(testContent1Id, detail.contentId)
             assertEquals(120, detail.watchedDuration)
             assertEquals(80, detail.completionRate)
-            assertTrue(detail.watchedAt.isAfter(now.minusMinutes(1)))
+            assertTrue(detail.watchedAt.isAfter(now.minusSeconds(1 * 60)))
         }
 
         @Test
         @DisplayName("최신순으로 정렬되어 반환한다")
         fun findRecentViewHistoryDetails_OrderedByWatchedAtDesc() {
             // Given: 여러 시청 기록
-            val now = LocalDateTime.now()
-            saveViewHistory(testUser.id!!, testContent1Id, now.minusHours(3), 100, 50)
-            saveViewHistory(testUser.id!!, testContent2Id, now.minusHours(2), 200, 75)
-            saveViewHistory(testUser.id!!, testContent3Id, now.minusHours(1), 300, 100)
+            val now = Instant.now()
+            saveViewHistory(testUser.id!!, testContent1Id, now.minus(3, java.time.temporal.ChronoUnit.HOURS), 100, 50)
+            saveViewHistory(testUser.id!!, testContent2Id, now.minus(2, java.time.temporal.ChronoUnit.HOURS), 200, 75)
+            saveViewHistory(testUser.id!!, testContent3Id, now.minus(1, java.time.temporal.ChronoUnit.HOURS), 300, 100)
 
             // When: 상세 정보 조회
             val result = userViewHistoryRepository.findRecentViewHistoryDetails(
                 testUser.id!!,
-                now.minusDays(1),
+                now.minus(1, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -331,14 +331,14 @@ class UserViewHistoryRepositoryTest {
         @DisplayName("since 이전의 기록은 제외된다")
         fun findRecentViewHistoryDetails_BeforeSince_Excluded() {
             // Given: 오래된 기록과 최근 기록
-            val now = LocalDateTime.now()
-            saveViewHistory(testUser.id!!, testContent1Id, now.minusDays(10), 100, 50)
-            saveViewHistory(testUser.id!!, testContent2Id, now.minusHours(1), 200, 100)
+            val now = Instant.now()
+            saveViewHistory(testUser.id!!, testContent1Id, now.minus(10, java.time.temporal.ChronoUnit.DAYS), 100, 50)
+            saveViewHistory(testUser.id!!, testContent2Id, now.minus(1, java.time.temporal.ChronoUnit.HOURS), 200, 100)
 
             // When: 최근 3일 이내 기록만 조회
             val result = userViewHistoryRepository.findRecentViewHistoryDetails(
                 testUser.id!!,
-                now.minusDays(3),
+                now.minus(3, java.time.temporal.ChronoUnit.DAYS),
                 10
             ).collectList().block()!!
 
@@ -351,7 +351,7 @@ class UserViewHistoryRepositoryTest {
         @DisplayName("limit만큼만 반환한다")
         fun findRecentViewHistoryDetails_WithLimit_ReturnsLimitedResults() {
             // Given: 5개 시청 기록
-            val now = LocalDateTime.now()
+            val now = Instant.now()
             val contentIds = List(5) { UUID.randomUUID() }
 
             // 콘텐츠 생성
@@ -361,13 +361,13 @@ class UserViewHistoryRepositoryTest {
 
             // 시청 기록 생성
             contentIds.forEachIndexed { index, contentId ->
-                saveViewHistory(testUser.id!!, contentId, now.minusHours(index.toLong()), 100, 50)
+                saveViewHistory(testUser.id!!, contentId, now.minusSeconds(3600 * index.toLong()), 100, 50)
             }
 
             // When: limit=3
             val result = userViewHistoryRepository.findRecentViewHistoryDetails(
                 testUser.id!!,
-                now.minusDays(1),
+                now.minus(1, java.time.temporal.ChronoUnit.DAYS),
                 3
             ).collectList().block()!!
 
@@ -384,7 +384,7 @@ class UserViewHistoryRepositoryTest {
         creatorId: UUID,
         title: String
     ) {
-        val now = LocalDateTime.now()
+        val now = Instant.now()
 
         // Contents 테이블
         Mono.from(dslContext.insertInto(CONTENTS)
@@ -435,7 +435,7 @@ class UserViewHistoryRepositoryTest {
     private fun saveViewHistory(
         userId: UUID,
         contentId: UUID,
-        watchedAt: LocalDateTime,
+        watchedAt: Instant,
         watchedDuration: Int = 100,
         completionRate: Int = 50
     ) {
