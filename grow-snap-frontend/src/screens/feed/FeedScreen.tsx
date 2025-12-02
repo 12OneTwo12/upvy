@@ -306,8 +306,8 @@ export default function FeedScreen() {
   };
 
   // 데이터 상태 처리
-  // 로딩 중이거나 자동 새로고침 중이면 스켈레톤, 아니면 실제 데이터 (빈 배열일 수 있음)
-  const displayItems = (isLoading || autoRefreshing) ? [loadingFeedItem] : feedItems;
+  // 로딩 중이거나 새로고침 중이면 스켈레톤, 아니면 실제 데이터 (빈 배열일 수 있음)
+  const displayItems = (isLoading || autoRefreshing || refreshing) ? [loadingFeedItem] : feedItems;
 
   // 스크롤 이벤트: 현재 보이는 아이템 인덱스 추적
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -624,7 +624,7 @@ export default function FeedScreen() {
       </View>
 
       {/* Pull-to-Refresh 인디케이터 */}
-      {pullDistance > 30 && currentIndex === 0 && (
+      {pullDistance > 30 && currentIndex === 0 && !refreshing && (
         <View style={{
           position: 'absolute',
           top: 60 + pullDistance * 0.5,
@@ -646,22 +646,8 @@ export default function FeedScreen() {
         </View>
       )}
 
-      {/* 새로고침 중 인디케이터 */}
-      {refreshing && (
-        <View style={{
-          position: 'absolute',
-          top: 80,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          alignItems: 'center',
-        }}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
-        </View>
-      )}
-
       {/* 빈 콘텐츠 상태 */}
-      {!isLoading && !autoRefreshing && feedItems.length === 0 ? (
+      {!isLoading && !autoRefreshing && !refreshing && feedItems.length === 0 ? (
         <View style={{
           flex: 1,
           justifyContent: 'center',
