@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '@/types/navigation.types';
 import { theme } from '@/theme';
+import ExploreNavigator from '@/navigation/ExploreNavigator';
 import FeedNavigator from '@/navigation/FeedNavigator';
 import SearchNavigator from '@/navigation/SearchNavigator';
 import UploadNavigator from '@/navigation/UploadNavigator';
@@ -17,6 +18,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 export default function MainNavigator() {
   return (
     <Tab.Navigator
+      initialRouteName="Feed"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
@@ -26,7 +28,9 @@ export default function MainNavigator() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
-          if (route.name === 'Feed') {
+          if (route.name === 'Explore') {
+            iconName = focused ? 'compass' : 'compass-outline';
+          } else if (route.name === 'Feed') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Search') {
             iconName = focused ? 'search' : 'search-outline';
@@ -45,14 +49,19 @@ export default function MainNavigator() {
       })}
     >
       <Tab.Screen
-        name="Feed"
-        component={FeedNavigator}
-        options={{ tabBarLabel: '피드' }}
+        name="Explore"
+        component={ExploreNavigator}
+        options={{ tabBarLabel: '탐색' }}
       />
       <Tab.Screen
         name="Search"
         component={SearchNavigator}
         options={{ tabBarLabel: '검색' }}
+      />
+      <Tab.Screen
+        name="Feed"
+        component={FeedNavigator}
+        options={{ tabBarLabel: '피드' }}
       />
       <Tab.Screen
         name="Upload"

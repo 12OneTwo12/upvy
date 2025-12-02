@@ -8,6 +8,7 @@
 import apiClient from './client';
 import { API_ENDPOINTS } from '@/constants/api';
 import type { FeedResponse, FeedRequest, FeedItem } from '@/types/feed.types';
+import type { Category } from '@/types/content.types';
 
 /**
  * 메인 피드 조회 (추천 알고리즘)
@@ -55,6 +56,32 @@ export const getFollowingFeed = async (params?: FeedRequest): Promise<FeedRespon
  */
 export const refreshFeed = async (): Promise<void> => {
   await apiClient.post(API_ENDPOINTS.FEED.REFRESH);
+};
+
+/**
+ * 카테고리별 피드 조회
+ *
+ * 백엔드: GET /api/v1/feed/categories/{category}
+ * Query Params: cursor, limit (default 20)
+ *
+ * @param category 카테고리
+ * @param params 피드 요청 파라미터
+ * @returns 피드 응답 (커서 기반 페이지네이션)
+ */
+export const getCategoryFeed = async (
+  category: Category,
+  params?: FeedRequest
+): Promise<FeedResponse> => {
+  const response = await apiClient.get<FeedResponse>(
+    API_ENDPOINTS.FEED.CATEGORY(category),
+    {
+      params: {
+        cursor: params?.cursor || undefined,
+        limit: params?.limit || 20,
+      },
+    }
+  );
+  return response.data;
 };
 
 /**

@@ -1,4 +1,5 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
+import type { Category } from './content.types';
 
 /**
  * Root Stack Navigator Params
@@ -25,6 +26,7 @@ export type AuthStackParamList = {
  * Main Tab Navigator Params
  */
 export type MainTabParamList = {
+  Explore: NavigatorScreenParams<ExploreStackParamList>;
   Feed: NavigatorScreenParams<FeedStackParamList>;
   Search: NavigatorScreenParams<SearchStackParamList>;
   Upload: NavigatorScreenParams<UploadStackParamList>;
@@ -69,6 +71,17 @@ export type UploadStackParamList = {
     };
   };
   ContentManagement: undefined;
+};
+
+/**
+ * Explore Stack Navigator Params
+ */
+export type ExploreStackParamList = {
+  ExploreMain: undefined;
+  CategoryFeed: { category: Category };
+  ContentViewer: { contentId: string };
+  UserProfile: { userId: string };
+  FollowList: { userId: string; initialTab?: 'followers' | 'following' };
 };
 
 /**
