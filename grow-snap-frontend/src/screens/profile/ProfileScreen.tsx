@@ -166,42 +166,25 @@ export default function ProfileScreen() {
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
   });
 
-  // 콘텐츠 목록 로드 (React Query - 캐싱 활성화)
-  const { data: contents = [], isLoading: contentsLoading, refetch: refetchContents } = useQuery({
+  // 콘텐츠 목록 로드 (React Query - 캐싱 활성화, 커서 기반 페이징)
+  const { data: contentsResponse, isLoading: contentsLoading, refetch: refetchContents } = useQuery({
     queryKey: ['myContents'],
     queryFn: getMyContents,
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지 (다시 로드하지 않음)
     gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
   });
+  const contents = contentsResponse?.content || [];
 
-  // 저장한 콘텐츠 목록 로드 (React Query)
-  const { data: savedContents = [], isLoading: savedContentsLoading, refetch: refetchSavedContents } = useQuery({
+  // 저장한 콘텐츠 목록 로드 (React Query, 커서 기반 페이징)
+  const { data: savedContentsResponse, isLoading: savedContentsLoading, refetch: refetchSavedContents } = useQuery({
     queryKey: ['savedContents'],
     queryFn: getSavedContents,
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
     gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
   });
+  const savedContents = savedContentsResponse?.content || [];
 
-  // SavedContentResponse를 ContentResponse로 변환
-  const savedContentsAsContentResponse: ContentResponse[] = savedContents.map((saved) => ({
-    id: saved.contentId,
-    creatorId: '', // 저장된 콘텐츠에는 creatorId가 없으므로 빈 문자열
-    contentType: 'VIDEO', // 기본값으로 VIDEO 설정 (백엔드에서 제공하지 않음)
-    url: '', // URL은 ContentViewer에서 다시 조회하므로 빈 문자열
-    photoUrls: null,
-    thumbnailUrl: saved.thumbnailUrl,
-    duration: null,
-    width: 0,
-    height: 0,
-    status: 'PUBLISHED',
-    title: saved.title,
-    description: null,
-    category: 'OTHER', // 기본 카테고리
-    tags: [],
-    language: 'ko',
-    createdAt: saved.savedAt,
-    updatedAt: saved.savedAt,
-  }));
+  // 백엔드에서 이제 ContentResponse를 직접 반환하므로 변환 불필요
 
   // 새로고침
   const [refreshing, setRefreshing] = useState(false);
@@ -363,7 +346,7 @@ export default function ProfileScreen() {
                 </View>
               ) : (
                 <ContentGrid
-                  contents={savedContentsAsContentResponse}
+                  contents={savedContents}
                   loading={savedContentsLoading}
                   onContentPress={handleContentPress}
                 />

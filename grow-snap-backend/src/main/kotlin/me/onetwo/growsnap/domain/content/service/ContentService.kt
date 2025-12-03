@@ -1,10 +1,12 @@
 package me.onetwo.growsnap.domain.content.service
 
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
+import me.onetwo.growsnap.domain.content.dto.ContentPageResponse
 import me.onetwo.growsnap.domain.content.dto.ContentResponse
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlResponse
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -61,6 +63,20 @@ interface ContentService {
      * @return 콘텐츠 목록을 담은 Flux
      */
     fun getContentsByCreator(creatorId: UUID, userId: UUID? = null): Flux<ContentResponse>
+
+    /**
+     * 크리에이터의 콘텐츠 목록을 커서 기반 페이징으로 조회합니다.
+     *
+     * @param creatorId 크리에이터 ID
+     * @param userId 사용자 ID (선택, 인터랙션 정보에 사용자별 상태를 포함하려면 제공)
+     * @param pageRequest 커서 페이지 요청
+     * @return 콘텐츠 페이지 응답을 담은 Mono
+     */
+    fun getContentsByCreatorWithCursor(
+        creatorId: UUID,
+        userId: UUID?,
+        pageRequest: CursorPageRequest
+    ): Mono<ContentPageResponse>
 
     /**
      * 콘텐츠를 수정합니다.

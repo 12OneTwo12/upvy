@@ -2,6 +2,7 @@ package me.onetwo.growsnap.domain.content.service
 
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentCreationResult
+import me.onetwo.growsnap.domain.content.dto.ContentPageResponse
 import me.onetwo.growsnap.domain.content.dto.ContentResponse
 import me.onetwo.growsnap.domain.content.dto.ContentResponseWithMetadata
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
@@ -18,6 +19,8 @@ import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -388,6 +391,94 @@ class ContentServiceImpl(
                         )
                     }
                 }
+            }
+    }
+
+    /**
+     * 크리에이터의 콘텐츠 목록을 커서 기반 페이징으로 조회합니다.
+     *
+     * @param creatorId 크리에이터 ID
+     * @param userId 사용자 ID (선택, 인터랙션 정보에 사용자별 상태를 포함하려면 제공)
+     * @param pageRequest 커서 페이지 요청
+     * @return 콘텐츠 페이지 응답을 담은 Mono
+     */
+    override fun getContentsByCreatorWithCursor(
+        creatorId: UUID,
+        userId: UUID?,
+        pageRequest: CursorPageRequest
+    ): Mono<ContentPageResponse> {
+        logger.info("Getting contents by creator with cursor: creatorId=$creatorId, userId=$userId, cursor=${pageRequest.cursor}, limit=${pageRequest.limit}")
+
+        val cursor = pageRequest.cursor?.let { UUID.fromString(it) }
+        val limit = pageRequest.limit
+
+        return contentRepository.findWithMetadataByCreatorIdWithCursor(
+            creatorId = creatorId,
+            cursor = cursor,
+            limit = limit + 1  // hasNext 판단용
+        )
+            .collectList()
+            .flatMap { contentWithMetadataList ->
+                // N+1 방지: PHOTO 타입 콘텐츠의 사진 목록을 일괄 조회
+                val photoContentIds = contentWithMetadataList
+                    .filter { it.content.contentType == ContentType.PHOTO }
+                    .mapNotNull { it.content.id }
+
+                val photoUrlsMapMono = if (photoContentIds.isNotEmpty()) {
+                    contentPhotoRepository.findByContentIds(photoContentIds)
+                        .map { photoMap ->
+                            photoMap.mapValues { (_, photos) -> photos.map { it.photoUrl } }
+                        }
+                } else {
+                    Mono.just(emptyMap())
+                }
+
+                photoUrlsMapMono.map { photoUrlsMap ->
+                    contentWithMetadataList to photoUrlsMap
+                }
+            }
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+                Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
+                    val content = contentWithMetadata.content
+                    val metadata = contentWithMetadata.metadata
+                    val photoUrls = if (content.contentType == ContentType.PHOTO) {
+                        photoUrlsMap[content.id]
+                    } else {
+                        null
+                    }
+
+                    // Interaction 정보 조회
+                    getInteractionInfo(content.id!!, userId).map { interactions ->
+                        ContentResponse(
+                            id = content.id.toString(),
+                            creatorId = content.creatorId.toString(),
+                            contentType = content.contentType,
+                            url = content.url,
+                            photoUrls = photoUrls,
+                            thumbnailUrl = content.thumbnailUrl,
+                            duration = content.duration,
+                            width = content.width,
+                            height = content.height,
+                            status = content.status,
+                            title = metadata.title,
+                            description = metadata.description,
+                            category = metadata.category,
+                            tags = metadata.tags,
+                            language = metadata.language,
+                            interactions = interactions,
+                            createdAt = content.createdAt,
+                            updatedAt = content.updatedAt
+                        )
+                    }
+                }
+            }
+            .collectList()
+            .map { contentResponses ->
+                CursorPageResponse.of(
+                    content = contentResponses,
+                    limit = limit,
+                    getCursor = { it.id }
+                )
             }
     }
 

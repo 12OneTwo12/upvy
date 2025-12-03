@@ -9,6 +9,7 @@ import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
 import me.onetwo.growsnap.domain.content.model.DifficultyLevel
 import me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import java.time.Instant
 
 /**
@@ -187,3 +188,10 @@ data class ContentResponse(
     val createdAt: Instant,
     val updatedAt: Instant
 )
+
+/**
+ * 콘텐츠 페이지 응답 (커서 기반 페이지네이션)
+ *
+ * 크리에이터의 콘텐츠 목록을 커서 기반으로 페이징하여 반환합니다.
+ */
+typealias ContentPageResponse = CursorPageResponse<ContentResponse>

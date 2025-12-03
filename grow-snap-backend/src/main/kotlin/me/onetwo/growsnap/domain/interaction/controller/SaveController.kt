@@ -2,9 +2,11 @@ package me.onetwo.growsnap.domain.interaction.controller
 
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
 import me.onetwo.growsnap.domain.interaction.dto.SaveStatusResponse
+import me.onetwo.growsnap.domain.interaction.dto.SavedContentPageResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
 import me.onetwo.growsnap.domain.interaction.service.SaveService
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -76,22 +79,28 @@ class SaveController(
     }
 
     /**
-     * 저장한 콘텐츠 목록 조회
+     * 저장한 콘텐츠 목록을 커서 기반 페이징으로 조회
      *
      * GET /api/v1/users/me/saved-contents
      *
      * @param principal 인증된 사용자 Principal
-     * @return 저장한 콘텐츠 목록
+     * @param cursor 이전 페이지의 마지막 저장 ID (null이면 첫 페이지)
+     * @param limit 페이지당 항목 수 (기본값: 20, 최대: 100)
+     * @return 저장한 콘텐츠 페이지 응답
      */
     @GetMapping("/users/me/saved-contents")
     fun getSavedContents(
-        principal: Mono<Principal>
-    ): Flux<SavedContentResponse> {
+        principal: Mono<Principal>,
+        @RequestParam(required = false) cursor: String?,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): Mono<ResponseEntity<SavedContentPageResponse>> {
         return principal
             .toUserId()
-            .flatMapMany { userId ->
-                saveService.getSavedContents(userId)
+            .flatMap { userId ->
+                val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
+                saveService.getSavedContentsWithCursor(userId, pageRequest)
             }
+            .map { ResponseEntity.ok(it) }
     }
 
     /**

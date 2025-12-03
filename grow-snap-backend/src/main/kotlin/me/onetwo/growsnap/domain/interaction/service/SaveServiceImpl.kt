@@ -4,11 +4,16 @@ import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.event.UserInteractionEvent
 import me.onetwo.growsnap.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.growsnap.domain.analytics.service.ContentInteractionService
+import me.onetwo.growsnap.domain.content.dto.ContentResponse
 import me.onetwo.growsnap.domain.content.repository.ContentMetadataRepository
+import me.onetwo.growsnap.domain.content.service.ContentService
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
 import me.onetwo.growsnap.domain.interaction.dto.SaveStatusResponse
+import me.onetwo.growsnap.domain.interaction.dto.SavedContentPageResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
 import me.onetwo.growsnap.domain.interaction.repository.UserSaveRepository
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -30,6 +35,7 @@ import java.util.UUID
  * @property contentInteractionService 콘텐츠 인터랙션 서비스
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
  * @property contentMetadataRepository 콘텐츠 메타데이터 레포지토리
+ * @property contentService 콘텐츠 서비스
  * @property eventPublisher Reactive 이벤트 발행자
  */
 @Service
@@ -38,6 +44,7 @@ class SaveServiceImpl(
     private val contentInteractionService: ContentInteractionService,
     private val contentInteractionRepository: ContentInteractionRepository,
     private val contentMetadataRepository: ContentMetadataRepository,
+    private val contentService: ContentService,
     private val eventPublisher: ReactiveEventPublisher
 ) : SaveService {
 
@@ -123,6 +130,65 @@ class SaveServiceImpl(
                                 )
                             }
                         }
+                    }
+            }
+    }
+
+    /**
+     * 사용자의 저장된 콘텐츠 목록을 커서 기반 페이징으로 조회
+     *
+     * ContentResponse 형식으로 반환하여 다른 콘텐츠 조회 API와 일관성을 유지합니다.
+     *
+     * @param userId 사용자 ID
+     * @param pageRequest 커서 페이지 요청
+     * @return 저장된 콘텐츠 페이지 응답
+     */
+    override fun getSavedContentsWithCursor(
+        userId: UUID,
+        pageRequest: CursorPageRequest
+    ): Mono<SavedContentPageResponse> {
+        logger.debug("Getting saved contents with cursor: userId={}, cursor={}, limit={}", userId, pageRequest.cursor, pageRequest.limit)
+
+        val cursor = pageRequest.cursor?.toLongOrNull()
+        val limit = pageRequest.limit
+
+        return userSaveRepository.findByUserIdWithCursor(userId, cursor, limit + 1)
+            .collectList()
+            .flatMap { userSaves ->
+                if (userSaves.isEmpty()) {
+                    return@flatMap Mono.just(CursorPageResponse.empty<ContentResponse>())
+                }
+
+                // UserSave의 순서를 유지하기 위해 Map 사용
+                val contentIdToSaveMap = userSaves.associateBy { it.contentId }
+                val contentIds = userSaves.map { it.contentId }
+
+                // 각 contentId에 대해 ContentResponse 조회 (병렬 처리)
+                Flux.fromIterable(contentIds)
+                    .flatMap { contentId ->
+                        contentService.getContent(contentId, userId)
+                            .onErrorResume { error ->
+                                logger.warn("Failed to get content: contentId=$contentId", error)
+                                Mono.empty<ContentResponse>() // 조회 실패 시 skip
+                            }
+                    }
+                    .collectList()
+                    .map { contentResponses ->
+                        // contentId -> ContentResponse Map 생성
+                        val contentResponseMap = contentResponses.associateBy { UUID.fromString(it.id) }
+
+                        // UserSave의 순서대로 ContentResponse 정렬
+                        val orderedResponses = contentIds.mapNotNull { contentId ->
+                            contentResponseMap[contentId]
+                        }
+
+                        CursorPageResponse.of(
+                            content = orderedResponses,
+                            limit = limit,
+                            getCursor = { response ->
+                                contentIdToSaveMap[UUID.fromString(response.id)]?.id.toString()
+                            }
+                        )
                     }
             }
     }

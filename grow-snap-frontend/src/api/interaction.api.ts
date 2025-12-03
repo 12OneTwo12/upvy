@@ -138,17 +138,19 @@ export const getSaveStatus = async (contentId: string): Promise<SaveStatusRespon
 };
 
 /**
- * 저장한 콘텐츠 목록을 조회합니다.
+ * 저장한 콘텐츠 목록을 조회합니다 (커서 기반 페이징).
  *
  * 백엔드: GET /api/v1/users/me/saved-contents
  *
- * @returns 저장한 콘텐츠 목록
+ * 이 함수는 save.api.ts의 getSavedContentList를 재사용합니다.
+ * @deprecated Use getSavedContentList from save.api.ts instead
+ *
+ * @returns 저장한 콘텐츠 목록 (CursorPageResponse<ContentResponse>)
  */
-export const getSavedContents = async (): Promise<SavedContentResponse[]> => {
-  const { data } = await apiClient.get<SavedContentResponse[]>(
-    API_ENDPOINTS.SAVE.LIST
-  );
-  return data;
+export const getSavedContents = async () => {
+  // save.api.ts의 getSavedContentList 사용을 권장
+  const { getSavedContentList } = await import('./save.api');
+  return getSavedContentList();
 };
 
 // ==================== Share API ====================
