@@ -66,7 +66,7 @@ class FeedControllerTest {
                 getCursor = { it.contentId.toString() }
             )
 
-            every { feedService.getMainFeed(userId, any()) } returns Mono.just(response)
+            every { feedService.getMainFeed(userId, any(), any()) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -142,7 +142,7 @@ class FeedControllerTest {
                 getCursor = { it.contentId.toString() }
             )
 
-            every { feedService.getMainFeed(userId, any()) } returns Mono.just(response)
+            every { feedService.getMainFeed(userId, any(), any()) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -192,7 +192,7 @@ class FeedControllerTest {
                 getCursor = { it.contentId.toString() }
             )
 
-            every { feedService.getMainFeed(userId, any()) } returns Mono.just(response)
+            every { feedService.getMainFeed(userId, any(), any()) } returns Mono.just(response)
 
             // When & Then: API 호출 및 검증
             webTestClient

@@ -71,7 +71,7 @@ class FeedServiceImplTest {
                 Flux.fromIterable(feedItems)
 
             // When: 메인 피드 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: 캐시된 배치에서 피드 반환 (limit+1개 조회하여 limit개만 반환)
             StepVerifier.create(result)
@@ -85,7 +85,7 @@ class FeedServiceImplTest {
             // Then: 캐시에서 조회했는지 확인
             verify(exactly = 1) { feedCacheService.getRecommendationBatch(userId, 0) }
             verify(exactly = 1) { feedRepository.findByContentIds(any(), any()) }
-            verify(exactly = 0) { recommendationService.getRecommendedContentIds(any(), any(), any()) }
+            verify(exactly = 0) { recommendationService.getRecommendedContentIds(any(), any(), any(), any()) }
         }
 
         @Test
@@ -117,7 +117,7 @@ class FeedServiceImplTest {
                 Flux.fromIterable(feedItems)
 
             // When: 메인 피드 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: PHOTO 타입 콘텐츠는 photoUrls를 가지고, VIDEO는 null
             StepVerifier.create(result)
@@ -157,7 +157,8 @@ class FeedServiceImplTest {
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = 250,
-                    excludeContentIds = recentlyViewedIds
+                    excludeContentIds = recentlyViewedIds,
+                    preferredLanguage = "en"
                 )
             } returns Flux.fromIterable(recommendedIds)
             every { feedCacheService.saveRecommendationBatch(userId, 0, recommendedIds) } returns
@@ -167,7 +168,7 @@ class FeedServiceImplTest {
                 Flux.fromIterable(feedItems)
 
             // When: 메인 피드 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: 새 배치 생성 후 피드 반환
             StepVerifier.create(result)
@@ -182,7 +183,8 @@ class FeedServiceImplTest {
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = 250,
-                    excludeContentIds = recentlyViewedIds
+                    excludeContentIds = recentlyViewedIds,
+                    preferredLanguage = "en"
                 )
             }
             verify(exactly = 1) { feedCacheService.saveRecommendationBatch(userId, 0, recommendedIds) }
@@ -203,7 +205,7 @@ class FeedServiceImplTest {
                 Flux.fromIterable(feedItems)
 
             // When: cursor = 250으로 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: batch 1 조회
             StepVerifier.create(result)
@@ -231,7 +233,7 @@ class FeedServiceImplTest {
                 Flux.fromIterable(feedItems)
 
             // When: offset 10에서 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: 올바른 범위 조회
             StepVerifier.create(result)
