@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { MainTabParamList } from '@/types/navigation.types';
 import { theme } from '@/theme';
 import ExploreNavigator from '@/navigation/ExploreNavigator';
@@ -16,6 +17,8 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
  * 하단 탭 네비게이션입니다.
  */
 export default function MainNavigator() {
+  const { t } = useTranslation('common');
+
   return (
     <Tab.Navigator
       initialRouteName="Feed"
@@ -51,27 +54,27 @@ export default function MainNavigator() {
       <Tab.Screen
         name="Explore"
         component={ExploreNavigator}
-        options={{ tabBarLabel: '탐색' }}
+        options={{ tabBarLabel: t('navigation.explore') }}
       />
       <Tab.Screen
         name="Search"
         component={SearchNavigator}
-        options={{ tabBarLabel: '검색' }}
+        options={{ tabBarLabel: t('navigation.search') }}
       />
       <Tab.Screen
         name="Feed"
         component={FeedNavigator}
-        options={{ tabBarLabel: '피드' }}
+        options={{ tabBarLabel: t('navigation.feed') }}
       />
       <Tab.Screen
         name="Upload"
         component={UploadNavigator}
-        options={{ tabBarLabel: '업로드' }}
+        options={{ tabBarLabel: t('navigation.upload') }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileNavigator}
-        options={{ tabBarLabel: '프로필' }}
+        options={{ tabBarLabel: t('navigation.profile') }}
       />
     </Tab.Navigator>
   );

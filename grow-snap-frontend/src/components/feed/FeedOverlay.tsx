@@ -8,6 +8,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, LayoutChangeEvent } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,6 +65,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   setIsExpanded,
   tabBarHeight,
 }) => {
+  const { t } = useTranslation('feed');
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((state) => state.user);
   const isLoading = isLoadingState(creator);
@@ -114,7 +116,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const actionSheetOptions: ActionSheetOption[] = useMemo(
     () => [
       {
-        label: '이 콘텐츠 관심없음',
+        label: t('menu.notInterested'),
         icon: 'eye-off-outline',
         onPress: () => {
           setBlockType('content');
@@ -122,7 +124,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         },
       },
       {
-        label: '사용자 차단하기',
+        label: t('menu.blockUser'),
         icon: 'person-remove-outline',
         onPress: () => {
           setBlockType('user');
@@ -131,13 +133,13 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         destructive: true,
       },
       {
-        label: '신고하기',
+        label: t('menu.report'),
         icon: 'alert-circle-outline',
         onPress: () => setShowReportModal(true),
         destructive: true,
       },
     ],
-    []
+    [t]
   );
 
   const formatCount = (count: number): string => {
@@ -200,7 +202,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                 {shouldShowFollowButton && (
                   <TouchableOpacity style={styles.followButton} onPress={onFollow}>
                     <Text style={styles.followButtonText}>
-                      {creator.isFollowing ? '팔로잉' : '팔로우'}
+                      {creator.isFollowing ? t('actions.following') : t('actions.follow')}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -226,7 +228,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                     {description && `\n${description}`}
                   </Text>
                   {shouldShowMore && (
-                    <Text style={styles.moreText}>더보기</Text>
+                    <Text style={styles.moreText}>{t('actions.more')}</Text>
                   )}
                 </View>
               )}

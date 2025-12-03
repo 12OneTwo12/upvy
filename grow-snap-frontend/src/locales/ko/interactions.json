@@ -1,0 +1,128 @@
+{
+  "report": {
+    "title": "신고하기",
+    "subtitle": "신고 사유를 선택해주세요",
+    "targetInfo": {
+      "content": "콘텐츠",
+      "user": "사용자"
+    },
+    "reasons": {
+      "OFF_TOPIC": {
+        "label": "주제에서 벗어남",
+        "description": "공부 콘텐츠에서 벗어나거나 주제와 관련 없는 내용"
+      },
+      "SPAM": {
+        "label": "스팸",
+        "description": "광고, 홍보, 반복적인 무의미한 콘텐츠"
+      },
+      "INAPPROPRIATE_CONTENT": {
+        "label": "부적절한 콘텐츠",
+        "description": "폭력적이거나 성적인 콘텐츠"
+      },
+      "HARASSMENT": {
+        "label": "괴롭힘",
+        "description": "특정인을 대상으로 한 괴롭힘이나 명예훼손"
+      },
+      "HATE_SPEECH": {
+        "label": "혐오 발언",
+        "description": "특정 집단에 대한 차별이나 혐오 표현"
+      },
+      "MISINFORMATION": {
+        "label": "허위 정보",
+        "description": "의도적으로 거짓 정보를 유포하는 콘텐츠"
+      },
+      "COPYRIGHT": {
+        "label": "저작권 침해",
+        "description": "타인의 저작물을 무단으로 사용한 콘텐츠"
+      },
+      "OTHER": {
+        "label": "기타",
+        "description": "위 카테고리에 해당하지 않는 기타 사유"
+      }
+    },
+    "details": "상세 설명 (선택 사항)",
+    "detailsPlaceholder": "추가로 알려주실 내용이 있다면 작성해주세요",
+    "characterCount": "{{count}}/500",
+    "submit": "신고하기",
+    "selectReason": "신고 사유를 선택해주세요.",
+    "successTitle": "신고해주셔서 감사해요",
+    "successMessage": "빠르게 검토해볼게요!",
+    "alreadyReportedTitle": "이미 신고해주셨어요",
+    "alreadyReportedMessage": "확인 중이니 조금만 기다려주세요!",
+    "errorTitle": "앗, 문제가 생겼어요",
+    "errorMessage": "잠시 후 다시 시도해주세요."
+  },
+  "block": {
+    "user": {
+      "title": "{{name}}님을 차단하시겠어요?",
+      "description": "이 사용자의 모든 콘텐츠가 피드에 표시되지 않으며, 상호 팔로우가 해제됩니다.",
+      "confirmButton": "차단하기",
+      "successTitle": "사용자를 차단했어요",
+      "successMessage": "이 사용자의 콘텐츠가 더 이상 표시되지 않아요."
+    },
+    "content": {
+      "title": "이 콘텐츠를 숨기시겠어요?",
+      "description": "이 콘텐츠가 피드에 더 이상 표시되지 않습니다.",
+      "confirmButton": "숨기기",
+      "successTitle": "콘텐츠를 숨겼어요",
+      "successMessage": "이 콘텐츠가 피드에 더 이상 표시되지 않아요."
+    },
+    "alreadyBlockedTitle": "이미 차단했어요",
+    "errorTitle": "차단할 수 없어요",
+    "unblock": "차단 해제",
+    "unblockSuccess": "차단을 해제했습니다"
+  },
+  "blockManagement": {
+    "title": "차단 관리",
+    "tabs": {
+      "users": "사용자",
+      "contents": "콘텐츠"
+    },
+    "empty": {
+      "users": "차단한 사용자가 없습니다",
+      "contents": "차단한 콘텐츠가 없습니다"
+    },
+    "unblock": {
+      "userTitle": "차단 해제",
+      "userConfirm": "{{name}}님의 차단을 해제하시겠어요?",
+      "userSuccess": "차단을 해제했어요.",
+      "contentTitle": "차단 해제",
+      "contentConfirm": "\"{{title}}\" 콘텐츠를 다시 표시하시겠어요?",
+      "contentSuccess": "콘텐츠를 다시 표시합니다.",
+      "error": "차단 해제에 실패했습니다."
+    },
+    "error": {
+      "loadTitle": "오류",
+      "loadMessage": "차단 목록을 불러오는데 실패했습니다."
+    }
+  },
+  "comment": {
+    "title": "댓글",
+    "placeholder": "댓글을 입력하세요...",
+    "reply": "답글",
+    "replyTo": "{{name}}님에게 답글",
+    "replyWriting": "{{name}}님에게 답글 작성 중",
+    "delete": "댓글 삭제",
+    "deleteConfirm": "이 댓글을 삭제하시겠습니까?",
+    "report": "댓글 신고",
+    "like": "좋아요",
+    "unlike": "좋아요 취소",
+    "viewReplies": "답글 {{count}}개 보기",
+    "hideReplies": "답글 숨기기",
+    "viewMoreReplies": "답글 더보기",
+    "emptyTitle": "아직 댓글이 없습니다",
+    "emptySubtitle": "첫 번째 댓글을 남겨보세요!",
+    "errorTitle": "오류",
+    "errorMessage": "댓글 작성에 실패했습니다.",
+    "timeJustNow": "방금",
+    "timeMinutesAgo": "{{count}}분 전",
+    "timeHoursAgo": "{{count}}시간 전",
+    "timeDaysAgo": "{{count}}일 전",
+    "timeWeeksAgo": "{{count}}주 전",
+    "timeMonthsAgo": "{{count}}개월 전",
+    "timeYearsAgo": "{{count}}년 전",
+    "replyAdd": "답글 달기",
+    "replyHide": "답글 숨기기",
+    "replyCount": "답글 {{count}}개"
+  }
+}

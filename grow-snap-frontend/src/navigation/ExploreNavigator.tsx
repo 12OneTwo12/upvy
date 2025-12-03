@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import type { ExploreStackParamList } from '@/types/navigation.types';
 
 import ExploreScreen from '@/screens/explore/ExploreScreen';
@@ -18,6 +19,8 @@ import FollowListScreen from '@/screens/profile/FollowListScreen';
 const Stack = createNativeStackNavigator<ExploreStackParamList>();
 
 export default function ExploreNavigator() {
+  const { t } = useTranslation(['common', 'profile']);
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -27,13 +30,13 @@ export default function ExploreNavigator() {
       <Stack.Screen
         name="ExploreMain"
         component={ExploreScreen}
-        options={{ title: '탐색' }}
+        options={{ title: t('common:navigation.explore') }}
       />
       <Stack.Screen
         name="CategoryFeed"
         component={CategoryFeedScreen}
         options={{
-          title: '카테고리',
+          title: t('common:screen.category'),
           animation: 'simple_push',
         }}
       />
@@ -41,7 +44,7 @@ export default function ExploreNavigator() {
         name="ContentViewer"
         component={ContentViewerScreen}
         options={{
-          title: '콘텐츠',
+          title: t('common:screen.content'),
           animation: 'slide_from_bottom',
         }}
       />
@@ -49,7 +52,7 @@ export default function ExploreNavigator() {
         name="UserProfile"
         component={UserProfileScreen}
         options={{
-          title: '프로필',
+          title: t('common:navigation.profile'),
           animation: 'simple_push',
         }}
       />
@@ -57,7 +60,7 @@ export default function ExploreNavigator() {
         name="FollowList"
         component={FollowListScreen}
         options={{
-          title: '팔로우',
+          title: t('profile:follow.followList'),
         }}
       />
     </Stack.Navigator>

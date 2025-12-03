@@ -1,0 +1,47 @@
+{
+  "title": "설정",
+  "sections": {
+    "account": "계정",
+    "privacy": "개인정보 및 보안",
+    "notifications": "알림",
+    "general": "일반"
+  },
+  "account": {
+    "editProfile": "프로필 편집",
+    "editProfileSubtitle": "닉네임, 소개 등 수정"
+  },
+  "privacy": {
+    "privateAccount": "비공개 계정",
+    "privateAccountSubtitle": "팔로워 승인 필요",
+    "blockManagement": "차단 관리",
+    "blockManagementSubtitle": "차단한 사용자 및 콘텐츠 관리"
+  },
+  "notifications": {
+    "notifications": "알림",
+    "notificationsSubtitle": "좋아요, 댓글, 팔로우 알림"
+  },
+  "general": {
+    "language": "언어",
+    "languageSubtitle": "앱 언어 선택",
+    "termsOfService": "서비스 약관",
+    "privacyPolicy": "개인정보 보호정책",
+    "helpSupport": "도움말 및 지원",
+    "version": "버전 정보"
+  },
+  "logout": {
+    "title": "로그아웃",
+    "message": "정말 로그아웃하시겠습니까?",
+    "button": "로그아웃"
+  },
+  "withdraw": {
+    "title": "회원 탈퇴",
+    "message": "정말 탈퇴하시겠습니까? 모든 데이터가 삭제되며 복구할 수 없습니다.",
+    "button": "탈퇴",
+    "failed": "회원 탈퇴 실패",
+    "link": "회원 탈퇴"
+  },
+  "comingSoon": {
+    "title": "준비 중",
+    "message": "{{feature}} 기능은 현재 개발 중입니다.\n곧 사용 가능합니다."
+  }
+}

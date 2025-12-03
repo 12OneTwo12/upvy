@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { checkNickname, createProfile } from '@/api/auth.api';
 import { useAuthStore } from '@/stores/authStore';
 import { Button, Input } from '@/components/common';
@@ -21,6 +22,7 @@ import { createStyleSheet } from '@/utils/styles';
  * 깔끔하고 직관적인 프로필 설정 경험
  */
 export default function ProfileSetupScreen() {
+  const { t } = useTranslation('auth');
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { updateProfile } = useAuthStore();
@@ -38,7 +40,7 @@ export default function ProfileSetupScreen() {
    */
   const handleCheckNickname = async () => {
     if (!nickname || nickname.length < 2) {
-      showErrorAlert('닉네임은 2자 이상이어야 합니다.', '알림');
+      showErrorAlert(t('profileSetup.error.nicknameTooShort'), t('profileSetup.error.alert'));
       return;
     }
 
@@ -47,7 +49,7 @@ export default function ProfileSetupScreen() {
       async () => await checkNickname(nickname),
       {
         showAlert: true,
-        alertTitle: '닉네임 확인 실패',
+        alertTitle: t('profileSetup.error.nicknameCheckFailed'),
         logContext: 'ProfileSetupScreen.checkNickname',
       }
     );
@@ -58,8 +60,8 @@ export default function ProfileSetupScreen() {
       setNicknameAvailable(!result.isDuplicated);
       if (result.isDuplicated) {
         showErrorAlert(
-          '이미 사용 중인 닉네임입니다.',
-          '알림'
+          t('profileSetup.nicknameTaken'),
+          t('profileSetup.error.alert')
         );
       }
     }
@@ -70,7 +72,7 @@ export default function ProfileSetupScreen() {
    */
   const handleCreateProfile = async () => {
     if (!nickname || nicknameAvailable !== true) {
-      showErrorAlert('닉네임을 입력하고 중복 확인을 해주세요.', '알림');
+      showErrorAlert(t('profileSetup.error.nicknameCheckRequired'), t('profileSetup.error.alert'));
       return;
     }
 
@@ -80,7 +82,7 @@ export default function ProfileSetupScreen() {
         await createProfile({ nickname, bio: bio || undefined }),
       {
         showAlert: true,
-        alertTitle: '프로필 생성 실패',
+        alertTitle: t('profileSetup.error.profileCreationFailed'),
         logContext: 'ProfileSetupScreen.createProfile',
       }
     );
@@ -112,9 +114,9 @@ export default function ProfileSetupScreen() {
         >
           {/* 헤더 */}
           <View style={styles.header}>
-            <Text style={styles.title}>프로필 설정</Text>
+            <Text style={styles.title}>{t('profileSetup.title')}</Text>
             <Text style={styles.subtitle}>
-              GrowSnap에서 사용할 프로필을 만들어보세요
+              {t('profileSetup.subtitle')}
             </Text>
           </View>
 
@@ -124,7 +126,7 @@ export default function ProfileSetupScreen() {
               <Text style={styles.profileImagePlaceholder}>👤</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.changePhotoButton}>
-              <Text style={styles.changePhotoText}>사진 변경</Text>
+              <Text style={styles.changePhotoText}>{t('profileSetup.changePhoto')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -133,11 +135,11 @@ export default function ProfileSetupScreen() {
             {/* 닉네임 입력 */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
-                닉네임 <Text style={styles.required}>*</Text>
+                {t('profileSetup.nickname')} <Text style={styles.required}>{t('profileSetup.nicknameRequired')}</Text>
               </Text>
               <View style={styles.nicknameInputContainer}>
                 <Input
-                  placeholder="닉네임을 입력하세요"
+                  placeholder={t('profileSetup.nicknamePlaceholder')}
                   value={nickname}
                   onChangeText={(text) => {
                     setNickname(text);
@@ -147,7 +149,7 @@ export default function ProfileSetupScreen() {
                   containerStyle={styles.nicknameInput}
                   error={
                     nicknameAvailable === false
-                      ? '이미 사용 중인 닉네임입니다'
+                      ? t('profileSetup.nicknameTaken')
                       : undefined
                   }
                 />
@@ -159,24 +161,24 @@ export default function ProfileSetupScreen() {
                   loading={isCheckingNickname}
                   style={styles.checkButton}
                 >
-                  확인
+                  {t('profileSetup.checkNickname')}
                 </Button>
               </View>
               {nicknameAvailable === true && (
                 <View style={styles.successMessage}>
                   <Text style={styles.successText}>
-                    ✓ 사용 가능한 닉네임입니다
+                    {t('profileSetup.nicknameAvailable')}
                   </Text>
                 </View>
               )}
-              <Text style={styles.helperText}>2-20자 사이로 입력해주세요</Text>
+              <Text style={styles.helperText}>{t('profileSetup.nicknameHelper')}</Text>
             </View>
 
             {/* 자기소개 입력 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>자기소개</Text>
+              <Text style={styles.label}>{t('profileSetup.bio')}</Text>
               <Input
-                placeholder="나를 소개하는 한 줄 (선택사항)"
+                placeholder={t('profileSetup.bioPlaceholder')}
                 value={bio}
                 onChangeText={setBio}
                 multiline
@@ -186,7 +188,7 @@ export default function ProfileSetupScreen() {
                 inputStyle={styles.bioInputField}
               />
               <Text style={styles.characterCount}>
-                {bio.length}/500
+                {t('profileSetup.characterCount', { current: bio.length, max: 500 })}
               </Text>
             </View>
           </View>
@@ -203,7 +205,7 @@ export default function ProfileSetupScreen() {
             disabled={nicknameAvailable !== true}
             loading={isCreating}
           >
-            시작하기
+            {t('profileSetup.startButton')}
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>

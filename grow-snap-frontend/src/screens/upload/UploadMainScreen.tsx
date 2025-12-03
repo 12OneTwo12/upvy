@@ -25,6 +25,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -38,6 +39,7 @@ const GRID_IMAGE_SIZE = SCREEN_WIDTH / GRID_COLUMNS;
 const PREVIEW_HEIGHT = SCREEN_HEIGHT * 0.5;
 
 export default function UploadMainScreen({ navigation }: Props) {
+  const { t } = useTranslation(['upload', 'common']);
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [selectedAssets, setSelectedAssets] = useState<MediaAsset[]>([]);
@@ -79,8 +81,8 @@ export default function UploadMainScreen({ navigation }: Props) {
 
       if (status !== 'granted') {
         Alert.alert(
-          '권한 필요',
-          '갤러리 접근 권한이 필요합니다. 설정에서 권한을 허용해주세요.'
+          t('upload:main.permissionRequired'),
+          t('upload:main.galleryPermissionMessage')
         );
       }
     } catch (error) {
@@ -115,7 +117,7 @@ export default function UploadMainScreen({ navigation }: Props) {
       }
     } catch (error) {
       console.error('Failed to load media assets:', error);
-      Alert.alert('오류', '미디어를 불러오는데 실패했습니다.');
+      Alert.alert(t('common:label.error', 'Error'), t('upload:main.loadError'));
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +141,7 @@ export default function UploadMainScreen({ navigation }: Props) {
       } else {
         // 새로 선택
         if (selectedAssets.length >= 10) {
-          Alert.alert('알림', '사진은 최대 10개까지 선택할 수 있습니다.');
+          Alert.alert(t('common:label.notice', 'Notice'), t('upload:main.maxPhotosMessage'));
           return;
         }
         setSelectedAssets([...selectedAssets, asset]);
@@ -149,7 +151,7 @@ export default function UploadMainScreen({ navigation }: Props) {
 
   const handleNext = async () => {
     if (selectedAssets.length === 0) {
-      Alert.alert('알림', '미디어를 선택해주세요.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:main.selectMediaMessage'));
       return;
     }
 
@@ -159,8 +161,8 @@ export default function UploadMainScreen({ navigation }: Props) {
       // 비디오 길이 체크 (최대 1분 = 60초)
       if (asset.duration > 60) {
         Alert.alert(
-          '비디오 길이 초과',
-          '비디오는 최대 1분(60초)까지 업로드할 수 있습니다. 편집 화면에서 트리밍해주세요.'
+          t('upload:main.videoLengthExceeded'),
+          t('upload:main.videoLengthMessage')
         );
       }
 
@@ -207,7 +209,7 @@ export default function UploadMainScreen({ navigation }: Props) {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+        Alert.alert(t('upload:main.permissionRequired'), t('upload:main.cameraPermissionMessage'));
         return;
       }
 
@@ -250,11 +252,11 @@ export default function UploadMainScreen({ navigation }: Props) {
       // 시뮬레이터에서 카메라 사용 불가 에러는 무시
       if (error?.code === 'ERR_CAMERA_UNAVAILABLE_ON_SIMULATOR') {
         Alert.alert(
-          '시뮬레이터 제한',
-          '시뮬레이터에서는 카메라를 사용할 수 없습니다. 실제 기기에서 테스트해주세요.'
+          t('upload:main.simulatorLimitation'),
+          t('upload:main.simulatorCameraMessage')
         );
       } else {
-        Alert.alert('오류', '카메라 촬영에 실패했습니다.');
+        Alert.alert(t('common:label.error', 'Error'), t('upload:main.cameraError'));
       }
     }
   };
@@ -305,7 +307,7 @@ export default function UploadMainScreen({ navigation }: Props) {
           <Ionicons name="close" size={28} color={theme.colors.text.primary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>새 게시물</Text>
+        <Text style={styles.headerTitle}>{t('upload:main.title')}</Text>
 
         <TouchableOpacity
           onPress={handleNext}
@@ -318,7 +320,7 @@ export default function UploadMainScreen({ navigation }: Props) {
               selectedAssets.length === 0 && styles.disabledText,
             ]}
           >
-            다음
+            {t('common:button.next')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -334,7 +336,7 @@ export default function UploadMainScreen({ navigation }: Props) {
             }}
           >
             <Text style={[styles.typeTabText, contentType === 'photo' && styles.typeTabTextActive]}>
-              사진
+              {t('upload:main.photo')}
             </Text>
           </TouchableOpacity>
 
@@ -346,13 +348,13 @@ export default function UploadMainScreen({ navigation }: Props) {
             }}
           >
             <Text style={[styles.typeTabText, contentType === 'video' && styles.typeTabTextActive]}>
-              비디오
+              {t('upload:main.video')}
             </Text>
           </TouchableOpacity>
         </View>
 
         {contentType === 'photo' && selectedAssets.length > 0 && (
-          <Text style={styles.selectionCount}>{selectedAssets.length}/10</Text>
+          <Text style={styles.selectionCount}>{t('upload:main.selectionCount', { count: selectedAssets.length })}</Text>
         )}
       </View>
 
@@ -425,7 +427,7 @@ export default function UploadMainScreen({ navigation }: Props) {
             <TouchableOpacity style={styles.gridItem} onPress={handleCameraCapture}>
               <View style={styles.cameraButton}>
                 <Ionicons name="camera" size={32} color={theme.colors.text.secondary} />
-                <Text style={styles.cameraButtonText}>카메라</Text>
+                <Text style={styles.cameraButtonText}>{t('upload:main.camera')}</Text>
               </View>
             </TouchableOpacity>
           }

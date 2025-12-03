@@ -9,6 +9,7 @@
 
 import React, { useRef, useState, useEffect, useMemo, forwardRef, useImperativeHandle, useContext, useCallback } from 'react';
 import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +38,7 @@ export interface VideoPlayerRef {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, ref) => {
+  const { t } = useTranslation('feed');
   const {
     uri,
     isFocused,
@@ -401,7 +403,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
           {showRetryButton && (
             <MediaRetryButton
               onRetry={handleManualRetry}
-              message="비디오를 불러올 수 없습니다"
+              message={t('media.videoLoadError')}
             />
           )}
 

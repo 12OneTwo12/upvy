@@ -7,6 +7,8 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/components/common';
 import { logError } from './src/utils/errorHandler';
 import { useAuthStore } from './src/stores/authStore';
+import { useLanguageStore } from './src/stores/languageStore';
+import './src/locales'; // Initialize i18n
 
 // React Query Client
 const queryClient = new QueryClient({
@@ -21,6 +23,11 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  // Initialize language on app start
+  useEffect(() => {
+    useLanguageStore.getState().initializeLanguage();
+  }, []);
+
   // MVP: Auto-login disabled for now
   // useEffect(() => {
   //   useAuthStore.getState().checkAuth();

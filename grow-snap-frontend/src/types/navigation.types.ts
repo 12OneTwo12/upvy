@@ -10,6 +10,7 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList>;
   EditProfile: undefined;
   Settings: undefined;
+  LanguageSelector: undefined;
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   HelpSupport: undefined;

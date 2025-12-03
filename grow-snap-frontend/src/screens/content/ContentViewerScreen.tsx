@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { View, Dimensions, StatusBar, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
@@ -22,6 +23,7 @@ import type { FeedItem as FeedItemType } from '@/types/feed.types';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function ContentViewerScreen() {
+  const { t } = useTranslation('feed');
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { contentId } = route.params;
@@ -223,9 +225,9 @@ export default function ContentViewerScreen() {
 
       // 2. 네이티브 공유 시트 열기
       const result = await Share.share({
-        message: `GrowSnap에서 흥미로운 콘텐츠를 발견했어요! 같이 봐요 😊\n\n${shareUrl}`,
+        message: t('share.message', { url: shareUrl }),
         url: shareUrl,
-        title: 'GrowSnap 콘텐츠 공유',
+        title: t('share.title'),
       });
 
       // 3. 공유 성공 시 카운터 증가
@@ -239,7 +241,7 @@ export default function ContentViewerScreen() {
         return;
       }
       console.error('Share failed:', error);
-      Alert.alert('공유 실패', '잠시 후 다시 시도해주세요.');
+      Alert.alert(t('share.failed'), t('share.failedMessage'));
     }
   };
 

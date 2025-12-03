@@ -23,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -96,19 +97,20 @@ function calculateCropArea(
 }
 
 interface AspectRatioOption {
-  label: string;
+  labelKey: string;
   value: AspectRatio;
   icon: string;
 }
 
 const ASPECT_RATIOS: AspectRatioOption[] = [
-  { label: '원본', value: 'original', icon: 'expand-outline' },
-  { label: '1:1', value: '1:1', icon: 'square-outline' },
-  { label: '4:5', value: '4:5', icon: 'crop' },
-  { label: '16:9', value: '16:9', icon: 'tablet-landscape-outline' },
+  { labelKey: 'upload:edit.aspectRatio.original', value: 'original', icon: 'expand-outline' },
+  { labelKey: 'upload:edit.aspectRatio.square', value: '1:1', icon: 'square-outline' },
+  { labelKey: 'upload:edit.aspectRatio.portrait', value: '4:5', icon: 'crop' },
+  { labelKey: 'upload:edit.aspectRatio.landscape', value: '16:9', icon: 'tablet-landscape-outline' },
 ];
 
 export default function PhotoEditScreen({ navigation, route }: Props) {
+  const { t } = useTranslation(['upload', 'common']);
   const { assets: initialAssets } = route.params;
 
   const [assets, setAssets] = useState<MediaAsset[]>(initialAssets);
@@ -120,17 +122,17 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
 
   const handleRemovePhoto = (index: number) => {
     if (assets.length === 1) {
-      Alert.alert('알림', '최소 1개의 사진이 필요합니다.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:edit.minPhotoRequired'));
       return;
     }
 
     Alert.alert(
-      '사진 삭제',
-      '이 사진을 삭제하시겠습니까?',
+      t('upload:edit.removePhoto'),
+      t('upload:edit.removePhotoConfirm'),
       [
-        { text: '취소', style: 'cancel' },
+        { text: t('common:button.cancel'), style: 'cancel' },
         {
-          text: '삭제',
+          text: t('common:button.delete'),
           style: 'destructive',
           onPress: () => {
             const newAssets = assets.filter((_, i) => i !== index);
@@ -256,7 +258,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
       });
     } catch (error) {
       console.error('Upload failed:', error);
-      Alert.alert('오류', '업로드에 실패했습니다. 다시 시도해주세요.');
+      Alert.alert(t('common:label.error', 'Error'), t('upload:edit.uploadFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -270,7 +272,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={28} color={theme.colors.text.primary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>편집</Text>
+        <Text style={styles.headerTitle}>{t('upload:edit.title')}</Text>
 
         <TouchableOpacity onPress={handleNext} disabled={isUploading} style={styles.headerButton}>
           <Text
@@ -279,7 +281,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
               isUploading && styles.disabledText,
             ]}
           >
-            {isUploading ? '업로드 중...' : '다음'}
+            {isUploading ? t('upload:edit.uploading') : t('common:button.next')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -350,7 +352,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
                     aspectRatio === option.value && styles.aspectRatioMenuItemTextActive,
                   ]}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -361,7 +363,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
         {assets.length > 1 && (
           <View style={styles.photoCounter}>
             <Text style={styles.photoCounterText}>
-              {currentPhotoIndex + 1} / {assets.length}
+              {t('upload:edit.photoCounter', { current: currentPhotoIndex + 1, total: assets.length })}
             </Text>
           </View>
         )}
@@ -420,7 +422,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
         {isUploading && (
           <View style={styles.uploadProgressContainer}>
             <Text style={styles.uploadProgressText}>
-              업로드 중... {uploadProgress}%
+              {t('upload:edit.uploadProgress', { progress: uploadProgress })}
             </Text>
             <View style={styles.progressBar}>
               <View
@@ -433,10 +435,10 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
         {/* 도움말 */}
         <View style={styles.helpSection}>
           <Text style={styles.helpText}>
-            💡 첫 번째 사진이 썸네일로 사용됩니다
+            💡 {t('upload:edit.help.thumbnail')}
           </Text>
           <Text style={styles.helpText}>
-            ✨ 화면을 좌우로 스와이프하여 사진을 확인하세요
+            ✨ {t('upload:edit.help.swipe')}
           </Text>
         </View>
       </View>

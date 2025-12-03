@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import type { UploadStackParamList } from '@/types/navigation.types';
 
 import UploadMainScreen from '@/screens/upload/UploadMainScreen';
@@ -17,6 +18,8 @@ import ContentManagementScreen from '@/screens/upload/ContentManagementScreen';
 const Stack = createNativeStackNavigator<UploadStackParamList>();
 
 export default function UploadNavigator() {
+  const { t } = useTranslation(['upload']);
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -27,27 +30,27 @@ export default function UploadNavigator() {
       <Stack.Screen
         name="UploadMain"
         component={UploadMainScreen}
-        options={{ title: '업로드' }}
+        options={{ title: t('upload:title') }}
       />
       <Stack.Screen
         name="VideoEdit"
         component={VideoEditScreen}
-        options={{ title: '비디오 편집' }}
+        options={{ title: t('upload:edit.video') }}
       />
       <Stack.Screen
         name="PhotoEdit"
         component={PhotoEditScreen}
-        options={{ title: '사진 편집' }}
+        options={{ title: t('upload:edit.photo') }}
       />
       <Stack.Screen
         name="ContentMetadata"
         component={ContentMetadataScreen}
-        options={{ title: '메타데이터 입력' }}
+        options={{ title: t('upload:metadata.title') }}
       />
       <Stack.Screen
         name="ContentManagement"
         component={ContentManagementScreen}
-        options={{ title: '내 콘텐츠' }}
+        options={{ title: t('upload:management.title') }}
       />
     </Stack.Navigator>
   );

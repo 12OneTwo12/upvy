@@ -27,6 +27,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -42,6 +43,7 @@ const VIDEO_HEIGHT = SCREEN_HEIGHT * 0.6;
 const MAX_VIDEO_DURATION = 60;
 
 export default function VideoEditScreen({ navigation, route }: Props) {
+  const { t } = useTranslation(['upload', 'common']);
   const { asset } = route.params;
 
   const videoRef = useRef<Video>(null);
@@ -176,7 +178,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       } catch (error) {
         console.error('❌ Failed to load video URI:', error);
         setIsLoadingVideo(false);
-        Alert.alert('오류', '비디오를 불러올 수 없습니다. 다시 시도해주세요.');
+        Alert.alert(t('common:label.error', 'Error'), t('upload:edit.videoLoadError'));
         // 일정 시간 후 이전 화면으로 돌아가기
         setTimeout(() => {
           navigation.goBack();
@@ -271,7 +273,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       }
     } catch (error) {
       console.error('Failed to generate thumbnails:', error);
-      Alert.alert('알림', '썸네일 생성에 실패했습니다. 기본 썸네일을 사용합니다.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:edit.thumbnailError'));
       // fallback: 비디오 자체를 썸네일로
       setThumbnails([uri]);
       setSelectedThumbnail(uri);
@@ -522,13 +524,13 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
   const handleNext = async () => {
     if (!selectedThumbnail) {
-      Alert.alert('알림', '썸네일을 선택해주세요.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:edit.selectThumbnailRequired'));
       return;
     }
 
     const trimmedDuration = trimEnd - trimStart;
     if (trimmedDuration > MAX_VIDEO_DURATION) {
-      Alert.alert('알림', `비디오는 최대 ${MAX_VIDEO_DURATION}초까지 업로드할 수 있습니다.`);
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:edit.maxDurationExceeded', { maxDuration: MAX_VIDEO_DURATION }));
       return;
     }
 
@@ -558,11 +560,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         } catch (trimError) {
           console.error('❌ Trim failed:', trimError);
           Alert.alert(
-            '편집 실패',
-            '비디오 편집에 실패했습니다. 원본 비디오를 업로드하시겠습니까?',
+            t('upload:edit.trimFailed'),
+            t('upload:edit.trimFailedMessage'),
             [
-              { text: '취소', style: 'cancel', onPress: () => { setIsUploading(false); return; } },
-              { text: '원본 업로드', onPress: () => { videoToUpload = videoUri; } },
+              { text: t('common:button.cancel'), style: 'cancel', onPress: () => { setIsUploading(false); return; } },
+              { text: t('upload:edit.uploadOriginal'), onPress: () => { videoToUpload = videoUri; } },
             ]
           );
           return;
@@ -637,7 +639,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       });
     } catch (error) {
       console.error('❌ Upload failed:', error);
-      Alert.alert('오류', '업로드에 실패했습니다. 다시 시도해주세요.');
+      Alert.alert(t('common:label.error', 'Error'), t('upload:edit.uploadFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -651,7 +653,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={28} color={theme.colors.text.primary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>편집</Text>
+        <Text style={styles.headerTitle}>{t('upload:edit.title')}</Text>
 
         <TouchableOpacity
           onPress={handleNext}
@@ -664,7 +666,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
               (isUploading || isTrimming) && styles.disabledText,
             ]}
           >
-            {isTrimming ? '편집 중...' : isUploading ? '업로드 중...' : '다음'}
+            {isTrimming ? t('upload:edit.trimming') : isUploading ? t('upload:edit.uploading') : t('common:button.next')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -679,11 +681,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           {isLoadingVideo ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-              <Text style={styles.loadingText}>비디오 준비 중...</Text>
+              <Text style={styles.loadingText}>{t('upload:edit.videoLoading')}</Text>
               <Text style={styles.loadingSubtext}>
                 {asset.uri?.startsWith('ph://')
-                  ? '갤러리에서 비디오를 가져오고 있습니다'
-                  : '비디오를 로드하고 있습니다'}
+                  ? t('upload:edit.videoLoadingGallery')
+                  : t('upload:edit.videoLoadingFile')}
               </Text>
             </View>
           ) : videoUri ? (
@@ -701,7 +703,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           ) : (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-              <Text style={styles.loadingText}>비디오 로딩 중...</Text>
+              <Text style={styles.loadingText}>{t('upload:edit.videoLoading')}</Text>
             </View>
           )}
 
@@ -739,9 +741,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
         {/* 타임라인 편집 - 인스타그램 스타일 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>편집</Text>
+          <Text style={styles.sectionTitle}>{t('upload:edit.timelineEdit')}</Text>
           <Text style={styles.sectionSubtitle}>
-            타임라인을 드래그하여 {MAX_VIDEO_DURATION}초 이내로 선택하세요
+            {t('upload:edit.timelineInstruction', { maxDuration: MAX_VIDEO_DURATION })}
           </Text>
 
           {/* 타임라인 트리밍 UI */}
@@ -877,11 +879,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           {/* 트리밍 정보 */}
           <View style={styles.trimInfo}>
             <View style={styles.trimInfoItem}>
-              <Text style={styles.trimInfoLabel}>선택한 길이</Text>
+              <Text style={styles.trimInfoLabel}>{t('upload:edit.selectedLength')}</Text>
               <Text style={styles.trimInfoValue}>{formatTime(trimEnd - trimStart)}</Text>
             </View>
             <View style={styles.trimInfoItem}>
-              <Text style={styles.trimInfoLabel}>전체 길이</Text>
+              <Text style={styles.trimInfoLabel}>{t('upload:edit.totalLength')}</Text>
               <Text style={styles.trimInfoValue}>{formatTime(duration)}</Text>
             </View>
           </View>
@@ -889,9 +891,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
         {/* 썸네일 선택 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>썸네일 선택</Text>
+          <Text style={styles.sectionTitle}>{t('upload:edit.thumbnailSelection')}</Text>
           <Text style={styles.sectionSubtitle}>
-            비디오의 대표 이미지를 선택하세요
+            {t('upload:edit.selectThumbnail')}
           </Text>
 
           {isGeneratingThumbnails ? (
@@ -939,8 +941,8 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           <View style={styles.uploadProgressContainer}>
             <Text style={styles.uploadProgressText}>
               {isTrimming
-                ? `비디오 편집 중... ${trimmingProgress}%`
-                : `업로드 중... ${uploadProgress}%`}
+                ? t('upload:edit.trimmingProgress', { progress: trimmingProgress })
+                : t('upload:edit.uploadProgress', { progress: uploadProgress })}
             </Text>
             <View style={styles.progressBar}>
               <View
@@ -952,7 +954,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
             </View>
             {isTrimming && (
               <Text style={[styles.uploadProgressText, { marginTop: 8, fontSize: 12 }]}>
-                비디오를 편집하고 있습니다. 잠시만 기다려주세요.
+                {t('upload:edit.trimmingWait')}
               </Text>
             )}
           </View>
@@ -961,13 +963,13 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         {/* 도움말 */}
         <View style={styles.helpSection}>
           <Text style={styles.helpText}>
-            ✂️ 타임라인 핸들을 드래그하여 원하는 구간을 선택하세요
+            ✂️ {t('upload:edit.help.dragTimeline')}
           </Text>
           <Text style={styles.helpText}>
-            ▶️ 재생 버튼을 눌러 선택한 구간을 미리보기하세요
+            ▶️ {t('upload:edit.help.playPreview')}
           </Text>
           <Text style={styles.helpText}>
-            📌 최대 {MAX_VIDEO_DURATION}초까지 선택 가능합니다
+            📌 {t('upload:edit.help.maxDuration', { seconds: MAX_VIDEO_DURATION })}
           </Text>
         </View>
       </ScrollView>

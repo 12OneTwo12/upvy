@@ -13,6 +13,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -27,8 +28,9 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   onSubmit,
   replyTo,
   onCancelReply,
-  placeholder = '댓글을 입력하세요...',
+  placeholder,
 }) => {
+  const { t } = useTranslation('interactions');
   const insets = useSafeAreaInsets();
   const profile = useAuthStore((state) => state.profile);
   const [content, setContent] = useState('');
@@ -69,10 +71,7 @@ export const CommentInput: React.FC<CommentInputProps> = ({
           <View style={styles.replyIndicator}>
             <Ionicons name="return-down-forward" size={14} color={theme.colors.text.secondary} />
             <View style={{ marginLeft: theme.spacing[2], flex: 1 }}>
-              <View style={styles.replyTextWrapper}>
-                <Text style={styles.replyNickname}>{`@${replyTo.nickname}`}</Text>
-                <Text style={styles.replyText}>님에게 답글 작성 중</Text>
-              </View>
+              <Text style={styles.replyText}>{t('comment.replyWriting', { name: replyTo.nickname })}</Text>
             </View>
             {onCancelReply && (
               <TouchableOpacity onPress={onCancelReply} style={styles.cancelButton}>
@@ -100,7 +99,7 @@ export const CommentInput: React.FC<CommentInputProps> = ({
           <TextInput
             ref={inputRef}
             style={styles.textInput}
-            placeholder={placeholder}
+            placeholder={placeholder || t('comment.placeholder')}
             placeholderTextColor={theme.colors.text.tertiary}
             value={content}
             onChangeText={setContent}
@@ -144,16 +143,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.secondary,
     borderRadius: theme.borderRadius.base,
     marginBottom: theme.spacing[3],
-  },
-  replyTextWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  replyNickname: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.primary[500],
-    fontWeight: theme.typography.fontWeight.semibold,
   },
   replyText: {
     fontSize: theme.typography.fontSize.xs,

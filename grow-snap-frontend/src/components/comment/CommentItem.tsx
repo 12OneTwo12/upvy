@@ -12,6 +12,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { useAuthStore } from '@/stores/authStore';
 import { getReplies } from '@/api/comment.api';
@@ -21,18 +22,18 @@ import type { CommentResponse } from '@/types/interaction.types';
  * 상대 시간 계산 함수
  * 예: "방금", "2분 전", "1시간 전", "3일 전"
  */
-const getRelativeTime = (dateString: string): string => {
+const getRelativeTime = (dateString: string, t: any): string => {
   const now = new Date();
   const date = new Date(dateString);
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (diffInSeconds < 60) return '방금';
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`;
-  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}일 전`;
-  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)}주 전`;
-  if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}개월 전`;
-  return `${Math.floor(diffInSeconds / 31536000)}년 전`;
+  if (diffInSeconds < 60) return t('comment.timeJustNow');
+  if (diffInSeconds < 3600) return t('comment.timeMinutesAgo', { count: Math.floor(diffInSeconds / 60) });
+  if (diffInSeconds < 86400) return t('comment.timeHoursAgo', { count: Math.floor(diffInSeconds / 3600) });
+  if (diffInSeconds < 604800) return t('comment.timeDaysAgo', { count: Math.floor(diffInSeconds / 86400) });
+  if (diffInSeconds < 2592000) return t('comment.timeWeeksAgo', { count: Math.floor(diffInSeconds / 604800) });
+  if (diffInSeconds < 31536000) return t('comment.timeMonthsAgo', { count: Math.floor(diffInSeconds / 2592000) });
+  return t('comment.timeYearsAgo', { count: Math.floor(diffInSeconds / 31536000) });
 };
 
 interface CommentItemProps {
@@ -62,6 +63,8 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   contentId,
   newReplies = [],
 }) => {
+  const { t } = useTranslation('interactions');
+  const { t: tCommon } = useTranslation('common');
   const currentUser = useAuthStore((state) => state.user);
   const isOwnComment = currentUser && currentUser.id === comment.userId;
 
@@ -200,14 +203,14 @@ export const CommentItem: React.FC<CommentItemProps> = ({
 
           {/* 액션 버튼: 시간, 답글 개수, 답글 달기, 삭제 */}
           <View style={styles.actionsRow}>
-            <Text style={styles.timeText}>{getRelativeTime(comment.createdAt)}</Text>
+            <Text style={styles.timeText}>{getRelativeTime(comment.createdAt, t)}</Text>
 
             {!isReply && comment.replyCount > 0 && (
               <>
                 <Text style={styles.actionDivider}>·</Text>
                 <TouchableOpacity onPress={handleLoadReplies}>
                   <Text style={styles.actionButton}>
-                    {showReplies ? '답글 숨기기' : `답글 ${comment.replyCount}개`}
+                    {showReplies ? t('comment.replyHide') : t('comment.replyCount', { count: comment.replyCount })}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -217,7 +220,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               <>
                 <Text style={styles.actionDivider}>·</Text>
                 <TouchableOpacity onPress={() => onReply(comment.id, comment.userNickname)}>
-                  <Text style={styles.actionButton}>답글 달기</Text>
+                  <Text style={styles.actionButton}>{t('comment.replyAdd')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -226,7 +229,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               <>
                 <Text style={styles.actionDivider}>·</Text>
                 <TouchableOpacity onPress={() => onDelete(comment.id)}>
-                  <Text style={styles.actionButton}>삭제</Text>
+                  <Text style={styles.actionButton}>{tCommon('button.delete')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -235,7 +238,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
           {/* 댓글 아래 작은 답글 더보기 버튼 */}
           {!isReply && !showReplies && comment.replyCount > 0 && (
             <TouchableOpacity onPress={handleLoadReplies} style={styles.viewRepliesButton}>
-              <Text style={styles.viewRepliesText}>답글 더보기</Text>
+              <Text style={styles.viewRepliesText}>{t('comment.viewMoreReplies')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -313,7 +316,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                   {(isLoadingReplies || isLoadingMore) ? (
                     <ActivityIndicator size="small" color={theme.colors.primary[500]} />
                   ) : (
-                    <Text style={styles.showMoreText}>답글 더보기</Text>
+                    <Text style={styles.showMoreText}>{t('comment.viewMoreReplies')}</Text>
                   )}
                 </TouchableOpacity>
               )}

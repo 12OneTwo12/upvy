@@ -18,6 +18,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { blockUser, blockContent } from '@/api/block.api';
 import { getErrorMessage } from '@/utils/errorHandler';
@@ -40,6 +41,8 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
   targetId,
   targetName,
 }) => {
+  const { t } = useTranslation('interactions');
+  const { t: tCommon } = useTranslation('common');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isUserBlock = blockType === 'user';
@@ -50,20 +53,24 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
     try {
       if (isUserBlock) {
         await blockUser(targetId);
-        Alert.alert('사용자를 차단했어요', '이 사용자의 콘텐츠가 더 이상 표시되지 않아요.', [
-          { text: '확인', onPress: () => {
+        Alert.alert(
+          t('block.user.successTitle'),
+          t('block.user.successMessage'),
+          [{ text: tCommon('button.confirm'), onPress: () => {
             onSuccess?.();
             onClose();
-          }},
-        ]);
+          }}]
+        );
       } else {
         await blockContent(targetId);
-        Alert.alert('콘텐츠를 숨겼어요', '이 콘텐츠가 피드에 더 이상 표시되지 않아요.', [
-          { text: '확인', onPress: () => {
+        Alert.alert(
+          t('block.content.successTitle'),
+          t('block.content.successMessage'),
+          [{ text: tCommon('button.confirm'), onPress: () => {
             onSuccess?.();
             onClose();
-          }},
-        ]);
+          }}]
+        );
       }
     } catch (error: any) {
       setIsSubmitting(false);
@@ -74,14 +81,14 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
       // 409 에러 = 이미 차단한 경우
       if (error?.response?.status === 409) {
         Alert.alert(
-          '이미 차단했어요',
+          t('block.alreadyBlockedTitle'),
           errorMessage,
-          [{ text: '확인', onPress: onClose }]
+          [{ text: tCommon('button.confirm'), onPress: onClose }]
         );
       } else {
         // 그 외 에러 - errorCode 기반 메시지 표시
         Alert.alert(
-          '차단할 수 없어요',
+          t('block.errorTitle'),
           errorMessage
         );
       }
@@ -121,15 +128,15 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
           {/* 제목 */}
           <Text style={styles.title}>
             {isUserBlock
-              ? `@${targetName || '사용자'}님을 차단하시겠어요?`
-              : '이 콘텐츠를 숨기시겠어요?'}
+              ? t('block.user.title', { name: `@${targetName || '사용자'}` })
+              : t('block.content.title')}
           </Text>
 
           {/* 설명 */}
           <Text style={styles.description}>
             {isUserBlock
-              ? '이 사용자의 모든 콘텐츠가 피드에 표시되지 않으며, 상호 팔로우가 해제됩니다.'
-              : '이 콘텐츠가 피드에 더 이상 표시되지 않습니다.'}
+              ? t('block.user.description')
+              : t('block.content.description')}
           </Text>
 
           {/* 버튼 */}
@@ -139,7 +146,7 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
               onPress={handleClose}
               disabled={isSubmitting}
             >
-              <Text style={styles.cancelButtonText}>취소</Text>
+              <Text style={styles.cancelButtonText}>{tCommon('button.cancel')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -155,7 +162,7 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.confirmButtonText}>
-                  {isUserBlock ? '차단하기' : '숨기기'}
+                  {isUserBlock ? t('block.user.confirmButton') : t('block.content.confirmButton')}
                 </Text>
               )}
             </TouchableOpacity>

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
 import { LoadingSpinner } from '@/components/common';
@@ -9,6 +10,7 @@ import MainNavigator from './MainNavigator';
 import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
+import LanguageSelectorScreen from '@/screens/settings/LanguageSelectorScreen';
 import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
 import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
@@ -21,6 +23,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  * 인증 상태와 프로필 존재 여부에 따라 화면을 표시합니다.
  */
 export default function RootNavigator() {
+  const { t } = useTranslation('common');
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const profile = useAuthStore((state) => state.profile);
   const isLoading = useAuthStore((state) => state.isLoading);
@@ -33,7 +36,7 @@ export default function RootNavigator() {
 
   // 초기 로딩 중
   if (isLoading) {
-    return <LoadingSpinner fullScreen message="로딩 중..." />;
+    return <LoadingSpinner fullScreen message={t('label.loading')} />;
   }
 
   return (
@@ -56,6 +59,7 @@ export default function RootNavigator() {
               options={{ presentation: 'modal' }}
             />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="LanguageSelector" component={LanguageSelectorScreen} />
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />

@@ -27,6 +27,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { getComments, getReplies, createComment as createCommentApi, deleteComment as deleteCommentApi } from '@/api/comment.api';
 import { createCommentLike, deleteCommentLike } from '@/api/commentLike.api';
@@ -48,6 +49,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   contentId,
   onClose,
 }) => {
+  const { t } = useTranslation('interactions');
+  const { t: tCommon } = useTranslation('common');
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
@@ -329,7 +332,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         }
       }
 
-      Alert.alert('오류', '댓글 작성에 실패했습니다.');
+      Alert.alert(t('comment.errorTitle', '오류'), t('comment.errorMessage', '댓글 작성에 실패했습니다.'));
     },
   });
 
@@ -427,15 +430,15 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   const handleDeleteComment = useCallback(
     (commentId: string) => {
       Alert.alert(
-        '댓글 삭제',
-        '정말로 이 댓글을 삭제하시겠습니까?',
+        t('comment.delete'),
+        t('comment.deleteConfirm'),
         [
           {
-            text: '취소',
+            text: tCommon('button.cancel'),
             style: 'cancel',
           },
           {
-            text: '삭제',
+            text: tCommon('button.delete'),
             style: 'destructive',
             onPress: () => {
               deleteCommentMutation.mutate(commentId);
@@ -445,7 +448,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         { cancelable: true }
       );
     },
-    [deleteCommentMutation]
+    [deleteCommentMutation, t, tCommon]
   );
 
   // 모달 닫기 핸들러
@@ -501,7 +504,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 
           {/* 헤더 */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>댓글</Text>
+            <Text style={styles.headerTitle}>{t('comment.title')}</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Ionicons name="close" size={28} color={theme.colors.text.primary} />
             </TouchableOpacity>
@@ -518,8 +521,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
           ) : !data || allComments.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>🌱</Text>
-              <Text style={styles.emptyText}>아직 댓글이 없습니다</Text>
-              <Text style={styles.emptySubtext}>첫 번째 댓글을 남겨보세요!</Text>
+              <Text style={styles.emptyText}>{t('comment.emptyTitle', '아직 댓글이 없습니다')}</Text>
+              <Text style={styles.emptySubtext}>{t('comment.emptySubtitle', '첫 번째 댓글을 남겨보세요!')}</Text>
             </View>
           ) : (
             <FlatList

@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import type { FeedStackParamList } from '@/types/navigation.types';
 
 import FeedScreen from '@/screens/feed/FeedScreen';
@@ -17,6 +18,8 @@ import FollowListScreen from '@/screens/profile/FollowListScreen';
 const Stack = createNativeStackNavigator<FeedStackParamList>();
 
 export default function FeedNavigator() {
+  const { t } = useTranslation(['feed', 'common', 'profile']);
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -26,13 +29,13 @@ export default function FeedNavigator() {
       <Stack.Screen
         name="FeedMain"
         component={FeedScreen}
-        options={{ title: '피드' }}
+        options={{ title: t('feed:title') }}
       />
       <Stack.Screen
         name="ContentViewer"
         component={ContentViewerScreen}
         options={{
-          title: '콘텐츠',
+          title: t('common:screen.content'),
           animation: 'slide_from_bottom',
         }}
       />
@@ -40,7 +43,7 @@ export default function FeedNavigator() {
         name="UserProfile"
         component={UserProfileScreen}
         options={{
-          title: '프로필',
+          title: t('common:navigation.profile'),
           animation: 'simple_push',
         }}
       />
@@ -48,7 +51,7 @@ export default function FeedNavigator() {
         name="FollowList"
         component={FollowListScreen}
         options={{
-          title: '팔로우',
+          title: t('profile:follow.followList'),
         }}
       />
     </Stack.Navigator>

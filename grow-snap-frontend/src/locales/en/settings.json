@@ -1,0 +1,47 @@
+{
+  "title": "Settings",
+  "sections": {
+    "account": "Account",
+    "privacy": "Privacy & Security",
+    "notifications": "Notifications",
+    "general": "General"
+  },
+  "account": {
+    "editProfile": "Edit Profile",
+    "editProfileSubtitle": "Change nickname, bio, etc."
+  },
+  "privacy": {
+    "privateAccount": "Private Account",
+    "privateAccountSubtitle": "Require follower approval",
+    "blockManagement": "Block Management",
+    "blockManagementSubtitle": "Manage blocked users and content"
+  },
+  "notifications": {
+    "notifications": "Notifications",
+    "notificationsSubtitle": "Likes, comments, follow notifications"
+  },
+  "general": {
+    "language": "Language",
+    "languageSubtitle": "Select app language",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "helpSupport": "Help & Support",
+    "version": "Version Info"
+  },
+  "logout": {
+    "title": "Logout",
+    "message": "Are you sure you want to logout?",
+    "button": "Logout"
+  },
+  "withdraw": {
+    "title": "Delete Account",
+    "message": "Are you sure you want to delete your account? All data will be deleted and cannot be recovered.",
+    "button": "Delete Account",
+    "failed": "Account Deletion Failed",
+    "link": "Delete Account"
+  },
+  "comingSoon": {
+    "title": "Coming Soon",
+    "message": "The {{feature}} feature is currently under development.\nIt will be available soon."
+  }
+}

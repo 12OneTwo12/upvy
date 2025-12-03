@@ -17,6 +17,7 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { MediaRetryButton } from '@/components/common';
 
@@ -37,6 +38,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   onDoubleTap,
   onTap,
 }) => {
+  const { t } = useTranslation('feed');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageRetryCount, setImageRetryCount] = useState<Map<number, number>>(new Map());
   const [imageKey, setImageKey] = useState<Map<number, number>>(new Map());
@@ -167,7 +169,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
                   /* 재시도 버튼 - 모든 재시도 실패 시 표시 */
                   <MediaRetryButton
                     onRetry={() => handleManualRetry(index)}
-                    message="이미지를 불러올 수 없습니다"
+                    message={t('media.imageLoadError')}
                   />
                 )}
               </View>
