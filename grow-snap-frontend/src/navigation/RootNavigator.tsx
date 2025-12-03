@@ -12,7 +12,6 @@ import SettingsScreen from '@/screens/profile/SettingsScreen';
 import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
 import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
-import { BlockManagementScreen } from '@/screens/settings/BlockManagementScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -59,10 +58,6 @@ export default function RootNavigator() {
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
-            <Stack.Screen
-              name="BlockManagement"
-              component={BlockManagementScreen}
-            />
           </>
         )}
       </Stack.Navigator>

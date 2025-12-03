@@ -58,9 +58,9 @@ class RecommendationServiceImpl(
         // 병렬로 모든 전략 실행
         return Mono.zip(
             getCollaborativeContentIds(userId, strategyLimits[RecommendationStrategy.COLLABORATIVE]!!, excludeContentIds).collectList(),
-            getPopularContentIds(userId, strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds).collectList(),
-            getNewContentIds(userId, strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds).collectList(),
-            getRandomContentIds(userId, strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds).collectList()
+            getPopularContentIds(strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds).collectList(),
+            getNewContentIds(strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds).collectList(),
+            getRandomContentIds(strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds).collectList()
         ).flatMapMany { tuple ->
             // 모든 결과 합치기 및 무작위 섞기
             val allIds = tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4
@@ -110,7 +110,7 @@ class RecommendationServiceImpl(
                 if (recommendedIds.isEmpty()) {
                     // CF 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback
                     logger.debug("No CF recommendations for user {}, falling back to popular content", userId)
-                    getPopularContentIds(userId, limit, excludeContentIds)
+                    getPopularContentIds(limit, excludeContentIds)
                 } else if (recommendedIds.size < limit) {
                     // CF 추천 결과가 부족하면 인기 콘텐츠로 보충
                     val remaining = limit - recommendedIds.size
@@ -122,7 +122,7 @@ class RecommendationServiceImpl(
                     )
                     Flux.concat(
                         Flux.fromIterable(recommendedIds),
-                        getPopularContentIds(userId, remaining, excludeContentIds + recommendedIds)
+                        getPopularContentIds(remaining, excludeContentIds + recommendedIds)
                     )
                 } else {
                     // CF 추천 결과가 충분함
@@ -146,17 +146,15 @@ class RecommendationServiceImpl(
      *                  + share_count * 10.0
      * ```
      *
-     * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 콘텐츠 수
      * @param excludeContentIds 제외할 콘텐츠 ID 목록
      * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
      */
     private fun getPopularContentIds(
-        userId: UUID,
         limit: Int,
         excludeContentIds: List<UUID>
     ): Flux<UUID> {
-        return feedRepository.findPopularContentIds(userId, limit, excludeContentIds, category = null)
+        return feedRepository.findPopularContentIds(limit, excludeContentIds, category = null)
     }
 
     /**
@@ -164,17 +162,15 @@ class RecommendationServiceImpl(
      *
      * 최근 업로드된 콘텐츠를 조회합니다.
      *
-     * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 콘텐츠 수
      * @param excludeContentIds 제외할 콘텐츠 ID 목록
      * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
      */
     private fun getNewContentIds(
-        userId: UUID,
         limit: Int,
         excludeContentIds: List<UUID>
     ): Flux<UUID> {
-        return feedRepository.findNewContentIds(userId, limit, excludeContentIds, category = null)
+        return feedRepository.findNewContentIds(limit, excludeContentIds, category = null)
     }
 
     /**
@@ -182,17 +178,15 @@ class RecommendationServiceImpl(
      *
      * 무작위 콘텐츠를 조회하여 다양성을 확보합니다.
      *
-     * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 콘텐츠 수
      * @param excludeContentIds 제외할 콘텐츠 ID 목록
      * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
      */
     private fun getRandomContentIds(
-        userId: UUID,
         limit: Int,
         excludeContentIds: List<UUID>
     ): Flux<UUID> {
-        return feedRepository.findRandomContentIds(userId, limit, excludeContentIds, category = null)
+        return feedRepository.findRandomContentIds(limit, excludeContentIds, category = null)
     }
 
     /**
@@ -230,9 +224,9 @@ class RecommendationServiceImpl(
         // 병렬로 모든 전략 실행 (Repository 메서드 직접 호출)
         return Mono.zip(
             getFollowingContentIdsByCategory(userId, category, strategyLimits[RecommendationStrategy.COLLABORATIVE]!!, excludeContentIds).collectList(),
-            feedRepository.findPopularContentIds(userId, strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds, category).collectList(),
-            feedRepository.findNewContentIds(userId, strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds, category).collectList(),
-            feedRepository.findRandomContentIds(userId, strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds, category).collectList()
+            feedRepository.findPopularContentIds(strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds, category).collectList(),
+            feedRepository.findNewContentIds(strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds, category).collectList(),
+            feedRepository.findRandomContentIds(strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds, category).collectList()
         ).flatMapMany { tuple ->
             // 모든 결과 합치기 및 무작위 섞기
             val allIds = tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4
@@ -261,7 +255,7 @@ class RecommendationServiceImpl(
                 if (followingIds.isEmpty()) {
                     // 팔로잉 콘텐츠가 없으면 인기 콘텐츠로 fallback
                     logger.debug("No following content for user {} in category {}, falling back to popular content", userId, category.name)
-                    feedRepository.findPopularContentIds(userId, limit, excludeContentIds, category)
+                    feedRepository.findPopularContentIds(limit, excludeContentIds, category)
                 } else if (followingIds.size < limit) {
                     // 팔로잉 콘텐츠가 부족하면 인기 콘텐츠로 보충
                     val remaining = limit - followingIds.size
@@ -274,7 +268,7 @@ class RecommendationServiceImpl(
                     )
                     Flux.concat(
                         Flux.fromIterable(followingIds),
-                        feedRepository.findPopularContentIds(userId, remaining, excludeContentIds + followingIds, category)
+                        feedRepository.findPopularContentIds(remaining, excludeContentIds + followingIds, category)
                     )
                 } else {
                     // 팔로잉 콘텐츠가 충분함
