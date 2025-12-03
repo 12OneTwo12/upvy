@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import ProfileAvatar from './ProfileAvatar';
@@ -64,18 +65,19 @@ export default function ProfileHeader({
   showStats = true,
 }: ProfileHeaderProps) {
   const styles = useStyles();
+  const { t } = useTranslation('profile');
   const stats = [
     {
-      label: '콘텐츠',
+      label: t('stats.content'),
       value: contentCount,
     },
     {
-      label: '팔로워',
+      label: t('stats.followers'),
       value: profile.followerCount,
       onPress: onFollowersPress,
     },
     {
-      label: '팔로잉',
+      label: t('stats.following'),
       value: profile.followingCount,
       onPress: onFollowingPress,
     },

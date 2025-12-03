@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import type { UploadStackParamList } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -33,6 +34,7 @@ import { CATEGORIES } from '@/types/content.types';
 type Props = NativeStackScreenProps<UploadStackParamList, 'ContentMetadata'>;
 
 export default function ContentMetadataScreen({ navigation, route }: Props) {
+  const { t } = useTranslation(['upload', 'common', 'search']);
   const { contentId, contentType, mediaInfo } = route.params;
   const queryClient = useQueryClient();
 
@@ -56,12 +58,12 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
     }
 
     if (tags.length >= 10) {
-      Alert.alert('알림', '태그는 최대 10개까지 추가할 수 있습니다.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:metadata.validation.maxTagsReached'));
       return;
     }
 
     if (tags.includes(trimmedTag)) {
-      Alert.alert('알림', '이미 추가된 태그입니다.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:metadata.validation.tagAlreadyExists'));
       return;
     }
 
@@ -76,22 +78,22 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
   const handlePublish = async () => {
     // 유효성 검사
     if (!title.trim()) {
-      Alert.alert('알림', '제목을 입력해주세요.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:metadata.validation.titleRequired'));
       return;
     }
 
     if (title.length > 200) {
-      Alert.alert('알림', '제목은 200자 이하로 입력해주세요.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:metadata.validation.titleTooLong'));
       return;
     }
 
     if (!selectedCategory) {
-      Alert.alert('알림', '카테고리를 선택해주세요.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:metadata.validation.categoryRequired'));
       return;
     }
 
     if (description && description.length > 2000) {
-      Alert.alert('알림', '설명은 2000자 이하로 입력해주세요.');
+      Alert.alert(t('common:label.notice', 'Notice'), t('upload:metadata.validation.descriptionTooLong'));
       return;
     }
 
@@ -117,11 +119,11 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
       queryClient.invalidateQueries({ queryKey: ['myContents'] });
 
       Alert.alert(
-        '게시 완료',
-        '콘텐츠가 성공적으로 게시되었습니다!',
+        t('upload:metadata.publishSuccess'),
+        t('upload:metadata.publishSuccessMessage'),
         [
           {
-            text: '확인',
+            text: t('common:button.confirm'),
             onPress: () => {
               // Upload 스택을 초기 화면으로 리셋
               navigation.reset({
@@ -139,7 +141,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
       );
     } catch (error) {
       console.error('Failed to publish content:', error);
-      Alert.alert('오류', '콘텐츠 게시에 실패했습니다. 다시 시도해주세요.');
+      Alert.alert(t('common:label.error', 'Error'), t('upload:metadata.publishFailed'));
     } finally {
       setIsPublishing(false);
     }
@@ -153,7 +155,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={28} color={theme.colors.text.primary} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>새 게시물</Text>
+        <Text style={styles.headerTitle}>{t('upload:metadata.title')}</Text>
 
         <TouchableOpacity
           onPress={handlePublish}
@@ -163,7 +165,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           {isPublishing ? (
             <ActivityIndicator size="small" color={theme.colors.primary[500]} />
           ) : (
-            <Text style={styles.publishButtonText}>게시</Text>
+            <Text style={styles.publishButtonText}>{t('upload:metadata.publish')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -176,26 +178,26 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
         {/* 제목 */}
         <View style={styles.section}>
           <Text style={styles.label}>
-            제목 <Text style={styles.required}>*</Text>
+            {t('upload:metadata.caption')} <Text style={styles.required}>{t('upload:metadata.required')}</Text>
           </Text>
           <TextInput
             style={styles.input}
-            placeholder="제목을 입력하세요 (최대 200자)"
+            placeholder={t('upload:metadata.captionPlaceholder')}
             placeholderTextColor={theme.colors.text.tertiary}
             value={title}
             onChangeText={setTitle}
             maxLength={200}
             multiline
           />
-          <Text style={styles.counter}>{title.length}/200</Text>
+          <Text style={styles.counter}>{t('upload:metadata.characterCount', { count: title.length, max: 200 })}</Text>
         </View>
 
         {/* 설명 */}
         <View style={styles.section}>
-          <Text style={styles.label}>설명</Text>
+          <Text style={styles.label}>{t('upload:metadata.description')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="설명을 입력하세요 (최대 2000자)"
+            placeholder={t('upload:metadata.descriptionPlaceholder')}
             placeholderTextColor={theme.colors.text.tertiary}
             value={description}
             onChangeText={setDescription}
@@ -204,13 +206,13 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
             numberOfLines={5}
             textAlignVertical="top"
           />
-          <Text style={styles.counter}>{description.length}/2000</Text>
+          <Text style={styles.counter}>{t('upload:metadata.characterCount', { count: description.length, max: 2000 })}</Text>
         </View>
 
         {/* 카테고리 */}
         <View style={styles.section}>
           <Text style={styles.label}>
-            카테고리 <Text style={styles.required}>*</Text>
+            {t('upload:metadata.category')} <Text style={styles.required}>{t('upload:metadata.required')}</Text>
           </Text>
           <TouchableOpacity
             style={styles.pickerButton}
@@ -223,8 +225,8 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
               ]}
             >
               {selectedCategory
-                ? CATEGORIES.find((c) => c.value === selectedCategory)?.displayName
-                : '카테고리를 선택하세요'}
+                ? t(`search:category.${selectedCategory}.name`, CATEGORIES.find((c) => c.value === selectedCategory)?.displayName)
+                : t('upload:metadata.categoryPlaceholder')}
             </Text>
             <Text style={styles.pickerArrow}>
               {showCategoryPicker ? '▲' : '▼'}
@@ -247,9 +249,9 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                   }}
                 >
                   <View>
-                    <Text style={styles.categoryName}>{category.displayName}</Text>
+                    <Text style={styles.categoryName}>{t(`search:category.${category.value}.name`, category.displayName)}</Text>
                     <Text style={styles.categoryDescription}>
-                      {category.description}
+                      {t(`search:category.${category.value}.desc`, category.description)}
                     </Text>
                   </View>
                   {selectedCategory === category.value && (
@@ -263,13 +265,13 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
 
         {/* 태그 */}
         <View style={styles.section}>
-          <Text style={styles.label}>태그 (최대 10개)</Text>
+          <Text style={styles.label}>{t('upload:metadata.maxTags')}</Text>
 
           {/* 태그 입력 */}
           <View style={styles.tagInputContainer}>
             <TextInput
               style={styles.tagInput}
-              placeholder="태그를 입력하세요"
+              placeholder={t('upload:metadata.tagsPlaceholder')}
               placeholderTextColor={theme.colors.text.tertiary}
               value={tagInput}
               onChangeText={setTagInput}
@@ -287,7 +289,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                   !tagInput.trim() && styles.disabledText,
                 ]}
               >
-                추가
+                {t('upload:metadata.addTag')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -312,7 +314,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
 
         {/* 언어 */}
         <View style={styles.section}>
-          <Text style={styles.label}>언어</Text>
+          <Text style={styles.label}>{t('upload:metadata.language')}</Text>
           <View style={styles.languageButtons}>
             <TouchableOpacity
               style={[
@@ -327,7 +329,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                   language === 'ko' && styles.languageButtonTextActive,
                 ]}
               >
-                한국어
+                {t('upload:metadata.korean')}
               </Text>
             </TouchableOpacity>
 
@@ -344,7 +346,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                   language === 'en' && styles.languageButtonTextActive,
                 ]}
               >
-                English
+                {t('upload:metadata.english')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -352,15 +354,15 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
 
         {/* 안내 메시지 */}
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>💡 게시 안내</Text>
+          <Text style={styles.infoTitle}>💡 {t('upload:metadata.info.title')}</Text>
           <Text style={styles.infoText}>
-            • 제목과 카테고리는 필수 입력 항목입니다
+            • {t('upload:metadata.info.requiredFields')}
           </Text>
           <Text style={styles.infoText}>
-            • 태그는 콘텐츠 검색에 도움이 됩니다
+            • {t('upload:metadata.info.tagsHelp')}
           </Text>
           <Text style={styles.infoText}>
-            • 게시된 콘텐츠는 프로필에서 관리할 수 있습니다
+            • {t('upload:metadata.info.manageContent')}
           </Text>
         </View>
       </ScrollView>

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { ProfileHeader, FollowButton, ContentGrid } from '@/components/profile';
 import { LoadingSpinner } from '@/components/common';
@@ -124,6 +125,7 @@ const useStyles = createStyleSheet({
 
 export default function UserProfileScreen() {
   const styles = useStyles();
+  const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'UserProfile'>>();
   const { userId } = route.params;
@@ -240,7 +242,7 @@ export default function UserProfileScreen() {
 
   // 메시지 보내기 (추후 구현)
   const handleMessage = () => {
-    Alert.alert('메시지', '메시지 기능은 추후 구현 예정입니다.');
+    Alert.alert(t('buttons.message'), t('message.comingSoon'));
   };
 
   // 콘텐츠 클릭 핸들러
@@ -252,7 +254,7 @@ export default function UserProfileScreen() {
   const actionSheetOptions: ActionSheetOption[] = useMemo(
     () => [
       {
-        label: '신고하기',
+        label: t('report.action'),
         icon: 'alert-circle-outline',
         onPress: () => setShowReportModal(true),
         destructive: true,
@@ -265,7 +267,7 @@ export default function UserProfileScreen() {
       //   destructive: true,
       // },
     ],
-    []
+    [t]
   );
 
   if (profileLoading || !profile) {

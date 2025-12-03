@@ -1,0 +1,23 @@
+{
+  "network": {
+    "title": "Network Error",
+    "message": "Please check your internet connection",
+    "offline": "You are currently offline"
+  },
+  "auth": {
+    "loginFailed": "Login failed",
+    "unauthorized": "Unauthorized access",
+    "sessionExpired": "Session expired. Please login again"
+  },
+  "validation": {
+    "required": "This field is required",
+    "invalidFormat": "Invalid format",
+    "tooShort": "Too short",
+    "tooLong": "Too long"
+  },
+  "general": {
+    "title": "Error",
+    "message": "An error occurred",
+    "tryAgain": "Please try again"
+  }
+}

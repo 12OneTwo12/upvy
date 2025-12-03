@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import type { ExploreStackParamList } from '@/types/navigation.types';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
@@ -33,6 +34,7 @@ export default function CategoryFeedScreen() {
 
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { t } = useTranslation('search');
 
   // 선택된 카테고리 정보
   const categoryInfo = CATEGORIES.find((c) => c.value === category);
@@ -176,7 +178,7 @@ export default function CategoryFeedScreen() {
             textShadowRadius: 4,
           }}
         >
-          {categoryInfo?.displayName || '카테고리'}
+          {categoryInfo ? t(`category.${category}.name`, categoryInfo.displayName) : t('explore.categories')}
         </Text>
       </View>
 
@@ -201,7 +203,7 @@ export default function CategoryFeedScreen() {
             }}
           >
             <Text style={{ color: 'white', fontSize: 14 }}>
-              {pullDistance > 60 ? '🔄 놓아서 새로고침' : '⬇️ 당겨서 새로고침'}
+              {pullDistance > 60 ? `🔄 ${t('explore.releaseToRefresh')}` : `⬇️ ${t('explore.pullToRefresh')}`}
             </Text>
           </View>
         </View>
@@ -227,7 +229,7 @@ export default function CategoryFeedScreen() {
               marginBottom: 8,
             }}
           >
-            아직 콘텐츠가 없어요
+            {t('explore.noContent')}
           </Text>
           <Text
             style={{
@@ -237,8 +239,7 @@ export default function CategoryFeedScreen() {
               lineHeight: 20,
             }}
           >
-            {categoryInfo?.displayName} 카테고리에{'\n'}
-            곧 멋진 콘텐츠가 업로드될 거예요!
+            {categoryInfo ? t(`category.${category}.name`, categoryInfo.displayName) : ''} {t('explore.noContentDescription')}
           </Text>
         </View>
       ) : (

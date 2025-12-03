@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, TouchableWithoutFeedback, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 
 interface MediaRetryButtonProps {
@@ -14,8 +15,11 @@ interface MediaRetryButtonProps {
 
 export const MediaRetryButton: React.FC<MediaRetryButtonProps> = ({
   onRetry,
-  message = '미디어를 불러올 수 없습니다',
+  message,
 }) => {
+  const { t } = useTranslation('feed');
+  const displayMessage = message || t('media.mediaLoadError');
+
   return (
     <View style={styles.overlay}>
       <TouchableWithoutFeedback onPress={onRetry}>
@@ -23,8 +27,8 @@ export const MediaRetryButton: React.FC<MediaRetryButtonProps> = ({
           <View style={styles.iconContainer}>
             <Ionicons name="refresh" size={40} color="#FFFFFF" />
           </View>
-          <Text style={styles.message}>{message}</Text>
-          <Text style={styles.subtext}>탭하여 다시 시도</Text>
+          <Text style={styles.message}>{displayMessage}</Text>
+          <Text style={styles.subtext}>{t('media.tapToRetry')}</Text>
         </View>
       </TouchableWithoutFeedback>
     </View>

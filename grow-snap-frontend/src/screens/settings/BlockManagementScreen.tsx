@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { getBlockedUsers, getBlockedContents, unblockUser, unblockContent } from '@/api/block.api';
 import type { BlockedUser, BlockedContent } from '@/types/block.types';
@@ -29,6 +30,8 @@ import type { BlockedUser, BlockedContent } from '@/types/block.types';
 type TabType = 'users' | 'contents';
 
 export const BlockManagementScreen: React.FC = () => {
+  const { t } = useTranslation('interactions');
+  const { t: tCommon } = useTranslation('common');
   const navigation = useNavigation();
   const [selectedTab, setSelectedTab] = useState<TabType>('users');
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
@@ -57,12 +60,12 @@ export const BlockManagementScreen: React.FC = () => {
       setUsersCursor(response.nextCursor || undefined);
       setUsersHasNext(response.hasNext);
     } catch (error) {
-      Alert.alert('오류', '차단 목록을 불러오는데 실패했습니다.');
+      Alert.alert(t('blockManagement.error.loadTitle'), t('blockManagement.error.loadMessage'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [loading]);
+  }, [loading, t]);
 
   // 차단한 콘텐츠 목록 로드
   const loadBlockedContents = useCallback(async (cursor?: string, isRefresh = false) => {
@@ -81,12 +84,12 @@ export const BlockManagementScreen: React.FC = () => {
       setContentsCursor(response.nextCursor || undefined);
       setContentsHasNext(response.hasNext);
     } catch (error) {
-      Alert.alert('오류', '차단 목록을 불러오는데 실패했습니다.');
+      Alert.alert(t('blockManagement.error.loadTitle'), t('blockManagement.error.loadMessage'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [loading]);
+  }, [loading, t]);
 
   // 초기 로드
   React.useEffect(() => {
@@ -119,19 +122,19 @@ export const BlockManagementScreen: React.FC = () => {
   // 사용자 차단 해제
   const handleUnblockUser = (userId: string, nickname: string) => {
     Alert.alert(
-      '차단 해제',
-      `@${nickname}님의 차단을 해제하시겠어요?`,
+      t('blockManagement.unblock.userTitle'),
+      t('blockManagement.unblock.userConfirm', { name: `@${nickname}` }),
       [
-        { text: '취소', style: 'cancel' },
+        { text: tCommon('button.cancel'), style: 'cancel' },
         {
-          text: '해제',
+          text: t('block.unblock'),
           onPress: async () => {
             try {
               await unblockUser(userId);
               setBlockedUsers((prev) => prev.filter((user) => user.userId !== userId));
-              Alert.alert('완료', '차단을 해제했어요.');
+              Alert.alert(tCommon('button.done'), t('blockManagement.unblock.userSuccess'));
             } catch (error) {
-              Alert.alert('오류', '차단 해제에 실패했습니다.');
+              Alert.alert(t('blockManagement.error.loadTitle'), t('blockManagement.unblock.error'));
             }
           },
         },
@@ -142,19 +145,19 @@ export const BlockManagementScreen: React.FC = () => {
   // 콘텐츠 차단 해제
   const handleUnblockContent = (contentId: string, title: string) => {
     Alert.alert(
-      '차단 해제',
-      `"${title}" 콘텐츠를 다시 표시하시겠어요?`,
+      t('blockManagement.unblock.contentTitle'),
+      t('blockManagement.unblock.contentConfirm', { title }),
       [
-        { text: '취소', style: 'cancel' },
+        { text: tCommon('button.cancel'), style: 'cancel' },
         {
-          text: '해제',
+          text: t('block.unblock'),
           onPress: async () => {
             try {
               await unblockContent(contentId);
               setBlockedContents((prev) => prev.filter((content) => content.contentId !== contentId));
-              Alert.alert('완료', '콘텐츠를 다시 표시합니다.');
+              Alert.alert(tCommon('button.done'), t('blockManagement.unblock.contentSuccess'));
             } catch (error) {
-              Alert.alert('오류', '차단 해제에 실패했습니다.');
+              Alert.alert(t('blockManagement.error.loadTitle'), t('blockManagement.unblock.error'));
             }
           },
         },
@@ -184,7 +187,7 @@ export const BlockManagementScreen: React.FC = () => {
         style={styles.unblockButton}
         onPress={() => handleUnblockUser(item.userId, item.nickname)}
       >
-        <Text style={styles.unblockButtonText}>차단 해제</Text>
+        <Text style={styles.unblockButtonText}>{t('block.unblock')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -207,7 +210,7 @@ export const BlockManagementScreen: React.FC = () => {
         style={styles.unblockButton}
         onPress={() => handleUnblockContent(item.contentId, item.title)}
       >
-        <Text style={styles.unblockButtonText}>차단 해제</Text>
+        <Text style={styles.unblockButtonText}>{t('block.unblock')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -220,7 +223,7 @@ export const BlockManagementScreen: React.FC = () => {
         color={theme.colors.text.tertiary}
       />
       <Text style={styles.emptyText}>
-        {selectedTab === 'users' ? '차단한 사용자가 없습니다' : '차단한 콘텐츠가 없습니다'}
+        {t(`blockManagement.empty.${selectedTab}`)}
       </Text>
     </View>
   );
@@ -239,7 +242,7 @@ export const BlockManagementScreen: React.FC = () => {
             color={theme.colors.text.primary}
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>차단 관리</Text>
+        <Text style={styles.headerTitle}>{t('blockManagement.title')}</Text>
       </View>
 
       {/* 탭 */}
@@ -249,7 +252,7 @@ export const BlockManagementScreen: React.FC = () => {
           onPress={() => setSelectedTab('users')}
         >
           <Text style={[styles.tabText, selectedTab === 'users' && styles.tabTextActive]}>
-            사용자
+            {t('blockManagement.tabs.users')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -257,7 +260,7 @@ export const BlockManagementScreen: React.FC = () => {
           onPress={() => setSelectedTab('contents')}
         >
           <Text style={[styles.tabText, selectedTab === 'contents' && styles.tabTextActive]}>
-            콘텐츠
+            {t('blockManagement.tabs.contents')}
           </Text>
         </TouchableOpacity>
       </View>

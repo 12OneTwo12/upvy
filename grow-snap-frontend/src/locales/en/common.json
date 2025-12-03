@@ -1,0 +1,58 @@
+{
+  "button": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "submit": "Submit",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip",
+    "done": "Done",
+    "logout": "Logout",
+    "login": "Login"
+  },
+  "label": {
+    "loading": "Loading...",
+    "noData": "No data available",
+    "comingSoon": "Coming Soon",
+    "preparing": "Preparing"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minuteAgo": "{{count}} minute ago",
+    "minuteAgo_plural": "{{count}} minutes ago",
+    "hourAgo": "{{count}} hour ago",
+    "hourAgo_plural": "{{count}} hours ago",
+    "dayAgo": "{{count}} day ago",
+    "dayAgo_plural": "{{count}} days ago",
+    "weekAgo": "{{count}} week ago",
+    "weekAgo_plural": "{{count}} weeks ago",
+    "monthAgo": "{{count}} month ago",
+    "monthAgo_plural": "{{count}} months ago",
+    "yearAgo": "{{count}} year ago",
+    "yearAgo_plural": "{{count}} years ago"
+  },
+  "unit": {
+    "views": "{{count}} views",
+    "likes": "{{count}} likes",
+    "comments": "{{count}} comments",
+    "followers": "{{count}} followers",
+    "following": "{{count}} following",
+    "posts": "{{count}} posts"
+  },
+  "navigation": {
+    "explore": "Explore",
+    "search": "Search",
+    "feed": "Feed",
+    "upload": "Upload",
+    "profile": "Profile"
+  },
+  "screen": {
+    "content": "Content",
+    "category": "Category"
+  }
+}

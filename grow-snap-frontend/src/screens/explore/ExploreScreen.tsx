@@ -17,6 +17,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { CATEGORIES, type Category } from '@/types/content.types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ExploreStackParamList } from '@/types/navigation.types';
@@ -53,6 +54,7 @@ export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ExploreScreenNavigationProp>();
   const { width: screenWidth, fontScale } = useWindowDimensions();
+  const { t } = useTranslation('search');
 
   // 글자 크기 스케일 제한 (최대 1.3배까지만)
   const adjustedFontScale = Math.min(fontScale, 1.3);
@@ -79,14 +81,14 @@ export default function ExploreScreen() {
           fontSize: 28 * adjustedFontScale,
           fontWeight: '700',
         }}>
-          탐색
+          {t('explore.title')}
         </Text>
         <Text style={{
           color: '#666666',
           fontSize: 14 * adjustedFontScale,
           marginTop: 4,
         }}>
-          관심있는 카테고리를 선택하세요
+          {t('explore.selectCategory')}
         </Text>
       </View>
 
@@ -136,7 +138,7 @@ export default function ExploreScreen() {
                   fontWeight: '700',
                   marginBottom: 4,
                 }}>
-                  {categoryInfo.displayName}
+                  {t(`category.${categoryInfo.value}.name`, categoryInfo.displayName)}
                 </Text>
                 <Text style={{
                   color: '#6C757D',
@@ -144,7 +146,7 @@ export default function ExploreScreen() {
                 }}
                 numberOfLines={2}
                 >
-                  {categoryInfo.description}
+                  {t(`category.${categoryInfo.value}.desc`, categoryInfo.description)}
                 </Text>
               </View>
             </TouchableOpacity>

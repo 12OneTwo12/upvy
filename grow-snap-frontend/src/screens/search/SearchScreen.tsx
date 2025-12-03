@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import {
@@ -240,6 +241,7 @@ export default function SearchScreen() {
   const styles = useStyles();
   const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['search', 'common']);
 
   // 검색 상태
   const [searchQuery, setSearchQuery] = useState('');
@@ -509,7 +511,7 @@ export default function SearchScreen() {
             </Text>
           ) : (
             <Text style={styles.userFollowers}>
-              팔로워 {formatFollowerCount(item.followerCount)}
+              {t('search:results.follower')} {formatFollowerCount(item.followerCount)}
             </Text>
           )}
         </View>
@@ -528,7 +530,7 @@ export default function SearchScreen() {
           onPress={() => setActiveTab('creators')}
         >
           <Text style={[styles.tabText, activeTab === 'creators' && styles.tabTextActive]}>
-            크리에이터
+            {t('search:tabs.users')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -536,7 +538,7 @@ export default function SearchScreen() {
           onPress={() => setActiveTab('shorts')}
         >
           <Text style={[styles.tabText, activeTab === 'shorts' && styles.tabTextActive]}>
-            쇼츠
+            {t('search:tabs.content')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -561,7 +563,7 @@ export default function SearchScreen() {
           renderItem={renderUserResult}
           keyExtractor={(item) => item.userId}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
+            <Text style={styles.emptyText}>{t('search:results.noResults')}</Text>
           }
           contentContainerStyle={styles.creatorListContainer}
         />
@@ -582,7 +584,7 @@ export default function SearchScreen() {
       if (contentResults.length === 0) {
         return (
           <View style={styles.loadingContainer}>
-            <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
+            <Text style={styles.emptyText}>{t('search:results.noResults')}</Text>
           </View>
         );
       }
@@ -672,7 +674,7 @@ export default function SearchScreen() {
           <Ionicons name="search-outline" size={18} color={theme.colors.text.tertiary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="검색"
+            placeholder={t('search:placeholder')}
             placeholderTextColor={theme.colors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -715,9 +717,9 @@ export default function SearchScreen() {
               {searchHistory.length > 0 && (
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>최근 검색</Text>
+                    <Text style={styles.sectionTitle}>{t('search:recent.title')}</Text>
                     <TouchableOpacity onPress={handleClearAllHistory}>
-                      <Text style={styles.clearAllText}>모두 지우기</Text>
+                      <Text style={styles.clearAllText}>{t('search:recent.clear')}</Text>
                     </TouchableOpacity>
                   </View>
                   {searchHistory.map((item, index) => (
@@ -732,7 +734,7 @@ export default function SearchScreen() {
               {(loadingTrending || trendingKeywords.length > 0) && (
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>인기 검색어</Text>
+                    <Text style={styles.sectionTitle}>{t('search:trending.title')}</Text>
                   </View>
                   {loadingTrending ? (
                     <ActivityIndicator

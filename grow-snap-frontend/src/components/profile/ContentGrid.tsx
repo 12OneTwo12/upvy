@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, Dimensions, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import type { ContentResponse } from '@/types/content.types';
@@ -242,6 +243,7 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
   numColumns = 3,
 }) => {
   const styles = useStyles();
+  const { t } = useTranslation('profile');
 
   // 그리드 아이템 너비 계산 (간격 고려)
   const itemWidth = (SCREEN_WIDTH - (numColumns + 1) * 2) / numColumns;
@@ -273,8 +275,8 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
           color={theme.colors.gray[300]}
           style={styles.emptyIcon}
         />
-        <Text style={styles.emptyText}>아직 업로드한 콘텐츠가 없습니다</Text>
-        <Text style={styles.emptySubtext}>첫 콘텐츠를 업로드해보세요!</Text>
+        <Text style={styles.emptyText}>{t('content.noPosts')}</Text>
+        <Text style={styles.emptySubtext}>{t('content.noPostsSubtitle')}</Text>
       </View>
     );
   }

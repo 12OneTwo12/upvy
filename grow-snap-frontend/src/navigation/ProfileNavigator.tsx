@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import type { ProfileStackParamList } from '@/types/navigation.types';
 
 import ProfileScreen from '@/screens/profile/ProfileScreen';
@@ -17,6 +18,8 @@ import FollowListScreen from '@/screens/profile/FollowListScreen';
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 export default function ProfileNavigator() {
+  const { t } = useTranslation(['common', 'profile']);
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -26,13 +29,13 @@ export default function ProfileNavigator() {
       <Stack.Screen
         name="ProfileMain"
         component={ProfileScreen}
-        options={{ title: '프로필' }}
+        options={{ title: t('common:navigation.profile') }}
       />
       <Stack.Screen
         name="ContentViewer"
         component={ContentViewerScreen}
         options={{
-          title: '콘텐츠',
+          title: t('common:screen.content'),
           animation: 'slide_from_bottom',
         }}
       />
@@ -40,7 +43,7 @@ export default function ProfileNavigator() {
         name="UserProfile"
         component={UserProfileScreen}
         options={{
-          title: '프로필',
+          title: t('common:navigation.profile'),
           animation: 'simple_push',
         }}
       />
@@ -48,7 +51,7 @@ export default function ProfileNavigator() {
         name="FollowList"
         component={FollowListScreen}
         options={{
-          title: '팔로우',
+          title: t('profile:follow.followList'),
         }}
       />
     </Stack.Navigator>

@@ -21,9 +21,10 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { reportTarget } from '@/api/report.api';
-import { REPORT_REASONS, ReportType, TargetType } from '@/types/report.types';
+import { ReportType, TargetType } from '@/types/report.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -42,9 +43,23 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   targetId,
   targetName,
 }) => {
+  const { t } = useTranslation('interactions');
+  const { t: tCommon } = useTranslation('common');
   const [selectedReason, setSelectedReason] = useState<ReportType | null>(null);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Report reasons list
+  const REPORT_REASONS: ReportType[] = [
+    'OFF_TOPIC',
+    'SPAM',
+    'INAPPROPRIATE_CONTENT',
+    'HARASSMENT',
+    'HATE_SPEECH',
+    'MISINFORMATION',
+    'COPYRIGHT',
+    'OTHER',
+  ];
 
   const handleClose = () => {
     setSelectedReason(null);
@@ -55,7 +70,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
   const handleSubmit = async () => {
     if (!selectedReason) {
-      Alert.alert('신고 사유 선택', '신고 사유를 선택해주세요.');
+      Alert.alert(t('report.title'), t('report.selectReason'));
       return;
     }
 
@@ -68,19 +83,19 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       });
 
       // 성공
-      Alert.alert('신고해주셔서 감사해요', '빠르게 검토해볼게요!', [
-        { text: '확인', onPress: handleClose },
+      Alert.alert(t('report.successTitle'), t('report.successMessage'), [
+        { text: tCommon('button.confirm'), onPress: handleClose },
       ]);
     } catch (error: any) {
       // 409 에러 = 이미 신고한 경우
       if (error?.response?.status === 409) {
-        Alert.alert('이미 신고해주셨어요', '확인 중이니 조금만 기다려주세요!', [
-          { text: '확인', onPress: handleClose },
+        Alert.alert(t('report.alreadyReportedTitle'), t('report.alreadyReportedMessage'), [
+          { text: tCommon('button.confirm'), onPress: handleClose },
         ]);
       } else {
         // 그 외 에러 - 모달은 닫지 않음
         setIsSubmitting(false);
-        Alert.alert('앗, 문제가 생겼어요', '잠시 후 다시 시도해주세요.');
+        Alert.alert(t('report.errorTitle'), t('report.errorMessage'));
       }
     }
   };
@@ -102,7 +117,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
           {/* 헤더 */}
           <View style={styles.header}>
-            <Text style={styles.title}>신고하기</Text>
+            <Text style={styles.title}>{t('report.title')}</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={theme.colors.text.primary} />
             </TouchableOpacity>
@@ -112,37 +127,39 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           {targetName && (
             <View style={styles.targetInfo}>
               <Text style={styles.targetInfoText}>
-                {targetType === 'content' ? '콘텐츠' : '사용자'}: {targetName}
+                {t(`report.targetInfo.${targetType}`)}: {targetName}
               </Text>
             </View>
           )}
 
           {/* 신고 사유 목록 */}
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            <Text style={styles.sectionTitle}>신고 사유를 선택해주세요</Text>
+            <Text style={styles.sectionTitle}>{t('report.subtitle')}</Text>
 
             {REPORT_REASONS.map((reason) => (
               <TouchableOpacity
-                key={reason.value}
+                key={reason}
                 style={[
                   styles.reasonItem,
-                  selectedReason === reason.value && styles.reasonItemSelected,
+                  selectedReason === reason && styles.reasonItemSelected,
                 ]}
-                onPress={() => setSelectedReason(reason.value)}
+                onPress={() => setSelectedReason(reason)}
               >
                 <View style={styles.reasonContent}>
                   <View style={styles.reasonTextContainer}>
                     <Text
                       style={[
                         styles.reasonLabel,
-                        selectedReason === reason.value && styles.reasonLabelSelected,
+                        selectedReason === reason && styles.reasonLabelSelected,
                       ]}
                     >
-                      {reason.label}
+                      {t(`report.reasons.${reason}.label`)}
                     </Text>
-                    <Text style={styles.reasonDescription}>{reason.description}</Text>
+                    <Text style={styles.reasonDescription}>
+                      {t(`report.reasons.${reason}.description`)}
+                    </Text>
                   </View>
-                  {selectedReason === reason.value && (
+                  {selectedReason === reason && (
                     <Ionicons
                       name="checkmark-circle"
                       size={24}
@@ -155,10 +172,10 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
             {/* 상세 설명 (선택 사항) */}
             <View style={styles.descriptionSection}>
-              <Text style={styles.sectionTitle}>상세 설명 (선택 사항)</Text>
+              <Text style={styles.sectionTitle}>{t('report.details')}</Text>
               <TextInput
                 style={styles.descriptionInput}
-                placeholder="추가로 알려주실 내용이 있다면 작성해주세요"
+                placeholder={t('report.detailsPlaceholder')}
                 placeholderTextColor={theme.colors.text.tertiary}
                 value={description}
                 onChangeText={setDescription}
@@ -166,7 +183,9 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 maxLength={500}
                 textAlignVertical="top"
               />
-              <Text style={styles.characterCount}>{description.length}/500</Text>
+              <Text style={styles.characterCount}>
+                {t('report.characterCount', { count: description.length })}
+              </Text>
             </View>
           </ScrollView>
 
@@ -183,7 +202,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               {isSubmitting ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.submitButtonText}>신고하기</Text>
+                <Text style={styles.submitButtonText}>{t('report.submit')}</Text>
               )}
             </TouchableOpacity>
           </View>

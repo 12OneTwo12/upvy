@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp, CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList, MainTabParamList } from '@/types/navigation.types';
 import { ProfileAvatar, FollowButton } from '@/components/profile';
 import { LoadingSpinner } from '@/components/common';
@@ -149,6 +150,7 @@ const useStyles = createStyleSheet({
 
 export default function FollowListScreen() {
   const styles = useStyles();
+  const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'FollowList'>>();
   const { userId, initialTab = 'followers' } = route.params;
@@ -338,7 +340,7 @@ export default function FollowListScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {userNickname ? `@${userNickname}` : '팔로우 목록'}
+          {userNickname ? `@${userNickname}` : t('follow.followList')}
         </Text>
         <View style={styles.headerRight} />
       </View>
@@ -355,7 +357,7 @@ export default function FollowListScreen() {
               activeTab === 'followers' && styles.activeTabText,
             ]}
           >
-            팔로워
+            {t('follow.followers')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -368,7 +370,7 @@ export default function FollowListScreen() {
               activeTab === 'following' && styles.activeTabText,
             ]}
           >
-            팔로잉
+            {t('follow.following')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -390,8 +392,8 @@ export default function FollowListScreen() {
             />
             <Text style={styles.emptyText}>
               {activeTab === 'followers'
-                ? '아직 팔로워가 없습니다'
-                : '아직 팔로잉하는 사용자가 없습니다'}
+                ? t('follow.noFollowers')
+                : t('follow.noFollowing')}
             </Text>
           </View>
         }

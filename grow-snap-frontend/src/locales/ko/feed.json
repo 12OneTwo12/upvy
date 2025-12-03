@@ -1,0 +1,73 @@
+{
+  "title": "피드",
+  "tabs": {
+    "following": "팔로잉",
+    "forYou": "추천"
+  },
+  "actions": {
+    "like": "좋아요",
+    "unlike": "좋아요 취소",
+    "comment": "댓글",
+    "share": "공유",
+    "save": "저장",
+    "saved": "저장됨",
+    "report": "신고",
+    "block": "차단",
+    "delete": "삭제",
+    "follow": "팔로우",
+    "following": "팔로잉",
+    "more": "더보기"
+  },
+  "menu": {
+    "report": "신고하기",
+    "block": "사용자 차단",
+    "delete": "게시물 삭제",
+    "edit": "게시물 수정",
+    "copyLink": "링크 복사",
+    "shareVia": "공유하기...",
+    "notInterested": "이 콘텐츠 관심없음",
+    "blockUser": "사용자 차단하기"
+  },
+  "comments": {
+    "title": "댓글",
+    "placeholder": "댓글을 입력하세요...",
+    "viewAll": "댓글 {{count}}개 모두 보기",
+    "noComments": "아직 댓글이 없습니다",
+    "reply": "답글",
+    "delete": "삭제",
+    "report": "신고"
+  },
+  "loading": {
+    "message": "콘텐츠 로딩 중...",
+    "failed": "콘텐츠 로딩 실패",
+    "retry": "탭하여 재시도"
+  },
+  "empty": {
+    "title": "아직 게시물이 없습니다",
+    "message": "사용자를 팔로우하여 피드에서 게시물을 확인하세요",
+    "following": {
+      "title": "팔로우한 크리에이터가 없어요",
+      "message": "관심있는 크리에이터를 팔로우하고\n최신 콘텐츠를 받아보세요!"
+    },
+    "recommended": {
+      "title": "아직 콘텐츠가 없어요",
+      "message": "곧 멋진 콘텐츠가 업로드될 거예요!"
+    }
+  },
+  "refresh": {
+    "pullToRefresh": "당겨서 새로고침",
+    "releaseToRefresh": "놓아서 새로고침"
+  },
+  "media": {
+    "videoLoadError": "비디오를 불러올 수 없습니다",
+    "imageLoadError": "이미지를 불러올 수 없습니다",
+    "mediaLoadError": "미디어를 불러올 수 없습니다",
+    "tapToRetry": "탭하여 다시 시도"
+  },
+  "share": {
+    "message": "GrowSnap에서 흥미로운 콘텐츠를 발견했어요! 같이 봐요 😊\n\n{{url}}",
+    "title": "GrowSnap 콘텐츠 공유",
+    "failed": "공유 실패",
+    "failedMessage": "잠시 후 다시 시도해주세요."
+  }
+}

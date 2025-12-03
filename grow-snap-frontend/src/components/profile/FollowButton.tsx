@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
@@ -21,6 +22,7 @@ export default function FollowButton({
   disabled = false,
 }: FollowButtonProps) {
   const styles = useStyles();
+  const { t } = useTranslation('profile');
 
   return (
     <TouchableOpacity
@@ -47,7 +49,7 @@ export default function FollowButton({
             isFollowing ? styles.buttonTextFollowing : styles.buttonTextNotFollowing,
           ]}
         >
-          {isFollowing ? '팔로잉' : '팔로우'}
+          {isFollowing ? t('buttons.following') : t('buttons.follow')}
         </Text>
       )}
     </TouchableOpacity>

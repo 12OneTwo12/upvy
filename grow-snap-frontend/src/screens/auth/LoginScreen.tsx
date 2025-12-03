@@ -8,6 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/common';
@@ -23,6 +24,7 @@ const { width } = Dimensions.get('window');
  * 깔끔하고 미니멀한 디자인으로 전문적인 느낌
  */
 export default function LoginScreen() {
+  const { t } = useTranslation('auth');
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
@@ -37,9 +39,9 @@ export default function LoginScreen() {
   useEffect(() => {
     if (error) {
       logError(new Error(error), 'LoginScreen.googleAuth');
-      showErrorAlert(error, '로그인 실패');
+      showErrorAlert(error, t('login.loginFailed'));
     }
-  }, [error]);
+  }, [error, t]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -64,23 +66,23 @@ export default function LoginScreen() {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.title}>GrowSnap</Text>
-            <Text style={styles.tagline}>성장을 위한 첫 걸음</Text>
+            <Text style={styles.title}>{t('login.appName')}</Text>
+            <Text style={styles.tagline}>{t('login.tagline')}</Text>
           </View>
 
           {/* 가치 제안 */}
           <View style={styles.valuePropsContainer}>
             <ValueProp
-              title="가볍게 성장하는 쇼츠"
-              description="나도 모르는 사이 성장해 있는 숏폼"
+              title={t('login.valueProps.shorts.title')}
+              description={t('login.valueProps.shorts.description')}
             />
             <ValueProp
-              title="매일 성장하는 습관"
-              description="짧고 깊이있는 콘텐츠로 매일 배우는 즐거움"
+              title={t('login.valueProps.habit.title')}
+              description={t('login.valueProps.habit.description')}
             />
             <ValueProp
-              title="나만의 학습 여정"
-              description="관심사에 맞춘 개인화된 추천"
+              title={t('login.valueProps.journey.title')}
+              description={t('login.valueProps.journey.description')}
             />
           </View>
         </View>
@@ -96,22 +98,32 @@ export default function LoginScreen() {
             loading={isLoading}
             style={styles.googleButton}
           >
-            Google로 계속하기
+            {t('login.googleLogin')}
           </Button>
 
           {/* 약관 동의 */}
           <Text style={styles.termsText}>
-            계속 진행하시면{' '}
-            <Text style={styles.termsLink}>서비스 약관</Text> 및{' '}
-            <Text style={styles.termsLink}>개인정보 보호정책</Text>에
-            동의하시는 것으로 간주됩니다.
+            {t('login.termsAgree', {
+              termsOfService: '',
+              privacyPolicy: '',
+            }).split('{{termsOfService}}')[0]}
+            <Text style={styles.termsLink}>{t('login.termsOfService')}</Text>
+            {t('login.termsAgree', {
+              termsOfService: '',
+              privacyPolicy: '',
+            }).split('{{termsOfService}}')[1].split('{{privacyPolicy}}')[0]}
+            <Text style={styles.termsLink}>{t('login.privacyPolicy')}</Text>
+            {t('login.termsAgree', {
+              termsOfService: '',
+              privacyPolicy: '',
+            }).split('{{privacyPolicy}}')[1]}
           </Text>
 
           {/* 개발 모드 표시 */}
           {__DEV__ && (
             <View style={styles.devNotice}>
               <Text style={styles.devNoticeText}>
-                개발 모드 • Google OAuth 설정 필요
+                {t('login.devMode')}
               </Text>
               <Button
                 variant="outline"
@@ -119,11 +131,11 @@ export default function LoginScreen() {
                 onPress={async () => {
                   const { logout } = useAuthStore.getState();
                   await logout();
-                  showErrorAlert('AsyncStorage 데이터가 모두 삭제되었습니다.', '초기화 완료');
+                  showErrorAlert(t('login.devModeResetSuccess'), t('login.devModeResetTitle'));
                 }}
                 style={{ marginTop: theme.spacing[2] }}
               >
-                데이터 초기화 (개발용)
+                {t('login.devModeReset')}
               </Button>
             </View>
           )}

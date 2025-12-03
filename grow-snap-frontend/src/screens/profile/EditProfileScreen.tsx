@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { ProfileAvatar } from '@/components/profile';
 import { useAuthStore } from '@/stores/authStore';
@@ -226,6 +227,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditProfile
 
 export default function EditProfileScreen() {
   const styles = useStyles();
+  const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const { profile: storeProfile, updateProfile } = useAuthStore();
 
@@ -261,8 +263,8 @@ export default function EditProfileScreen() {
 
       if (!permission.granted) {
         Alert.alert(
-          '권한 필요',
-          `${useCamera ? '카메라' : '갤러리'} 접근 권한이 필요합니다.`
+          t('edit.error.permissionDenied'),
+          t('edit.error.permissionMessage', { type: useCamera ? t('edit.imageOptions.camera') : t('edit.imageOptions.gallery') })
         );
         return;
       }
@@ -291,7 +293,7 @@ export default function EditProfileScreen() {
           async () => await uploadProfileImage(imageUri),
           {
             showAlert: true,
-            alertTitle: '이미지 업로드 실패',
+            alertTitle: t('edit.error.uploadFailed'),
             logContext: 'EditProfileScreen.uploadImage',
           }
         );
@@ -305,25 +307,25 @@ export default function EditProfileScreen() {
       setIsUploadingImage(false);
       console.error('Image picker error:', error);
       showErrorAlert(
-        '이미지를 선택하는 중 오류가 발생했습니다.',
-        '오류'
+        t('edit.error.imagePickerError'),
+        t('common:button.confirm')
       );
     }
   };
 
   // 이미지 변경 옵션 표시
   const showImageOptions = () => {
-    Alert.alert('프로필 이미지 변경', '이미지를 어떻게 선택하시겠습니까?', [
+    Alert.alert(t('edit.imageOptions.title'), t('edit.imageOptions.message'), [
       {
-        text: '카메라로 촬영',
+        text: t('edit.imageOptions.camera'),
         onPress: () => pickImage(true),
       },
       {
-        text: '갤러리에서 선택',
+        text: t('edit.imageOptions.gallery'),
         onPress: () => pickImage(false),
       },
       {
-        text: '취소',
+        text: t('common:button.cancel'),
         style: 'cancel',
       },
     ]);
@@ -332,7 +334,7 @@ export default function EditProfileScreen() {
   // 닉네임 중복 확인
   const handleCheckNickname = async () => {
     if (!nickname || nickname.length < 2) {
-      showErrorAlert('닉네임은 2자 이상이어야 합니다.', '알림');
+      showErrorAlert(t('edit.nickname.minLength'), t('common:button.confirm'));
       return;
     }
 
@@ -346,7 +348,7 @@ export default function EditProfileScreen() {
       async () => await checkNickname(nickname),
       {
         showAlert: true,
-        alertTitle: '닉네임 확인 실패',
+        alertTitle: t('edit.error.checkFailed'),
         logContext: 'EditProfileScreen.checkNickname',
       }
     );
@@ -355,7 +357,7 @@ export default function EditProfileScreen() {
     if (result) {
       setNicknameAvailable(!result.isDuplicated);
       if (result.isDuplicated) {
-        showErrorAlert('이미 사용 중인 닉네임입니다.', '알림');
+        showErrorAlert(t('edit.error.duplicatedNickname'), t('common:button.confirm'));
       }
     }
   };
@@ -363,7 +365,7 @@ export default function EditProfileScreen() {
   // 저장
   const handleSave = async () => {
     if (!nickname || nicknameAvailable !== true) {
-      showErrorAlert('닉네임을 입력하고 중복 확인을 해주세요.', '알림');
+      showErrorAlert(t('edit.nickname.checkRequired'), t('common:button.confirm'));
       return;
     }
 
@@ -377,7 +379,7 @@ export default function EditProfileScreen() {
         }),
       {
         showAlert: true,
-        alertTitle: '프로필 수정 실패',
+        alertTitle: t('edit.error.saveFailed'),
         logContext: 'EditProfileScreen.save',
       }
     );
@@ -385,9 +387,9 @@ export default function EditProfileScreen() {
 
     if (result) {
       updateProfile(result);
-      Alert.alert('성공', '프로필이 수정되었습니다.', [
+      Alert.alert(t('edit.success.title'), t('edit.success.message'), [
         {
-          text: '확인',
+          text: t('common:button.confirm'),
           onPress: () => navigation.goBack(),
         },
       ]);
@@ -403,9 +405,9 @@ export default function EditProfileScreen() {
           style={styles.headerButton}
           disabled={isSaving}
         >
-          <Text style={[styles.headerButtonText, styles.cancelText]}>취소</Text>
+          <Text style={[styles.headerButtonText, styles.cancelText]}>{t('common:button.cancel')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>프로필 수정</Text>
+        <Text style={styles.headerTitle}>{t('edit.title')}</Text>
         <TouchableOpacity
           onPress={handleSave}
           style={styles.headerButton}
@@ -414,7 +416,7 @@ export default function EditProfileScreen() {
           {isSaving ? (
             <ActivityIndicator size="small" color={theme.colors.primary[600]} />
           ) : (
-            <Text style={styles.headerButtonText}>완료</Text>
+            <Text style={styles.headerButtonText}>{t('common:button.done')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -452,7 +454,7 @@ export default function EditProfileScreen() {
               activeOpacity={0.6}
             >
               <Text style={styles.changePhotoText}>
-                {isUploadingImage ? '업로드 중...' : '프로필 사진 변경'}
+                {isUploadingImage ? t('edit.uploading') : t('edit.changePhoto')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -461,12 +463,12 @@ export default function EditProfileScreen() {
           <View style={styles.formSection}>
             {/* 닉네임 필드 */}
             <View style={styles.fieldRow}>
-              <Text style={styles.label}>닉네임</Text>
+              <Text style={styles.label}>{t('edit.nicknameLabel')}</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
                   value={nickname}
                   onChangeText={setNickname}
-                  placeholder="닉네임을 입력하세요"
+                  placeholder={t('edit.nicknamePlaceholder')}
                   placeholderTextColor={theme.colors.text.tertiary}
                   maxLength={20}
                   style={styles.input}
@@ -482,7 +484,7 @@ export default function EditProfileScreen() {
                         onPress={handleCheckNickname}
                         activeOpacity={0.7}
                       >
-                        <Text style={styles.checkButtonText}>확인</Text>
+                        <Text style={styles.checkButtonText}>{t('buttons.check')}</Text>
                       </TouchableOpacity>
                     ) : nicknameAvailable ? (
                       <View style={styles.statusContainer}>
@@ -492,7 +494,7 @@ export default function EditProfileScreen() {
                           color={theme.colors.success}
                           style={styles.statusIcon}
                         />
-                        <Text style={styles.successText}>사용가능</Text>
+                        <Text style={styles.successText}>{t('edit.nickname.available')}</Text>
                       </View>
                     ) : (
                       <View style={styles.statusContainer}>
@@ -502,7 +504,7 @@ export default function EditProfileScreen() {
                           color={theme.colors.error}
                           style={styles.statusIcon}
                         />
-                        <Text style={styles.errorText}>중복됨</Text>
+                        <Text style={styles.errorText}>{t('edit.nickname.duplicated')}</Text>
                       </View>
                     )}
                   </>
@@ -512,12 +514,12 @@ export default function EditProfileScreen() {
 
             {/* 자기소개 필드 */}
             <View style={[styles.fieldRow, styles.bioFieldRow]}>
-              <Text style={styles.label}>자기소개</Text>
+              <Text style={styles.label}>{t('edit.bio')}</Text>
               <View style={styles.bioInputWrapper}>
                 <TextInput
                   value={bio}
                   onChangeText={setBio}
-                  placeholder="자기소개를 입력하세요"
+                  placeholder={t('edit.bioPlaceholder')}
                   placeholderTextColor={theme.colors.text.tertiary}
                   multiline
                   maxLength={150}
@@ -528,14 +530,14 @@ export default function EditProfileScreen() {
 
             {/* 글자수 표시 */}
             <View style={styles.helperTextRow}>
-              <Text style={styles.helperText}>{bio.length}/150자</Text>
+              <Text style={styles.helperText}>{t('edit.bioLength', { length: bio.length })}</Text>
             </View>
           </View>
 
           {/* 추가 정보 */}
           <View style={styles.infoSection}>
             <Text style={styles.infoText}>
-              프로필 정보는 GrowSnap을 사용하는 모든 사용자에게 공개됩니다.
+              {t('edit.info')}
             </Text>
           </View>
         </ScrollView>

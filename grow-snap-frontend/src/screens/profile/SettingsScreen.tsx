@@ -11,8 +11,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
+import { useLanguageStore } from '@/stores/languageStore';
+import { supportedLanguages } from '@/locales';
 import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import { deleteUser } from '@/api/user.api';
@@ -148,23 +151,30 @@ const useStyles = createStyleSheet({
 export default function SettingsScreen() {
   const styles = useStyles();
   const navigation = useNavigation<NavigationProp>();
+  const { t } = useTranslation('settings');
   const { logout } = useAuthStore();
+  const { currentLanguage } = useLanguageStore();
 
   // 백엔드 API 준비 후 실제 값으로 대체될 임시 상태
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [privateAccount, setPrivateAccount] = useState(false);
 
+  // 현재 선택된 언어 표시 텍스트 가져오기
+  const currentLanguageDisplay = supportedLanguages.find(
+    lang => lang.code === currentLanguage
+  )?.name || '한국어';
+
   /**
    * 로그아웃 처리
    */
   const handleLogout = () => {
-    Alert.alert('로그아웃', '정말 로그아웃하시겠습니까?', [
+    Alert.alert(t('logout.title'), t('logout.message'), [
       {
-        text: '취소',
+        text: t('common:button.cancel'),
         style: 'cancel',
       },
       {
-        text: '로그아웃',
+        text: t('logout.button'),
         onPress: async () => {
           await logout();
         },
@@ -178,21 +188,21 @@ export default function SettingsScreen() {
    */
   const handleDeleteAccount = () => {
     Alert.alert(
-      '회원 탈퇴',
-      '정말 탈퇴하시겠습니까? 모든 데이터가 삭제되며 복구할 수 없습니다.',
+      t('withdraw.title'),
+      t('withdraw.message'),
       [
         {
-          text: '취소',
+          text: t('common:button.cancel'),
           style: 'cancel',
         },
         {
-          text: '탈퇴',
+          text: t('withdraw.button'),
           onPress: async () => {
             const result = await withErrorHandling(
               async () => await deleteUser(),
               {
                 showAlert: true,
-                alertTitle: '회원 탈퇴 실패',
+                alertTitle: t('withdraw.failed'),
                 logContext: 'SettingsScreen.deleteAccount',
               }
             );
@@ -220,9 +230,9 @@ export default function SettingsScreen() {
    */
   const showComingSoonAlert = (featureName: string) => {
     Alert.alert(
-      '준비 중',
-      `${featureName} 기능은 현재 개발 중입니다.\n곧 사용 가능합니다.`,
-      [{ text: '확인' }]
+      t('comingSoon.title'),
+      t('comingSoon.message', { feature: featureName }),
+      [{ text: t('common:button.confirm') }]
     );
   };
 
@@ -247,6 +257,13 @@ export default function SettingsScreen() {
     navigation.navigate('HelpSupport');
   };
 
+  /**
+   * 언어 선택 화면으로 이동
+   */
+  const handleLanguageSelector = () => {
+    navigation.navigate('LanguageSelector');
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -261,13 +278,13 @@ export default function SettingsScreen() {
             color={theme.colors.text.primary}
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>설정</Text>
+        <Text style={styles.headerTitle}>{t('title')}</Text>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Account Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>계정</Text>
+          <Text style={styles.sectionTitle}>{t('sections.account')}</Text>
 
           <TouchableOpacity style={styles.settingRow} onPress={handleEditProfile}>
             <View style={styles.settingLeft}>
@@ -278,8 +295,8 @@ export default function SettingsScreen() {
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>프로필 편집</Text>
-                <Text style={styles.settingSubtitle}>닉네임, 소개 등 수정</Text>
+                <Text style={styles.settingLabel}>{t('account.editProfile')}</Text>
+                <Text style={styles.settingSubtitle}>{t('account.editProfileSubtitle')}</Text>
               </View>
             </View>
             <Ionicons
@@ -294,7 +311,7 @@ export default function SettingsScreen() {
 
         {/* Privacy & Security */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>개인정보 및 보안</Text>
+          <Text style={styles.sectionTitle}>{t('sections.privacy')}</Text>
 
           <View
             style={[styles.settingRow, styles.settingRowDisabled]}
@@ -308,13 +325,13 @@ export default function SettingsScreen() {
               />
               <View style={styles.settingContent}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.settingLabel}>비공개 계정</Text>
+                  <Text style={styles.settingLabel}>{t('privacy.privateAccount')}</Text>
                   <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText}>준비중</Text>
+                    <Text style={styles.comingSoonText}>{t('common:label.preparing')}</Text>
                   </View>
                 </View>
                 <Text style={styles.settingSubtitle}>
-                  팔로워 승인 필요
+                  {t('privacy.privateAccountSubtitle')}
                 </Text>
               </View>
             </View>
@@ -342,9 +359,9 @@ export default function SettingsScreen() {
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>차단 관리</Text>
+                <Text style={styles.settingLabel}>{t('privacy.blockManagement')}</Text>
                 <Text style={styles.settingSubtitle}>
-                  차단한 사용자 및 콘텐츠 관리
+                  {t('privacy.blockManagementSubtitle')}
                 </Text>
               </View>
             </View>
@@ -360,7 +377,7 @@ export default function SettingsScreen() {
 
         {/* Notifications */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>알림</Text>
+          <Text style={styles.sectionTitle}>{t('sections.notifications')}</Text>
 
           <View
             style={[styles.settingRow, styles.settingRowDisabled]}
@@ -374,13 +391,13 @@ export default function SettingsScreen() {
               />
               <View style={styles.settingContent}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.settingLabel}>알림</Text>
+                  <Text style={styles.settingLabel}>{t('notifications.notifications')}</Text>
                   <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText}>준비중</Text>
+                    <Text style={styles.comingSoonText}>{t('common:label.preparing')}</Text>
                   </View>
                 </View>
                 <Text style={styles.settingSubtitle}>
-                  좋아요, 댓글, 팔로우 알림
+                  {t('notifications.notificationsSubtitle')}
                 </Text>
               </View>
             </View>
@@ -401,7 +418,30 @@ export default function SettingsScreen() {
 
         {/* General */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>일반</Text>
+          <Text style={styles.sectionTitle}>{t('sections.general')}</Text>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleLanguageSelector}
+          >
+            <View style={styles.settingLeft}>
+              <Ionicons
+                name="language-outline"
+                size={22}
+                color={theme.colors.text.secondary}
+                style={styles.settingIcon}
+              />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>{t('general.language')}</Text>
+                <Text style={styles.settingSubtitle}>{currentLanguageDisplay}</Text>
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme.colors.gray[400]}
+            />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingRow}
@@ -414,7 +454,7 @@ export default function SettingsScreen() {
                 color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
-              <Text style={styles.settingLabel}>서비스 약관</Text>
+              <Text style={styles.settingLabel}>{t('general.termsOfService')}</Text>
             </View>
             <Ionicons
               name="chevron-forward"
@@ -434,7 +474,7 @@ export default function SettingsScreen() {
                 color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
-              <Text style={styles.settingLabel}>개인정보 보호정책</Text>
+              <Text style={styles.settingLabel}>{t('general.privacyPolicy')}</Text>
             </View>
             <Ionicons
               name="chevron-forward"
@@ -454,7 +494,7 @@ export default function SettingsScreen() {
                 color={theme.colors.text.secondary}
                 style={styles.settingIcon}
               />
-              <Text style={styles.settingLabel}>도움말 및 지원</Text>
+              <Text style={styles.settingLabel}>{t('general.helpSupport')}</Text>
             </View>
             <Ionicons
               name="chevron-forward"
@@ -472,7 +512,7 @@ export default function SettingsScreen() {
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>버전 정보</Text>
+                <Text style={styles.settingLabel}>{t('general.version')}</Text>
                 <Text style={styles.settingSubtitle}>v1.0.0</Text>
               </View>
             </View>
@@ -487,7 +527,7 @@ export default function SettingsScreen() {
             style={styles.logoutButton}
             onPress={handleLogout}
           >
-            <Text style={styles.logoutButtonText}>로그아웃</Text>
+            <Text style={styles.logoutButtonText}>{t('logout.button')}</Text>
           </TouchableOpacity>
 
           <View style={styles.withdrawContainer}>
@@ -495,7 +535,7 @@ export default function SettingsScreen() {
               style={styles.withdrawButton}
               onPress={handleDeleteAccount}
             >
-              <Text style={styles.withdrawText}>회원 탈퇴</Text>
+              <Text style={styles.withdrawText}>{t('withdraw.link')}</Text>
             </TouchableOpacity>
           </View>
         </View>

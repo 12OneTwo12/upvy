@@ -1,0 +1,58 @@
+{
+  "button": {
+    "confirm": "확인",
+    "cancel": "취소",
+    "save": "저장",
+    "delete": "삭제",
+    "edit": "수정",
+    "close": "닫기",
+    "submit": "제출",
+    "retry": "재시도",
+    "back": "뒤로",
+    "next": "다음",
+    "skip": "건너뛰기",
+    "done": "완료",
+    "logout": "로그아웃",
+    "login": "로그인"
+  },
+  "label": {
+    "loading": "로딩 중...",
+    "noData": "데이터가 없습니다",
+    "comingSoon": "곧 출시",
+    "preparing": "준비중"
+  },
+  "time": {
+    "justNow": "방금 전",
+    "minuteAgo": "{{count}}분 전",
+    "minuteAgo_plural": "{{count}}분 전",
+    "hourAgo": "{{count}}시간 전",
+    "hourAgo_plural": "{{count}}시간 전",
+    "dayAgo": "{{count}}일 전",
+    "dayAgo_plural": "{{count}}일 전",
+    "weekAgo": "{{count}}주 전",
+    "weekAgo_plural": "{{count}}주 전",
+    "monthAgo": "{{count}}개월 전",
+    "monthAgo_plural": "{{count}}개월 전",
+    "yearAgo": "{{count}}년 전",
+    "yearAgo_plural": "{{count}}년 전"
+  },
+  "unit": {
+    "views": "조회 {{count}}회",
+    "likes": "좋아요 {{count}}개",
+    "comments": "댓글 {{count}}개",
+    "followers": "팔로워 {{count}}명",
+    "following": "팔로잉 {{count}}명",
+    "posts": "게시물 {{count}}개"
+  },
+  "navigation": {
+    "explore": "탐색",
+    "search": "검색",
+    "feed": "피드",
+    "upload": "업로드",
+    "profile": "프로필"
+  },
+  "screen": {
+    "content": "콘텐츠",
+    "category": "카테고리"
+  }
+}

@@ -18,12 +18,14 @@ import {
 } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
 import { useFeed } from '@/hooks/useFeed';
 import type { FeedTab, FeedItem as FeedItemType } from '@/types/feed.types';
 
 export default function FeedScreen() {
+  const { t } = useTranslation('feed');
   const [currentTab, setCurrentTab] = useState<FeedTab>('recommended');
   const queryClient = useQueryClient();
   const navigation = useNavigation();
@@ -180,7 +182,7 @@ export default function FeedScreen() {
               color: currentTab === 'following' ? '#FFFFFF' : '#888888',
             }}
           >
-            팔로잉
+            {t('tabs.following')}
           </Text>
         </TouchableOpacity>
 
@@ -204,7 +206,7 @@ export default function FeedScreen() {
               color: currentTab === 'recommended' ? '#FFFFFF' : '#888888',
             }}
           >
-            추천
+            {t('tabs.forYou')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -230,7 +232,7 @@ export default function FeedScreen() {
             }}
           >
             <Text style={{ color: 'white', fontSize: 14 }}>
-              {pullDistance > 60 ? '🔄 놓아서 새로고침' : '⬇️ 당겨서 새로고침'}
+              {pullDistance > 60 ? `🔄 ${t('refresh.releaseToRefresh')}` : `⬇️ ${t('refresh.pullToRefresh')}`}
             </Text>
           </View>
         </View>
@@ -259,8 +261,8 @@ export default function FeedScreen() {
             }}
           >
             {currentTab === 'following'
-              ? '팔로우한 크리에이터가 없어요'
-              : '아직 콘텐츠가 없어요'}
+              ? t('empty.following.title')
+              : t('empty.recommended.title')}
           </Text>
           <Text
             style={{
@@ -271,8 +273,8 @@ export default function FeedScreen() {
             }}
           >
             {currentTab === 'following'
-              ? '관심있는 크리에이터를 팔로우하고\n최신 콘텐츠를 받아보세요!'
-              : '곧 멋진 콘텐츠가 업로드될 거예요!'}
+              ? t('empty.following.message')
+              : t('empty.recommended.message')}
           </Text>
         </View>
       ) : (

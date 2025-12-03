@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList, ProfileStackParamList } from '@/types/navigation.types';
 import { ProfileHeader, ContentGrid } from '@/components/profile';
 import { Button, LoadingSpinner } from '@/components/common';
@@ -150,6 +151,7 @@ type TabType = 'my' | 'saved';
 
 export default function ProfileScreen() {
   const styles = useStyles();
+  const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const { profile: storeProfile, user, updateProfile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('my');
@@ -278,7 +280,7 @@ export default function ProfileScreen() {
             style={styles.editButton}
             textStyle={styles.editButtonText}
           >
-            프로필 수정
+            {t('buttons.editProfile')}
           </Button>
         </View>
 
@@ -290,7 +292,7 @@ export default function ProfileScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'my' && styles.tabTextActive]}>
-              내 콘텐츠
+              {t('tabs.myContent')}
             </Text>
             {activeTab === 'my' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
@@ -300,7 +302,7 @@ export default function ProfileScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'saved' && styles.tabTextActive]}>
-              저장됨
+              {t('tabs.saved')}
             </Text>
             {activeTab === 'saved' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
@@ -322,8 +324,8 @@ export default function ProfileScreen() {
                     color={theme.colors.gray[300]}
                     style={styles.emptyIcon}
                   />
-                  <Text style={styles.emptyText}>아직 업로드한 콘텐츠가 없습니다</Text>
-                  <Text style={styles.emptySubtext}>첫 콘텐츠를 업로드해보세요!</Text>
+                  <Text style={styles.emptyText}>{t('content.noPosts')}</Text>
+                  <Text style={styles.emptySubtext}>{t('content.noPostsSubtitle')}</Text>
                 </View>
               ) : (
                 <ContentGrid
@@ -347,8 +349,8 @@ export default function ProfileScreen() {
                     color={theme.colors.gray[300]}
                     style={styles.emptyIcon}
                   />
-                  <Text style={styles.emptyText}>저장한 콘텐츠가 없습니다</Text>
-                  <Text style={styles.emptySubtext}>마음에 드는 콘텐츠를 저장해보세요</Text>
+                  <Text style={styles.emptyText}>{t('content.noSaved')}</Text>
+                  <Text style={styles.emptySubtext}>{t('content.noSavedSubtitle')}</Text>
                 </View>
               ) : (
                 <ContentGrid

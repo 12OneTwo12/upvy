@@ -20,6 +20,7 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { getMyContents, deleteContent } from '@/api/content.api';
 import type { ContentResponse, ContentType } from '@/types/content.types';
@@ -33,6 +34,7 @@ type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'VIDEO' | 'PHOTO';
 
 export default function ContentManagementScreen({ navigation }: any) {
+  const { t } = useTranslation(['upload', 'common']);
   const [contents, setContents] = useState<ContentResponse[]>([]);
   const [filteredContents, setFilteredContents] = useState<ContentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +57,7 @@ export default function ContentManagementScreen({ navigation }: any) {
       setContents(data);
     } catch (error) {
       console.error('Failed to load contents:', error);
-      Alert.alert('오류', '콘텐츠를 불러오는데 실패했습니다.');
+      Alert.alert(t('common:label.error', 'Error'), t('upload:management.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -77,26 +79,26 @@ export default function ContentManagementScreen({ navigation }: any) {
 
   const handleEdit = (content: ContentResponse) => {
     // TODO: 수정 화면으로 이동
-    Alert.alert('준비 중', '콘텐츠 수정 기능은 곧 제공됩니다.');
+    Alert.alert(t('common:label.preparing', 'Preparing'), t('upload:management.editComingSoon'));
   };
 
   const handleDelete = (content: ContentResponse) => {
     Alert.alert(
-      '콘텐츠 삭제',
-      '이 콘텐츠를 삭제하시겠습니까?\n삭제된 콘텐츠는 복구할 수 없습니다.',
+      t('upload:management.deleteConfirm'),
+      t('upload:management.deleteMessage'),
       [
-        { text: '취소', style: 'cancel' },
+        { text: t('common:button.cancel'), style: 'cancel' },
         {
-          text: '삭제',
+          text: t('common:button.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteContent(content.id);
               setContents(contents.filter((c) => c.id !== content.id));
-              Alert.alert('완료', '콘텐츠가 삭제되었습니다.');
+              Alert.alert(t('common:label.done', 'Done'), t('upload:management.deleteSuccess'));
             } catch (error) {
               console.error('Failed to delete content:', error);
-              Alert.alert('오류', '콘텐츠 삭제에 실패했습니다.');
+              Alert.alert(t('common:label.error', 'Error'), t('upload:management.deleteFailed'));
             }
           },
         },
@@ -109,10 +111,10 @@ export default function ContentManagementScreen({ navigation }: any) {
       style={styles.gridItem}
       onPress={() => {
         // TODO: 상세 화면으로 이동
-        Alert.alert('콘텐츠', item.title, [
-          { text: '수정', onPress: () => handleEdit(item) },
-          { text: '삭제', onPress: () => handleDelete(item), style: 'destructive' },
-          { text: '취소', style: 'cancel' },
+        Alert.alert(t('upload:management.title'), item.title, [
+          { text: t('common:button.edit'), onPress: () => handleEdit(item) },
+          { text: t('common:button.delete'), onPress: () => handleDelete(item), style: 'destructive' },
+          { text: t('common:button.cancel'), style: 'cancel' },
         ]);
       }}
       activeOpacity={0.7}
@@ -139,10 +141,10 @@ export default function ContentManagementScreen({ navigation }: any) {
     <TouchableOpacity
       style={styles.listItem}
       onPress={() => {
-        Alert.alert('콘텐츠', item.title, [
-          { text: '수정', onPress: () => handleEdit(item) },
-          { text: '삭제', onPress: () => handleDelete(item), style: 'destructive' },
-          { text: '취소', style: 'cancel' },
+        Alert.alert(t('upload:management.title'), item.title, [
+          { text: t('common:button.edit'), onPress: () => handleEdit(item) },
+          { text: t('common:button.delete'), onPress: () => handleDelete(item), style: 'destructive' },
+          { text: t('common:button.cancel'), style: 'cancel' },
         ]);
       }}
       activeOpacity={0.7}
@@ -154,14 +156,14 @@ export default function ContentManagementScreen({ navigation }: any) {
           {item.title}
         </Text>
         <Text style={styles.listDescription} numberOfLines={1}>
-          {item.description || '설명 없음'}
+          {item.description || t('upload:management.noDescription')}
         </Text>
 
         <View style={styles.listStats}>
           <Text style={styles.listStatText}>👁 {0}</Text>
           <Text style={styles.listStatText}>❤️ {0}</Text>
           <Text style={styles.listStatText}>
-            {item.contentType === 'VIDEO' ? '🎥 비디오' : '📷 사진'}
+            {item.contentType === 'VIDEO' ? `🎥 ${t('upload:management.contentType.video')}` : `📷 ${t('upload:management.contentType.photo')}`}
           </Text>
         </View>
 
@@ -185,13 +187,13 @@ export default function ContentManagementScreen({ navigation }: any) {
       {/* 헤더 */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.headerButton}>뒤로</Text>
+          <Text style={styles.headerButton}>{t('upload:management.back')}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>내 콘텐츠</Text>
+        <Text style={styles.headerTitle}>{t('upload:management.title')}</Text>
 
         <TouchableOpacity onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}>
-          <Text style={styles.headerButton}>{viewMode === 'grid' ? '리스트' : '그리드'}</Text>
+          <Text style={styles.headerButton}>{viewMode === 'grid' ? t('upload:management.list') : t('upload:management.grid')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -199,19 +201,19 @@ export default function ContentManagementScreen({ navigation }: any) {
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{contents.length}</Text>
-          <Text style={styles.statLabel}>전체</Text>
+          <Text style={styles.statLabel}>{t('upload:management.stats.total')}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>
             {contents.filter((c) => c.contentType === 'VIDEO').length}
           </Text>
-          <Text style={styles.statLabel}>비디오</Text>
+          <Text style={styles.statLabel}>{t('upload:management.stats.videos')}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>
             {contents.filter((c) => c.contentType === 'PHOTO').length}
           </Text>
-          <Text style={styles.statLabel}>사진</Text>
+          <Text style={styles.statLabel}>{t('upload:management.stats.photos')}</Text>
         </View>
       </View>
 
@@ -227,7 +229,7 @@ export default function ContentManagementScreen({ navigation }: any) {
               filter === 'all' && styles.filterButtonTextActive,
             ]}
           >
-            전체
+            {t('upload:management.all')}
           </Text>
         </TouchableOpacity>
 
@@ -241,7 +243,7 @@ export default function ContentManagementScreen({ navigation }: any) {
               filter === 'VIDEO' && styles.filterButtonTextActive,
             ]}
           >
-            비디오
+            {t('upload:management.video')}
           </Text>
         </TouchableOpacity>
 
@@ -255,7 +257,7 @@ export default function ContentManagementScreen({ navigation }: any) {
               filter === 'PHOTO' && styles.filterButtonTextActive,
             ]}
           >
-            사진
+            {t('upload:management.photo')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -264,9 +266,9 @@ export default function ContentManagementScreen({ navigation }: any) {
       {filteredContents.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>📦</Text>
-          <Text style={styles.emptyTitle}>콘텐츠가 없습니다</Text>
+          <Text style={styles.emptyTitle}>{t('upload:management.empty.title')}</Text>
           <Text style={styles.emptyDescription}>
-            첫 번째 콘텐츠를 업로드해보세요!
+            {t('upload:management.empty.description')}
           </Text>
         </View>
       ) : (

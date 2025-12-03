@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, Clipboard } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types/navigation.types';
 import { theme } from '@/theme';
@@ -164,11 +165,12 @@ const useStyles = createStyleSheet({
 export default function HelpSupportScreen() {
   const styles = useStyles();
   const navigation = useNavigation<NavigationProp>();
+  const { t } = useTranslation('legal');
 
   const handleContactSupport = () => {
     const url = 'https://github.com/12OneTwo12/grow-snap/issues';
     Linking.openURL(url).catch(() => {
-      Alert.alert('오류', 'GitHub Issues를 열 수 없습니다.');
+      Alert.alert(t('helpSupport.contact.email.error'), t('helpSupport.contact.email.errorMessage'));
     });
   };
 
@@ -178,9 +180,9 @@ export default function HelpSupportScreen() {
       // 이메일 클라이언트가 없으면 이메일 주소 복사
       Clipboard.setString(SUPPORT_EMAIL);
       Alert.alert(
-        '이메일 주소 복사됨',
-        `${SUPPORT_EMAIL}\n\n이메일 주소가 클립보드에 복사되었습니다.`,
-        [{ text: '확인' }]
+        t('helpSupport.contact.email.copied'),
+        `${SUPPORT_EMAIL}\n\n${t('helpSupport.contact.email.copiedMessage')}`,
+        [{ text: t('common:button.confirm') }]
       );
     });
   };
@@ -199,18 +201,16 @@ export default function HelpSupportScreen() {
             color={theme.colors.text.primary}
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>도움말 및 지원</Text>
+        <Text style={styles.headerTitle}>{t('helpSupport.title')}</Text>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <Text style={styles.intro}>
-            GrowSnap 이용에 도움이 필요하신가요? 자주 묻는 질문과 주요 기능 안내를 확인해보세요.
-          </Text>
+          <Text style={styles.intro}>{t('helpSupport.intro')}</Text>
 
           {/* Main Features */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>주요 기능</Text>
+            <Text style={styles.sectionTitle}>{t('helpSupport.features.title')}</Text>
 
             <View style={styles.helpItem}>
               <Ionicons
@@ -220,10 +220,8 @@ export default function HelpSupportScreen() {
                 style={styles.helpIcon}
               />
               <View style={styles.helpContent}>
-                <Text style={styles.helpTitle}>스마트 피드</Text>
-                <Text style={styles.helpDescription}>
-                  개인화된 숏폼 콘텐츠를 스와이프하며 자연스럽게 학습하세요. AI 추천 알고리즘이 당신의 관심사에 맞는 콘텐츠를 제공합니다.
-                </Text>
+                <Text style={styles.helpTitle}>{t('helpSupport.features.smartFeed.title')}</Text>
+                <Text style={styles.helpDescription}>{t('helpSupport.features.smartFeed.description')}</Text>
               </View>
             </View>
 
@@ -235,10 +233,8 @@ export default function HelpSupportScreen() {
                 style={styles.helpIcon}
               />
               <View style={styles.helpContent}>
-                <Text style={styles.helpTitle}>콘텐츠 검색</Text>
-                <Text style={styles.helpDescription}>
-                  키워드, 크리에이터, 카테고리별로 원하는 콘텐츠를 찾아보세요. 학문, 비즈니스, 자기계발 등 다양한 주제가 준비되어 있습니다.
-                </Text>
+                <Text style={styles.helpTitle}>{t('helpSupport.features.search.title')}</Text>
+                <Text style={styles.helpDescription}>{t('helpSupport.features.search.description')}</Text>
               </View>
             </View>
 
@@ -250,10 +246,8 @@ export default function HelpSupportScreen() {
                 style={styles.helpIcon}
               />
               <View style={styles.helpContent}>
-                <Text style={styles.helpTitle}>콘텐츠 제작</Text>
-                <Text style={styles.helpDescription}>
-                  누구나 크리에이터가 될 수 있습니다. 비디오나 이미지를 업로드하고 지식을 공유해보세요.
-                </Text>
+                <Text style={styles.helpTitle}>{t('helpSupport.features.upload.title')}</Text>
+                <Text style={styles.helpDescription}>{t('helpSupport.features.upload.description')}</Text>
               </View>
             </View>
 
@@ -265,76 +259,56 @@ export default function HelpSupportScreen() {
                 style={styles.helpIcon}
               />
               <View style={styles.helpContent}>
-                <Text style={styles.helpTitle}>소셜 기능</Text>
-                <Text style={styles.helpDescription}>
-                  좋아요, 댓글, 저장, 공유로 다른 사용자와 소통하고, 관심있는 크리에이터를 팔로우하세요.
-                </Text>
+                <Text style={styles.helpTitle}>{t('helpSupport.features.social.title')}</Text>
+                <Text style={styles.helpDescription}>{t('helpSupport.features.social.description')}</Text>
               </View>
             </View>
           </View>
 
           {/* FAQ */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>자주 묻는 질문</Text>
+            <Text style={styles.sectionTitle}>{t('helpSupport.faq.title')}</Text>
 
             <View style={styles.faqItem}>
-              <Text style={styles.question}>Q. GrowSnap은 어떤 서비스인가요?</Text>
-              <Text style={styles.answer}>
-                GrowSnap은 <Text style={styles.emphasis}>"스크롤 시간을 성장 시간으로"</Text> 만드는 숏폼 학습 플랫폼입니다.
-                재미있게 콘텐츠를 소비하면서 자연스럽게 새로운 지식과 인사이트를 얻을 수 있습니다.
-              </Text>
+              <Text style={styles.question}>{t('helpSupport.faq.q1.question')}</Text>
+              <Text style={styles.answer}>{t('helpSupport.faq.q1.answer')}</Text>
             </View>
 
             <View style={styles.faqItem}>
-              <Text style={styles.question}>Q. 회원가입은 어떻게 하나요?</Text>
-              <Text style={styles.answer}>
-                Google, Naver, Kakao 계정으로 간편하게 소셜 로그인할 수 있습니다. 별도의 비밀번호 설정이 필요 없습니다.
-              </Text>
+              <Text style={styles.question}>{t('helpSupport.faq.q2.question')}</Text>
+              <Text style={styles.answer}>{t('helpSupport.faq.q2.answer')}</Text>
             </View>
 
             <View style={styles.faqItem}>
-              <Text style={styles.question}>Q. 콘텐츠는 무료인가요?</Text>
-              <Text style={styles.answer}>
-                네, 현재 모든 콘텐츠는 무료로 이용하실 수 있습니다. 추후 프리미엄 콘텐츠가 추가될 수 있습니다.
-              </Text>
+              <Text style={styles.question}>{t('helpSupport.faq.q3.question')}</Text>
+              <Text style={styles.answer}>{t('helpSupport.faq.q3.answer')}</Text>
             </View>
 
             <View style={styles.faqItem}>
-              <Text style={styles.question}>Q. 콘텐츠를 업로드하려면 어떻게 해야 하나요?</Text>
-              <Text style={styles.answer}>
-                하단의 업로드 탭(+)을 선택하여 비디오 또는 이미지를 업로드할 수 있습니다. 최대 500MB, 1분 이내의 영상을 지원합니다.
-              </Text>
+              <Text style={styles.question}>{t('helpSupport.faq.q4.question')}</Text>
+              <Text style={styles.answer}>{t('helpSupport.faq.q4.answer')}</Text>
             </View>
 
             <View style={styles.faqItem}>
-              <Text style={styles.question}>Q. AI로 생성된 콘텐츠는 무엇인가요?</Text>
-              <Text style={styles.answer}>
-                초기 콘텐츠 확보를 위해 YouTube CC 라이선스 영상을 AI로 편집하여 제공합니다. 모든 콘텐츠에는 원저작자 출처가 명시됩니다.
-              </Text>
+              <Text style={styles.question}>{t('helpSupport.faq.q5.question')}</Text>
+              <Text style={styles.answer}>{t('helpSupport.faq.q5.answer')}</Text>
             </View>
 
             <View style={styles.faqItem}>
-              <Text style={styles.question}>Q. 추천 알고리즘은 어떻게 작동하나요?</Text>
-              <Text style={styles.answer}>
-                사용자의 시청 기록, 좋아요, 저장 등의 행동 데이터를 분석하여 맞춤형 콘텐츠를 추천합니다.
-                인기 콘텐츠(30%), 신규 콘텐츠(20%), 랜덤(10%), 개인화(40%) 비율로 제공됩니다.
-              </Text>
+              <Text style={styles.question}>{t('helpSupport.faq.q6.question')}</Text>
+              <Text style={styles.answer}>{t('helpSupport.faq.q6.answer')}</Text>
             </View>
 
             <View style={styles.faqItem}>
-              <Text style={styles.question}>Q. 계정을 삭제하고 싶어요</Text>
-              <Text style={styles.answer}>
-                설정 &gt; 회원 탈퇴에서 계정을 삭제할 수 있습니다. 삭제된 데이터는 복구할 수 없으니 신중하게 결정해주세요.
-              </Text>
+              <Text style={styles.question}>{t('helpSupport.faq.q7.question')}</Text>
+              <Text style={styles.answer}>{t('helpSupport.faq.q7.answer')}</Text>
             </View>
           </View>
 
           {/* Contact */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>문의하기</Text>
-            <Text style={styles.answer}>
-              추가 문의사항이 있거나 버그를 발견하셨다면 아래 방법으로 연락해주세요.
-            </Text>
+            <Text style={styles.sectionTitle}>{t('helpSupport.contact.title')}</Text>
+            <Text style={styles.answer}>{t('helpSupport.contact.intro')}</Text>
 
             {/* Email Contact */}
             <TouchableOpacity
@@ -342,11 +316,11 @@ export default function HelpSupportScreen() {
               onPress={handleEmailContact}
             >
               <Ionicons name="mail-outline" size={20} color={theme.colors.text.primary} />
-              <Text style={styles.emailButtonText}>이메일로 문의하기</Text>
+              <Text style={styles.emailButtonText}>{t('helpSupport.contact.email.button')}</Text>
             </TouchableOpacity>
 
             <View style={styles.emailInfo}>
-              <Text style={styles.emailLabel}>이메일 주소</Text>
+              <Text style={styles.emailLabel}>{t('helpSupport.contact.email.label')}</Text>
               <Text style={styles.emailAddress}>{SUPPORT_EMAIL}</Text>
             </View>
 
@@ -356,7 +330,7 @@ export default function HelpSupportScreen() {
               onPress={handleContactSupport}
             >
               <Ionicons name="logo-github" size={20} color={theme.colors.text.inverse} />
-              <Text style={styles.contactButtonText}>GitHub Issues 열기</Text>
+              <Text style={styles.contactButtonText}>{t('helpSupport.contact.github.button')}</Text>
             </TouchableOpacity>
           </View>
 
