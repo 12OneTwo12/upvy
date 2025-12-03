@@ -7,7 +7,7 @@
  * - 카메라 버튼이 그리드 첫 번째 위치
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,7 @@ export default function UploadMainScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const isInitialFocus = useRef(true);
 
   useEffect(() => {
     requestPermissions();
@@ -57,8 +58,14 @@ export default function UploadMainScreen({ navigation }: Props) {
   }, [hasPermission, contentType]);
 
   // 화면 포커스 시 미디어 라이브러리 자동 새로고침
+  // 첫 마운트 시에는 실행하지 않아 useEffect와의 중복 호출 방지
   useFocusEffect(
     useCallback(() => {
+      if (isInitialFocus.current) {
+        isInitialFocus.current = false;
+        return;
+      }
+
       if (hasPermission) {
         loadMediaAssets();
       }
