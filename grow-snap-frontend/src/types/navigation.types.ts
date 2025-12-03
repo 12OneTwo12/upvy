@@ -13,6 +13,7 @@ export type RootStackParamList = {
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
   HelpSupport: undefined;
+  BlockManagement: undefined;
 };
 
 /**

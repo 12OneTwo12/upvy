@@ -43,140 +43,9 @@ import java.util.UUID
 class FeedRepositoryImpl(
     private val dslContext: DSLContext,
     private val objectMapper: ObjectMapper,
-    private val contentPhotoRepository: me.onetwo.growsnap.domain.content.repository.ContentPhotoRepository
 ) : FeedRepository {
 
     private val logger = LoggerFactory.getLogger(FeedRepositoryImpl::class.java)
-
-    /**
-     * 메인 피드 조회
-     *
-     * 추천 알고리즘 기반으로 사용자에게 맞춤화된 피드를 제공합니다.
-     * (현재는 최신 콘텐츠 기반, 향후 추천 알고리즘 추가)
-     *
-     * @param userId 사용자 ID
-     * @param cursor 커서 (마지막 조회 콘텐츠 ID, null이면 첫 페이지)
-     * @param limit 조회할 항목 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 피드 아이템 목록
-     */
-    override fun findMainFeed(
-        userId: UUID,
-        cursor: UUID?,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<FeedItemResponse> {
-        var query = dslContext
-            .select(
-                    // CONTENTS 필요 컬럼만 명시적으로 선택
-                    CONTENTS.ID,
-                    CONTENTS.CONTENT_TYPE,
-                    CONTENTS.URL,
-                    CONTENTS.THUMBNAIL_URL,
-                    CONTENTS.DURATION,
-                    CONTENTS.WIDTH,
-                    CONTENTS.HEIGHT,
-                    CONTENTS.CREATED_AT,
-                    // CONTENT_METADATA 필요 컬럼만 명시적으로 선택
-                    CONTENT_METADATA.TITLE,
-                    CONTENT_METADATA.DESCRIPTION,
-                    CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.TAGS,
-                    // CONTENT_INTERACTIONS 필요 컬럼만 명시적으로 선택
-                    CONTENT_INTERACTIONS.LIKE_COUNT,
-                    CONTENT_INTERACTIONS.COMMENT_COUNT,
-                    CONTENT_INTERACTIONS.SAVE_COUNT,
-                    CONTENT_INTERACTIONS.SHARE_COUNT,
-                    CONTENT_INTERACTIONS.VIEW_COUNT,
-                    // USERS, USER_PROFILES
-                    USERS.ID,
-                    USER_PROFILES.NICKNAME,
-                    USER_PROFILES.PROFILE_IMAGE_URL,
-                    USER_PROFILES.FOLLOWER_COUNT,
-                    // USER_LIKES, USER_SAVES (사용자별 상태)
-                    DSL.field(USER_LIKES.ID.isNotNull).`as`("IS_LIKED"),
-                    DSL.field(USER_SAVES.ID.isNotNull).`as`("IS_SAVED")
-                )
-                .from(CONTENTS)
-                .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
-                .join(CONTENT_INTERACTIONS).on(CONTENT_INTERACTIONS.CONTENT_ID.eq(CONTENTS.ID))
-                .join(USERS).on(USERS.ID.eq(CONTENTS.CREATOR_ID))
-                .join(USER_PROFILES).on(USER_PROFILES.USER_ID.eq(USERS.ID))
-                .leftJoin(USER_LIKES).on(
-                    USER_LIKES.CONTENT_ID.eq(CONTENTS.ID)
-                        .and(USER_LIKES.USER_ID.eq(userId.toString()))
-                        .and(USER_LIKES.DELETED_AT.isNull)
-                )
-                .leftJoin(USER_SAVES).on(
-                    USER_SAVES.CONTENT_ID.eq(CONTENTS.ID)
-                        .and(USER_SAVES.USER_ID.eq(userId.toString()))
-                        .and(USER_SAVES.DELETED_AT.isNull)
-                )
-                .where(CONTENTS.STATUS.eq("PUBLISHED"))
-                .and(CONTENTS.DELETED_AT.isNull)
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
-                .and(USERS.DELETED_AT.isNull)
-                .and(USER_PROFILES.DELETED_AT.isNull)
-                // 차단한 사용자의 콘텐츠 제외
-                .and(CONTENTS.CREATOR_ID.notIn(
-                    dslContext.select(USER_BLOCKS.BLOCKED_ID)
-                        .from(USER_BLOCKS)
-                        .where(USER_BLOCKS.BLOCKER_ID.eq(userId.toString()))
-                        .and(USER_BLOCKS.DELETED_AT.isNull)
-                ))
-                // 차단한 콘텐츠 제외
-                .and(CONTENTS.ID.notIn(
-                    dslContext.select(CONTENT_BLOCKS.CONTENT_ID)
-                        .from(CONTENT_BLOCKS)
-                        .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
-                        .and(CONTENT_BLOCKS.DELETED_AT.isNull)
-                ))
-
-        // 제외할 콘텐츠 필터링
-        if (excludeContentIds.isNotEmpty()) {
-            query = query.and(CONTENTS.ID.notIn(excludeContentIds.map { it.toString() }))
-        }
-
-        // 커서 기반 페이지네이션
-        if (cursor != null) {
-            query = query.and(CONTENTS.CREATED_AT.lt(
-                dslContext.select(CONTENTS.CREATED_AT)
-                    .from(CONTENTS)
-                    .where(CONTENTS.ID.eq(cursor.toString()))
-                    .asField()
-            ))
-        }
-
-        // Execute query and collect contentIds first
-        return Flux.from(query
-                .orderBy(CONTENTS.CREATED_AT.desc())
-                .limit(limit)
-        )
-            .collectList()
-            .flatMapMany { records ->
-                if (records.isEmpty()) {
-                    return@flatMapMany Flux.empty<FeedItemResponse>()
-                }
-
-                // 모든 콘텐츠 ID 추출
-                val contentIds = records.map { UUID.fromString(it.get(CONTENTS.ID)) }
-
-                // 자막 배치 조회 (N+1 문제 방지)
-                val subtitlesMono = findSubtitlesByContentIdsReactive(contentIds)
-
-                // 사진 배치 조회 (N+1 문제 방지)
-                val photosMono = findPhotosByContentIdsReactive(contentIds)
-
-                // 두 맵을 병렬로 조회한 후 결합
-                Mono.zip(subtitlesMono, photosMono)
-                    .flatMapMany { tuple ->
-                        val subtitlesMap = tuple.t1
-                        val photosMap = tuple.t2
-                        // 레코드를 FeedItemResponse로 변환
-                        Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
-                    }
-            }
-    }
 
     /**
      * 팔로잉 피드 조회
@@ -405,12 +274,13 @@ class FeedRepositoryImpl(
      *                  + share_count * 10.0
      * ```
      *
+     * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
      */
-    override fun findPopularContentIds(limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
+    override fun findPopularContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
         // 인기도 점수 계산식 (부동소수점 연산)
         val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
             .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
@@ -426,6 +296,20 @@ class FeedRepositoryImpl(
             .where(CONTENTS.STATUS.eq("PUBLISHED"))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
+            // 차단한 사용자의 콘텐츠 제외
+            .and(CONTENTS.CREATOR_ID.notIn(
+                dslContext.select(USER_BLOCKS.BLOCKED_ID)
+                    .from(USER_BLOCKS)
+                    .where(USER_BLOCKS.BLOCKER_ID.eq(userId.toString()))
+                    .and(USER_BLOCKS.DELETED_AT.isNull)
+            ))
+            // 차단한 콘텐츠 제외
+            .and(CONTENTS.ID.notIn(
+                dslContext.select(CONTENT_BLOCKS.CONTENT_ID)
+                    .from(CONTENT_BLOCKS)
+                    .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
+                    .and(CONTENT_BLOCKS.DELETED_AT.isNull)
+            ))
 
         // 카테고리 필터링 (category가 null이 아닐 때만)
         if (category != null) {
@@ -449,12 +333,13 @@ class FeedRepositoryImpl(
      *
      * 최근 업로드된 콘텐츠를 조회합니다.
      *
+     * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
      */
-    override fun findNewContentIds(limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
+    override fun findNewContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
         var query = dslContext
             .select(CONTENTS.ID)
             .from(CONTENTS)
@@ -462,6 +347,20 @@ class FeedRepositoryImpl(
             .where(CONTENTS.STATUS.eq("PUBLISHED"))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
+            // 차단한 사용자의 콘텐츠 제외
+            .and(CONTENTS.CREATOR_ID.notIn(
+                dslContext.select(USER_BLOCKS.BLOCKED_ID)
+                    .from(USER_BLOCKS)
+                    .where(USER_BLOCKS.BLOCKER_ID.eq(userId.toString()))
+                    .and(USER_BLOCKS.DELETED_AT.isNull)
+            ))
+            // 차단한 콘텐츠 제외
+            .and(CONTENTS.ID.notIn(
+                dslContext.select(CONTENT_BLOCKS.CONTENT_ID)
+                    .from(CONTENT_BLOCKS)
+                    .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
+                    .and(CONTENT_BLOCKS.DELETED_AT.isNull)
+            ))
 
         // 카테고리 필터링 (category가 null이 아닐 때만)
         if (category != null) {
@@ -485,12 +384,13 @@ class FeedRepositoryImpl(
      *
      * 무작위 콘텐츠를 조회하여 다양성을 확보합니다.
      *
+     * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
      */
-    override fun findRandomContentIds(limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
+    override fun findRandomContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
         var query = dslContext
             .select(CONTENTS.ID)
             .from(CONTENTS)
@@ -498,6 +398,20 @@ class FeedRepositoryImpl(
             .where(CONTENTS.STATUS.eq("PUBLISHED"))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
+            // 차단한 사용자의 콘텐츠 제외
+            .and(CONTENTS.CREATOR_ID.notIn(
+                dslContext.select(USER_BLOCKS.BLOCKED_ID)
+                    .from(USER_BLOCKS)
+                    .where(USER_BLOCKS.BLOCKER_ID.eq(userId.toString()))
+                    .and(USER_BLOCKS.DELETED_AT.isNull)
+            ))
+            // 차단한 콘텐츠 제외
+            .and(CONTENTS.ID.notIn(
+                dslContext.select(CONTENT_BLOCKS.CONTENT_ID)
+                    .from(CONTENT_BLOCKS)
+                    .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
+                    .and(CONTENT_BLOCKS.DELETED_AT.isNull)
+            ))
 
         // 카테고리 필터링 (category가 null이 아닐 때만)
         if (category != null) {
@@ -578,6 +492,20 @@ class FeedRepositoryImpl(
                         .and(USER_SAVES.DELETED_AT.isNull)
                 )
                 .where(CONTENTS.ID.`in`(contentIds.map { it.toString() }))
+                // 차단한 사용자의 콘텐츠 제외
+                .and(CONTENTS.CREATOR_ID.notIn(
+                    dslContext.select(USER_BLOCKS.BLOCKED_ID)
+                        .from(USER_BLOCKS)
+                        .where(USER_BLOCKS.BLOCKER_ID.eq(userId.toString()))
+                        .and(USER_BLOCKS.DELETED_AT.isNull)
+                ))
+                // 차단한 콘텐츠 제외
+                .and(CONTENTS.ID.notIn(
+                    dslContext.select(CONTENT_BLOCKS.CONTENT_ID)
+                        .from(CONTENT_BLOCKS)
+                        .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
+                        .and(CONTENT_BLOCKS.DELETED_AT.isNull)
+                ))
                 .and(CONTENTS.STATUS.eq("PUBLISHED"))
                 .and(CONTENTS.DELETED_AT.isNull)
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
@@ -726,6 +654,20 @@ class FeedRepositoryImpl(
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
             .and(USERS.DELETED_AT.isNull)
+            // 차단한 사용자의 콘텐츠 제외
+            .and(CONTENTS.CREATOR_ID.notIn(
+                dslContext.select(USER_BLOCKS.BLOCKED_ID)
+                    .from(USER_BLOCKS)
+                    .where(USER_BLOCKS.BLOCKER_ID.eq(userId.toString()))
+                    .and(USER_BLOCKS.DELETED_AT.isNull)
+            ))
+            // 차단한 콘텐츠 제외
+            .and(CONTENTS.ID.notIn(
+                dslContext.select(CONTENT_BLOCKS.CONTENT_ID)
+                    .from(CONTENT_BLOCKS)
+                    .where(CONTENT_BLOCKS.USER_ID.eq(userId.toString()))
+                    .and(CONTENT_BLOCKS.DELETED_AT.isNull)
+            ))
 
         // 제외할 콘텐츠 필터링
         if (excludeIds.isNotEmpty()) {

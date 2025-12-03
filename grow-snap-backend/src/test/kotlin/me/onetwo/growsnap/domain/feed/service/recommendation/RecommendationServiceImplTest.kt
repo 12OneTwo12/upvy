@@ -67,9 +67,9 @@ class RecommendationServiceImplTest {
 
             // CF가 충분한 결과를 반환하므로 fallback 없음
             every { collaborativeFilteringService.getRecommendedContents(testUserId, 4) } returns Flux.fromIterable(cfIds)
-            every { feedRepository.findPopularContentIds(3, emptyList()) } returns Flux.fromIterable(popularIds)
-            every { feedRepository.findNewContentIds(1, emptyList()) } returns Flux.fromIterable(newIds)
-            every { feedRepository.findRandomContentIds(2, emptyList()) } returns Flux.fromIterable(randomIds)
+            every { feedRepository.findPopularContentIds(testUserId, 3, emptyList()) } returns Flux.fromIterable(popularIds)
+            every { feedRepository.findNewContentIds(testUserId, 1, emptyList()) } returns Flux.fromIterable(newIds)
+            every { feedRepository.findRandomContentIds(testUserId, 2, emptyList()) } returns Flux.fromIterable(randomIds)
 
             // When: 추천 콘텐츠 조회 (limit=10)
             val result = recommendationService.getRecommendedContentIds(
@@ -91,9 +91,9 @@ class RecommendationServiceImplTest {
 
             // Then: 모든 전략이 호출됨
             verify(exactly = 1) { collaborativeFilteringService.getRecommendedContents(testUserId, 4) }
-            verify(atLeast = 1) { feedRepository.findPopularContentIds(any(), any()) }
-            verify(exactly = 1) { feedRepository.findNewContentIds(any(), any()) }
-            verify(exactly = 1) { feedRepository.findRandomContentIds(any(), any()) }
+            verify(atLeast = 1) { feedRepository.findPopularContentIds(any(), any(), any()) }
+            verify(exactly = 1) { feedRepository.findNewContentIds(any(), any(), any()) }
+            verify(exactly = 1) { feedRepository.findRandomContentIds(any(), any(), any()) }
         }
 
         @Test
@@ -107,11 +107,11 @@ class RecommendationServiceImplTest {
 
             // CF 결과에서 contentId1이 필터링되어야 함 (5개 -> 4개 남음, limit 4개 충분)
             every { collaborativeFilteringService.getRecommendedContents(testUserId, 4) } returns Flux.fromIterable(cfIds)
-            every { feedRepository.findPopularContentIds(3, excludedIds) } returns Flux.fromIterable(popularIds)
+            every { feedRepository.findPopularContentIds(testUserId, 3, excludedIds) } returns Flux.fromIterable(popularIds)
             // CF fill을 위한 추가 mock (CF가 limit보다 적으면 fill 시도)
-            every { feedRepository.findPopularContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findNewContentIds(1, excludedIds) } returns Flux.empty()
-            every { feedRepository.findRandomContentIds(2, excludedIds) } returns Flux.empty()
+            every { feedRepository.findPopularContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findNewContentIds(testUserId, 1, excludedIds) } returns Flux.empty()
+            every { feedRepository.findRandomContentIds(testUserId, 2, excludedIds) } returns Flux.empty()
 
             // When: excludeContentIds 지정하여 조회
             val result = recommendationService.getRecommendedContentIds(
@@ -138,9 +138,9 @@ class RecommendationServiceImplTest {
         fun getRecommendedContentIds_RespectsStrategyRatios() {
             // Given: limit=100
             every { collaborativeFilteringService.getRecommendedContents(testUserId, any()) } returns Flux.empty()
-            every { feedRepository.findPopularContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findNewContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findRandomContentIds(any(), any()) } returns Flux.empty()
+            every { feedRepository.findPopularContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findNewContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findRandomContentIds(any(), any(), any()) } returns Flux.empty()
 
             // When: limit=100으로 조회
             recommendationService.getRecommendedContentIds(
@@ -155,9 +155,9 @@ class RecommendationServiceImplTest {
             // NEW: 10% = 10개
             // RANDOM: 20% = 20개
             verify(exactly = 1) { collaborativeFilteringService.getRecommendedContents(testUserId, 40) }
-            verify(exactly = 1) { feedRepository.findPopularContentIds(30, emptyList()) }
-            verify(exactly = 1) { feedRepository.findNewContentIds(10, emptyList()) }
-            verify(exactly = 1) { feedRepository.findRandomContentIds(20, emptyList()) }
+            verify(exactly = 1) { feedRepository.findPopularContentIds(testUserId, 30, emptyList()) }
+            verify(exactly = 1) { feedRepository.findNewContentIds(testUserId, 10, emptyList()) }
+            verify(exactly = 1) { feedRepository.findRandomContentIds(testUserId, 20, emptyList()) }
         }
 
         @Test
@@ -165,9 +165,9 @@ class RecommendationServiceImplTest {
         fun getRecommendedContentIds_WhenAllStrategiesReturnEmpty_ReturnsEmptyList() {
             // Given: 모든 전략이 빈 결과 반환
             every { collaborativeFilteringService.getRecommendedContents(testUserId, any()) } returns Flux.empty()
-            every { feedRepository.findPopularContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findNewContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findRandomContentIds(any(), any()) } returns Flux.empty()
+            every { feedRepository.findPopularContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findNewContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findRandomContentIds(any(), any(), any()) } returns Flux.empty()
 
             // When: 추천 콘텐츠 조회
             val result = recommendationService.getRecommendedContentIds(
@@ -197,9 +197,9 @@ class RecommendationServiceImplTest {
             every { collaborativeFilteringService.getRecommendedContents(testUserId, 4) } returns Flux.fromIterable(cfIds)
 
             // Mock other strategies (not called in this scenario)
-            every { feedRepository.findPopularContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findNewContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findRandomContentIds(any(), any()) } returns Flux.empty()
+            every { feedRepository.findPopularContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findNewContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findRandomContentIds(any(), any(), any()) } returns Flux.empty()
 
             // When: limit=10 (CF는 40% = 4개)
             val result = recommendationService.getRecommendedContentIds(
@@ -227,10 +227,10 @@ class RecommendationServiceImplTest {
 
             // Popular content as fallback
             val popularIds = listOf(contentId3, contentId4, contentId5, contentId6)
-            every { feedRepository.findPopularContentIds(4, emptyList()) } returns Flux.fromIterable(popularIds)
-            every { feedRepository.findPopularContentIds(3, emptyList()) } returns Flux.fromIterable(popularIds.take(3))
-            every { feedRepository.findNewContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findRandomContentIds(any(), any()) } returns Flux.empty()
+            every { feedRepository.findPopularContentIds(testUserId, 4, emptyList()) } returns Flux.fromIterable(popularIds)
+            every { feedRepository.findPopularContentIds(testUserId, 3, emptyList()) } returns Flux.fromIterable(popularIds.take(3))
+            every { feedRepository.findNewContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findRandomContentIds(any(), any(), any()) } returns Flux.empty()
 
             // When: 추천 콘텐츠 조회
             val result = recommendationService.getRecommendedContentIds(
@@ -249,7 +249,7 @@ class RecommendationServiceImplTest {
                 .verifyComplete()
 
             // CF가 2번 호출됨 (초기 CF + fallback에서의 popular 조회)
-            verify(atLeast = 1) { feedRepository.findPopularContentIds(any(), any()) }
+            verify(atLeast = 1) { feedRepository.findPopularContentIds(any(), any(), any()) }
         }
 
         @Test
@@ -261,10 +261,10 @@ class RecommendationServiceImplTest {
 
             // Popular content to fill
             val popularIds = listOf(contentId3, contentId4)
-            every { feedRepository.findPopularContentIds(2, cfIds) } returns Flux.fromIterable(popularIds)
-            every { feedRepository.findPopularContentIds(3, emptyList()) } returns Flux.fromIterable(listOf(contentId5))
-            every { feedRepository.findNewContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findRandomContentIds(any(), any()) } returns Flux.empty()
+            every { feedRepository.findPopularContentIds(testUserId, 2, cfIds) } returns Flux.fromIterable(popularIds)
+            every { feedRepository.findPopularContentIds(testUserId, 3, emptyList()) } returns Flux.fromIterable(listOf(contentId5))
+            every { feedRepository.findNewContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findRandomContentIds(any(), any(), any()) } returns Flux.empty()
 
             // When: 추천 콘텐츠 조회
             val result = recommendationService.getRecommendedContentIds(
@@ -299,9 +299,9 @@ class RecommendationServiceImplTest {
             val excludedIds = listOf(contentId6)
 
             every { collaborativeFilteringService.getRecommendedContents(testUserId, 4) } returns Flux.fromIterable(cfIds)
-            every { feedRepository.findPopularContentIds(3, excludedIds) } returns Flux.fromIterable(popularIds)
-            every { feedRepository.findNewContentIds(1, excludedIds) } returns Flux.empty()
-            every { feedRepository.findRandomContentIds(2, excludedIds) } returns Flux.empty()
+            every { feedRepository.findPopularContentIds(testUserId, 3, excludedIds) } returns Flux.fromIterable(popularIds)
+            every { feedRepository.findNewContentIds(testUserId, 1, excludedIds) } returns Flux.empty()
+            every { feedRepository.findRandomContentIds(testUserId, 2, excludedIds) } returns Flux.empty()
 
             // When
             recommendationService.getRecommendedContentIds(
@@ -311,7 +311,7 @@ class RecommendationServiceImplTest {
             ).collectList().block()
 
             // Then: Popular 전략이 호출됨 (excludedIds 전달)
-            verify(exactly = 1) { feedRepository.findPopularContentIds(3, excludedIds) }
+            verify(exactly = 1) { feedRepository.findPopularContentIds(testUserId, 3, excludedIds) }
         }
 
         @Test
@@ -323,9 +323,9 @@ class RecommendationServiceImplTest {
             val excludedIds = listOf(contentId6)
 
             every { collaborativeFilteringService.getRecommendedContents(testUserId, 4) } returns Flux.fromIterable(cfIds)
-            every { feedRepository.findPopularContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findNewContentIds(1, excludedIds) } returns Flux.fromIterable(newIds)
-            every { feedRepository.findRandomContentIds(any(), any()) } returns Flux.empty()
+            every { feedRepository.findPopularContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findNewContentIds(testUserId, 1, excludedIds) } returns Flux.fromIterable(newIds)
+            every { feedRepository.findRandomContentIds(any(), any(), any()) } returns Flux.empty()
 
             // When
             recommendationService.getRecommendedContentIds(
@@ -335,7 +335,7 @@ class RecommendationServiceImplTest {
             ).collectList().block()
 
             // Then: New 전략이 호출됨 (excludedIds 전달)
-            verify(exactly = 1) { feedRepository.findNewContentIds(1, excludedIds) }
+            verify(exactly = 1) { feedRepository.findNewContentIds(testUserId, 1, excludedIds) }
         }
 
         @Test
@@ -347,9 +347,9 @@ class RecommendationServiceImplTest {
             val excludedIds = listOf(contentId6)
 
             every { collaborativeFilteringService.getRecommendedContents(testUserId, 4) } returns Flux.fromIterable(cfIds)
-            every { feedRepository.findPopularContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findNewContentIds(any(), any()) } returns Flux.empty()
-            every { feedRepository.findRandomContentIds(2, excludedIds) } returns Flux.fromIterable(randomIds)
+            every { feedRepository.findPopularContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findNewContentIds(any(), any(), any()) } returns Flux.empty()
+            every { feedRepository.findRandomContentIds(testUserId, 2, excludedIds) } returns Flux.fromIterable(randomIds)
 
             // When
             recommendationService.getRecommendedContentIds(
@@ -359,7 +359,7 @@ class RecommendationServiceImplTest {
             ).collectList().block()
 
             // Then: Random 전략이 호출됨 (excludedIds 전달)
-            verify(exactly = 1) { feedRepository.findRandomContentIds(2, excludedIds) }
+            verify(exactly = 1) { feedRepository.findRandomContentIds(testUserId, 2, excludedIds) }
         }
     }
 }

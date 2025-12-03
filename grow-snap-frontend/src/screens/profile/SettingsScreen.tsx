@@ -331,9 +331,8 @@ export default function SettingsScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.settingRow, styles.settingRowDisabled]}
-            onPress={() => showComingSoonAlert('차단한 사용자')}
-            disabled={true}
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('BlockManagement')}
           >
             <View style={styles.settingLeft}>
               <Ionicons
@@ -343,13 +342,10 @@ export default function SettingsScreen() {
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>차단한 사용자</Text>
+                <Text style={styles.settingLabel}>차단 관리</Text>
                 <Text style={styles.settingSubtitle}>
-                  차단한 사용자 관리
+                  차단한 사용자 및 콘텐츠 관리
                 </Text>
-              </View>
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>준비중</Text>
               </View>
             </View>
             <Ionicons
