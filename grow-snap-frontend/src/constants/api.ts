@@ -55,6 +55,7 @@ export const API_ENDPOINTS = {
     FOLLOWING: '/feed/following',
     REFRESH: '/feed/refresh',
     CATEGORY: (category: string) => `/feed/categories/${category}`,
+    CATEGORY_REFRESH: (category: string) => `/feed/categories/${category}/refresh`,
   },
 
   // Like (백엔드: LikeController)

@@ -417,4 +417,60 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
                 .expectStatus().isUnauthorized
         }
     }
+
+    @Nested
+    @DisplayName("POST /api/v1/feed/categories/{category}/refresh - 카테고리 피드 새로고침")
+    inner class RefreshCategoryFeed {
+
+        @Test
+        @DisplayName("인증된 사용자가 카테고리 피드 새로고침 요청 시, 204 No Content를 반환한다")
+        fun refreshCategoryFeed_WithAuthentication_ReturnsNoContent() {
+            // Given: 사용자 생성
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            // When & Then: 카테고리 피드 새로고침 API 호출
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .post()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}/refresh", Category.PROGRAMMING.name.lowercase())
+                .exchange()
+                .expectStatus().isNoContent
+        }
+
+        @Test
+        @DisplayName("다른 카테고리로 새로고침 요청 시, 204 No Content를 반환한다")
+        fun refreshCategoryFeed_WithDifferentCategory_ReturnsNoContent() {
+            // Given: 사용자 생성
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+
+            // When & Then: ART 카테고리 새로고침 API 호출
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .post()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}/refresh", Category.ART.name.lowercase())
+                .exchange()
+                .expectStatus().isNoContent
+        }
+
+        @Test
+        @DisplayName("인증되지 않은 요청 시, 401 Unauthorized를 반환한다")
+        fun refreshCategoryFeed_WithoutAuth_ReturnsUnauthorized() {
+            // When & Then: 인증 없이 API 호출
+            webTestClient
+                .post()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}/refresh", Category.PROGRAMMING.name.lowercase())
+                .exchange()
+                .expectStatus().isUnauthorized
+        }
+    }
 }

@@ -174,4 +174,39 @@ class FeedController(
             }
             .map { ResponseEntity.ok(it) }
     }
+
+    /**
+     * 카테고리 피드 새로고침
+     *
+     * 사용자의 특정 카테고리 피드 캐시를 삭제하여 다음 조회 시 최신 추천을 제공합니다.
+     * TikTok/Instagram Reels의 "Pull to Refresh" 기능과 동일하게,
+     * 카테고리별로 독립적인 새로고침을 지원합니다.
+     *
+     * ### 처리 흐름
+     * 1. Redis에서 사용자의 해당 카테고리 배치 삭제
+     * 2. 다음 GET /api/v1/feed/categories/{category} 호출 시 새로운 추천 알고리즘 실행
+     * 3. 새로운 250개 배치 생성
+     *
+     * ### 요구사항
+     * - 인증된 사용자만 호출 가능
+     * - Redis 캐시만 삭제 (성능 영향 최소화)
+     * - 카테고리별로 독립적인 캐시 관리
+     *
+     * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
+     * @param category 새로고침할 카테고리 (PathVariable)
+     * @return 204 No Content
+     */
+    @PostMapping("/categories/{category}/refresh")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun refreshCategoryFeed(
+        principal: Mono<Principal>,
+        @PathVariable category: Category
+    ): Mono<Void> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                feedCacheService.clearCategoryCache(userId, category)
+            }
+            .then()
+    }
 }
