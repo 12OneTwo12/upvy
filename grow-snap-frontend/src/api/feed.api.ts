@@ -59,6 +59,18 @@ export const refreshFeed = async (): Promise<void> => {
 };
 
 /**
+ * 카테고리 피드 새로고침 (카테고리별 캐시 클리어)
+ *
+ * 백엔드: POST /api/v1/feed/categories/{category}/refresh
+ * Response: 204 No Content
+ *
+ * @param category 카테고리
+ */
+export const refreshCategoryFeed = async (category: Category): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.FEED.CATEGORY_REFRESH(category.toLowerCase()));
+};
+
+/**
  * 카테고리별 피드 조회
  *
  * 백엔드: GET /api/v1/feed/categories/{category}

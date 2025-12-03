@@ -25,6 +25,7 @@ import {
   getFollowingFeed,
   getCategoryFeed,
   refreshFeed as refreshFeedApi,
+  refreshCategoryFeed,
 } from '@/api/feed.api';
 import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
@@ -445,7 +446,11 @@ export function useFeed(options: UseFeedOptions) {
     setPullDistance(0);
     try {
       if (enableRefreshApi) {
-        await refreshFeedApi();
+        if (feedType === 'category' && category) {
+          await refreshCategoryFeed(category);
+        } else {
+          await refreshFeedApi();
+        }
       }
 
       await queryClient.resetQueries({ queryKey });
@@ -455,7 +460,7 @@ export function useFeed(options: UseFeedOptions) {
     } finally {
       setRefreshing(false);
     }
-  }, [queryClient, queryKey, enableRefreshApi]);
+  }, [queryClient, queryKey, enableRefreshApi, feedType, category]);
 
   // 스크롤 이벤트 - Pull-to-Refresh 감지
   const handleScroll = useCallback(

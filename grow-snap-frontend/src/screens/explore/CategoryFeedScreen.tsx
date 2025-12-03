@@ -42,7 +42,7 @@ export default function CategoryFeedScreen() {
     feedType: 'category',
     category,
     enableAutoRefresh: false,
-    enableRefreshApi: false,
+    enableRefreshApi: true,
   });
 
   const {

@@ -20,13 +20,17 @@ import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 import me.onetwo.growsnap.util.createContent
 import me.onetwo.growsnap.util.createUserWithProfile
 import me.onetwo.growsnap.util.mockUser
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.http.MediaType
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
@@ -60,6 +64,9 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var followRepository: FollowRepository
+
+    @Autowired
+    private lateinit var redisTemplate: ReactiveRedisTemplate<String, String>
 
     @Nested
     @DisplayName("GET /api/v1/feed - 메인 피드 조회")
@@ -413,6 +420,76 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .post()
                 .uri("${ApiPaths.API_V1_FEED}/refresh")
+                .exchange()
+                .expectStatus().isUnauthorized
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/feed/categories/{category}/refresh - 카테고리 피드 새로고침")
+    inner class RefreshCategoryFeed {
+
+        @Test
+        @DisplayName("인증된 사용자가 카테고리 피드 새로고침 요청 시, Redis 캐시가 삭제된다")
+        fun refreshCategoryFeed_WithAuthentication_ClearsCache() {
+            // Given: 사용자 생성 및 테스트용 캐시 데이터 추가
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test@example.com",
+                providerId = "google-123"
+            )
+            val category = Category.PROGRAMMING
+            val cacheKey = "feed:category:${user.id!!}:${category.name}:batch:0"
+
+            // Redis에 테스트 캐시 데이터 저장
+            redisTemplate.opsForValue().set(cacheKey, "test-content-ids").block()
+
+            // 캐시가 저장되었는지 사전 확인
+            val keyExistsBeforeRefresh = redisTemplate.hasKey(cacheKey).block()
+            assertThat(keyExistsBeforeRefresh).isTrue()
+
+            // When: 카테고리 피드 새로고침 API 호출
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .post()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}/refresh", category.name.lowercase())
+                .exchange()
+                .expectStatus().isNoContent
+
+            // Then: Redis 캐시가 삭제되었는지 확인
+            val keyExistsAfterRefresh = redisTemplate.hasKey(cacheKey).block()
+            assertThat(keyExistsAfterRefresh).isFalse()
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = Category::class, names = ["PROGRAMMING", "ART", "SCIENCE", "LANGUAGE"])
+        @DisplayName("여러 카테고리로 새로고침 요청 시, 모두 204 No Content를 반환한다")
+        fun refreshCategoryFeed_WithMultipleCategories_ReturnsNoContent(category: Category) {
+            // Given: 사용자 생성
+            val (user, _) = createUserWithProfile(
+                userRepository,
+                userProfileRepository,
+                email = "test-$category@example.com",
+                providerId = "google-$category"
+            )
+
+            // When & Then: 카테고리 피드 새로고침 API 호출
+            webTestClient
+                .mutateWith(mockUser(user.id!!))
+                .post()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}/refresh", category.name.lowercase())
+                .exchange()
+                .expectStatus().isNoContent
+        }
+
+        @Test
+        @DisplayName("인증되지 않은 요청 시, 401 Unauthorized를 반환한다")
+        fun refreshCategoryFeed_WithoutAuth_ReturnsUnauthorized() {
+            // When & Then: 인증 없이 API 호출
+            webTestClient
+                .post()
+                .uri("${ApiPaths.API_V1_FEED}/categories/{category}/refresh", Category.PROGRAMMING.name.lowercase())
                 .exchange()
                 .expectStatus().isUnauthorized
         }
