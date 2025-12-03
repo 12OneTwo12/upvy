@@ -13,6 +13,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator } fr
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { theme } from '@/theme';
 import { useAuthStore } from '@/stores/authStore';
 import { getReplies } from '@/api/comment.api';
@@ -22,7 +23,7 @@ import type { CommentResponse } from '@/types/interaction.types';
  * 상대 시간 계산 함수
  * 예: "방금", "2분 전", "1시간 전", "3일 전"
  */
-const getRelativeTime = (dateString: string, t: any): string => {
+const getRelativeTime = (dateString: string, t: TFunction<"interactions", undefined>): string => {
   const now = new Date();
   const date = new Date(dateString);
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
