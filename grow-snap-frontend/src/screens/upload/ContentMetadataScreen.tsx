@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { theme } from '@/theme';
 import type { UploadStackParamList } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -33,6 +34,7 @@ type Props = NativeStackScreenProps<UploadStackParamList, 'ContentMetadata'>;
 
 export default function ContentMetadataScreen({ navigation, route }: Props) {
   const { contentId, contentType, mediaInfo } = route.params;
+  const queryClient = useQueryClient();
 
   // 폼 상태
   const [title, setTitle] = useState('');
@@ -110,6 +112,9 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
         width: mediaInfo.width,
         height: mediaInfo.height,
       });
+
+      // Profile 화면의 내 콘텐츠 목록 자동 새로고침
+      queryClient.invalidateQueries({ queryKey: ['myContents'] });
 
       Alert.alert(
         '게시 완료',
