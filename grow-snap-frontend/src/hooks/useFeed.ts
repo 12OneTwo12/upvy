@@ -488,9 +488,10 @@ export function useFeed(options: UseFeedOptions) {
         if (result.action === Share.sharedAction) {
           shareMutation.mutate(contentId);
         }
-      } catch (error: any) {
-        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
-        if (error?.message?.includes('User did not share')) {
+      } catch (error: unknown) {
+        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음 (Android)
+        // 참고: 이 에러 메시지는 React Native 버전에 따라 변경될 수 있습니다.
+        if (error instanceof Error && error.message.includes('User did not share')) {
           return;
         }
         console.error('Share failed:', error);

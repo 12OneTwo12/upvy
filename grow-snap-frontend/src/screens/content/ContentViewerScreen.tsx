@@ -151,6 +151,23 @@ export default function ContentViewerScreen() {
     mutationFn: async () => {
       return await shareContent(contentId);
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['content', contentId] });
+      const previousData = queryClient.getQueryData(['content', contentId]);
+
+      queryClient.setQueryData(['content', contentId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          interactions: {
+            ...oldData.interactions,
+            shareCount: (oldData.interactions?.shareCount ?? 0) + 1,
+          },
+        };
+      });
+
+      return { previousData };
+    },
     onSuccess: (response) => {
       // 콘텐츠의 인터랙션 정보 업데이트
       queryClient.setQueryData(['content', contentId], (oldData: any) => {
@@ -163,6 +180,11 @@ export default function ContentViewerScreen() {
           },
         };
       });
+    },
+    onError: (err, variables, context: any) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['content', contentId], context.previousData);
+      }
     },
   });
 
@@ -197,7 +219,7 @@ export default function ContentViewerScreen() {
 
       // 2. 네이티브 공유 시트 열기
       const result = await Share.share({
-        message: `GrowSnap에서 재밌는 콘텐츠를 발견했어요! 같이 봐요 😊\n\n${shareUrl}`,
+        message: `GrowSnap에서 흥미로운 콘텐츠를 발견했어요! 같이 봐요 😊\n\n${shareUrl}`,
         url: shareUrl,
         title: 'GrowSnap 콘텐츠 공유',
       });
@@ -206,9 +228,10 @@ export default function ContentViewerScreen() {
       if (result.action === Share.sharedAction) {
         shareMutation.mutate();
       }
-    } catch (error: any) {
-      // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
-      if (error?.message?.includes('User did not share')) {
+    } catch (error: unknown) {
+      // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음 (Android)
+      // 참고: 이 에러 메시지는 React Native 버전에 따라 변경될 수 있습니다.
+      if (error instanceof Error && error.message.includes('User did not share')) {
         return;
       }
       console.error('Share failed:', error);
