@@ -417,8 +417,15 @@ class UserProfileControllerTest {
             )
         )
 
-        every { contentService.getContentsByCreator(targetUserId, testUserId) } returns
-                reactor.core.publisher.Flux.fromIterable(testContents)
+        val pageResponse = me.onetwo.growsnap.domain.content.dto.ContentPageResponse(
+            content = testContents,
+            nextCursor = null,
+            hasNext = false,
+            count = 2
+        )
+
+        every { contentService.getContentsByCreatorWithCursor(targetUserId, testUserId, any()) } returns
+                Mono.just(pageResponse)
 
         // When & Then
         webTestClient
@@ -428,11 +435,13 @@ class UserProfileControllerTest {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.length()").isEqualTo(2)
-            .jsonPath("$[0].id").isEqualTo(contentId1.toString())
-            .jsonPath("$[0].interactions.isLiked").isEqualTo(true)
-            .jsonPath("$[1].id").isEqualTo(contentId2.toString())
-            .jsonPath("$[1].interactions.isSaved").isEqualTo(true)
+            .jsonPath("$.content.length()").isEqualTo(2)
+            .jsonPath("$.content[0].id").isEqualTo(contentId1.toString())
+            .jsonPath("$.content[0].interactions.isLiked").isEqualTo(true)
+            .jsonPath("$.content[1].id").isEqualTo(contentId2.toString())
+            .jsonPath("$.content[1].interactions.isSaved").isEqualTo(true)
+            .jsonPath("$.hasNext").isEqualTo(false)
+            .jsonPath("$.count").isEqualTo(2)
             .consumeWith(
                 document(
                     "profile-get-user-contents",
@@ -441,37 +450,41 @@ class UserProfileControllerTest {
                         parameterWithName("targetUserId").description("조회할 사용자 ID (UUID)")
                     ),
                     responseFields(
-                        fieldWithPath("[].id").description("콘텐츠 ID"),
-                        fieldWithPath("[].creatorId").description("크리에이터 ID"),
-                        fieldWithPath("[].contentType").description("콘텐츠 타입 (VIDEO | PHOTO)"),
-                        fieldWithPath("[].url").description("비디오 URL (VIDEO 타입만)").optional(),
-                        fieldWithPath("[].photoUrls").description("사진 URL 목록 (PHOTO 타입만)").optional(),
-                        fieldWithPath("[].thumbnailUrl").description("썸네일 URL"),
-                        fieldWithPath("[].duration").description("비디오 길이 (초, VIDEO 타입만)").optional(),
-                        fieldWithPath("[].width").description("미디어 너비"),
-                        fieldWithPath("[].height").description("미디어 높이"),
-                        fieldWithPath("[].status").description("콘텐츠 상태 (DRAFT | PUBLISHED | ARCHIVED)"),
-                        fieldWithPath("[].title").description("콘텐츠 제목"),
-                        fieldWithPath("[].description").description("콘텐츠 설명").optional(),
-                        fieldWithPath("[].category").description("카테고리"),
-                        fieldWithPath("[].tags").description("태그 목록"),
-                        fieldWithPath("[].language").description("언어 코드"),
-                        fieldWithPath("[].interactions").description("인터랙션 정보"),
-                        fieldWithPath("[].interactions.likeCount").description("좋아요 수"),
-                        fieldWithPath("[].interactions.commentCount").description("댓글 수"),
-                        fieldWithPath("[].interactions.saveCount").description("저장 수"),
-                        fieldWithPath("[].interactions.shareCount").description("공유 수"),
-                        fieldWithPath("[].interactions.viewCount").description("조회 수"),
-                        fieldWithPath("[].interactions.isLiked").description("사용자의 좋아요 여부 (인증된 경우)"),
-                        fieldWithPath("[].interactions.isSaved").description("사용자의 저장 여부 (인증된 경우)"),
-                        fieldWithPath("[].createdAt").description("생성일시"),
-                        fieldWithPath("[].updatedAt").description("수정일시")
+                        fieldWithPath("content").description("콘텐츠 목록"),
+                        fieldWithPath("content[].id").description("콘텐츠 ID"),
+                        fieldWithPath("content[].creatorId").description("크리에이터 ID"),
+                        fieldWithPath("content[].contentType").description("콘텐츠 타입 (VIDEO | PHOTO)"),
+                        fieldWithPath("content[].url").description("비디오 URL (VIDEO 타입만)").optional(),
+                        fieldWithPath("content[].photoUrls").description("사진 URL 목록 (PHOTO 타입만)").optional(),
+                        fieldWithPath("content[].thumbnailUrl").description("썸네일 URL"),
+                        fieldWithPath("content[].duration").description("비디오 길이 (초, VIDEO 타입만)").optional(),
+                        fieldWithPath("content[].width").description("미디어 너비"),
+                        fieldWithPath("content[].height").description("미디어 높이"),
+                        fieldWithPath("content[].status").description("콘텐츠 상태 (DRAFT | PUBLISHED | ARCHIVED)"),
+                        fieldWithPath("content[].title").description("콘텐츠 제목"),
+                        fieldWithPath("content[].description").description("콘텐츠 설명").optional(),
+                        fieldWithPath("content[].category").description("카테고리"),
+                        fieldWithPath("content[].tags").description("태그 목록"),
+                        fieldWithPath("content[].language").description("언어 코드"),
+                        fieldWithPath("content[].interactions").description("인터랙션 정보"),
+                        fieldWithPath("content[].interactions.likeCount").description("좋아요 수"),
+                        fieldWithPath("content[].interactions.commentCount").description("댓글 수"),
+                        fieldWithPath("content[].interactions.saveCount").description("저장 수"),
+                        fieldWithPath("content[].interactions.shareCount").description("공유 수"),
+                        fieldWithPath("content[].interactions.viewCount").description("조회 수"),
+                        fieldWithPath("content[].interactions.isLiked").description("사용자의 좋아요 여부 (인증된 경우)"),
+                        fieldWithPath("content[].interactions.isSaved").description("사용자의 저장 여부 (인증된 경우)"),
+                        fieldWithPath("content[].createdAt").description("생성일시"),
+                        fieldWithPath("content[].updatedAt").description("수정일시"),
+                        fieldWithPath("nextCursor").description("다음 페이지 커서 (없으면 null)").optional(),
+                        fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
+                        fieldWithPath("count").description("현재 페이지의 항목 수")
                     )
                 )
             )
 
         verify(exactly = 1) {
-            contentService.getContentsByCreator(targetUserId, testUserId)
+            contentService.getContentsByCreatorWithCursor(targetUserId, testUserId, any())
         }
     }
 
@@ -480,8 +493,15 @@ class UserProfileControllerTest {
     fun getUserContents_EmptyList_Success() {
         // Given
         val targetUserId = UUID.randomUUID()
-        every { contentService.getContentsByCreator(targetUserId, testUserId) } returns
-                reactor.core.publisher.Flux.empty()
+        val emptyPageResponse = me.onetwo.growsnap.domain.content.dto.ContentPageResponse(
+            content = emptyList(),
+            nextCursor = null,
+            hasNext = false,
+            count = 0
+        )
+
+        every { contentService.getContentsByCreatorWithCursor(targetUserId, testUserId, any()) } returns
+                Mono.just(emptyPageResponse)
 
         // When & Then
         webTestClient
@@ -491,7 +511,9 @@ class UserProfileControllerTest {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.length()").isEqualTo(0)
+            .jsonPath("$.content.length()").isEqualTo(0)
+            .jsonPath("$.hasNext").isEqualTo(false)
+            .jsonPath("$.count").isEqualTo(0)
     }
 
     /**

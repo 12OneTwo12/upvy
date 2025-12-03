@@ -412,7 +412,14 @@ class ContentControllerTest {
                 updatedAt = Instant.now()
             )
 
-            every { contentService.getContentsByCreator(userId, userId) } returns reactor.core.publisher.Flux.just(response1, response2)
+            val pageResponse = me.onetwo.growsnap.domain.content.dto.ContentPageResponse(
+                content = listOf(response1, response2),
+                nextCursor = null,
+                hasNext = false,
+                count = 2
+            )
+
+            every { contentService.getContentsByCreatorWithCursor(userId, userId, any()) } returns Mono.just(pageResponse)
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -422,39 +429,45 @@ class ContentControllerTest {
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$[0].id").isNotEmpty
-                .jsonPath("$[0].title").isEqualTo("My Video 1")
-                .jsonPath("$[1].id").isNotEmpty
-                .jsonPath("$[1].title").isEqualTo("My Photo 1")
+                .jsonPath("$.content[0].id").isNotEmpty
+                .jsonPath("$.content[0].title").isEqualTo("My Video 1")
+                .jsonPath("$.content[1].id").isNotEmpty
+                .jsonPath("$.content[1].title").isEqualTo("My Photo 1")
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.count").isEqualTo(2)
                 .consumeWith(
                     document(
                         "content-get-my-contents",
                         preprocessResponse(prettyPrint()),
                         responseFields(
-                            fieldWithPath("[].id").description("콘텐츠 ID"),
-                            fieldWithPath("[].creatorId").description("생성자 ID"),
-                            fieldWithPath("[].contentType").description("콘텐츠 타입"),
-                            fieldWithPath("[].url").description("콘텐츠 URL").optional(),
-                            fieldWithPath("[].photoUrls").description("사진 URL 목록 (PHOTO 타입인 경우)").optional(),
-                            fieldWithPath("[].thumbnailUrl").description("썸네일 URL"),
-                            fieldWithPath("[].duration").description("동영상 길이 (초)").optional(),
-                            fieldWithPath("[].width").description("가로 해상도"),
-                            fieldWithPath("[].height").description("세로 해상도"),
-                            fieldWithPath("[].status").description("콘텐츠 상태"),
-                            fieldWithPath("[].title").description("제목"),
-                            fieldWithPath("[].description").description("설명").optional(),
-                            fieldWithPath("[].category").description("카테고리"),
-                            fieldWithPath("[].tags").description("태그 목록"),
-                            fieldWithPath("[].language").description("언어"),
-                            fieldWithPath("[].interactions.likeCount").description("좋아요 수").optional(),
-                            fieldWithPath("[].interactions.commentCount").description("댓글 수").optional(),
-                            fieldWithPath("[].interactions.saveCount").description("저장 수").optional(),
-                            fieldWithPath("[].interactions.shareCount").description("공유 수").optional(),
-                            fieldWithPath("[].interactions.viewCount").description("조회수").optional(),
-                            fieldWithPath("[].interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
-                            fieldWithPath("[].interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
-                            fieldWithPath("[].createdAt").description("생성 시각"),
-                            fieldWithPath("[].updatedAt").description("수정 시각")
+                            fieldWithPath("content").description("콘텐츠 목록"),
+                            fieldWithPath("content[].id").description("콘텐츠 ID"),
+                            fieldWithPath("content[].creatorId").description("생성자 ID"),
+                            fieldWithPath("content[].contentType").description("콘텐츠 타입"),
+                            fieldWithPath("content[].url").description("콘텐츠 URL").optional(),
+                            fieldWithPath("content[].photoUrls").description("사진 URL 목록 (PHOTO 타입인 경우)").optional(),
+                            fieldWithPath("content[].thumbnailUrl").description("썸네일 URL"),
+                            fieldWithPath("content[].duration").description("동영상 길이 (초)").optional(),
+                            fieldWithPath("content[].width").description("가로 해상도"),
+                            fieldWithPath("content[].height").description("세로 해상도"),
+                            fieldWithPath("content[].status").description("콘텐츠 상태"),
+                            fieldWithPath("content[].title").description("제목"),
+                            fieldWithPath("content[].description").description("설명").optional(),
+                            fieldWithPath("content[].category").description("카테고리"),
+                            fieldWithPath("content[].tags").description("태그 목록"),
+                            fieldWithPath("content[].language").description("언어"),
+                            fieldWithPath("content[].interactions.likeCount").description("좋아요 수").optional(),
+                            fieldWithPath("content[].interactions.commentCount").description("댓글 수").optional(),
+                            fieldWithPath("content[].interactions.saveCount").description("저장 수").optional(),
+                            fieldWithPath("content[].interactions.shareCount").description("공유 수").optional(),
+                            fieldWithPath("content[].interactions.viewCount").description("조회수").optional(),
+                            fieldWithPath("content[].interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
+                            fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
+                            fieldWithPath("content[].createdAt").description("생성 시각"),
+                            fieldWithPath("content[].updatedAt").description("수정 시각"),
+                            fieldWithPath("nextCursor").description("다음 페이지 커서 (없으면 null)").optional(),
+                            fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
+                            fieldWithPath("count").description("현재 페이지의 항목 수")
                         )
                     )
                 )

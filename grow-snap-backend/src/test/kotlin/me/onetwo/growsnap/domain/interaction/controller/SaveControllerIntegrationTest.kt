@@ -201,8 +201,10 @@ class SaveControllerIntegrationTest : AbstractIntegrationTest() {
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$").isArray
-                .jsonPath("$.length()").isEqualTo(2)
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content.length()").isEqualTo(2)
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.count").isEqualTo(2)
         }
 
         @Test
@@ -224,7 +226,10 @@ class SaveControllerIntegrationTest : AbstractIntegrationTest() {
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .json("[]")
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content.length()").isEqualTo(0)
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.count").isEqualTo(0)
         }
     }
 

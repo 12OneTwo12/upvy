@@ -79,6 +79,17 @@ interface ContentService {
     ): Mono<ContentPageResponse>
 
     /**
+     * 여러 콘텐츠 ID로 콘텐츠 목록을 배치 조회합니다.
+     *
+     * 저장한 콘텐츠 목록 등에서 N+1 문제 없이 조회하기 위해 사용됩니다.
+     *
+     * @param contentIds 조회할 콘텐츠 ID 목록
+     * @param userId 사용자 ID (선택, 인터랙션 정보에 사용자별 상태를 포함하려면 제공)
+     * @return 콘텐츠 목록을 담은 Flux (순서는 DB 순서대로)
+     */
+    fun getContentsByIds(contentIds: List<UUID>, userId: UUID? = null): Flux<ContentResponse>
+
+    /**
      * 콘텐츠를 수정합니다.
      *
      * @param userId 사용자 ID

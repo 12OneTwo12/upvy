@@ -483,6 +483,80 @@ class ContentServiceImpl(
     }
 
     /**
+     * 여러 콘텐츠 ID로 콘텐츠 목록을 배치 조회합니다.
+     *
+     * 저장한 콘텐츠 목록 등에서 N+1 문제 없이 조회하기 위해 사용됩니다.
+     *
+     * @param contentIds 조회할 콘텐츠 ID 목록
+     * @param userId 사용자 ID (선택, 인터랙션 정보에 사용자별 상태를 포함하려면 제공)
+     * @return 콘텐츠 목록을 담은 Flux (순서는 DB 순서대로)
+     */
+    override fun getContentsByIds(contentIds: List<UUID>, userId: UUID?): Flux<ContentResponse> {
+        logger.info("Getting contents by IDs: contentIds.size=${contentIds.size}, userId=$userId")
+
+        if (contentIds.isEmpty()) {
+            return Flux.empty()
+        }
+
+        return contentRepository.findByIdsWithMetadata(contentIds)
+            .collectList()
+            .flatMap { contentWithMetadataList ->
+                // N+1 방지: PHOTO 타입 콘텐츠의 사진 목록을 일괄 조회
+                val photoContentIds = contentWithMetadataList
+                    .filter { it.content.contentType == ContentType.PHOTO }
+                    .mapNotNull { it.content.id }
+
+                val photoUrlsMapMono = if (photoContentIds.isNotEmpty()) {
+                    contentPhotoRepository.findByContentIds(photoContentIds)
+                        .map { photoMap ->
+                            photoMap.mapValues { (_, photos) -> photos.map { it.photoUrl } }
+                        }
+                } else {
+                    Mono.just(emptyMap())
+                }
+
+                photoUrlsMapMono.map { photoUrlsMap ->
+                    contentWithMetadataList to photoUrlsMap
+                }
+            }
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+                Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
+                    val content = contentWithMetadata.content
+                    val metadata = contentWithMetadata.metadata
+                    val photoUrls = if (content.contentType == ContentType.PHOTO) {
+                        photoUrlsMap[content.id]
+                    } else {
+                        null
+                    }
+
+                    // Interaction 정보 조회
+                    getInteractionInfo(content.id!!, userId).map { interactions ->
+                        ContentResponse(
+                            id = content.id.toString(),
+                            creatorId = content.creatorId.toString(),
+                            contentType = content.contentType,
+                            url = content.url,
+                            photoUrls = photoUrls,
+                            thumbnailUrl = content.thumbnailUrl,
+                            duration = content.duration,
+                            width = content.width,
+                            height = content.height,
+                            status = content.status,
+                            title = metadata.title,
+                            description = metadata.description,
+                            category = metadata.category,
+                            tags = metadata.tags,
+                            language = metadata.language,
+                            interactions = interactions,
+                            createdAt = content.createdAt,
+                            updatedAt = content.updatedAt
+                        )
+                    }
+                }
+            }
+    }
+
+    /**
      * 콘텐츠를 수정합니다.
      *
      * @param userId 사용자 ID

@@ -45,6 +45,9 @@ class SaveServiceTest {
     private lateinit var contentMetadataRepository: ContentMetadataRepository
 
     @MockK
+    private lateinit var contentService: me.onetwo.growsnap.domain.content.service.ContentService
+
+    @MockK
     private lateinit var eventPublisher: ReactiveEventPublisher
 
     @InjectMockKs

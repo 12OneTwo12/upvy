@@ -148,20 +148,71 @@ class SaveControllerTest {
         fun getSavedVideos_WithValidRequest_ReturnsSavedContentList() {
             // Given: 저장한 콘텐츠 목록
             val userId = UUID.randomUUID()
-            val savedContent1 = SavedContentResponse(
-                contentId = UUID.randomUUID().toString(),
-                title = "Saved Video 1",
+            val contentResponse1 = me.onetwo.growsnap.domain.content.dto.ContentResponse(
+                id = UUID.randomUUID().toString(),
+                creatorId = userId.toString(),
+                contentType = me.onetwo.growsnap.domain.content.model.ContentType.VIDEO,
+                url = "https://example.com/video1.mp4",
+                photoUrls = null,
                 thumbnailUrl = "https://example.com/thumb1.jpg",
-                savedAt = "2025-10-23T17:30:00"
+                duration = 60,
+                width = 1920,
+                height = 1080,
+                status = me.onetwo.growsnap.domain.content.model.ContentStatus.PUBLISHED,
+                title = "Saved Video 1",
+                description = "Description 1",
+                category = me.onetwo.growsnap.domain.content.model.Category.PROGRAMMING,
+                tags = listOf("test"),
+                language = "ko",
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 10,
+                    commentCount = 5,
+                    saveCount = 3,
+                    shareCount = 2,
+                    viewCount = 100,
+                    isLiked = false,
+                    isSaved = true
+                ),
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now()
             )
-            val savedContent2 = SavedContentResponse(
-                contentId = UUID.randomUUID().toString(),
-                title = "Saved Video 2",
+            val contentResponse2 = me.onetwo.growsnap.domain.content.dto.ContentResponse(
+                id = UUID.randomUUID().toString(),
+                creatorId = userId.toString(),
+                contentType = me.onetwo.growsnap.domain.content.model.ContentType.VIDEO,
+                url = "https://example.com/video2.mp4",
+                photoUrls = null,
                 thumbnailUrl = "https://example.com/thumb2.jpg",
-                savedAt = "2025-10-23T17:31:00"
+                duration = 120,
+                width = 1920,
+                height = 1080,
+                status = me.onetwo.growsnap.domain.content.model.ContentStatus.PUBLISHED,
+                title = "Saved Video 2",
+                description = "Description 2",
+                category = me.onetwo.growsnap.domain.content.model.Category.HEALTH,
+                tags = listOf("test"),
+                language = "ko",
+                interactions = me.onetwo.growsnap.domain.feed.dto.InteractionInfoResponse(
+                    likeCount = 20,
+                    commentCount = 10,
+                    saveCount = 5,
+                    shareCount = 3,
+                    viewCount = 200,
+                    isLiked = false,
+                    isSaved = true
+                ),
+                createdAt = java.time.Instant.now(),
+                updatedAt = java.time.Instant.now()
             )
 
-            every { saveService.getSavedContents(userId) } returns Flux.just(savedContent1, savedContent2)
+            val pageResponse = me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse(
+                content = listOf(contentResponse1, contentResponse2),
+                nextCursor = null,
+                hasNext = false,
+                count = 2
+            )
+
+            every { saveService.getSavedContentsWithCursor(userId, any()) } returns Mono.just(pageResponse)
 
             // When & Then: API 호출 및 검증
             webTestClient
@@ -171,25 +222,51 @@ class SaveControllerTest {
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$[0].contentId").isEqualTo(savedContent1.contentId)
-                .jsonPath("$[0].title").isEqualTo("Saved Video 1")
-                .jsonPath("$[1].contentId").isEqualTo(savedContent2.contentId)
-                .jsonPath("$[1].title").isEqualTo("Saved Video 2")
+                .jsonPath("$.content[0].id").isEqualTo(contentResponse1.id)
+                .jsonPath("$.content[0].title").isEqualTo("Saved Video 1")
+                .jsonPath("$.content[1].id").isEqualTo(contentResponse2.id)
+                .jsonPath("$.content[1].title").isEqualTo("Saved Video 2")
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.count").isEqualTo(2)
                 .consumeWith(
                     document(
                         "save-list",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         responseFields(
-                            fieldWithPath("[].contentId").description("콘텐츠 ID"),
-                            fieldWithPath("[].title").description("콘텐츠 제목"),
-                            fieldWithPath("[].thumbnailUrl").description("썸네일 URL"),
-                            fieldWithPath("[].savedAt").description("저장 시각")
+                            fieldWithPath("content").description("콘텐츠 목록"),
+                            fieldWithPath("content[].id").description("콘텐츠 ID"),
+                            fieldWithPath("content[].creatorId").description("크리에이터 ID"),
+                            fieldWithPath("content[].contentType").description("콘텐츠 타입"),
+                            fieldWithPath("content[].url").description("콘텐츠 URL"),
+                            fieldWithPath("content[].photoUrls").description("사진 URL 목록").optional(),
+                            fieldWithPath("content[].thumbnailUrl").description("썸네일 URL"),
+                            fieldWithPath("content[].duration").description("비디오 길이 (초)").optional(),
+                            fieldWithPath("content[].width").description("가로 해상도"),
+                            fieldWithPath("content[].height").description("세로 해상도"),
+                            fieldWithPath("content[].status").description("콘텐츠 상태"),
+                            fieldWithPath("content[].title").description("제목"),
+                            fieldWithPath("content[].description").description("설명").optional(),
+                            fieldWithPath("content[].category").description("카테고리"),
+                            fieldWithPath("content[].tags").description("태그 목록"),
+                            fieldWithPath("content[].language").description("언어"),
+                            fieldWithPath("content[].interactions.likeCount").description("좋아요 수"),
+                            fieldWithPath("content[].interactions.commentCount").description("댓글 수"),
+                            fieldWithPath("content[].interactions.saveCount").description("저장 수"),
+                            fieldWithPath("content[].interactions.shareCount").description("공유 수"),
+                            fieldWithPath("content[].interactions.viewCount").description("조회수"),
+                            fieldWithPath("content[].interactions.isLiked").description("현재 사용자의 좋아요 여부"),
+                            fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부"),
+                            fieldWithPath("content[].createdAt").description("생성 시각"),
+                            fieldWithPath("content[].updatedAt").description("수정 시각"),
+                            fieldWithPath("nextCursor").description("다음 페이지 커서 (없으면 null)").optional(),
+                            fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
+                            fieldWithPath("count").description("현재 페이지의 항목 수")
                         )
                     )
                 )
 
-            verify(exactly = 1) { saveService.getSavedContents(userId) }
+            verify(exactly = 1) { saveService.getSavedContentsWithCursor(userId, any()) }
         }
 
         @Test
@@ -197,8 +274,9 @@ class SaveControllerTest {
         fun getSavedVideos_WithNoSavedContents_ReturnsEmptyArray() {
             // Given: 저장한 콘텐츠가 없음
             val userId = UUID.randomUUID()
+            val emptyPageResponse = me.onetwo.growsnap.infrastructure.common.dto.CursorPageResponse.empty<me.onetwo.growsnap.domain.content.dto.ContentResponse>()
 
-            every { saveService.getSavedContents(userId) } returns Flux.empty()
+            every { saveService.getSavedContentsWithCursor(userId, any()) } returns Mono.just(emptyPageResponse)
 
             // When & Then: 빈 배열 반환 검증
             webTestClient
@@ -208,9 +286,12 @@ class SaveControllerTest {
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .json("[]")
+                .jsonPath("$.content").isArray
+                .jsonPath("$.content.length()").isEqualTo(0)
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.count").isEqualTo(0)
 
-            verify(exactly = 1) { saveService.getSavedContents(userId) }
+            verify(exactly = 1) { saveService.getSavedContentsWithCursor(userId, any()) }
         }
     }
 

@@ -154,43 +154,40 @@ class SaveServiceImpl(
 
         return userSaveRepository.findByUserIdWithCursor(userId, cursor, limit + 1)
             .collectList()
-            .flatMap { userSaves ->
+            .flatMapMany { userSaves ->
                 if (userSaves.isEmpty()) {
-                    return@flatMap Mono.just(CursorPageResponse.empty<ContentResponse>())
+                    return@flatMapMany Flux.empty()
                 }
 
                 // UserSave의 순서를 유지하기 위해 Map 사용
                 val contentIdToSaveMap = userSaves.associateBy { it.contentId }
                 val contentIds = userSaves.map { it.contentId }
 
-                // 각 contentId에 대해 ContentResponse 조회 (병렬 처리)
-                Flux.fromIterable(contentIds)
-                    .flatMap { contentId ->
-                        contentService.getContent(contentId, userId)
-                            .onErrorResume { error ->
-                                logger.warn("Failed to get content: contentId=$contentId", error)
-                                Mono.empty<ContentResponse>() // 조회 실패 시 skip
-                            }
-                    }
+                // 배치 조회로 N+1 문제 해결
+                contentService.getContentsByIds(contentIds, userId)
                     .collectList()
-                    .map { contentResponses ->
+                    .flatMapMany { contentResponses ->
                         // contentId -> ContentResponse Map 생성
                         val contentResponseMap = contentResponses.associateBy { UUID.fromString(it.id) }
 
-                        // UserSave의 순서대로 ContentResponse 정렬
+                        // UserSave의 순서대로 ContentResponse 정렬 (삭제된 콘텐츠는 제외)
                         val orderedResponses = contentIds.mapNotNull { contentId ->
                             contentResponseMap[contentId]
                         }
 
-                        CursorPageResponse.of(
-                            content = orderedResponses,
-                            limit = limit,
-                            getCursor = { response ->
-                                contentIdToSaveMap[UUID.fromString(response.id)]?.id.toString()
-                            }
+                        Flux.just(
+                            CursorPageResponse.of(
+                                content = orderedResponses,
+                                limit = limit,
+                                getCursor = { response ->
+                                    contentIdToSaveMap[UUID.fromString(response.id)]?.id.toString()
+                                }
+                            )
                         )
                     }
             }
+            .next()
+            .switchIfEmpty(Mono.just(CursorPageResponse.empty()))
     }
 
     /**

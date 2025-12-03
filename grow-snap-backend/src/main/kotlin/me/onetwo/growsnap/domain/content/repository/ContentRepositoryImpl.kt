@@ -559,6 +559,109 @@ class ContentRepositoryImpl(
     }
 
     /**
+     * 여러 콘텐츠 ID로 콘텐츠와 메타데이터를 배치 조회합니다.
+     *
+     * JOIN을 사용하여 N+1 쿼리 문제를 방지합니다.
+     * 저장한 콘텐츠 목록 조회 등에서 사용됩니다.
+     *
+     * @param contentIds 조회할 콘텐츠 ID 목록
+     * @return 콘텐츠와 메타데이터의 목록 (Flux)
+     */
+    override fun findByIdsWithMetadata(contentIds: List<UUID>): Flux<ContentWithMetadata> {
+        if (contentIds.isEmpty()) {
+            return Flux.empty()
+        }
+
+        val contentIdsString = contentIds.map { it.toString() }
+
+        return Flux.from(
+            dslContext
+                .select(
+                    CONTENTS.ID,
+                    CONTENTS.CREATOR_ID,
+                    CONTENTS.CONTENT_TYPE,
+                    CONTENTS.URL,
+                    CONTENTS.THUMBNAIL_URL,
+                    CONTENTS.DURATION,
+                    CONTENTS.WIDTH,
+                    CONTENTS.HEIGHT,
+                    CONTENTS.STATUS,
+                    CONTENTS.CREATED_AT,
+                    CONTENTS.CREATED_BY,
+                    CONTENTS.UPDATED_AT,
+                    CONTENTS.UPDATED_BY,
+                    CONTENTS.DELETED_AT,
+                    CONTENT_METADATA.ID,
+                    CONTENT_METADATA.CONTENT_ID,
+                    CONTENT_METADATA.TITLE,
+                    CONTENT_METADATA.DESCRIPTION,
+                    CONTENT_METADATA.CATEGORY,
+                    CONTENT_METADATA.TAGS,
+                    CONTENT_METADATA.DIFFICULTY_LEVEL,
+                    CONTENT_METADATA.LANGUAGE,
+                    CONTENT_METADATA.CREATED_AT,
+                    CONTENT_METADATA.CREATED_BY,
+                    CONTENT_METADATA.UPDATED_AT,
+                    CONTENT_METADATA.UPDATED_BY,
+                    CONTENT_METADATA.DELETED_AT
+                )
+                .from(CONTENTS)
+                .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
+                .where(CONTENTS.ID.`in`(contentIdsString))
+                .and(CONTENTS.DELETED_AT.isNull)
+                .and(CONTENT_METADATA.DELETED_AT.isNull)
+        ).map { record ->
+            val content = Content(
+                id = UUID.fromString(record.getValue(CONTENTS.ID)),
+                creatorId = UUID.fromString(record.getValue(CONTENTS.CREATOR_ID)),
+                contentType = ContentType.valueOf(record.getValue(CONTENTS.CONTENT_TYPE)!!),
+                url = record.getValue(CONTENTS.URL)!!,
+                thumbnailUrl = record.getValue(CONTENTS.THUMBNAIL_URL)!!,
+                duration = record.getValue(CONTENTS.DURATION),
+                width = record.getValue(CONTENTS.WIDTH)!!,
+                height = record.getValue(CONTENTS.HEIGHT)!!,
+                status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
+                createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
+                createdBy = record.getValue(CONTENTS.CREATED_BY),
+                updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
+                updatedBy = record.getValue(CONTENTS.UPDATED_BY),
+                deletedAt = record.getValue(CONTENTS.DELETED_AT)
+            )
+
+            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
+            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
+            val tags = if (tagsString != null && tagsString.isNotBlank()) {
+                try {
+                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
+                } catch (e: JsonProcessingException) {
+                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
+                    logger.warn("Failed to parse tags JSON for content ${content.id}: ${e.message}", e)
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+
+            val metadata = ContentMetadata(
+                id = record.getValue(CONTENT_METADATA.ID),
+                contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
+                title = record.getValue(CONTENT_METADATA.TITLE)!!,
+                description = record.getValue(CONTENT_METADATA.DESCRIPTION),
+                category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
+                tags = tags,
+                language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
+                createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
+                createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
+                updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
+                updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
+                deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
+            )
+
+            ContentWithMetadata(content, metadata)
+        }
+    }
+
+    /**
      * 제목으로 콘텐츠 검색 (LIKE 검색)
      *
      * Manticore Search Failover용 DB 검색 메서드입니다.
