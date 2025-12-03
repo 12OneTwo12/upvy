@@ -33,6 +33,7 @@ interface FeedOverlayProps {
   onShare?: () => void;
   onFollow?: () => void;
   onCreatorPress?: () => void;
+  onBlockSuccess?: () => void; // 차단 성공 시 호출
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
   tabBarHeight: number;
@@ -58,6 +59,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onShare,
   onFollow,
   onCreatorPress,
+  onBlockSuccess,
   isExpanded,
   setIsExpanded,
   tabBarHeight,
@@ -307,8 +309,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           targetId={blockType === 'user' ? creator.userId : contentId}
           targetName={blockType === 'user' ? creator.nickname : title}
           onSuccess={() => {
-            // 차단 성공 시 피드에서 제거 (부모 컴포넌트에서 처리)
-            // 여기서는 모달만 닫음
+            // 차단 성공 시 다음 콘텐츠로 자동 스크롤 (Instagram/TikTok 스타일)
+            onBlockSuccess?.();
           }}
         />
 
