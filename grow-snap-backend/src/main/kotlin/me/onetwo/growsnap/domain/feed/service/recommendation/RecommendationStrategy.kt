@@ -6,32 +6,33 @@ package me.onetwo.growsnap.domain.feed.service.recommendation
  * 요구사항 명세서 섹션 2.2.1의 추천 알고리즘을 구현합니다.
  *
  * @property percentage 전체 피드에서 차지하는 비율 (0.0 ~ 1.0)
+ * @property baseScore 전략별 기본 점수 (언어 가중치 적용 전)
  * @property description 전략 설명
  */
-enum class RecommendationStrategy(val percentage: Double, val description: String) {
+enum class RecommendationStrategy(val percentage: Double, val baseScore: Double, val description: String) {
     /**
      * 협업 추천 (40%)
      * 사용자의 행동 데이터 기반으로 유사한 사용자가 좋아한 콘텐츠 추천
      */
-    COLLABORATIVE(0.40, "협업 추천 - 유사 사용자 기반"),
+    COLLABORATIVE(0.40, 10.0, "협업 추천 - 유사 사용자 기반"),
 
     /**
      * 인기 콘텐츠 (30%)
      * 조회수, 좋아요 등 인터랙션이 많은 인기 콘텐츠 추천
      */
-    POPULAR(0.30, "인기 콘텐츠 - 높은 인터랙션"),
+    POPULAR(0.30, 7.0, "인기 콘텐츠 - 높은 인터랙션"),
 
     /**
      * 신규 콘텐츠 (10%)
      * 최근 업로드된 신규 콘텐츠 추천 (발견 가능성 향상)
      */
-    NEW(0.10, "신규 콘텐츠 - 최근 업로드"),
+    NEW(0.10, 5.0, "신규 콘텐츠 - 최근 업로드"),
 
     /**
      * 랜덤 콘텐츠 (20%)
      * 무작위 콘텐츠 추천 (다양성 확보)
      */
-    RANDOM(0.20, "랜덤 콘텐츠 - 다양성 확보");
+    RANDOM(0.20, 3.0, "랜덤 콘텐츠 - 다양성 확보");
 
     companion object {
         /**

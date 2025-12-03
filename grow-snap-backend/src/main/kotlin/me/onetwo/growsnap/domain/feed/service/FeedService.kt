@@ -19,11 +19,20 @@ interface FeedService {
      * 추천 알고리즘 기반으로 사용자에게 맞춤화된 피드를 제공합니다.
      * 최근 본 콘텐츠는 제외하여 중복을 방지합니다.
      *
+     * Issue #107: 언어 기반 가중치 적용
+     * - 사용자 선호 언어가 제공되면 해당 언어의 콘텐츠에 2.0x 가중치 적용
+     * - 언어 미제공 시 기존 추천 알고리즘 사용 (무작위 섞기)
+     *
      * @param userId 사용자 ID
      * @param pageRequest 페이지네이션 요청
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en)
      * @return 피드 응답
      */
-    fun getMainFeed(userId: UUID, pageRequest: CursorPageRequest): Mono<FeedResponse>
+    fun getMainFeed(
+        userId: UUID,
+        pageRequest: CursorPageRequest,
+        preferredLanguage: String? = null
+    ): Mono<FeedResponse>
 
     /**
      * 팔로잉 피드 조회

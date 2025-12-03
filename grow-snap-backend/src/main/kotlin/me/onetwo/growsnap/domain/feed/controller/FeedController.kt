@@ -41,22 +41,29 @@ class FeedController(
      * - 무한 스크롤 지원
      * - 중복 콘텐츠 방지
      *
+     * ### Issue #107: 언어 기반 가중치 적용
+     * - 사용자 선호 언어에 따라 콘텐츠에 가중치 적용 (일치: 2.0x, 불일치: 0.5x)
+     * - 프론트엔드는 사용자의 현재 언어 설정을 필수로 전달 (예: ko, en)
+     * - 기본값: "en" (영어)
+     *
      * @param userId 인증된 사용자 ID (Spring Security에서 자동 주입)
      * @param cursor 커서 (마지막 조회 콘텐츠 ID, null이면 첫 페이지)
      * @param limit 페이지당 항목 수 (기본값: 20, 최대: 100)
+     * @param language 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 기본값: "en"
      * @return 피드 응답 (200 OK)
      */
     @GetMapping
     fun getMainFeed(
         principal: Mono<Principal>,
         @RequestParam(required = false) cursor: String?,
-        @RequestParam(required = false, defaultValue = "20") limit: Int
+        @RequestParam(required = false, defaultValue = "20") limit: Int,
+        @RequestParam(defaultValue = "en") language: String
     ): Mono<ResponseEntity<FeedResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
                 val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
-                feedService.getMainFeed(userId, pageRequest)
+                feedService.getMainFeed(userId, pageRequest, language)
             }
             .map { ResponseEntity.ok(it) }
     }
@@ -134,7 +141,7 @@ class FeedController(
      * - 일관된 피드 경험 제공 (세션 기반)
      *
      * ### 추천 전략 (메인 피드와 동일한 비율)
-     * - 팔로잉 콘텐츠 (40%): 팔로우한 크리에이터의 해당 카테고리 콘텐츠
+     * - 협업 필터링 (40%): Item-based Collaborative Filtering
      * - 인기 콘텐츠 (30%): 해당 카테고리의 인기 콘텐츠
      * - 신규 콘텐츠 (10%): 해당 카테고리의 최신 콘텐츠
      * - 랜덤 콘텐츠 (20%): 해당 카테고리의 랜덤 콘텐츠

@@ -270,13 +270,25 @@ class FeedRepositoryImpl(
      * @param category 카테고리 필터 (null이면 전체 조회)
      * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
      */
-    override fun findPopularContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
-        // 인기도 점수 계산식 (부동소수점 연산)
-        val popularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
+    override fun findPopularContentIds(
+        userId: UUID,
+        limit: Int,
+        excludeIds: List<UUID>,
+        category: Category?,
+        preferredLanguage: String
+    ): Flux<UUID> {
+        // 1. 기본 인기도 점수 계산 (부동소수점 연산)
+        val basePopularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
             .plus(CONTENT_INTERACTIONS.LIKE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_LIKE))
             .plus(CONTENT_INTERACTIONS.COMMENT_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_COMMENT))
             .plus(CONTENT_INTERACTIONS.SAVE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SAVE))
             .plus(CONTENT_INTERACTIONS.SHARE_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_SHARE))
+
+        // 2. 언어 가중치 계산 (Issue #107)
+        val languageMultiplier = calculateLanguageMultiplier(preferredLanguage)
+
+        // 3. 최종 점수 = 기본 점수 × 언어 가중치
+        val finalScore = basePopularityScore.mul(languageMultiplier)
 
         var query = dslContext
             .select(CONTENTS.ID)
@@ -300,9 +312,10 @@ class FeedRepositoryImpl(
             query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
         }
 
+        // 4. 최종 점수로 정렬 (언어 가중치가 적용된 인기도 순)
         return Flux.from(
             query
-                .orderBy(popularityScore.desc())
+                .orderBy(finalScore.desc())
                 .limit(limit)
         ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
@@ -312,13 +325,47 @@ class FeedRepositoryImpl(
      *
      * 최근 업로드된 콘텐츠를 조회합니다.
      *
+     * ### 정렬 공식 (Issue #107: 언어 가중치 적용)
+     * ```
+     * recency_score = UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(created_at)
+     *
+     * language_multiplier = CASE
+     *   WHEN content_language = preferredLanguage THEN 2.0
+     *   ELSE 0.5
+     * END
+     *
+     * final_score = recency_score * language_multiplier
+     * ORDER BY final_score DESC (최신 콘텐츠 중 선호 언어 우선)
+     * ```
+     *
      * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
-     * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 언어 가중치 적용
+     * @return 신규 콘텐츠 ID 목록 (언어 가중치가 적용된 최신순 정렬)
      */
-    override fun findNewContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
+    override fun findNewContentIds(
+        userId: UUID,
+        limit: Int,
+        excludeIds: List<UUID>,
+        category: Category?,
+        preferredLanguage: String
+    ): Flux<UUID> {
+        // 1. 기본 최신도 점수 계산 (최근일수록 높은 점수)
+        // UNIX_TIMESTAMP는 초 단위 정수를 반환하므로 Double로 캐스팅
+        val baseRecencyScore = DSL.field(
+            "UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP({0})",
+            Long::class.java,
+            CONTENTS.CREATED_AT
+        ).cast(Double::class.java)
+
+        // 2. 언어 가중치 계산 (Issue #107)
+        val languageMultiplier = calculateLanguageMultiplier(preferredLanguage)
+
+        // 3. 최종 점수 = 기본 점수 × 언어 가중치
+        val finalScore = baseRecencyScore.mul(languageMultiplier)
+
         var query = dslContext
             .select(CONTENTS.ID)
             .from(CONTENTS)
@@ -340,9 +387,10 @@ class FeedRepositoryImpl(
             query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
         }
 
+        // 4. 최종 점수로 정렬 (언어 가중치가 적용된 최신순)
         return Flux.from(
             query
-                .orderBy(CONTENTS.CREATED_AT.desc())
+                .orderBy(finalScore.desc())
                 .limit(limit)
         ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
@@ -352,13 +400,42 @@ class FeedRepositoryImpl(
      *
      * 무작위 콘텐츠를 조회하여 다양성을 확보합니다.
      *
+     * ### 정렬 공식 (Issue #107: 언어 가중치 적용)
+     * ```
+     * random_score = RAND()
+     *
+     * language_multiplier = CASE
+     *   WHEN content_language = preferredLanguage THEN 2.0
+     *   ELSE 0.5
+     * END
+     *
+     * final_score = random_score * language_multiplier
+     * ORDER BY final_score DESC (랜덤하되 선호 언어 우선)
+     * ```
+     *
      * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
-     * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 언어 가중치 적용
+     * @return 랜덤 콘텐츠 ID 목록 (언어 가중치가 적용된 무작위 정렬)
      */
-    override fun findRandomContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category?): Flux<UUID> {
+    override fun findRandomContentIds(
+        userId: UUID,
+        limit: Int,
+        excludeIds: List<UUID>,
+        category: Category?,
+        preferredLanguage: String
+    ): Flux<UUID> {
+        // 1. 기본 랜덤 점수 계산
+        val baseRandomScore = DSL.rand()
+
+        // 2. 언어 가중치 계산 (Issue #107)
+        val languageMultiplier = calculateLanguageMultiplier(preferredLanguage)
+
+        // 3. 최종 점수 = 기본 점수 × 언어 가중치
+        val finalScore = baseRandomScore.mul(languageMultiplier)
+
         var query = dslContext
             .select(CONTENTS.ID)
             .from(CONTENTS)
@@ -380,9 +457,10 @@ class FeedRepositoryImpl(
             query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
         }
 
+        // 4. 최종 점수로 정렬 (언어 가중치가 적용된 랜덤순)
         return Flux.from(
             query
-                .orderBy(DSL.rand())
+                .orderBy(finalScore.desc())
                 .limit(limit)
         ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
@@ -617,6 +695,28 @@ class FeedRepositoryImpl(
     }
 
     /**
+     * 언어 가중치 계산 (Issue #107)
+     *
+     * 사용자 선호 언어에 따라 콘텐츠 점수에 적용할 가중치를 계산합니다.
+     * 모든 추천 전략에서 동일한 비즈니스 로직을 사용합니다.
+     *
+     * ### 가중치 공식
+     * ```sql
+     * CASE
+     *   WHEN content_metadata.language = :preferredLanguage THEN 2.0
+     *   ELSE 0.5
+     * END
+     * ```
+     *
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en)
+     * @return JOOQ Field (언어 가중치 계산식)
+     */
+    private fun calculateLanguageMultiplier(preferredLanguage: String) =
+        DSL.case_()
+            .`when`(CONTENT_METADATA.LANGUAGE.eq(preferredLanguage), LANGUAGE_MULTIPLIER_MATCH)
+            .otherwise(LANGUAGE_MULTIPLIER_MISMATCH)
+
+    /**
      * 사용자의 차단 필터링 조건 생성
      *
      * 차단한 사용자의 콘텐츠와 차단한 콘텐츠를 필터링하는 JOOQ Condition을 생성합니다.
@@ -655,5 +755,15 @@ class FeedRepositoryImpl(
         private const val POPULARITY_WEIGHT_COMMENT = 3.0
         private const val POPULARITY_WEIGHT_SAVE = 7.0
         private const val POPULARITY_WEIGHT_SHARE = 10.0
+
+        /**
+         * 언어 가중치 (Issue #107)
+         *
+         * 사용자 선호 언어에 따라 콘텐츠 점수에 적용되는 가중치입니다.
+         * - 일치: 2.0x (우선 노출)
+         * - 불일치: 0.5x (후순위 노출)
+         */
+        private const val LANGUAGE_MULTIPLIER_MATCH = 2.0
+        private const val LANGUAGE_MULTIPLIER_MISMATCH = 0.5
     }
 }

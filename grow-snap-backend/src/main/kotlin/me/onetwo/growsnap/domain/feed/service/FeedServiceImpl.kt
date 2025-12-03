@@ -41,7 +41,7 @@ class FeedServiceImpl(
      * TikTok/Instagram Reels 방식의 숏폼 피드를 제공합니다.
      * Redis를 사용한 세션 기반 캐싱으로 일관된 피드 경험을 보장합니다.
      *
-     * ### 처리 흐름 (TikTok/Instagram Reels 방식)
+     * ### 처리 흐름 (TikTok/Instagram Reels 방식 - 언어 미제공)
      * 1. cursor를 offset으로 변환 (없으면 0)
      * 2. batchNumber 계산 (offset / 250)
      * 3. Redis에서 캐싱된 배치 조회
@@ -53,11 +53,29 @@ class FeedServiceImpl(
      * 6. 상세 정보 조회
      * 7. Prefetch 체크 (50% 소진 시 다음 배치 백그라운드 생성)
      *
+     * ### 처리 흐름 (언어 가중치 적용 - Issue #107)
+     * 언어 파라미터가 제공되면 캐싱을 우회하고 실시간 점수 계산을 수행합니다.
+     * (MVP: 캐시 키에 언어 미포함, 향후 개선 예정)
+     * 1. cursor를 offset으로 변환
+     * 2. 최근 본 콘텐츠 제외 목록 조회
+     * 3. 추천 알고리즘 실행 (언어 가중치 적용)
+     * 4. 상세 정보 조회
+     *
      * @param userId 사용자 ID
      * @param pageRequest 페이지네이션 요청 (cursor는 offset으로 해석)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en)
      * @return 피드 응답
      */
-    override fun getMainFeed(userId: UUID, pageRequest: CursorPageRequest): Mono<FeedResponse> {
+    override fun getMainFeed(
+        userId: UUID,
+        pageRequest: CursorPageRequest,
+        preferredLanguage: String?
+    ): Mono<FeedResponse> {
+        // 언어 파라미터가 제공되면 캐싱 우회 (MVP)
+        if (preferredLanguage != null) {
+            return getMainFeedWithLanguageWeighting(userId, pageRequest, preferredLanguage)
+        }
+
         // cursor를 offset으로 변환 (cursor가 없으면 0부터 시작)
         val offset = pageRequest.cursor?.toLongOrNull() ?: 0L
         val limit = pageRequest.limit
@@ -69,7 +87,7 @@ class FeedServiceImpl(
         return feedCacheService.getRecommendationBatch(userId, batchNumber)
             .switchIfEmpty(
                 // 캐시 미스: 새 배치 생성
-                generateAndCacheBatch(userId, batchNumber)
+                generateAndCacheBatch(userId, batchNumber, null)
             )
             .flatMap { cachedBatch ->
                 // 배치에서 필요한 범위만 추출
@@ -78,7 +96,7 @@ class FeedServiceImpl(
                 val contentIds = cachedBatch.subList(startIndex, endIndex)
 
                 // Prefetch 체크 (50% 소진 시 다음 배치 생성)
-                checkAndPrefetchNextBatch(userId, batchNumber, offset, cachedBatch.size)
+                checkAndPrefetchNextBatch(userId, batchNumber, offset, cachedBatch.size, null)
 
                 // 상세 정보 조회
                 feedRepository.findByContentIds(userId, contentIds)
@@ -94,23 +112,77 @@ class FeedServiceImpl(
     }
 
     /**
+     * 언어 가중치를 적용한 메인 피드 조회
+     *
+     * 캐싱을 사용하지 않고 매번 실시간으로 점수를 계산합니다.
+     * MVP 단계에서는 간단한 offset 기반 페이징을 사용합니다.
+     *
+     * @param userId 사용자 ID
+     * @param pageRequest 페이지네이션 요청
+     * @param preferredLanguage 사용자 선호 언어
+     * @return 피드 응답
+     */
+    private fun getMainFeedWithLanguageWeighting(
+        userId: UUID,
+        pageRequest: CursorPageRequest,
+        preferredLanguage: String
+    ): Mono<FeedResponse> {
+        val offset = pageRequest.cursor?.toLongOrNull() ?: 0L
+        val limit = pageRequest.limit
+
+        return feedRepository.findRecentlyViewedContentIds(userId, RECENTLY_VIEWED_LIMIT)
+            .collectList()
+            .flatMap { recentlyViewedIds ->
+                // 언어 가중치를 적용한 추천 알고리즘 실행
+                // 충분한 후보를 확보하기 위해 offset + limit 만큼 요청
+                recommendationService.getRecommendedContentIds(
+                    userId = userId,
+                    limit = (offset + limit + 1).toInt(),
+                    excludeContentIds = recentlyViewedIds,
+                    preferredLanguage = preferredLanguage
+                )
+                    .skip(offset)
+                    .take((limit + 1).toLong())
+                    .collectList()
+                    .flatMap { contentIds ->
+                        // 상세 정보 조회
+                        feedRepository.findByContentIds(userId, contentIds)
+                            .collectList()
+                            .map { feedItems ->
+                                CursorPageResponse.of(
+                                    content = feedItems,
+                                    limit = limit,
+                                    getCursor = { (offset + feedItems.indexOf(it) + 1).toString() }
+                                )
+                            }
+                    }
+            }
+    }
+
+    /**
      * 새로운 추천 배치 생성 및 캐싱
      *
      * 추천 알고리즘을 실행하여 250개의 콘텐츠 ID를 생성하고 Redis에 저장합니다.
      *
      * @param userId 사용자 ID
      * @param batchNumber 배치 번호
+     * @param preferredLanguage 사용자 선호 언어 (null이면 언어 가중치 미적용)
      * @return 생성된 콘텐츠 ID 목록
      */
-    private fun generateAndCacheBatch(userId: UUID, batchNumber: Int): Mono<List<UUID>> {
+    private fun generateAndCacheBatch(
+        userId: UUID,
+        batchNumber: Int,
+        preferredLanguage: String?
+    ): Mono<List<UUID>> {
         return feedRepository.findRecentlyViewedContentIds(userId, RECENTLY_VIEWED_LIMIT)
             .collectList()
             .flatMap { recentlyViewedIds ->
-                // 추천 알고리즘으로 250개 생성
+                // 추천 알고리즘으로 250개 생성 (언어 가중치 적용)
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = FeedCacheService.BATCH_SIZE,
-                    excludeContentIds = recentlyViewedIds
+                    excludeContentIds = recentlyViewedIds,
+                    preferredLanguage = preferredLanguage ?: "en"  // null이면 기본값 "en" 사용
                 )
                     .collectList()
                     .flatMap { recommendedIds ->
@@ -131,12 +203,14 @@ class FeedServiceImpl(
      * @param currentBatch 현재 배치 번호
      * @param currentOffset 현재 offset
      * @param batchSize 현재 배치 크기
+     * @param preferredLanguage 사용자 선호 언어 (null이면 언어 가중치 미적용)
      */
     private fun checkAndPrefetchNextBatch(
         userId: UUID,
         currentBatch: Int,
         currentOffset: Long,
-        batchSize: Int
+        batchSize: Int,
+        preferredLanguage: String?
     ) {
         val consumedPercentage = (currentOffset % FeedCacheService.BATCH_SIZE) / batchSize.toDouble()
 
@@ -149,7 +223,7 @@ class FeedServiceImpl(
                 .filter { it == 0L }  // 캐시가 없을 때만
                 .flatMap {
                     // 백그라운드에서 비동기로 생성 (응답 지연 방지)
-                    generateAndCacheBatch(userId, nextBatch)
+                    generateAndCacheBatch(userId, nextBatch, preferredLanguage)
                 }
                 .subscribeOn(Schedulers.boundedElastic())  // 백그라운드 스레드
                 .subscribe(
@@ -204,7 +278,7 @@ class FeedServiceImpl(
      * - 일관된 피드 경험 제공 (세션 기반)
      *
      * ### 추천 전략 (메인 피드와 동일한 비율)
-     * - 팔로잉 콘텐츠 (40%): 팔로우한 크리에이터의 해당 카테고리 콘텐츠
+     * - 협업 필터링 (40%): Item-based Collaborative Filtering
      * - 인기 콘텐츠 (30%): 해당 카테고리의 인기 콘텐츠
      * - 신규 콘텐츠 (10%): 해당 카테고리의 최신 콘텐츠
      * - 랜덤 콘텐츠 (20%): 해당 카테고리의 랜덤 콘텐츠
@@ -285,12 +359,13 @@ class FeedServiceImpl(
         return feedRepository.findRecentlyViewedContentIds(userId, RECENTLY_VIEWED_LIMIT)
             .collectList()
             .flatMap { recentlyViewedIds ->
-                // 카테고리별 추천 알고리즘으로 250개 생성
-                recommendationService.getRecommendedContentIdsByCategory(
+                // 카테고리별 추천 알고리즘으로 250개 생성 (언어 가중치 기본값 "en" 사용)
+                recommendationService.getRecommendedContentIds(
                     userId = userId,
-                    category = category,
                     limit = FeedCacheService.BATCH_SIZE,
-                    excludeContentIds = recentlyViewedIds
+                    excludeContentIds = recentlyViewedIds,
+                    preferredLanguage = "en",  // 캐시된 배치는 기본 언어 사용
+                    category = category
                 )
                     .collectList()
                     .flatMap { recommendedIds ->

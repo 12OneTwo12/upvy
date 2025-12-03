@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.feed.repository.FeedRepository
 import me.onetwo.growsnap.domain.feed.service.collaborative.CollaborativeFilteringService
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -32,6 +33,7 @@ class RecommendationServiceImplTest {
 
     private lateinit var feedRepository: FeedRepository
     private lateinit var collaborativeFilteringService: CollaborativeFilteringService
+    private lateinit var contentRepository: ContentRepository
     private lateinit var recommendationService: RecommendationServiceImpl
 
     private val testUserId = UUID.randomUUID()
@@ -46,9 +48,11 @@ class RecommendationServiceImplTest {
     fun setUp() {
         feedRepository = mockk()
         collaborativeFilteringService = mockk()
+        contentRepository = mockk()
         recommendationService = RecommendationServiceImpl(
             feedRepository,
-            collaborativeFilteringService
+            collaborativeFilteringService,
+            contentRepository
         )
     }
 
