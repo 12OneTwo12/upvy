@@ -96,6 +96,8 @@ export function useFeed(options: UseFeedOptions) {
     initialPageParam: null as string | null,
     staleTime: feedType === 'category' ? 5 * 60 * 1000 : undefined,
     gcTime: feedType === 'category' ? 10 * 60 * 1000 : undefined,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // 좋아요 mutation (Optimistic update)

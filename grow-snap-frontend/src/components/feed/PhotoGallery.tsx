@@ -7,7 +7,7 @@
  * - 더블탭으로 좋아요
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Image,
@@ -17,6 +17,8 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { MediaRetryButton } from '@/components/common';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -36,8 +38,23 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   onTap,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageRetryCount, setImageRetryCount] = useState<Map<number, number>>(new Map());
+  const [imageKey, setImageKey] = useState<Map<number, number>>(new Map());
+  const [showImageError, setShowImageError] = useState<Set<number>>(new Set());
   const scrollViewRef = useRef<ScrollView>(null);
   const lastTap = useRef<number>(0);
+  const retryTimersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
+
+  const MAX_RETRIES = 3;
+
+  // 컴포넌트 언마운트 시 모든 타이머 정리
+  useEffect(() => {
+    const timers = retryTimersRef.current;
+    return () => {
+      timers.forEach(clearTimeout);
+      timers.clear();
+    };
+  }, []);
 
   // 스크롤 이벤트 처리
   const handleScroll = useCallback(
@@ -48,6 +65,55 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
     },
     [width]
   );
+
+  // 이미지 로드 에러 핸들러 (지수 백오프 재시도)
+  const handleImageError = useCallback((index: number) => {
+    const currentRetryCount = imageRetryCount.get(index) || 0;
+
+    if (currentRetryCount < MAX_RETRIES) {
+      // 자동 재시도
+      const delay = Math.min(1000 * 2 ** currentRetryCount, 30000);
+      console.log(`[Retry ${currentRetryCount + 1}/${MAX_RETRIES}] Retrying image load after ${delay}ms...`);
+
+      const timerId = setTimeout(() => {
+        setImageRetryCount((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(index, currentRetryCount + 1);
+          return newMap;
+        });
+        setImageKey((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(index, (prev.get(index) || 0) + 1);
+          return newMap;
+        });
+        retryTimersRef.current.delete(index);
+      }, delay);
+      retryTimersRef.current.set(index, timerId);
+    } else {
+      // 모든 재시도 실패 시에만 에러 로그
+      console.error(`[PhotoGallery] Image load failed after ${MAX_RETRIES} retries at index ${index}`);
+      setShowImageError((prev) => new Set(prev).add(index));
+    }
+  }, [imageRetryCount, MAX_RETRIES]);
+
+  // 수동 재시도 핸들러
+  const handleManualRetry = useCallback((index: number) => {
+    setImageRetryCount((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(index, 0);
+      return newMap;
+    });
+    setShowImageError((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(index);
+      return newSet;
+    });
+    setImageKey((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(index, (prev.get(index) || 0) + 1);
+      return newMap;
+    });
+  }, []);
 
   // 더블탭 핸들러
   const handlePress = useCallback(() => {
@@ -82,17 +148,32 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
       >
-        {photoUrls.map((photoUrl, index) => (
-          <TouchableWithoutFeedback key={`${photoUrl}-${index}`} onPress={handlePress}>
-            <View style={[styles.photoContainer, { width, height }]}>
-              <Image
-                source={{ uri: photoUrl }}
-                style={styles.photo}
-                resizeMode="contain"
-              />
-            </View>
-          </TouchableWithoutFeedback>
-        ))}
+        {photoUrls.map((photoUrl, index) => {
+          const hasError = showImageError.has(index);
+          const key = imageKey.get(index) || 0;
+
+          return (
+            <TouchableWithoutFeedback key={`${photoUrl}-${index}-${key}`} onPress={handlePress}>
+              <View style={[styles.photoContainer, { width, height }]}>
+                {!hasError ? (
+                  <Image
+                    key={key}
+                    source={{ uri: photoUrl }}
+                    style={styles.photo}
+                    resizeMode="contain"
+                    onError={() => handleImageError(index)}
+                  />
+                ) : (
+                  /* 재시도 버튼 - 모든 재시도 실패 시 표시 */
+                  <MediaRetryButton
+                    onRetry={() => handleManualRetry(index)}
+                    message="이미지를 불러올 수 없습니다"
+                  />
+                )}
+              </View>
+            </TouchableWithoutFeedback>
+          );
+        })}
       </ScrollView>
 
       {/* 인디케이터 (사진이 2장 이상일 때만 표시) */}
