@@ -7,7 +7,7 @@
  * - 카메라 버튼이 그리드 첫 번째 위치
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,8 +18,10 @@ import {
   Alert,
   Dimensions,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +44,7 @@ export default function UploadMainScreen({ navigation }: Props) {
   const [contentType, setContentType] = useState<'photo' | 'video'>('video');
   const [isLoading, setIsLoading] = useState(true);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     requestPermissions();
@@ -52,6 +55,15 @@ export default function UploadMainScreen({ navigation }: Props) {
       loadMediaAssets();
     }
   }, [hasPermission, contentType]);
+
+  // 화면 포커스 시 미디어 라이브러리 자동 새로고침
+  useFocusEffect(
+    useCallback(() => {
+      if (hasPermission) {
+        loadMediaAssets();
+      }
+    }, [hasPermission, contentType])
+  );
 
   const requestPermissions = async () => {
     try {
@@ -175,6 +187,12 @@ export default function UploadMainScreen({ navigation }: Props) {
         type: 'photo',
       });
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadMediaAssets();
+    setRefreshing(false);
   };
 
   const handleCameraCapture = async () => {
@@ -387,6 +405,14 @@ export default function UploadMainScreen({ navigation }: Props) {
           numColumns={GRID_COLUMNS}
           contentContainerStyle={styles.gridContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.colors.primary[500]}
+              colors={[theme.colors.primary[500]]}
+            />
+          }
           ListHeaderComponent={
             // 카메라 버튼을 첫 번째 아이템으로
             <TouchableOpacity style={styles.gridItem} onPress={handleCameraCapture}>
