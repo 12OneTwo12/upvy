@@ -57,6 +57,7 @@ export default function FeedScreen() {
     handleShare,
     handleFollow,
     handleCreatorPress,
+    handleBlockSuccess,
     handleVideoLoaded,
     isVideoLoaded,
     clearVideoCache,
@@ -127,6 +128,7 @@ export default function FeedScreen() {
           onShare={() => handleShare(item.contentId)}
           onFollow={() => handleFollow(item.creator.userId, item.creator.isFollowing ?? false)}
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
+          onBlockSuccess={handleBlockSuccess}
         />
 
         {isLoadingItem && (
