@@ -54,8 +54,15 @@ interface ExploreGridItemProps {
 
 const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalItems, videoIndex, onPress }) => {
   const [mediaLoading, setMediaLoading] = React.useState(true);
+  const [retryCount, setRetryCount] = React.useState(0);
+  const [showRetryButton, setShowRetryButton] = React.useState(false);
+  const [mediaKey, setMediaKey] = React.useState(0);
+  const loadingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const screenWidth = Dimensions.get('window').width;
   const gap = 2;
+
+  const MAX_RETRIES = 3;
+  const LOADING_TIMEOUT = 5000; // 5초 (썸네일이므로 짧게)
 
   // 기본 아이템 크기 (1/3 폭)
   const baseItemWidth = (screenWidth - gap * 2) / 3;
@@ -87,10 +94,95 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
   const itemWidth = baseItemWidth;
   const itemHeight = isLarge ? baseItemWidth * 2 + gap : baseItemWidth;
 
-  // item이 바뀔 때마다 로딩 상태 초기화
+  // 로딩 타임아웃 정리
+  const clearLoadingTimeout = () => {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+  };
+
+  // 로딩 타임아웃 시작
+  const startLoadingTimeout = () => {
+    clearLoadingTimeout();
+    loadingTimeoutRef.current = setTimeout(() => {
+      console.warn(`Media loading timeout for contentId: ${item.contentId}`);
+      // 타임아웃 시 에러로 처리
+      setRetryCount((prev) => {
+        if (prev < MAX_RETRIES) {
+          const delay = Math.min(1000 * 2 ** prev, 30000);
+          console.log(`Retrying after timeout (${prev + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+
+          setTimeout(() => {
+            setRetryCount((count) => count + 1);
+            setMediaKey((key) => key + 1);
+            setMediaLoading(true);
+            startLoadingTimeout();
+          }, delay);
+          return prev;
+        } else {
+          console.error('All retry attempts failed after timeout');
+          setShowRetryButton(true);
+          setMediaLoading(false);
+          return prev;
+        }
+      });
+    }, LOADING_TIMEOUT);
+  };
+
+  // item이 바뀔 때마다 로딩 상태 및 재시도 상태 초기화
   React.useEffect(() => {
     setMediaLoading(true);
+    setRetryCount(0);
+    setShowRetryButton(false);
+    setMediaKey(0);
+    startLoadingTimeout();
+
+    return () => {
+      clearLoadingTimeout();
+    };
   }, [item.contentId]);
+
+  // 미디어 로드 에러 핸들러 (지수 백오프 재시도)
+  const handleMediaError = React.useCallback(() => {
+    clearLoadingTimeout();
+    console.error('Media load error:', item.contentId);
+
+    setRetryCount((prev) => {
+      if (prev < MAX_RETRIES) {
+        const delay = Math.min(1000 * 2 ** prev, 30000);
+        console.log(`Retrying media load (${prev + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+
+        setTimeout(() => {
+          setRetryCount((count) => count + 1);
+          setMediaKey((key) => key + 1);
+          setMediaLoading(true);
+          startLoadingTimeout();
+        }, delay);
+        return prev;
+      } else {
+        console.error('All media retry attempts failed');
+        setShowRetryButton(true);
+        setMediaLoading(false);
+        return prev;
+      }
+    });
+  }, [item.contentId]);
+
+  // 수동 재시도 핸들러
+  const handleManualRetry = React.useCallback(() => {
+    setRetryCount(0);
+    setShowRetryButton(false);
+    setMediaKey((prev) => prev + 1);
+    setMediaLoading(true);
+    startLoadingTimeout();
+  }, []);
+
+  // 미디어 로드 성공 핸들러
+  const handleMediaLoaded = React.useCallback(() => {
+    clearLoadingTimeout();
+    setMediaLoading(false);
+  }, []);
 
   const styles = useStyles();
 
@@ -101,45 +193,62 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
       activeOpacity={0.95}
     >
       {/* 비디오 또는 이미지 */}
-      {item.contentType === 'VIDEO' ? (
-        <Video
-          source={{ uri: item.url }}
-          style={styles.exploreGridThumbnail}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay={isLarge}
-          isLooping
-          isMuted
-          useNativeControls={false}
-          onLoad={() => setMediaLoading(false)}
-          onReadyForDisplay={() => setMediaLoading(false)}
-          onError={() => setMediaLoading(false)}
-        />
-      ) : (
-        <Image
-          source={{ uri: item.photoUrls?.[0] || item.thumbnailUrl }}
-          style={styles.exploreGridThumbnail}
-          resizeMode="cover"
-          onLoad={() => setMediaLoading(false)}
-          onError={() => setMediaLoading(false)}
-        />
+      {!showRetryButton && (
+        <>
+          {item.contentType === 'VIDEO' ? (
+            <Video
+              key={mediaKey}
+              source={{ uri: item.url }}
+              style={styles.exploreGridThumbnail}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay={isLarge}
+              isLooping
+              isMuted
+              useNativeControls={false}
+              onLoad={handleMediaLoaded}
+              onReadyForDisplay={handleMediaLoaded}
+              onError={handleMediaError}
+            />
+          ) : (
+            <Image
+              key={mediaKey}
+              source={{ uri: item.photoUrls?.[0] || item.thumbnailUrl }}
+              style={styles.exploreGridThumbnail}
+              resizeMode="cover"
+              onLoad={handleMediaLoaded}
+              onError={handleMediaError}
+            />
+          )}
+        </>
       )}
 
       {/* 로딩 스피너 */}
-      {mediaLoading && (
+      {mediaLoading && !showRetryButton && (
         <View style={styles.exploreLoadingOverlay}>
           <ActivityIndicator size="small" color={theme.colors.primary[500]} />
         </View>
       )}
 
+      {/* 재시도 버튼 - 모든 재시도 실패 시 표시 */}
+      {showRetryButton && (
+        <TouchableOpacity
+          onPress={handleManualRetry}
+          style={[styles.exploreLoadingOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="refresh" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
+
       {/* 비디오 타입 인디케이터 */}
-      {!mediaLoading && item.contentType === 'VIDEO' && (
+      {!mediaLoading && !showRetryButton && item.contentType === 'VIDEO' && (
         <View style={styles.exploreVideoIndicator}>
           <Ionicons name="play" size={16} color={theme.colors.text.inverse} />
         </View>
       )}
 
       {/* 멀티 포토 인디케이터 */}
-      {!mediaLoading && item.contentType === 'PHOTO' && item.photoUrls && item.photoUrls.length > 1 && (
+      {!mediaLoading && !showRetryButton && item.contentType === 'PHOTO' && item.photoUrls && item.photoUrls.length > 1 && (
         <View style={styles.explorePhotoIndicator}>
           <Ionicons name="copy-outline" size={16} color={theme.colors.text.inverse} />
         </View>

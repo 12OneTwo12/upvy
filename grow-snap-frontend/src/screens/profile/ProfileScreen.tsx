@@ -164,6 +164,8 @@ export default function ProfileScreen() {
     },
     initialData: storeProfile || undefined,
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // 콘텐츠 목록 로드 (React Query - 캐싱 활성화, 커서 기반 페이징)
@@ -172,6 +174,8 @@ export default function ProfileScreen() {
     queryFn: getMyContents,
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지 (다시 로드하지 않음)
     gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
   const contents = contentsResponse?.content || [];
 
@@ -181,6 +185,8 @@ export default function ProfileScreen() {
     queryFn: getSavedContents,
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
     gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
   const savedContents = savedContentsResponse?.content || [];
 

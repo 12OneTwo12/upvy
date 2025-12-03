@@ -33,6 +33,8 @@ export default function ContentViewerScreen() {
   const { data: content, isLoading: contentLoading } = useQuery({
     queryKey: ['content', contentId],
     queryFn: () => getContent(contentId),
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // 크리에이터 프로필 로드 (콘텐츠 로드 후)
@@ -40,6 +42,8 @@ export default function ContentViewerScreen() {
     queryKey: ['profile', content?.creatorId],
     queryFn: () => getProfileByUserId(content!.creatorId),
     enabled: !!content?.creatorId,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const isLoading = contentLoading || creatorLoading;

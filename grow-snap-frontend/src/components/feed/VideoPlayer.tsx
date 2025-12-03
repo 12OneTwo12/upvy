@@ -7,8 +7,8 @@
  * - 자동재생
  */
 
-import React, { useRef, useState, useEffect, useMemo, forwardRef, useImperativeHandle, useContext } from 'react';
-import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder } from 'react-native';
+import React, { useRef, useState, useEffect, useMemo, forwardRef, useImperativeHandle, useContext, useCallback } from 'react';
+import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder, Text } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,10 +53,15 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const [showPlayIcon, setShowPlayIcon] = useState<'play' | 'pause' | null>(null);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [showRetryButton, setShowRetryButton] = useState(false);
+  const [videoKey, setVideoKey] = useState(0);
   const lastTap = useRef<number>(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+
+  const MAX_RETRIES = 3;
 
   // 빈 URL인 경우 (스켈레톤 로딩 상태)
   const isLoadingSkeleton = !uri || uri === '';
@@ -69,6 +74,13 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
   // Video source 메모이제이션 (재생성 방지)
   const videoSource = useMemo(() => ({ uri }), [uri]);
+
+  // URI 변경 시 재시도 카운트 및 에러 상태 초기화
+  useEffect(() => {
+    setRetryCount(0);
+    setShowRetryButton(false);
+    setVideoKey(0);
+  }, [uri]);
 
 
   // 포커스 상태에 따라 비디오 재생/정지만 제어
@@ -113,6 +125,37 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
         videoRef.current.pauseAsync().catch(() => {});
       }
     };
+  }, []);
+
+  // 비디오 로드 에러 핸들러 (지수 백오프 재시도)
+  const handleVideoError = useCallback(async (error: string) => {
+    console.error('Video load error:', error);
+
+    if (retryCount < MAX_RETRIES) {
+      // 자동 재시도
+      const delay = Math.min(1000 * 2 ** retryCount, 30000);
+      console.log(`Retrying video load (${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+
+      setIsBuffering(true);
+
+      setTimeout(() => {
+        setRetryCount((prev) => prev + 1);
+        setVideoKey((prev) => prev + 1);
+      }, delay);
+    } else {
+      // 모든 재시도 실패 - 에러 UI 표시
+      console.error('All video retry attempts failed');
+      setShowRetryButton(true);
+      setIsBuffering(false);
+    }
+  }, [retryCount, MAX_RETRIES]);
+
+  // 수동 재시도 핸들러
+  const handleManualRetry = useCallback(() => {
+    setRetryCount(0);
+    setShowRetryButton(false);
+    setVideoKey((prev) => prev + 1);
+    setIsBuffering(true);
   }, []);
 
   // 비디오 재생 상태 업데이트
@@ -161,6 +204,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
         setProgress(0);
         progressAnim.setValue(0);
       }
+    } else if (status.error) {
+      // 로드 실패 시 재시도
+      handleVideoError(status.error);
     }
   };
 
@@ -250,8 +296,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
       <TouchableWithoutFeedback onPress={handleTap}>
         <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center', marginTop: -tabBarHeight / 2 }}>
           {/* Video는 항상 렌더링 - 언마운트 절대 금지 */}
-          {!isLoadingSkeleton && (
+          {!isLoadingSkeleton && !showRetryButton && (
             <Video
+              key={videoKey}
               ref={videoRef}
               source={videoSource}
               style={{ width: SCREEN_WIDTH, height: videoContainerHeight }}
@@ -260,6 +307,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               shouldPlay={isFocused && !externalIsDragging}
               isMuted={false}
               onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+              onError={(error) => handleVideoError(error)}
               progressUpdateIntervalMillis={50}
               useNativeControls={false}
             />
@@ -307,6 +355,51 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
                   color="white"
                 />
               </View>
+            </View>
+          )}
+
+          {/* 재시도 버튼 - 모든 재시도 실패 시 표시 */}
+          {showRetryButton && (
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            }}>
+              <TouchableWithoutFeedback onPress={handleManualRetry}>
+                <View style={{
+                  alignItems: 'center',
+                  padding: 24,
+                }}>
+                  <View style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                    borderRadius: 50,
+                    padding: 20,
+                    marginBottom: 16,
+                  }}>
+                    <Ionicons name="refresh" size={40} color="#FFFFFF" />
+                  </View>
+                  <Text style={{
+                    color: '#FFFFFF',
+                    fontSize: 16,
+                    fontWeight: '600',
+                    marginBottom: 8,
+                  }}>
+                    비디오를 불러올 수 없습니다
+                  </Text>
+                  <Text style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: 14,
+                    textAlign: 'center',
+                  }}>
+                    탭하여 다시 시도
+                  </Text>
+                </View>
+              </TouchableWithoutFeedback>
             </View>
           )}
 

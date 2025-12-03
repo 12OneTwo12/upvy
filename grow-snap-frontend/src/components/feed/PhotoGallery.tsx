@@ -16,7 +16,9 @@ import {
   NativeScrollEvent,
   StyleSheet,
   TouchableWithoutFeedback,
+  Text,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -36,8 +38,13 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   onTap,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageRetryCount, setImageRetryCount] = useState<Map<number, number>>(new Map());
+  const [imageKey, setImageKey] = useState<Map<number, number>>(new Map());
+  const [showImageError, setShowImageError] = useState<Set<number>>(new Set());
   const scrollViewRef = useRef<ScrollView>(null);
   const lastTap = useRef<number>(0);
+
+  const MAX_RETRIES = 3;
 
   // 스크롤 이벤트 처리
   const handleScroll = useCallback(
@@ -48,6 +55,55 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
     },
     [width]
   );
+
+  // 이미지 로드 에러 핸들러 (지수 백오프 재시도)
+  const handleImageError = useCallback((index: number) => {
+    console.error(`Image load error at index ${index}`);
+
+    const currentRetryCount = imageRetryCount.get(index) || 0;
+
+    if (currentRetryCount < MAX_RETRIES) {
+      // 자동 재시도
+      const delay = Math.min(1000 * 2 ** currentRetryCount, 30000);
+      console.log(`Retrying image load (${currentRetryCount + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+
+      setTimeout(() => {
+        setImageRetryCount((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(index, currentRetryCount + 1);
+          return newMap;
+        });
+        setImageKey((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(index, (prev.get(index) || 0) + 1);
+          return newMap;
+        });
+      }, delay);
+    } else {
+      // 모든 재시도 실패 - 에러 UI 표시
+      console.error(`All image retry attempts failed for index ${index}`);
+      setShowImageError((prev) => new Set(prev).add(index));
+    }
+  }, [imageRetryCount, MAX_RETRIES]);
+
+  // 수동 재시도 핸들러
+  const handleManualRetry = useCallback((index: number) => {
+    setImageRetryCount((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(index, 0);
+      return newMap;
+    });
+    setShowImageError((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(index);
+      return newSet;
+    });
+    setImageKey((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(index, (prev.get(index) || 0) + 1);
+      return newMap;
+    });
+  }, []);
 
   // 더블탭 핸들러
   const handlePress = useCallback(() => {
@@ -82,17 +138,65 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
       >
-        {photoUrls.map((photoUrl, index) => (
-          <TouchableWithoutFeedback key={`${photoUrl}-${index}`} onPress={handlePress}>
-            <View style={[styles.photoContainer, { width, height }]}>
-              <Image
-                source={{ uri: photoUrl }}
-                style={styles.photo}
-                resizeMode="contain"
-              />
-            </View>
-          </TouchableWithoutFeedback>
-        ))}
+        {photoUrls.map((photoUrl, index) => {
+          const hasError = showImageError.has(index);
+          const key = imageKey.get(index) || 0;
+
+          return (
+            <TouchableWithoutFeedback key={`${photoUrl}-${index}-${key}`} onPress={handlePress}>
+              <View style={[styles.photoContainer, { width, height }]}>
+                {!hasError ? (
+                  <Image
+                    key={key}
+                    source={{ uri: photoUrl }}
+                    style={styles.photo}
+                    resizeMode="contain"
+                    onError={() => handleImageError(index)}
+                  />
+                ) : (
+                  /* 재시도 버튼 - 모든 재시도 실패 시 표시 */
+                  <TouchableWithoutFeedback onPress={() => handleManualRetry(index)}>
+                    <View style={{
+                      flex: 1,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    }}>
+                      <View style={{
+                        alignItems: 'center',
+                        padding: 24,
+                      }}>
+                        <View style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                          borderRadius: 50,
+                          padding: 20,
+                          marginBottom: 16,
+                        }}>
+                          <Ionicons name="refresh" size={40} color="#FFFFFF" />
+                        </View>
+                        <Text style={{
+                          color: '#FFFFFF',
+                          fontSize: 16,
+                          fontWeight: '600',
+                          marginBottom: 8,
+                        }}>
+                          이미지를 불러올 수 없습니다
+                        </Text>
+                        <Text style={{
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: 14,
+                          textAlign: 'center',
+                        }}>
+                          탭하여 다시 시도
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableWithoutFeedback>
+                )}
+              </View>
+            </TouchableWithoutFeedback>
+          );
+        })}
       </ScrollView>
 
       {/* 인디케이터 (사진이 2장 이상일 때만 표시) */}
