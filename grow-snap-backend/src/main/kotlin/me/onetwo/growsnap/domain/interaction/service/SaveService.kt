@@ -2,7 +2,9 @@ package me.onetwo.growsnap.domain.interaction.service
 
 import me.onetwo.growsnap.domain.interaction.dto.SaveResponse
 import me.onetwo.growsnap.domain.interaction.dto.SaveStatusResponse
+import me.onetwo.growsnap.domain.interaction.dto.SavedContentPageResponse
 import me.onetwo.growsnap.domain.interaction.dto.SavedContentResponse
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -39,6 +41,18 @@ interface SaveService {
      * @return 저장된 콘텐츠 목록
      */
     fun getSavedContents(userId: UUID): Flux<SavedContentResponse>
+
+    /**
+     * 저장한 콘텐츠 목록을 커서 기반 페이징으로 조회
+     *
+     * @param userId 사용자 ID
+     * @param pageRequest 커서 페이지 요청
+     * @return 저장된 콘텐츠 페이지 응답
+     */
+    fun getSavedContentsWithCursor(
+        userId: UUID,
+        pageRequest: CursorPageRequest
+    ): Mono<SavedContentPageResponse>
 
     /**
      * 저장 상태 조회

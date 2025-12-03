@@ -48,4 +48,20 @@ interface UserSaveRepository {
      * @return 저장 목록
      */
     fun findByUserId(userId: UUID): Flux<UserSave>
+
+    /**
+     * 사용자의 저장 목록을 커서 기반 페이징으로 조회
+     *
+     * created_at 기준 내림차순 정렬로 최신 저장 순서대로 조회합니다.
+     *
+     * @param userId 사용자 ID
+     * @param cursor 이전 페이지의 마지막 저장 ID (null이면 첫 페이지)
+     * @param limit 페이지당 항목 수
+     * @return 저장 목록
+     */
+    fun findByUserIdWithCursor(
+        userId: UUID,
+        cursor: Long?,
+        limit: Int
+    ): Flux<UserSave>
 }

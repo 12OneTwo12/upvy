@@ -102,11 +102,11 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
     }).start();
   }, [isExpanded, collapsedHeight, expandedHeight, slideAnim]);
 
+  // 제목 + 설명 조합 (설명이 없으면 제목만 표시)
+  const fullText = description ? `${title}\n${description}` : title;
+
   // 설명이 길면 더보기 표시 (60자 이상)
-  const shouldShowMore = (description || title).length > 60;
-  const displayText = shouldShowMore
-    ? `${(description || title).slice(0, 60)}...`
-    : (description || title);
+  const shouldShowMore = fullText.length > 60;
 
   // 액션 시트 옵션
   const actionSheetOptions: ActionSheetOption[] = useMemo(
@@ -220,7 +220,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
               ) : (
                 <View onLayout={handleCollapsedLayout}>
                   <Text style={styles.description} numberOfLines={2}>
-                    {displayText}
+                    <Text style={styles.titleText}>{title}</Text>
+                    {description && `\n${description}`}
                   </Text>
                   {shouldShowMore && (
                     <Text style={styles.moreText}>더보기</Text>
@@ -328,7 +329,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                 style={styles.expandedDescription}
                 onLayout={handleExpandedLayout}
               >
-                {description || title}
+                <Text style={styles.titleText}>{title}</Text>
+                {description && `\n${description}`}
               </Text>
             </ScrollView>
           </TouchableOpacity>
@@ -518,5 +520,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     lineHeight: 20,
     paddingBottom: 16,
+  },
+  titleText: {
+    fontWeight: '700',
   },
 });

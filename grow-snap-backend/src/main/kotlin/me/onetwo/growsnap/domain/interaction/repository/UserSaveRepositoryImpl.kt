@@ -167,4 +167,58 @@ class UserSaveRepositoryImpl(
             )
         }
     }
+
+    /**
+     * 사용자의 저장 목록을 커서 기반 페이징으로 조회
+     *
+     * deleted_at_unix = 0인 레코드만 조회하며, 생성일 기준 내림차순 정렬합니다.
+     * ID 기반 커서 페이지네이션을 사용합니다.
+     *
+     * @param userId 사용자 ID
+     * @param cursor 이전 페이지의 마지막 저장 ID (null이면 첫 페이지)
+     * @param limit 페이지당 항목 수
+     * @return 저장 목록 (Flux)
+     */
+    override fun findByUserIdWithCursor(
+        userId: UUID,
+        cursor: Long?,
+        limit: Int
+    ): Flux<UserSave> {
+        var query = dslContext
+            .select(
+                USER_SAVES.ID,
+                USER_SAVES.USER_ID,
+                USER_SAVES.CONTENT_ID,
+                USER_SAVES.CREATED_AT,
+                USER_SAVES.CREATED_BY,
+                USER_SAVES.UPDATED_AT,
+                USER_SAVES.UPDATED_BY,
+                USER_SAVES.DELETED_AT
+            )
+            .from(USER_SAVES)
+            .where(USER_SAVES.USER_ID.eq(userId.toString()))
+            .and(USER_SAVES.DELETED_AT_UNIX.eq(0L))
+
+        // 커서 기반 페이지네이션 (ID 기준)
+        if (cursor != null) {
+            query = query.and(USER_SAVES.ID.lt(cursor))
+        }
+
+        return Flux.from(
+            query
+                .orderBy(USER_SAVES.ID.desc())
+                .limit(limit)
+        ).map { record ->
+            UserSave(
+                id = record.getValue(USER_SAVES.ID),
+                userId = UUID.fromString(record.getValue(USER_SAVES.USER_ID)),
+                contentId = UUID.fromString(record.getValue(USER_SAVES.CONTENT_ID)),
+                createdAt = record.getValue(USER_SAVES.CREATED_AT)!!,
+                createdBy = record.getValue(USER_SAVES.CREATED_BY),
+                updatedAt = record.getValue(USER_SAVES.UPDATED_AT)!!,
+                updatedBy = record.getValue(USER_SAVES.UPDATED_BY),
+                deletedAt = record.getValue(USER_SAVES.DELETED_AT)
+            )
+        }
+    }
 }

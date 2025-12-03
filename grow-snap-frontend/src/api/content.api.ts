@@ -14,6 +14,7 @@ import type {
   ContentUpdateRequest,
   ContentResponse,
 } from '@/types/content.types';
+import type { CursorPageResponse, CursorPageParams } from '@/types/pagination.types';
 
 /**
  * S3 Presigned Upload URL을 생성합니다.
@@ -123,15 +124,19 @@ export const getContent = async (contentId: string): Promise<ContentResponse> =>
 };
 
 /**
- * 내 콘텐츠 목록을 조회합니다.
+ * 내 콘텐츠 목록을 커서 기반 페이징으로 조회합니다.
  *
- * 백엔드: GET /api/v1/contents/me
+ * 백엔드: GET /api/v1/contents/me?cursor={cursor}&limit={limit}
  *
- * @returns 내 콘텐츠 목록
+ * @param params 커서 페이지 파라미터 (cursor, limit)
+ * @returns 커서 페이지 응답
  */
-export const getMyContents = async (): Promise<ContentResponse[]> => {
-  const { data } = await apiClient.get<ContentResponse[]>(
-    API_ENDPOINTS.CONTENT.MY_CONTENTS
+export const getMyContents = async (
+  params?: CursorPageParams
+): Promise<CursorPageResponse<ContentResponse>> => {
+  const { data } = await apiClient.get<CursorPageResponse<ContentResponse>>(
+    API_ENDPOINTS.CONTENT.MY_CONTENTS,
+    { params }
   );
   return data;
 };
@@ -168,16 +173,21 @@ export const deleteContent = async (contentId: string): Promise<void> => {
 };
 
 /**
- * 사용자의 콘텐츠 목록을 조회합니다.
+ * 사용자의 콘텐츠 목록을 커서 기반 페이징으로 조회합니다.
  *
- * 백엔드: GET /api/v1/profiles/{userId}/contents
+ * 백엔드: GET /api/v1/profiles/{userId}/contents?cursor={cursor}&limit={limit}
  *
  * @param userId 사용자 ID
- * @returns 콘텐츠 목록
+ * @param params 커서 페이지 파라미터 (cursor, limit)
+ * @returns 커서 페이지 응답
  */
-export const getUserContents = async (userId: string): Promise<ContentResponse[]> => {
-  const { data } = await apiClient.get<ContentResponse[]>(
-    `/profiles/${userId}/contents`
+export const getUserContents = async (
+  userId: string,
+  params?: CursorPageParams
+): Promise<CursorPageResponse<ContentResponse>> => {
+  const { data } = await apiClient.get<CursorPageResponse<ContentResponse>>(
+    `/profiles/${userId}/contents`,
+    { params }
   );
   return data;
 };

@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.domain.user.controller
 
 import jakarta.validation.Valid
+import me.onetwo.growsnap.domain.content.dto.ContentPageResponse
 import me.onetwo.growsnap.domain.content.dto.ContentResponse
 import me.onetwo.growsnap.domain.content.service.ContentService
 import me.onetwo.growsnap.domain.user.dto.ImageUploadResponse
@@ -10,6 +11,7 @@ import me.onetwo.growsnap.domain.user.dto.UserProfileResponse
 import me.onetwo.growsnap.domain.user.service.UserProfileService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
@@ -149,29 +152,33 @@ class UserProfileController(
     }
 
     /**
-     * 사용자의 콘텐츠 목록 조회
+     * 사용자의 콘텐츠 목록을 커서 기반 페이징으로 조회합니다.
      *
      * 프로필 화면의 콘텐츠 그리드에서 사용됩니다.
      * 인증된 사용자의 경우 인터랙션 정보에 사용자별 상태 (isLiked, isSaved)가 포함됩니다.
      *
      * @param targetUserId 조회할 사용자 ID
      * @param principal 인증된 사용자 Principal (선택, 인터랙션 정보용)
-     * @return 콘텐츠 목록
+     * @param cursor 이전 페이지의 마지막 콘텐츠 ID (null이면 첫 페이지)
+     * @param limit 페이지당 항목 수 (기본값: 20, 최대: 100)
+     * @return 콘텐츠 페이지 응답
      */
     @GetMapping("/{targetUserId}/contents")
     fun getUserContents(
         @PathVariable targetUserId: UUID,
-        principal: Mono<Principal>?
-    ): Mono<ResponseEntity<List<ContentResponse>>> {
+        principal: Mono<Principal>?,
+        @RequestParam(required = false) cursor: String?,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): Mono<ResponseEntity<ContentPageResponse>> {
         // Principal에서 userId 추출 (비인증 사용자는 null)
         val userIdMono = principal?.toUserId() ?: Mono.empty()
 
         return userIdMono
             .defaultIfEmpty(UUID(0, 0)) // 비인증 사용자용 기본 UUID
-            .flatMapMany { userId ->
-                contentService.getContentsByCreator(targetUserId, userId)
+            .flatMap { userId ->
+                val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
+                contentService.getContentsByCreatorWithCursor(targetUserId, userId, pageRequest)
             }
-            .collectList()
             .map { contents -> ResponseEntity.ok(contents) }
     }
 }

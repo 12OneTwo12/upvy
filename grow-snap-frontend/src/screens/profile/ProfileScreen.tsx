@@ -18,10 +18,12 @@ import { Button, LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
 import { getMyProfile } from '@/api/auth.api';
 import { getMyContents } from '@/api/content.api';
+import { getSavedContents } from '@/api/interaction.api';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 import type { ContentResponse } from '@/types/content.types';
+import type { SavedContentResponse } from '@/types/interaction.types';
 
 type NavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<ProfileStackParamList, 'ProfileMain'>,
@@ -80,11 +82,39 @@ const useStyles = createStyleSheet({
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
   },
+  tabContainer: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: theme.spacing[3],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.tertiary,
+  },
+  tabTextActive: {
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.semibold,
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: theme.colors.primary[500],
+  },
   contentSection: {
     flex: 1,
     paddingTop: theme.spacing[4],
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
   },
   contentHeader: {
     flexDirection: 'row',
@@ -116,10 +146,13 @@ const useStyles = createStyleSheet({
   },
 });
 
+type TabType = 'my' | 'saved';
+
 export default function ProfileScreen() {
   const styles = useStyles();
   const navigation = useNavigation<NavigationProp>();
   const { profile: storeProfile, user, updateProfile } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<TabType>('my');
 
   // 프로필 데이터 로드 (React Query)
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
@@ -133,19 +166,34 @@ export default function ProfileScreen() {
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
   });
 
-  // 콘텐츠 목록 로드 (React Query - 캐싱 활성화)
-  const { data: contents = [], isLoading: contentsLoading, refetch: refetchContents } = useQuery({
+  // 콘텐츠 목록 로드 (React Query - 캐싱 활성화, 커서 기반 페이징)
+  const { data: contentsResponse, isLoading: contentsLoading, refetch: refetchContents } = useQuery({
     queryKey: ['myContents'],
     queryFn: getMyContents,
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지 (다시 로드하지 않음)
     gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
   });
+  const contents = contentsResponse?.content || [];
+
+  // 저장한 콘텐츠 목록 로드 (React Query, 커서 기반 페이징)
+  const { data: savedContentsResponse, isLoading: savedContentsLoading, refetch: refetchSavedContents } = useQuery({
+    queryKey: ['savedContents'],
+    queryFn: getSavedContents,
+    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
+    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+  });
+  const savedContents = savedContentsResponse?.content || [];
+
+  // 백엔드에서 이제 ContentResponse를 직접 반환하므로 변환 불필요
 
   // 새로고침
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refetchProfile(), refetchContents()]);
+    await Promise.all([
+      refetchProfile(),
+      activeTab === 'my' ? refetchContents() : refetchSavedContents(),
+    ]);
     setRefreshing(false);
   };
 
@@ -226,19 +274,85 @@ export default function ProfileScreen() {
           >
             프로필 수정
           </Button>
+        </View>
 
+        {/* 탭 */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={styles.tab}
+            onPress={() => setActiveTab('my')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabText, activeTab === 'my' && styles.tabTextActive]}>
+              내 콘텐츠
+            </Text>
+            {activeTab === 'my' && <View style={styles.tabIndicator} />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.tab}
+            onPress={() => setActiveTab('saved')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabText, activeTab === 'saved' && styles.tabTextActive]}>
+              저장됨
+            </Text>
+            {activeTab === 'saved' && <View style={styles.tabIndicator} />}
+          </TouchableOpacity>
         </View>
 
         {/* 콘텐츠 그리드 */}
         <View style={styles.contentSection}>
-          <View style={styles.contentHeader}>
-            <Ionicons name="grid-outline" size={24} color={theme.colors.text.primary} />
-          </View>
-          <ContentGrid
-            contents={contents}
-            loading={contentsLoading}
-            onContentPress={handleContentPress}
-          />
+          {activeTab === 'my' ? (
+            <>
+              {contentsLoading && contents.length === 0 ? (
+                <View style={styles.emptyContent}>
+                  <LoadingSpinner />
+                </View>
+              ) : contents.length === 0 ? (
+                <View style={styles.emptyContent}>
+                  <Ionicons
+                    name="images-outline"
+                    size={64}
+                    color={theme.colors.gray[300]}
+                    style={styles.emptyIcon}
+                  />
+                  <Text style={styles.emptyText}>아직 업로드한 콘텐츠가 없습니다</Text>
+                  <Text style={styles.emptySubtext}>첫 콘텐츠를 업로드해보세요!</Text>
+                </View>
+              ) : (
+                <ContentGrid
+                  contents={contents}
+                  loading={contentsLoading}
+                  onContentPress={handleContentPress}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              {savedContentsLoading && savedContents.length === 0 ? (
+                <View style={styles.emptyContent}>
+                  <LoadingSpinner />
+                </View>
+              ) : savedContents.length === 0 ? (
+                <View style={styles.emptyContent}>
+                  <Ionicons
+                    name="bookmark-outline"
+                    size={64}
+                    color={theme.colors.gray[300]}
+                    style={styles.emptyIcon}
+                  />
+                  <Text style={styles.emptyText}>저장한 콘텐츠가 없습니다</Text>
+                  <Text style={styles.emptySubtext}>마음에 드는 콘텐츠를 저장해보세요</Text>
+                </View>
+              ) : (
+                <ContentGrid
+                  contents={savedContents}
+                  loading={savedContentsLoading}
+                  onContentPress={handleContentPress}
+                />
+              )}
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -120,10 +120,14 @@ export default function ContentViewerScreen() {
           ...oldData,
           interactions: {
             ...oldData.interactions,
+            saveCount: response.saveCount,
             isSaved: response.isSaved,
           },
         };
       });
+
+      // Profile 화면의 저장된 콘텐츠 목록 자동 새로고침
+      queryClient.invalidateQueries({ queryKey: ['savedContents'] });
     },
   });
 

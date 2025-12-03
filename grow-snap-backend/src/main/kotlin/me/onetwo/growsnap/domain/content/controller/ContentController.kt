@@ -2,6 +2,7 @@ package me.onetwo.growsnap.domain.content.controller
 
 import jakarta.validation.Valid
 import me.onetwo.growsnap.domain.content.dto.ContentCreateRequest
+import me.onetwo.growsnap.domain.content.dto.ContentPageResponse
 import me.onetwo.growsnap.domain.content.dto.ContentResponse
 import me.onetwo.growsnap.domain.content.dto.ContentUpdateRequest
 import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlRequest
@@ -9,6 +10,7 @@ import me.onetwo.growsnap.domain.content.dto.ContentUploadUrlResponse
 import me.onetwo.growsnap.domain.content.service.ContentService
 import me.onetwo.growsnap.infrastructure.security.util.toUserId
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
+import me.onetwo.growsnap.infrastructure.common.dto.CursorPageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 import java.security.Principal
@@ -122,23 +125,27 @@ class ContentController(
     }
 
     /**
-     * 크리에이터의 콘텐츠 목록을 조회합니다.
+     * 크리에이터의 콘텐츠 목록을 커서 기반 페이징으로 조회합니다.
      *
      * 자신의 콘텐츠 목록을 조회하며, 인터랙션 정보에 사용자별 상태 (isLiked, isSaved)가 포함됩니다.
      *
      * @param principal 인증된 사용자 Principal
-     * @return 200 OK - 콘텐츠 목록 (인터랙션 정보 포함)
+     * @param cursor 이전 페이지의 마지막 콘텐츠 ID (null이면 첫 페이지)
+     * @param limit 페이지당 항목 수 (기본값: 20, 최대: 100)
+     * @return 200 OK - 콘텐츠 페이지 응답 (인터랙션 정보 포함)
      */
     @GetMapping("/me")
     fun getMyContents(
-        principal: Mono<Principal>
-    ): Mono<ResponseEntity<List<ContentResponse>>> {
+        principal: Mono<Principal>,
+        @RequestParam(required = false) cursor: String?,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): Mono<ResponseEntity<ContentPageResponse>> {
         return principal
             .toUserId()
-            .flatMapMany { userId ->
-                contentService.getContentsByCreator(userId, userId)
+            .flatMap { userId ->
+                val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
+                contentService.getContentsByCreatorWithCursor(userId, userId, pageRequest)
             }
-            .collectList()
             .map { ResponseEntity.ok(it) }
     }
 

@@ -50,6 +50,34 @@ interface ContentRepository {
     fun findWithMetadataByCreatorId(creatorId: UUID): Flux<ContentWithMetadata>
 
     /**
+     * 크리에이터의 콘텐츠와 메타데이터를 커서 기반 페이징으로 조회합니다.
+     *
+     * JOIN을 사용하여 N+1 쿼리 문제를 방지합니다.
+     * created_at 기준 내림차순 정렬로 최신 콘텐츠를 먼저 조회합니다.
+     *
+     * @param creatorId 크리에이터 ID
+     * @param cursor 이전 페이지의 마지막 콘텐츠 ID (null이면 첫 페이지)
+     * @param limit 페이지당 항목 수
+     * @return 콘텐츠와 메타데이터의 목록 (Flux)
+     */
+    fun findWithMetadataByCreatorIdWithCursor(
+        creatorId: UUID,
+        cursor: UUID?,
+        limit: Int
+    ): Flux<ContentWithMetadata>
+
+    /**
+     * 여러 콘텐츠 ID로 콘텐츠와 메타데이터를 배치 조회합니다.
+     *
+     * JOIN을 사용하여 N+1 쿼리 문제를 방지합니다.
+     * 저장한 콘텐츠 목록 조회 등에서 사용됩니다.
+     *
+     * @param contentIds 조회할 콘텐츠 ID 목록
+     * @return 콘텐츠와 메타데이터의 목록 (Flux)
+     */
+    fun findByIdsWithMetadata(contentIds: List<UUID>): Flux<ContentWithMetadata>
+
+    /**
      * 콘텐츠를 수정합니다.
      *
      * @param content 수정할 콘텐츠

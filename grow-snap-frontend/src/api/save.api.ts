@@ -7,7 +7,9 @@
 
 import apiClient from './client';
 import { API_ENDPOINTS } from '@/constants/api';
-import type { SaveResponse, SaveStatusResponse, SavedContentResponse } from '@/types/interaction.types';
+import type { SaveResponse, SaveStatusResponse } from '@/types/interaction.types';
+import type { ContentResponse } from '@/types/content.types';
+import type { CursorPageResponse, CursorPageParams } from '@/types/pagination.types';
 
 /**
  * 콘텐츠 저장
@@ -58,16 +60,22 @@ export const getSaveStatus = async (contentId: string): Promise<SaveStatusRespon
 };
 
 /**
- * 저장한 콘텐츠 목록 조회
+ * 저장한 콘텐츠 목록을 커서 기반 페이징으로 조회
  *
- * 백엔드: GET /api/v1/users/me/saved-contents
- * Response: SavedContentResponse[]
+ * 백엔드: GET /api/v1/users/me/saved-contents?cursor={cursor}&limit={limit}
+ * Response: CursorPageResponse<ContentResponse>
  *
- * @returns 저장한 콘텐츠 목록
+ * 백엔드 업데이트: 이제 ContentResponse를 반환하여 다른 콘텐츠 조회 API와 일관성 유지
+ *
+ * @param params 커서 페이지 파라미터 (cursor, limit)
+ * @returns 커서 페이지 응답 (ContentResponse 형식)
  */
-export const getSavedContentList = async (): Promise<SavedContentResponse[]> => {
-  const response = await apiClient.get<SavedContentResponse[]>(
-    API_ENDPOINTS.SAVE.LIST
+export const getSavedContentList = async (
+  params?: CursorPageParams
+): Promise<CursorPageResponse<ContentResponse>> => {
+  const response = await apiClient.get<CursorPageResponse<ContentResponse>>(
+    API_ENDPOINTS.SAVE.LIST,
+    { params }
   );
   return response.data;
 };

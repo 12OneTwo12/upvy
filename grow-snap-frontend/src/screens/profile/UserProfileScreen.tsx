@@ -145,14 +145,15 @@ export default function UserProfileScreen() {
     gcTime: 1000 * 60 * 30,
   });
 
-  // 사용자 콘텐츠 목록 조회 (React Query)
-  const { data: userContents = [], isLoading: contentsLoading, refetch: refetchContents } = useQuery({
+  // 사용자 콘텐츠 목록 조회 (React Query, 커서 기반 페이징)
+  const { data: userContentsResponse, isLoading: contentsLoading, refetch: refetchContents } = useQuery({
     queryKey: ['userContents', userId],
     queryFn: () => getUserContents(userId),
     enabled: !!userId, // userId가 있으면 즉시 조회
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
     gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
   });
+  const userContents = userContentsResponse?.content || [];
 
   // 팔로우 상태 로드
   const loadFollowStatus = async () => {

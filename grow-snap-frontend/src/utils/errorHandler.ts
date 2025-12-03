@@ -15,23 +15,30 @@ export interface ApiErrorResponse {
  */
 const ERROR_MESSAGES: Record<string, string> = {
   // Network Errors
-  NETWORK_ERROR: '네트워크 연결을 확인해주세요.',
-  TIMEOUT_ERROR: '요청 시간이 초과되었습니다. 다시 시도해주세요.',
+  NETWORK_ERROR: '인터넷 연결 상태를 확인해주세요',
+  TIMEOUT_ERROR: '요청 시간이 초과되었어요\n잠시 후 다시 시도해주세요',
 
   // Auth Errors
-  UNAUTHORIZED: '인증이 만료되었습니다. 다시 로그인해주세요.',
-  FORBIDDEN: '접근 권한이 없습니다.',
+  UNAUTHORIZED: '로그인이 만료되었어요\n다시 로그인해주세요',
+  FORBIDDEN: '접근 권한이 없어요',
 
   // Validation Errors
-  VALIDATION_ERROR: '입력 정보를 확인해주세요.',
-  DUPLICATE_NICKNAME: '이미 사용 중인 닉네임입니다.',
+  VALIDATION_ERROR: '입력 정보를 다시 확인해주세요',
+  DUPLICATE_NICKNAME: '이미 사용 중인 닉네임이에요',
+
+  // Block Errors
+  SELF_BLOCK_NOT_ALLOWED: '자기 자신은 차단할 수 없어요',
+  DUPLICATE_USER_BLOCK: '이미 차단한 사용자예요',
+  DUPLICATE_CONTENT_BLOCK: '이미 숨긴 콘텐츠예요',
+  USER_BLOCK_NOT_FOUND: '차단 정보를 찾을 수 없어요',
+  CONTENT_BLOCK_NOT_FOUND: '차단 정보를 찾을 수 없어요',
 
   // Server Errors
-  SERVER_ERROR: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
-  NOT_FOUND: '요청하신 정보를 찾을 수 없습니다.',
+  SERVER_ERROR: '서버에 문제가 생겼어요\n잠시 후 다시 시도해주세요',
+  NOT_FOUND: '요청하신 정보를 찾을 수 없어요',
 
   // Default
-  UNKNOWN_ERROR: '알 수 없는 오류가 발생했습니다.',
+  UNKNOWN_ERROR: '알 수 없는 문제가 발생했어요',
 };
 
 /**
@@ -55,7 +62,15 @@ export const getErrorMessage = (error: unknown): string => {
     // HTTP Status Code
     const status = error.response.status;
     const data = error.response.data as ApiErrorResponse | undefined;
+    const errorCode = data?.code;
 
+    // 1순위: errorCode 기반 메시지 (백엔드 에러 코드)
+    if (errorCode && ERROR_MESSAGES[errorCode]) {
+      return ERROR_MESSAGES[errorCode];
+    }
+
+    // 2순위: data.message (백엔드에서 제공하는 구체적 에러 메시지)
+    // 3순위: HTTP Status Code 기반 메시지
     switch (status) {
       case 400:
         return data?.message || ERROR_MESSAGES.VALIDATION_ERROR;
