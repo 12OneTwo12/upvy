@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Dimensions, StatusBar, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Dimensions, StatusBar, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ import { getContent } from '@/api/content.api';
 import { getProfileByUserId } from '@/api/auth.api';
 import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
-import { shareContent } from '@/api/share.api';
+import { shareContent, getShareLink } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
@@ -146,6 +146,48 @@ export default function ContentViewerScreen() {
     },
   });
 
+  // 공유 mutation (Optimistic update)
+  const shareMutation = useMutation({
+    mutationFn: async () => {
+      return await shareContent(contentId);
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['content', contentId] });
+      const previousData = queryClient.getQueryData(['content', contentId]);
+
+      queryClient.setQueryData(['content', contentId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          interactions: {
+            ...oldData.interactions,
+            shareCount: (oldData.interactions?.shareCount ?? 0) + 1,
+          },
+        };
+      });
+
+      return { previousData };
+    },
+    onSuccess: (response) => {
+      // 콘텐츠의 인터랙션 정보 업데이트
+      queryClient.setQueryData(['content', contentId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          interactions: {
+            ...oldData.interactions,
+            shareCount: response.shareCount,
+          },
+        };
+      });
+    },
+    onError: (err, variables, context: any) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['content', contentId], context.previousData);
+      }
+    },
+  });
+
   // 인터랙션 핸들러 (FeedScreen과 동일)
   const handleLike = () => {
     if (feedItem) {
@@ -172,9 +214,28 @@ export default function ContentViewerScreen() {
 
   const handleShare = async () => {
     try {
-      await shareContent(contentId);
-    } catch (error) {
+      // 1. 공유 링크 가져오기
+      const { shareUrl } = await getShareLink(contentId);
+
+      // 2. 네이티브 공유 시트 열기
+      const result = await Share.share({
+        message: `GrowSnap에서 흥미로운 콘텐츠를 발견했어요! 같이 봐요 😊\n\n${shareUrl}`,
+        url: shareUrl,
+        title: 'GrowSnap 콘텐츠 공유',
+      });
+
+      // 3. 공유 성공 시 카운터 증가
+      if (result.action === Share.sharedAction) {
+        shareMutation.mutate();
+      }
+    } catch (error: unknown) {
+      // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음 (Android)
+      // 참고: 이 에러 메시지는 React Native 버전에 따라 변경될 수 있습니다.
+      if (error instanceof Error && error.message.includes('User did not share')) {
+        return;
+      }
       console.error('Share failed:', error);
+      Alert.alert('공유 실패', '잠시 후 다시 시도해주세요.');
     }
   };
 
