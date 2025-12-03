@@ -60,8 +60,6 @@ export interface SavedContentResponse {
   contentId: string;
   title: string;
   thumbnailUrl: string;
-  duration: number | null;
-  creatorNickname: string;
   savedAt: string;
 }
 
