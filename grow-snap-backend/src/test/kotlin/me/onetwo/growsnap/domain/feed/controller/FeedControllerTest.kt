@@ -17,6 +17,8 @@ import me.onetwo.growsnap.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
@@ -419,15 +421,15 @@ class FeedControllerTest {
                 )
         }
 
-        @Test
-        @DisplayName("다른 카테고리로 새로고침 요청 시, 204 No Content를 반환한다")
-        fun refreshCategoryFeed_WithDifferentCategory_ReturnsNoContent() {
-            // Given: ART 카테고리
+        @ParameterizedTest
+        @EnumSource(value = Category::class, names = ["PROGRAMMING", "ART", "SCIENCE", "LANGUAGE"])
+        @DisplayName("여러 카테고리로 새로고침 요청 시, 모두 204 No Content를 반환한다")
+        fun refreshCategoryFeed_WithMultipleCategories_ReturnsNoContent(category: Category) {
+            // Given: 인증된 사용자 및 카테고리
             val userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
-            val category = Category.ART
             every { feedCacheService.clearCategoryCache(userId, category) } returns Mono.just(true)
 
-            // When & Then: ART 카테고리 새로고침
+            // When & Then: 여러 카테고리 새로고침
             webTestClient
                 .mutateWith(mockUser(userId))
                 .post()
