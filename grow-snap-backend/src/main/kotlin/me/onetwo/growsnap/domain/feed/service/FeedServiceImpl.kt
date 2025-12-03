@@ -69,62 +69,6 @@ class FeedServiceImpl(
     override fun getMainFeed(
         userId: UUID,
         pageRequest: CursorPageRequest,
-        preferredLanguage: String?
-    ): Mono<FeedResponse> {
-        // 언어 파라미터가 제공되면 캐싱 우회 (MVP)
-        if (preferredLanguage != null) {
-            return getMainFeedWithLanguageWeighting(userId, pageRequest, preferredLanguage)
-        }
-
-        // cursor를 offset으로 변환 (cursor가 없으면 0부터 시작)
-        val offset = pageRequest.cursor?.toLongOrNull() ?: 0L
-        val limit = pageRequest.limit
-
-        // 배치 번호 계산 (offset / BATCH_SIZE)
-        val batchNumber = (offset / FeedCacheService.BATCH_SIZE).toInt()
-        val offsetInBatch = offset % FeedCacheService.BATCH_SIZE
-
-        return feedCacheService.getRecommendationBatch(userId, batchNumber)
-            .switchIfEmpty(
-                // 캐시 미스: 새 배치 생성
-                generateAndCacheBatch(userId, batchNumber, null)
-            )
-            .flatMap { cachedBatch ->
-                // 배치에서 필요한 범위만 추출
-                val startIndex = offsetInBatch.toInt()
-                val endIndex = (startIndex + limit + 1).coerceAtMost(cachedBatch.size)
-                val contentIds = cachedBatch.subList(startIndex, endIndex)
-
-                // Prefetch 체크 (50% 소진 시 다음 배치 생성)
-                checkAndPrefetchNextBatch(userId, batchNumber, offset, cachedBatch.size, null)
-
-                // 상세 정보 조회
-                feedRepository.findByContentIds(userId, contentIds)
-                    .collectList()
-                    .map { feedItems ->
-                        CursorPageResponse.of(
-                            content = feedItems,
-                            limit = limit,
-                            getCursor = { (offset + feedItems.indexOf(it) + 1).toString() }
-                        )
-                    }
-            }
-    }
-
-    /**
-     * 언어 가중치를 적용한 메인 피드 조회
-     *
-     * 캐싱을 사용하지 않고 매번 실시간으로 점수를 계산합니다.
-     * MVP 단계에서는 간단한 offset 기반 페이징을 사용합니다.
-     *
-     * @param userId 사용자 ID
-     * @param pageRequest 페이지네이션 요청
-     * @param preferredLanguage 사용자 선호 언어
-     * @return 피드 응답
-     */
-    private fun getMainFeedWithLanguageWeighting(
-        userId: UUID,
-        pageRequest: CursorPageRequest,
         preferredLanguage: String
     ): Mono<FeedResponse> {
         val offset = pageRequest.cursor?.toLongOrNull() ?: 0L
@@ -134,7 +78,6 @@ class FeedServiceImpl(
             .collectList()
             .flatMap { recentlyViewedIds ->
                 // 언어 가중치를 적용한 추천 알고리즘 실행
-                // 충분한 후보를 확보하기 위해 offset + limit 만큼 요청
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = (offset + limit + 1).toInt(),
@@ -157,80 +100,6 @@ class FeedServiceImpl(
                             }
                     }
             }
-    }
-
-    /**
-     * 새로운 추천 배치 생성 및 캐싱
-     *
-     * 추천 알고리즘을 실행하여 250개의 콘텐츠 ID를 생성하고 Redis에 저장합니다.
-     *
-     * @param userId 사용자 ID
-     * @param batchNumber 배치 번호
-     * @param preferredLanguage 사용자 선호 언어 (null이면 언어 가중치 미적용)
-     * @return 생성된 콘텐츠 ID 목록
-     */
-    private fun generateAndCacheBatch(
-        userId: UUID,
-        batchNumber: Int,
-        preferredLanguage: String?
-    ): Mono<List<UUID>> {
-        return feedRepository.findRecentlyViewedContentIds(userId, RECENTLY_VIEWED_LIMIT)
-            .collectList()
-            .flatMap { recentlyViewedIds ->
-                // 추천 알고리즘으로 250개 생성 (언어 가중치 적용)
-                recommendationService.getRecommendedContentIds(
-                    userId = userId,
-                    limit = FeedCacheService.BATCH_SIZE,
-                    excludeContentIds = recentlyViewedIds,
-                    preferredLanguage = preferredLanguage ?: "en"  // null이면 기본값 "en" 사용
-                )
-                    .collectList()
-                    .flatMap { recommendedIds ->
-                        // Redis에 저장
-                        feedCacheService.saveRecommendationBatch(userId, batchNumber, recommendedIds)
-                            .thenReturn(recommendedIds)
-                    }
-            }
-    }
-
-    /**
-     * Prefetch 체크 및 다음 배치 백그라운드 생성
-     *
-     * 사용자가 현재 배치의 50%를 소진했으면, 다음 배치를 백그라운드에서 미리 생성합니다.
-     * TikTok/Instagram Reels의 부드러운 스크롤 경험을 제공하기 위함입니다.
-     *
-     * @param userId 사용자 ID
-     * @param currentBatch 현재 배치 번호
-     * @param currentOffset 현재 offset
-     * @param batchSize 현재 배치 크기
-     * @param preferredLanguage 사용자 선호 언어 (null이면 언어 가중치 미적용)
-     */
-    private fun checkAndPrefetchNextBatch(
-        userId: UUID,
-        currentBatch: Int,
-        currentOffset: Long,
-        batchSize: Int,
-        preferredLanguage: String?
-    ) {
-        val consumedPercentage = (currentOffset % FeedCacheService.BATCH_SIZE) / batchSize.toDouble()
-
-        // 50% 이상 소진했으면 다음 배치 prefetch
-        if (consumedPercentage >= FeedCacheService.PREFETCH_THRESHOLD) {
-            val nextBatch = currentBatch + 1
-
-            // 이미 캐시되어 있는지 확인
-            feedCacheService.getBatchSize(userId, nextBatch)
-                .filter { it == 0L }  // 캐시가 없을 때만
-                .flatMap {
-                    // 백그라운드에서 비동기로 생성 (응답 지연 방지)
-                    generateAndCacheBatch(userId, nextBatch, preferredLanguage)
-                }
-                .subscribeOn(Schedulers.boundedElastic())  // 백그라운드 스레드
-                .subscribe(
-                    { },  // onNext: 성공 시 아무것도 하지 않음
-                    { error -> logger.error("Failed to prefetch next batch for user {}", userId, error) }  // onError
-                )
-        }
     }
 
     /**

@@ -20,8 +20,8 @@ interface FeedService {
      * 최근 본 콘텐츠는 제외하여 중복을 방지합니다.
      *
      * Issue #107: 언어 기반 가중치 적용
-     * - 사용자 선호 언어가 제공되면 해당 언어의 콘텐츠에 2.0x 가중치 적용
-     * - 언어 미제공 시 기존 추천 알고리즘 사용 (무작위 섞기)
+     * - 사용자 선호 언어에 따라 콘텐츠에 2.0x (일치) 또는 0.5x (불일치) 가중치 적용
+     * - Controller에서 기본값 "en" 보장
      *
      * @param userId 사용자 ID
      * @param pageRequest 페이지네이션 요청
@@ -31,7 +31,7 @@ interface FeedService {
     fun getMainFeed(
         userId: UUID,
         pageRequest: CursorPageRequest,
-        preferredLanguage: String? = null
+        preferredLanguage: String
     ): Mono<FeedResponse>
 
     /**
