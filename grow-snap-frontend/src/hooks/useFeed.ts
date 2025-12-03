@@ -15,6 +15,8 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   FlatList,
+  Share,
+  Alert,
 } from 'react-native';
 import { useInfiniteQuery, useMutation, useQueryClient, InfiniteData } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
@@ -29,7 +31,7 @@ import {
 } from '@/api/feed.api';
 import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
-import { shareContent } from '@/api/share.api';
+import { shareContent, getShareLink } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -280,6 +282,67 @@ export function useFeed(options: UseFeedOptions) {
     },
   });
 
+  // 공유 mutation (Optimistic update)
+  const shareMutation = useMutation({
+    mutationFn: async (contentId: string) => {
+      return await shareContent(contentId);
+    },
+    onMutate: async (contentId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousData = queryClient.getQueryData(queryKey);
+
+      queryClient.setQueryData<InfiniteData<FeedResponse>>(queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            content: page.content.map((item) =>
+              item.contentId === contentId
+                ? {
+                    ...item,
+                    interactions: {
+                      ...item.interactions,
+                      shareCount: item.interactions.shareCount + 1,
+                    },
+                  }
+                : item
+            ),
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+    onSuccess: (response) => {
+      queryClient.setQueryData<InfiniteData<FeedResponse>>(queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            content: page.content.map((item) =>
+              item.contentId === response.contentId
+                ? {
+                    ...item,
+                    interactions: {
+                      ...item.interactions,
+                      shareCount: response.shareCount,
+                    },
+                  }
+                : item
+            ),
+          })),
+        };
+      });
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+    },
+  });
+
   // 모든 페이지의 콘텐츠를 평탄화 + uniqueKey 추가
   const feedItems: (FeedItemType & { uniqueKey: string })[] =
     data?.pages.flatMap((page, pageIndex) =>
@@ -408,13 +471,34 @@ export function useFeed(options: UseFeedOptions) {
     [saveMutation]
   );
 
-  const handleShare = useCallback(async (contentId: string) => {
-    try {
-      await shareContent(contentId);
-    } catch (error) {
-      console.error('Share failed:', error);
-    }
-  }, []);
+  const handleShare = useCallback(
+    async (contentId: string) => {
+      try {
+        // 1. 공유 링크 가져오기
+        const { shareUrl } = await getShareLink(contentId);
+
+        // 2. 네이티브 공유 시트 열기
+        const result = await Share.share({
+          message: `GrowSnap에서 흥미로운 콘텐츠를 발견했어요! 같이 봐요 😊\n\n${shareUrl}`,
+          url: shareUrl,
+          title: 'GrowSnap 콘텐츠 공유',
+        });
+
+        // 3. 공유 성공 시 카운터 증가 (낙관적 업데이트)
+        if (result.action === Share.sharedAction) {
+          shareMutation.mutate(contentId);
+        }
+      } catch (error: any) {
+        // 사용자가 공유를 취소한 경우는 에러로 처리하지 않음
+        if (error?.message?.includes('User did not share')) {
+          return;
+        }
+        console.error('Share failed:', error);
+        Alert.alert('공유 실패', '잠시 후 다시 시도해주세요.');
+      }
+    },
+    [shareMutation]
+  );
 
   const handleFollow = useCallback(
     (userId: string, isFollowing: boolean = false) => {
