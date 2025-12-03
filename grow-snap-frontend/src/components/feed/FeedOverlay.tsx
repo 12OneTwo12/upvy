@@ -220,7 +220,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
               ) : (
                 <View onLayout={handleCollapsedLayout}>
                   <Text style={styles.description} numberOfLines={2}>
-                    <Text style={{ fontWeight: '700' }}>{title}</Text>
+                    <Text style={styles.titleText}>{title}</Text>
                     {description && `\n${description}`}
                   </Text>
                   {shouldShowMore && (
@@ -329,7 +329,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                 style={styles.expandedDescription}
                 onLayout={handleExpandedLayout}
               >
-                <Text style={{ fontWeight: '700' }}>{title}</Text>
+                <Text style={styles.titleText}>{title}</Text>
                 {description && `\n${description}`}
               </Text>
             </ScrollView>
@@ -520,5 +520,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     lineHeight: 20,
     paddingBottom: 16,
+  },
+  titleText: {
+    fontWeight: '700',
   },
 });

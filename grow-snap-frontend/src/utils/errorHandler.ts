@@ -69,25 +69,26 @@ export const getErrorMessage = (error: unknown): string => {
       return ERROR_MESSAGES[errorCode];
     }
 
-    // 2순위: HTTP Status Code 기반 메시지
+    // 2순위: data.message (백엔드에서 제공하는 구체적 에러 메시지)
+    // 3순위: HTTP Status Code 기반 메시지
     switch (status) {
       case 400:
-        return ERROR_MESSAGES.VALIDATION_ERROR;
+        return data?.message || ERROR_MESSAGES.VALIDATION_ERROR;
       case 401:
         return ERROR_MESSAGES.UNAUTHORIZED;
       case 403:
         return ERROR_MESSAGES.FORBIDDEN;
       case 404:
-        return ERROR_MESSAGES.NOT_FOUND;
+        return data?.message || ERROR_MESSAGES.NOT_FOUND;
       case 409:
-        return ERROR_MESSAGES.DUPLICATE_NICKNAME;
+        return data?.message || ERROR_MESSAGES.DUPLICATE_NICKNAME;
       case 500:
       case 502:
       case 503:
       case 504:
         return ERROR_MESSAGES.SERVER_ERROR;
       default:
-        return ERROR_MESSAGES.UNKNOWN_ERROR;
+        return data?.message || ERROR_MESSAGES.UNKNOWN_ERROR;
     }
   }
 

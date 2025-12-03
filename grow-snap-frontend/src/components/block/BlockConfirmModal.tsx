@@ -70,7 +70,6 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
 
       // errorHandler를 통해 적절한 에러 메시지 추출
       const errorMessage = getErrorMessage(error);
-      const errorCode = error?.response?.data?.code;
 
       // 409 에러 = 이미 차단한 경우
       if (error?.response?.status === 409) {
