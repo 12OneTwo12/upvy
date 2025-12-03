@@ -58,6 +58,7 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
   const [showRetryButton, setShowRetryButton] = React.useState(false);
   const [mediaKey, setMediaKey] = React.useState(0);
   const loadingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const screenWidth = Dimensions.get('window').width;
   const gap = 2;
 
@@ -94,95 +95,73 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
   const itemWidth = baseItemWidth;
   const itemHeight = isLarge ? baseItemWidth * 2 + gap : baseItemWidth;
 
-  // 로딩 타임아웃 정리
-  const clearLoadingTimeout = () => {
+  // 로딩 타임아웃 및 재시도 타이머 정리
+  const clearAllTimers = React.useCallback(() => {
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current);
       loadingTimeoutRef.current = null;
     }
-  };
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+  }, []);
 
-  // 로딩 타임아웃 시작
-  const startLoadingTimeout = () => {
-    clearLoadingTimeout();
-    loadingTimeoutRef.current = setTimeout(() => {
-      console.warn(`Media loading timeout for contentId: ${item.contentId}`);
-      // 타임아웃 시 에러로 처리
-      setRetryCount((prev) => {
-        if (prev < MAX_RETRIES) {
-          const delay = Math.min(1000 * 2 ** prev, 30000);
-          console.log(`Retrying after timeout (${prev + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+  // 미디어 로드 에러 핸들러 (재시도 로직 포함)
+  const handleMediaError = React.useCallback(() => {
+    clearAllTimers();
 
-          setTimeout(() => {
-            setRetryCount((count) => count + 1);
-            setMediaKey((key) => key + 1);
-            setMediaLoading(true);
-            startLoadingTimeout();
-          }, delay);
-          return prev;
-        } else {
-          console.error('All retry attempts failed after timeout');
-          setShowRetryButton(true);
-          setMediaLoading(false);
-          return prev;
-        }
-      });
-    }, LOADING_TIMEOUT);
-  };
+    setRetryCount(prevRetryCount => {
+      if (prevRetryCount < MAX_RETRIES) {
+        const newRetryCount = prevRetryCount + 1;
+        const delay = Math.min(1000 * 2 ** prevRetryCount, 30000);
+        console.log(`[Retry ${newRetryCount}/${MAX_RETRIES}] Retrying thumbnail load after ${delay}ms...`);
 
-  // item이 바뀔 때마다 로딩 상태 및 재시도 상태 초기화
+        retryTimeoutRef.current = setTimeout(() => {
+          setMediaKey(key => key + 1); // useEffect를 트리거하여 재시도
+        }, delay);
+
+        return newRetryCount;
+      }
+
+      // 모든 재시도 실패 시에만 에러 로그
+      console.error(`[Search] Thumbnail load failed after ${MAX_RETRIES} retries:`, item.contentId);
+      setShowRetryButton(true);
+      setMediaLoading(false);
+      return prevRetryCount;
+    });
+  }, [item.contentId, clearAllTimers]);
+
+  // item이 바뀌거나 재시도(mediaKey 변경) 시 로딩 시작
   React.useEffect(() => {
     setMediaLoading(true);
-    setRetryCount(0);
     setShowRetryButton(false);
+
+    clearAllTimers();
+
+    loadingTimeoutRef.current = setTimeout(handleMediaError, LOADING_TIMEOUT);
+
+    return clearAllTimers;
+  }, [item.contentId, mediaKey, handleMediaError, clearAllTimers]);
+
+  // item.contentId가 변경될 때만 재시도 카운트 초기화
+  React.useEffect(() => {
+    setRetryCount(0);
     setMediaKey(0);
-    startLoadingTimeout();
-
-    return () => {
-      clearLoadingTimeout();
-    };
-  }, [item.contentId]);
-
-  // 미디어 로드 에러 핸들러 (지수 백오프 재시도)
-  const handleMediaError = React.useCallback(() => {
-    clearLoadingTimeout();
-    console.error('Media load error:', item.contentId);
-
-    setRetryCount((prev) => {
-      if (prev < MAX_RETRIES) {
-        const delay = Math.min(1000 * 2 ** prev, 30000);
-        console.log(`Retrying media load (${prev + 1}/${MAX_RETRIES}) after ${delay}ms...`);
-
-        setTimeout(() => {
-          setRetryCount((count) => count + 1);
-          setMediaKey((key) => key + 1);
-          setMediaLoading(true);
-          startLoadingTimeout();
-        }, delay);
-        return prev;
-      } else {
-        console.error('All media retry attempts failed');
-        setShowRetryButton(true);
-        setMediaLoading(false);
-        return prev;
-      }
-    });
   }, [item.contentId]);
 
   // 수동 재시도 핸들러
   const handleManualRetry = React.useCallback(() => {
     setRetryCount(0);
-    setShowRetryButton(false);
-    setMediaKey((prev) => prev + 1);
-    setMediaLoading(true);
-    startLoadingTimeout();
+    setMediaKey(prev => prev + 1);
   }, []);
 
   // 미디어 로드 성공 핸들러
   const handleMediaLoaded = React.useCallback(() => {
-    clearLoadingTimeout();
+    clearAllTimers();
     setMediaLoading(false);
-  }, []);
+    setRetryCount(0);
+  }, [clearAllTimers]);
 
   const styles = useStyles();
 

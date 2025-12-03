@@ -8,11 +8,12 @@
  */
 
 import React, { useRef, useState, useEffect, useMemo, forwardRef, useImperativeHandle, useContext, useCallback } from 'react';
-import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder, Text } from 'react-native';
+import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { MediaRetryButton } from '@/components/common';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const NAVIGATION_BAR_HEIGHT = 60;
@@ -60,6 +61,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const MAX_RETRIES = 3;
 
@@ -75,11 +77,18 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   // Video source 메모이제이션 (재생성 방지)
   const videoSource = useMemo(() => ({ uri }), [uri]);
 
-  // URI 변경 시 재시도 카운트 및 에러 상태 초기화
+  // URI 변경 시 재시도 카운트 및 에러 상태 초기화, 타이머 정리
   useEffect(() => {
     setRetryCount(0);
     setShowRetryButton(false);
     setVideoKey(0);
+
+    return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
   }, [uri]);
 
 
@@ -129,22 +138,20 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
   // 비디오 로드 에러 핸들러 (지수 백오프 재시도)
   const handleVideoError = useCallback(async (error: string) => {
-    console.error('Video load error:', error);
-
     if (retryCount < MAX_RETRIES) {
       // 자동 재시도
       const delay = Math.min(1000 * 2 ** retryCount, 30000);
-      console.log(`Retrying video load (${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+      console.log(`[Retry ${retryCount + 1}/${MAX_RETRIES}] Retrying video load after ${delay}ms...`);
 
       setIsBuffering(true);
 
-      setTimeout(() => {
+      retryTimerRef.current = setTimeout(() => {
         setRetryCount((prev) => prev + 1);
         setVideoKey((prev) => prev + 1);
       }, delay);
     } else {
-      // 모든 재시도 실패 - 에러 UI 표시
-      console.error('All video retry attempts failed');
+      // 모든 재시도 실패 시에만 에러 로그
+      console.error(`[VideoPlayer] Video load failed after ${MAX_RETRIES} retries:`, error);
       setShowRetryButton(true);
       setIsBuffering(false);
     }
@@ -360,47 +367,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
           {/* 재시도 버튼 - 모든 재시도 실패 시 표시 */}
           {showRetryButton && (
-            <View style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            }}>
-              <TouchableWithoutFeedback onPress={handleManualRetry}>
-                <View style={{
-                  alignItems: 'center',
-                  padding: 24,
-                }}>
-                  <View style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                    borderRadius: 50,
-                    padding: 20,
-                    marginBottom: 16,
-                  }}>
-                    <Ionicons name="refresh" size={40} color="#FFFFFF" />
-                  </View>
-                  <Text style={{
-                    color: '#FFFFFF',
-                    fontSize: 16,
-                    fontWeight: '600',
-                    marginBottom: 8,
-                  }}>
-                    비디오를 불러올 수 없습니다
-                  </Text>
-                  <Text style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontSize: 14,
-                    textAlign: 'center',
-                  }}>
-                    탭하여 다시 시도
-                  </Text>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
+            <MediaRetryButton
+              onRetry={handleManualRetry}
+              message="비디오를 불러올 수 없습니다"
+            />
           )}
 
         </View>

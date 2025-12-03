@@ -7,7 +7,7 @@
  * - 더블탭으로 좋아요
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Image,
@@ -16,9 +16,9 @@ import {
   NativeScrollEvent,
   StyleSheet,
   TouchableWithoutFeedback,
-  Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { MediaRetryButton } from '@/components/common';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -43,8 +43,18 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   const [showImageError, setShowImageError] = useState<Set<number>>(new Set());
   const scrollViewRef = useRef<ScrollView>(null);
   const lastTap = useRef<number>(0);
+  const retryTimersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   const MAX_RETRIES = 3;
+
+  // 컴포넌트 언마운트 시 모든 타이머 정리
+  useEffect(() => {
+    const timers = retryTimersRef.current;
+    return () => {
+      timers.forEach(clearTimeout);
+      timers.clear();
+    };
+  }, []);
 
   // 스크롤 이벤트 처리
   const handleScroll = useCallback(
@@ -58,16 +68,14 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
 
   // 이미지 로드 에러 핸들러 (지수 백오프 재시도)
   const handleImageError = useCallback((index: number) => {
-    console.error(`Image load error at index ${index}`);
-
     const currentRetryCount = imageRetryCount.get(index) || 0;
 
     if (currentRetryCount < MAX_RETRIES) {
       // 자동 재시도
       const delay = Math.min(1000 * 2 ** currentRetryCount, 30000);
-      console.log(`Retrying image load (${currentRetryCount + 1}/${MAX_RETRIES}) after ${delay}ms...`);
+      console.log(`[Retry ${currentRetryCount + 1}/${MAX_RETRIES}] Retrying image load after ${delay}ms...`);
 
-      setTimeout(() => {
+      const timerId = setTimeout(() => {
         setImageRetryCount((prev) => {
           const newMap = new Map(prev);
           newMap.set(index, currentRetryCount + 1);
@@ -78,10 +86,12 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
           newMap.set(index, (prev.get(index) || 0) + 1);
           return newMap;
         });
+        retryTimersRef.current.delete(index);
       }, delay);
+      retryTimersRef.current.set(index, timerId);
     } else {
-      // 모든 재시도 실패 - 에러 UI 표시
-      console.error(`All image retry attempts failed for index ${index}`);
+      // 모든 재시도 실패 시에만 에러 로그
+      console.error(`[PhotoGallery] Image load failed after ${MAX_RETRIES} retries at index ${index}`);
       setShowImageError((prev) => new Set(prev).add(index));
     }
   }, [imageRetryCount, MAX_RETRIES]);
@@ -155,43 +165,10 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
                   />
                 ) : (
                   /* 재시도 버튼 - 모든 재시도 실패 시 표시 */
-                  <TouchableWithoutFeedback onPress={() => handleManualRetry(index)}>
-                    <View style={{
-                      flex: 1,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    }}>
-                      <View style={{
-                        alignItems: 'center',
-                        padding: 24,
-                      }}>
-                        <View style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                          borderRadius: 50,
-                          padding: 20,
-                          marginBottom: 16,
-                        }}>
-                          <Ionicons name="refresh" size={40} color="#FFFFFF" />
-                        </View>
-                        <Text style={{
-                          color: '#FFFFFF',
-                          fontSize: 16,
-                          fontWeight: '600',
-                          marginBottom: 8,
-                        }}>
-                          이미지를 불러올 수 없습니다
-                        </Text>
-                        <Text style={{
-                          color: 'rgba(255, 255, 255, 0.7)',
-                          fontSize: 14,
-                          textAlign: 'center',
-                        }}>
-                          탭하여 다시 시도
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableWithoutFeedback>
+                  <MediaRetryButton
+                    onRetry={() => handleManualRetry(index)}
+                    message="이미지를 불러올 수 없습니다"
+                  />
                 )}
               </View>
             </TouchableWithoutFeedback>

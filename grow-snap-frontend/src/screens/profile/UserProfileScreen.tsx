@@ -143,6 +143,8 @@ export default function UserProfileScreen() {
     enabled: !!userId,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // 사용자 콘텐츠 목록 조회 (React Query, 커서 기반 페이징)
@@ -152,6 +154,8 @@ export default function UserProfileScreen() {
     enabled: !!userId, // userId가 있으면 즉시 조회
     staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
     gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
   const userContents = userContentsResponse?.content || [];
 
