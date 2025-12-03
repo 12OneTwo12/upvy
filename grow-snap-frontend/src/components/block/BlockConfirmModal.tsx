@@ -20,6 +20,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/theme';
 import { blockUser, blockContent } from '@/api/block.api';
+import { getErrorMessage } from '@/utils/errorHandler';
 import type { BlockType } from '@/types/block.types';
 
 interface BlockConfirmModalProps {
@@ -67,21 +68,22 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
     } catch (error: any) {
       setIsSubmitting(false);
 
-      // 백엔드에서 보내는 에러 메시지 추출
-      const errorMessage = error?.response?.data?.message;
+      // errorHandler를 통해 적절한 에러 메시지 추출
+      const errorMessage = getErrorMessage(error);
+      const errorCode = error?.response?.data?.code;
 
       // 409 에러 = 이미 차단한 경우
       if (error?.response?.status === 409) {
         Alert.alert(
           '이미 차단했어요',
-          errorMessage || (isUserBlock ? '이 사용자는 이미 차단되어 있어요.' : '이 콘텐츠는 이미 숨겨져 있어요.'),
+          errorMessage,
           [{ text: '확인', onPress: onClose }]
         );
       } else {
-        // 그 외 에러 - 백엔드 메시지가 있으면 사용, 없으면 기본 메시지
+        // 그 외 에러 - errorCode 기반 메시지 표시
         Alert.alert(
-          '앗, 문제가 생겼어요',
-          errorMessage || '잠시 후 다시 시도해주세요.'
+          '차단할 수 없어요',
+          errorMessage
         );
       }
     }
