@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
+import { useLanguageStore } from '@/stores/languageStore';
 import type { UploadStackParamList } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createContent } from '@/api/content.api';
@@ -37,6 +38,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
   const { t } = useTranslation(['upload', 'common', 'search']);
   const { contentId, contentType, mediaInfo } = route.params;
   const queryClient = useQueryClient();
+  const currentLanguage = useLanguageStore((state) => state.currentLanguage);
 
   // 폼 상태
   const [title, setTitle] = useState('');
@@ -44,7 +46,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [language, setLanguage] = useState('ko');
+  const [language, setLanguage] = useState(currentLanguage);
 
   // UI 상태
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);

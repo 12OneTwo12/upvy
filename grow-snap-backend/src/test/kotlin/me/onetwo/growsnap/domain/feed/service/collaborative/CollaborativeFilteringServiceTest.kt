@@ -7,6 +7,13 @@ import io.mockk.verify
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.dto.UserInteraction
 import me.onetwo.growsnap.domain.analytics.repository.UserContentInteractionRepository
+import me.onetwo.growsnap.domain.content.dto.ContentWithMetadata
+import me.onetwo.growsnap.domain.content.model.Category
+import me.onetwo.growsnap.domain.content.model.Content
+import me.onetwo.growsnap.domain.content.model.ContentMetadata
+import me.onetwo.growsnap.domain.content.model.ContentStatus
+import me.onetwo.growsnap.domain.content.model.ContentType
+import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -39,6 +46,7 @@ import java.util.UUID
 class CollaborativeFilteringServiceTest {
 
     private lateinit var userContentInteractionRepository: UserContentInteractionRepository
+    private lateinit var contentRepository: ContentRepository
     private lateinit var collaborativeFilteringService: CollaborativeFilteringService
 
     private val userId = UUID.randomUUID()
@@ -54,9 +62,43 @@ class CollaborativeFilteringServiceTest {
     @BeforeEach
     fun setUp() {
         userContentInteractionRepository = mockk()
+        contentRepository = mockk()
         collaborativeFilteringService = CollaborativeFilteringServiceImpl(
-            userContentInteractionRepository
+            userContentInteractionRepository,
+            contentRepository
         )
+    }
+
+    /**
+     * ContentWithMetadata 생성 헬퍼 함수
+     *
+     * @param contentId 콘텐츠 ID
+     * @param language 언어 (기본값: "en")
+     * @param category 카테고리 (기본값: PROGRAMMING)
+     * @return ContentWithMetadata 객체
+     */
+    private fun createContentWithMetadata(
+        contentId: UUID,
+        language: String = "en",
+        category: Category = Category.PROGRAMMING
+    ): ContentWithMetadata {
+        val content = Content(
+            id = contentId,
+            creatorId = UUID.randomUUID(),
+            contentType = ContentType.VIDEO,
+            url = "https://example.com/video.mp4",
+            thumbnailUrl = "https://example.com/thumbnail.jpg",
+            width = 1920,
+            height = 1080,
+            status = ContentStatus.PUBLISHED
+        )
+        val metadata = ContentMetadata(
+            contentId = contentId,
+            title = "Test Content",
+            category = category,
+            language = language
+        )
+        return ContentWithMetadata(content, metadata)
     }
 
     @Nested
@@ -102,8 +144,16 @@ class CollaborativeFilteringServiceTest {
                 UserInteraction(contentId5, InteractionType.LIKE)     // 1.0
             )
 
+            // Mock: contentRepository.findByIdsWithMetadata (언어 가중치 적용을 위해 필요)
+            every {
+                contentRepository.findByIdsWithMetadata(any())
+            } answers {
+                val ids = firstArg<List<UUID>>()
+                Flux.fromIterable(ids.map { createContentWithMetadata(it, language = "en") })
+            }
+
             // When: 추천 콘텐츠 조회
-            val result = collaborativeFilteringService.getRecommendedContents(userId, 10)
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
 
             // Then: 점수 높은 순으로 정렬된 추천 콘텐츠 반환
             // Content3: 1.0 (LIKE) + 1.5 (SAVE) = 2.5
@@ -153,8 +203,16 @@ class CollaborativeFilteringServiceTest {
                 UserInteraction(contentId4, InteractionType.SHARE)    // 2.0
             )
 
+            // Mock: contentRepository.findByIdsWithMetadata
+            every {
+                contentRepository.findByIdsWithMetadata(any())
+            } answers {
+                val ids = firstArg<List<UUID>>()
+                Flux.fromIterable(ids.map { createContentWithMetadata(it, language = "en") })
+            }
+
             // When: 추천 콘텐츠 조회
-            val result = collaborativeFilteringService.getRecommendedContents(userId, 10)
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
 
             // Then: SHARE > SAVE > LIKE 순으로 정렬
             StepVerifier.create(result.collectList())
@@ -197,8 +255,16 @@ class CollaborativeFilteringServiceTest {
                 UserInteraction(contentId3, InteractionType.LIKE)     // 신규 → 추천
             )
 
+            // Mock: contentRepository.findByIdsWithMetadata
+            every {
+                contentRepository.findByIdsWithMetadata(any())
+            } answers {
+                val ids = firstArg<List<UUID>>()
+                Flux.fromIterable(ids.map { createContentWithMetadata(it, language = "en") })
+            }
+
             // When: 추천 콘텐츠 조회
-            val result = collaborativeFilteringService.getRecommendedContents(userId, 10)
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
 
             // Then: Content2는 제외되고 Content3만 추천
             StepVerifier.create(result.collectList())
@@ -218,7 +284,7 @@ class CollaborativeFilteringServiceTest {
             } returns Flux.empty()
 
             // When: 추천 콘텐츠 조회
-            val result = collaborativeFilteringService.getRecommendedContents(userId, 10)
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
 
             // Then: 빈 결과 반환
             StepVerifier.create(result)
@@ -245,7 +311,7 @@ class CollaborativeFilteringServiceTest {
             } returns Flux.empty()
 
             // When: 추천 콘텐츠 조회
-            val result = collaborativeFilteringService.getRecommendedContents(userId, 10)
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
 
             // Then: 빈 결과 반환
             StepVerifier.create(result)
@@ -275,8 +341,16 @@ class CollaborativeFilteringServiceTest {
                 UserInteraction(contentId3, InteractionType.LIKE)       // 점수 1.0
             )
 
+            // Mock: contentRepository.findByIdsWithMetadata
+            every {
+                contentRepository.findByIdsWithMetadata(any())
+            } answers {
+                val ids = firstArg<List<UUID>>()
+                Flux.fromIterable(ids.map { createContentWithMetadata(it, language = "en") })
+            }
+
             // When: 추천 콘텐츠 조회
-            val result = collaborativeFilteringService.getRecommendedContents(userId, 10)
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
 
             // Then: COMMENT는 제외되고 LIKE만 추천
             StepVerifier.create(result.collectList())

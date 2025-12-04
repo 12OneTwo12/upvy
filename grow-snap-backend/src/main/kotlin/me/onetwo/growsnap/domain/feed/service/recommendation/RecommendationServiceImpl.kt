@@ -19,6 +19,11 @@ import java.util.UUID
  * - 신규 콘텐츠 (10%): 최근 업로드
  * - 랜덤 콘텐츠 (20%): 다양성 확보
  *
+ * Issue #107: 언어 기반 가중치 적용
+ * - Repository 레벨에서 SQL CASE WHEN을 통해 언어 가중치 적용
+ * - 사용자 선호 언어와 일치하는 콘텐츠: 2.0x 가중치
+ * - 사용자 선호 언어와 불일치하는 콘텐츠: 0.5x 가중치
+ *
  * @property feedRepository 피드 데이터 조회를 위한 레포지토리
  * @property collaborativeFilteringService Item-based 협업 필터링 서비스
  */
@@ -33,34 +38,47 @@ class RecommendationServiceImpl(
      * 추천 콘텐츠 ID 목록 조회
      *
      * 여러 추천 전략을 병렬로 실행하여 콘텐츠 ID 목록을 반환합니다.
+     * 언어 가중치는 Repository 레벨에서 SQL로 적용됩니다.
+     *
+     * ### 추천 전략 (비율)
+     * - 협업 필터링 (40%): Item-based Collaborative Filtering
+     * - 인기 콘텐츠 (30%): 높은 인터랙션
+     * - 신규 콘텐츠 (10%): 최근 업로드
+     * - 랜덤 콘텐츠 (20%): 다양성 확보
      *
      * ### 처리 흐름
      * 1. 각 전략별로 가져올 콘텐츠 수 계산
      * 2. **병렬로** 각 전략별 콘텐츠 조회 (Mono.zip 사용)
+     *    - Repository에서 언어 가중치가 적용된 결과 반환
      * 3. 결과 합치기 및 무작위 섞기
      *
      * ### 성능 최적화
      * - Mono.zip을 사용하여 4개 전략을 동시에 실행
      * - 순차 처리(Flux.concat) 대비 약 4배 빠른 응답 시간
+     * - Repository에서 DB 레벨 언어 가중치 적용 (단일 쿼리)
      *
      * @param userId 사용자 ID
      * @param limit 조회할 콘텐츠 수
      * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 추천 콘텐츠 ID 목록 (순서 무작위)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 기본값: "en"
+     * @param category 필터링할 카테고리 (null이면 전체 피드)
+     * @return 추천 콘텐츠 ID 목록 (Repository에서 언어 가중치 적용됨)
      */
     override fun getRecommendedContentIds(
         userId: UUID,
         limit: Int,
-        excludeContentIds: List<UUID>
+        excludeContentIds: List<UUID>,
+        preferredLanguage: String,
+        category: Category?
     ): Flux<UUID> {
         val strategyLimits = RecommendationStrategy.calculateLimits(limit)
 
-        // 병렬로 모든 전략 실행
+        // 병렬로 모든 전략 실행 (Repository가 언어 가중치를 적용하여 반환)
         return Mono.zip(
-            getCollaborativeContentIds(userId, strategyLimits[RecommendationStrategy.COLLABORATIVE]!!, excludeContentIds).collectList(),
-            getPopularContentIds(userId, strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds).collectList(),
-            getNewContentIds(userId, strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds).collectList(),
-            getRandomContentIds(userId, strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds).collectList()
+            getCollaborativeContentIds(userId, strategyLimits[RecommendationStrategy.COLLABORATIVE]!!, excludeContentIds, preferredLanguage, category).collectList(),
+            feedRepository.findPopularContentIds(userId, strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds, category, preferredLanguage).collectList(),
+            feedRepository.findNewContentIds(userId, strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds, category, preferredLanguage).collectList(),
+            feedRepository.findRandomContentIds(userId, strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds, category, preferredLanguage).collectList()
         ).flatMapMany { tuple ->
             // 모든 결과 합치기 및 무작위 섞기
             val allIds = tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4
@@ -80,8 +98,8 @@ class RecommendationServiceImpl(
      *    - 내가 좋아요/저장/공유한 콘텐츠 조회 (seed items)
      *    - 각 seed item을 좋아한 다른 사용자 찾기
      *    - 그 사용자들이 좋아한 다른 콘텐츠 추천
-     * 2. 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback
-     * 3. 추천 결과가 부족하면 인기 콘텐츠로 보충
+     * 2. 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback (언어 가중치 적용)
+     * 3. 추천 결과가 부족하면 인기 콘텐츠로 보충 (언어 가중치 적용)
      *
      * ### Best Practice 근거
      * - Netflix, YouTube, TikTok 등이 사용하는 방식
@@ -96,23 +114,27 @@ class RecommendationServiceImpl(
      * @param userId 사용자 ID
      * @param limit 조회할 콘텐츠 수
      * @param excludeContentIds 제외할 콘텐츠 ID 목록
+     * @param preferredLanguage 사용자 선호 언어 (fallback 시 사용)
+     * @param category 필터링할 카테고리 (null이면 전체)
      * @return 협업 필터링 추천 콘텐츠 ID 목록
      */
     private fun getCollaborativeContentIds(
         userId: UUID,
         limit: Int,
-        excludeContentIds: List<UUID>
+        excludeContentIds: List<UUID>,
+        preferredLanguage: String,
+        category: Category?
     ): Flux<UUID> {
-        return collaborativeFilteringService.getRecommendedContents(userId, limit)
+        return collaborativeFilteringService.getRecommendedContents(userId, limit, preferredLanguage, category)
             .filter { !excludeContentIds.contains(it) }  // 제외 목록 필터링
             .collectList()
             .flatMapMany { recommendedIds ->
                 if (recommendedIds.isEmpty()) {
-                    // CF 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback
+                    // CF 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback (언어 가중치 적용)
                     logger.debug("No CF recommendations for user {}, falling back to popular content", userId)
-                    getPopularContentIds(userId, limit, excludeContentIds)
+                    feedRepository.findPopularContentIds(userId, limit, excludeContentIds, category, preferredLanguage)
                 } else if (recommendedIds.size < limit) {
-                    // CF 추천 결과가 부족하면 인기 콘텐츠로 보충
+                    // CF 추천 결과가 부족하면 인기 콘텐츠로 보충 (언어 가중치 적용)
                     val remaining = limit - recommendedIds.size
                     logger.debug(
                         "CF recommendations ({}) < limit ({}), adding {} popular contents",
@@ -122,164 +144,12 @@ class RecommendationServiceImpl(
                     )
                     Flux.concat(
                         Flux.fromIterable(recommendedIds),
-                        getPopularContentIds(userId, remaining, excludeContentIds + recommendedIds)
+                        feedRepository.findPopularContentIds(userId, remaining, excludeContentIds + recommendedIds, category, preferredLanguage)
                     )
                 } else {
                     // CF 추천 결과가 충분함
                     logger.debug("Returning {} CF recommendations for user {}", recommendedIds.size, userId)
                     Flux.fromIterable(recommendedIds.take(limit))
-                }
-            }
-    }
-
-    /**
-     * 인기 콘텐츠 ID 조회
-     *
-     * 인터랙션 가중치 기반 인기도 점수가 높은 콘텐츠를 조회합니다.
-     *
-     * ### 인기도 계산 공식
-     * ```
-     * popularity_score = view_count * 1.0
-     *                  + like_count * 5.0
-     *                  + comment_count * 3.0
-     *                  + save_count * 7.0
-     *                  + share_count * 10.0
-     * ```
-     *
-     * @param userId 사용자 ID (차단 필터링용)
-     * @param limit 조회할 콘텐츠 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
-     */
-    private fun getPopularContentIds(
-        userId: UUID,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<UUID> {
-        return feedRepository.findPopularContentIds(userId, limit, excludeContentIds, category = null)
-    }
-
-    /**
-     * 신규 콘텐츠 ID 조회
-     *
-     * 최근 업로드된 콘텐츠를 조회합니다.
-     *
-     * @param userId 사용자 ID (차단 필터링용)
-     * @param limit 조회할 콘텐츠 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
-     */
-    private fun getNewContentIds(
-        userId: UUID,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<UUID> {
-        return feedRepository.findNewContentIds(userId, limit, excludeContentIds, category = null)
-    }
-
-    /**
-     * 랜덤 콘텐츠 ID 조회
-     *
-     * 무작위 콘텐츠를 조회하여 다양성을 확보합니다.
-     *
-     * @param userId 사용자 ID (차단 필터링용)
-     * @param limit 조회할 콘텐츠 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
-     */
-    private fun getRandomContentIds(
-        userId: UUID,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<UUID> {
-        return feedRepository.findRandomContentIds(userId, limit, excludeContentIds, category = null)
-    }
-
-    /**
-     * 카테고리별 추천 콘텐츠 ID 목록 조회
-     *
-     * 특정 카테고리로 필터링된 추천 콘텐츠를 제공합니다.
-     * 메인 피드와 동일한 추천 알고리즘을 사용하되, 해당 카테고리만 반환합니다.
-     *
-     * ### 추천 전략 (메인 피드와 동일한 비율)
-     * - 팔로잉 콘텐츠 (40%): 팔로우한 크리에이터의 해당 카테고리 콘텐츠
-     * - 인기 콘텐츠 (30%): 해당 카테고리의 인기 콘텐츠
-     * - 신규 콘텐츠 (10%): 해당 카테고리의 최신 콘텐츠
-     * - 랜덤 콘텐츠 (20%): 해당 카테고리의 랜덤 콘텐츠
-     *
-     * ### 처리 흐름
-     * 1. 각 전략별로 가져올 콘텐츠 수 계산
-     * 2. **병렬로** 각 전략별 콘텐츠 조회 (Mono.zip 사용)
-     * 3. 결과 합치기 및 무작위 섞기
-     *
-     * @param userId 사용자 ID
-     * @param category 필터링할 카테고리
-     * @param limit 조회할 콘텐츠 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 추천 콘텐츠 ID 목록 (순서 무작위)
-     */
-    override fun getRecommendedContentIdsByCategory(
-        userId: UUID,
-        category: Category,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<UUID> {
-        // 메인 피드와 동일한 비율 사용 (COLLABORATIVE 대신 FOLLOWING 사용)
-        val strategyLimits = RecommendationStrategy.calculateLimits(limit)
-
-        // 병렬로 모든 전략 실행 (Repository 메서드 직접 호출)
-        return Mono.zip(
-            getFollowingContentIdsByCategory(userId, category, strategyLimits[RecommendationStrategy.COLLABORATIVE]!!, excludeContentIds).collectList(),
-            feedRepository.findPopularContentIds(userId, strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds, category).collectList(),
-            feedRepository.findNewContentIds(userId, strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds, category).collectList(),
-            feedRepository.findRandomContentIds(userId, strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds, category).collectList()
-        ).flatMapMany { tuple ->
-            // 모든 결과 합치기 및 무작위 섞기
-            val allIds = tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4
-            Flux.fromIterable(allIds.shuffled())
-        }
-    }
-
-    /**
-     * 특정 카테고리의 팔로잉 콘텐츠 ID 조회
-     *
-     * @param userId 사용자 ID
-     * @param category 조회할 카테고리
-     * @param limit 조회할 콘텐츠 수
-     * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @return 팔로잉 콘텐츠 ID 목록 (최신순 정렬)
-     */
-    private fun getFollowingContentIdsByCategory(
-        userId: UUID,
-        category: Category,
-        limit: Int,
-        excludeContentIds: List<UUID>
-    ): Flux<UUID> {
-        return feedRepository.findFollowingContentIdsByCategory(userId, category, limit, excludeContentIds)
-            .collectList()
-            .flatMapMany { followingIds ->
-                if (followingIds.isEmpty()) {
-                    // 팔로잉 콘텐츠가 없으면 인기 콘텐츠로 fallback
-                    logger.debug("No following content for user {} in category {}, falling back to popular content", userId, category.name)
-                    feedRepository.findPopularContentIds(userId, limit, excludeContentIds, category)
-                } else if (followingIds.size < limit) {
-                    // 팔로잉 콘텐츠가 부족하면 인기 콘텐츠로 보충
-                    val remaining = limit - followingIds.size
-                    logger.debug(
-                        "Following content ({}) < limit ({}) for category {}, adding {} popular contents",
-                        followingIds.size,
-                        limit,
-                        category.name,
-                        remaining
-                    )
-                    Flux.concat(
-                        Flux.fromIterable(followingIds),
-                        feedRepository.findPopularContentIds(userId, remaining, excludeContentIds + followingIds, category)
-                    )
-                } else {
-                    // 팔로잉 콘텐츠가 충분함
-                    logger.debug("Returning {} following contents for user {} in category {}", followingIds.size, userId, category.name)
-                    Flux.fromIterable(followingIds.take(limit))
                 }
             }
     }

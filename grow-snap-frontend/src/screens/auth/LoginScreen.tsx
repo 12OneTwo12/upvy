@@ -8,7 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/common';
@@ -103,20 +103,14 @@ export default function LoginScreen() {
 
           {/* 약관 동의 */}
           <Text style={styles.termsText}>
-            {t('login.termsAgree', {
-              termsOfService: '',
-              privacyPolicy: '',
-            }).split('{{termsOfService}}')[0]}
-            <Text style={styles.termsLink}>{t('login.termsOfService')}</Text>
-            {t('login.termsAgree', {
-              termsOfService: '',
-              privacyPolicy: '',
-            }).split('{{termsOfService}}')[1].split('{{privacyPolicy}}')[0]}
-            <Text style={styles.termsLink}>{t('login.privacyPolicy')}</Text>
-            {t('login.termsAgree', {
-              termsOfService: '',
-              privacyPolicy: '',
-            }).split('{{privacyPolicy}}')[1]}
+            <Trans
+              i18nKey="login.termsAgree"
+              t={t}
+              components={{
+                terms: <Text style={styles.termsLink} />,
+                policy: <Text style={styles.termsLink} />,
+              }}
+            />
           </Text>
 
           {/* 개발 모드 표시 */}

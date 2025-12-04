@@ -2,6 +2,8 @@ package me.onetwo.growsnap.domain.feed.service.collaborative
 
 import me.onetwo.growsnap.domain.analytics.dto.InteractionType
 import me.onetwo.growsnap.domain.analytics.repository.UserContentInteractionRepository
+import me.onetwo.growsnap.domain.content.model.Category
+import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -62,23 +64,28 @@ import java.util.UUID
  * ```
  *
  * @property userContentInteractionRepository 사용자별 콘텐츠 인터랙션 레포지토리
+ * @property contentRepository 콘텐츠 메타데이터 조회를 위한 레포지토리 (언어 가중치)
  */
 @Service
 @Transactional(readOnly = true)
 class CollaborativeFilteringServiceImpl(
-    private val userContentInteractionRepository: UserContentInteractionRepository
+    private val userContentInteractionRepository: UserContentInteractionRepository,
+    private val contentRepository: ContentRepository
 ) : CollaborativeFilteringService {
 
     /**
      * 협업 필터링 기반 콘텐츠 추천
      *
      * Item-based CF 알고리즘을 사용하여 추천합니다.
+     * Issue #107: 언어 가중치 적용 및 카테고리 필터링
      *
      * @param userId 사용자 ID
      * @param limit 추천 개수
-     * @return 추천 콘텐츠 ID 목록 (점수 높은 순)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en)
+     * @param category 필터링할 카테고리 (null이면 전체)
+     * @return 추천 콘텐츠 ID 목록 (최종 점수 높은 순)
      */
-    override fun getRecommendedContents(userId: UUID, limit: Int): Flux<UUID> {
+    override fun getRecommendedContents(userId: UUID, limit: Int, preferredLanguage: String, category: Category?): Flux<UUID> {
         // 1. 내가 인터랙션한 콘텐츠 조회 (seed items)
         val myInteractionsMono = userContentInteractionRepository
             .findAllInteractionsByUser(userId, MAX_SEED_ITEMS)
@@ -134,27 +141,58 @@ class CollaborativeFilteringServiceImpl(
                     }
                     // 6. 점수가 0보다 큰 것만 필터링 (COMMENT 제외)
                     .filter { (_, score) -> score > 0.0 }
-                    // 7. 점수 높은 순으로 정렬
+                    // 7. CF 점수 계산 완료
                     .collectList()
-                    .flatMapMany { scoreList ->
+                    .flatMapMany { cfScoreList ->
                         logger.debug(
-                            "Calculated scores for {} candidate contents for user {}",
-                            scoreList.size,
+                            "Calculated CF scores for {} candidate contents for user {}",
+                            cfScoreList.size,
                             userId
                         )
 
-                        val recommendedContents = scoreList
-                            .sortedByDescending { it.second }
-                            .take(limit)
-                            .map { it.first }
+                        if (cfScoreList.isEmpty()) {
+                            return@flatMapMany Flux.empty<UUID>()
+                        }
 
-                        logger.debug(
-                            "Returning {} recommended contents for user {}",
-                            recommendedContents.size,
-                            userId
-                        )
+                        // 8. 메타데이터 조회 (언어 및 카테고리) (Issue #107)
+                        val candidateIds = cfScoreList.map { it.first }
+                        contentRepository.findByIdsWithMetadata(candidateIds)
+                            .collectMap({ it.content.id!! }, { it.metadata })
+                            .flatMapMany { metadataMap ->
+                                // 9. 카테고리 필터링 및 언어 가중치 적용하여 최종 점수 계산
+                                val finalScores = cfScoreList.mapNotNull { (contentId, cfScore) ->
+                                    val metadata = metadataMap[contentId] ?: return@mapNotNull null
 
-                        Flux.fromIterable(recommendedContents)
+                                    // 카테고리 필터링 (category가 지정된 경우)
+                                    if (category != null && metadata.category != category) {
+                                        return@mapNotNull null
+                                    }
+
+                                    // 언어 가중치 적용
+                                    val languageMultiplier = if (metadata.language == preferredLanguage) {
+                                        LANGUAGE_MULTIPLIER_MATCH
+                                    } else {
+                                        LANGUAGE_MULTIPLIER_MISMATCH
+                                    }
+                                    val finalScore = cfScore * languageMultiplier
+                                    contentId to finalScore
+                                }
+
+                                // 10. 최종 점수 높은 순으로 정렬하여 상위 N개 반환
+                                val recommendedContents = finalScores
+                                    .sortedByDescending { it.second }
+                                    .take(limit)
+                                    .map { it.first }
+
+                                logger.debug(
+                                    "Returning {} recommended contents (with language weighting and category filtering) for user {}{}",
+                                    recommendedContents.size,
+                                    userId,
+                                    if (category != null) " in category ${category.name}" else ""
+                                )
+
+                                Flux.fromIterable(recommendedContents)
+                            }
                     }
             }
         }
@@ -184,5 +222,15 @@ class CollaborativeFilteringServiceImpl(
         private const val LIKE_WEIGHT = 1.0
         private const val SAVE_WEIGHT = 1.5
         private const val SHARE_WEIGHT = 2.0
+
+        /**
+         * 언어 가중치 (Issue #107)
+         *
+         * 사용자 선호 언어에 따라 CF 점수에 적용되는 가중치입니다.
+         * - 일치: 2.0x (우선 추천)
+         * - 불일치: 0.5x (후순위 추천)
+         */
+        private const val LANGUAGE_MULTIPLIER_MATCH = 2.0
+        private const val LANGUAGE_MULTIPLIER_MISMATCH = 0.5
     }
 }

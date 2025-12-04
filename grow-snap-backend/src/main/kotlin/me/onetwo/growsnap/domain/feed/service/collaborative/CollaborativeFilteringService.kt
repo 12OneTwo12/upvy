@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.feed.service.collaborative
 
+import me.onetwo.growsnap.domain.content.model.Category
 import reactor.core.publisher.Flux
 import java.util.UUID
 
@@ -58,15 +59,20 @@ interface CollaborativeFilteringService {
      * Item-based Collaborative Filtering을 사용하여
      * 사용자가 좋아할 만한 콘텐츠를 추천합니다.
      *
-     * ### 알고리즘
+     * ### 알고리즘 (Issue #107: 언어 가중치 적용)
      * 1. 내가 인터랙션한 콘텐츠 조회 (seed items)
      * 2. 각 seed item을 좋아한 다른 사용자 찾기
      * 3. 그 사용자들이 좋아한 콘텐츠 중 내가 안 본 것 추천
-     * 4. 공통 사용자가 많을수록 높은 점수
+     * 4. 카테고리 필터링 (category가 지정된 경우)
+     * 5. CF 점수 계산 (공통 사용자가 많을수록 높은 점수)
+     * 6. 언어 가중치 적용: final_score = cf_score × language_multiplier
+     * 7. 최종 점수 순으로 정렬
      *
      * @param userId 사용자 ID
      * @param limit 추천 개수
-     * @return 추천 콘텐츠 ID 목록 (점수 높은 순)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 기본값: "en"
+     * @param category 필터링할 카테고리 (null이면 전체)
+     * @return 추천 콘텐츠 ID 목록 (최종 점수 높은 순)
      */
-    fun getRecommendedContents(userId: UUID, limit: Int): Flux<UUID>
+    fun getRecommendedContents(userId: UUID, limit: Int, preferredLanguage: String, category: Category? = null): Flux<UUID>
 }

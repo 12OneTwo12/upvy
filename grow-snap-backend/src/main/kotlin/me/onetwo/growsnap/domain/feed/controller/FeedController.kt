@@ -41,22 +41,29 @@ class FeedController(
      * - 무한 스크롤 지원
      * - 중복 콘텐츠 방지
      *
+     * ### Issue #107: 언어 기반 가중치 적용
+     * - 사용자 선호 언어에 따라 콘텐츠에 가중치 적용 (일치: 2.0x, 불일치: 0.5x)
+     * - 프론트엔드는 사용자의 현재 언어 설정을 필수로 전달 (예: ko, en)
+     * - 기본값: "en" (영어)
+     *
      * @param userId 인증된 사용자 ID (Spring Security에서 자동 주입)
      * @param cursor 커서 (마지막 조회 콘텐츠 ID, null이면 첫 페이지)
      * @param limit 페이지당 항목 수 (기본값: 20, 최대: 100)
+     * @param language 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 기본값: "en"
      * @return 피드 응답 (200 OK)
      */
     @GetMapping
     fun getMainFeed(
         principal: Mono<Principal>,
         @RequestParam(required = false) cursor: String?,
-        @RequestParam(required = false, defaultValue = "20") limit: Int
+        @RequestParam(required = false, defaultValue = "20") limit: Int,
+        @RequestParam(defaultValue = "en") language: String
     ): Mono<ResponseEntity<FeedResponse>> {
         return principal
             .toUserId()
             .flatMap { userId ->
                 val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
-                feedService.getMainFeed(userId, pageRequest)
+                feedService.getMainFeed(userId, pageRequest, language)
             }
             .map { ResponseEntity.ok(it) }
     }
@@ -97,13 +104,14 @@ class FeedController(
      * TikTok/Instagram Reels의 "Pull to Refresh" 기능과 동일합니다.
      *
      * ### 처리 흐름
-     * 1. Redis에서 사용자의 모든 추천 배치 삭제
+     * 1. Redis에서 사용자의 모든 언어별 메인 피드 배치 삭제
      * 2. 다음 GET /api/v1/feed 호출 시 새로운 추천 알고리즘 실행
      * 3. 새로운 250개 배치 생성
      *
      * ### 요구사항
      * - 인증된 사용자만 호출 가능
      * - Redis 캐시만 삭제 (성능 영향 최소화)
+     * - 모든 언어의 메인 피드 캐시를 삭제 (Issue #107)
      *
      * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
      * @return 204 No Content
@@ -116,7 +124,7 @@ class FeedController(
         return principal
             .toUserId()
             .flatMap { userId ->
-                feedCacheService.clearUserCache(userId)
+                feedCacheService.clearAllMainFeedCache(userId)
             }
             .then()
     }
@@ -134,7 +142,7 @@ class FeedController(
      * - 일관된 피드 경험 제공 (세션 기반)
      *
      * ### 추천 전략 (메인 피드와 동일한 비율)
-     * - 팔로잉 콘텐츠 (40%): 팔로우한 크리에이터의 해당 카테고리 콘텐츠
+     * - 협업 필터링 (40%): Item-based Collaborative Filtering
      * - 인기 콘텐츠 (30%): 해당 카테고리의 인기 콘텐츠
      * - 신규 콘텐츠 (10%): 해당 카테고리의 최신 콘텐츠
      * - 랜덤 콘텐츠 (20%): 해당 카테고리의 랜덤 콘텐츠
@@ -160,7 +168,8 @@ class FeedController(
         principal: Mono<Principal>,
         @PathVariable category: Category,
         @RequestParam(required = false) cursor: String?,
-        @RequestParam(required = false, defaultValue = "20") limit: Int
+        @RequestParam(required = false, defaultValue = "20") limit: Int,
+        @RequestParam(defaultValue = "en") language: String
     ): Mono<ResponseEntity<FeedResponse>> {
         return principal
             .toUserIdOrNull()
@@ -169,7 +178,8 @@ class FeedController(
                 feedService.getCategoryFeed(
                     userId = userId,
                     category = category,
-                    pageRequest = pageRequest
+                    pageRequest = pageRequest,
+                    preferredLanguage = language
                 )
             }
             .map { ResponseEntity.ok(it) }

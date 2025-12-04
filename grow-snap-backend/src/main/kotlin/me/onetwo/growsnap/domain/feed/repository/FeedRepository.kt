@@ -44,48 +44,102 @@ interface FeedRepository {
      *
      * 인터랙션 가중치 기반 인기도 점수가 높은 콘텐츠를 조회합니다.
      *
-     * ### 인기도 계산 공식
+     * ### 인기도 계산 공식 (Issue #107: 언어 가중치 적용)
      * ```
-     * popularity_score = view_count * 1.0
-     *                  + like_count * 5.0
-     *                  + comment_count * 3.0
-     *                  + save_count * 7.0
-     *                  + share_count * 10.0
+     * base_score = view_count * 1.0
+     *            + like_count * 5.0
+     *            + comment_count * 3.0
+     *            + save_count * 7.0
+     *            + share_count * 10.0
+     *
+     * language_multiplier = CASE
+     *   WHEN content_language = preferredLanguage THEN 2.0
+     *   ELSE 0.5
+     * END
+     *
+     * final_score = base_score * language_multiplier
      * ```
      *
      * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
-     * @return 인기 콘텐츠 ID 목록 (인기도 순 정렬)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 언어 가중치 적용
+     * @return 인기 콘텐츠 ID 목록 (최종 점수 순 정렬)
      */
-    fun findPopularContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category? = null): Flux<UUID>
+    fun findPopularContentIds(
+        userId: UUID,
+        limit: Int,
+        excludeIds: List<UUID>,
+        category: Category? = null,
+        preferredLanguage: String = "en"
+    ): Flux<UUID>
 
     /**
      * 신규 콘텐츠 ID 목록 조회
      *
      * 최근 업로드된 콘텐츠를 조회합니다.
      *
+     * ### 정렬 공식 (Issue #107: 언어 가중치 적용)
+     * ```
+     * recency_score = UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(created_at)
+     *
+     * language_multiplier = CASE
+     *   WHEN content_language = preferredLanguage THEN 2.0
+     *   ELSE 0.5
+     * END
+     *
+     * final_score = recency_score * language_multiplier
+     * ORDER BY final_score DESC (최신 콘텐츠 중 선호 언어 우선)
+     * ```
+     *
      * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
-     * @return 신규 콘텐츠 ID 목록 (최신순 정렬)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 언어 가중치 적용
+     * @return 신규 콘텐츠 ID 목록 (언어 가중치가 적용된 최신순 정렬)
      */
-    fun findNewContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category? = null): Flux<UUID>
+    fun findNewContentIds(
+        userId: UUID,
+        limit: Int,
+        excludeIds: List<UUID>,
+        category: Category? = null,
+        preferredLanguage: String = "en"
+    ): Flux<UUID>
 
     /**
      * 랜덤 콘텐츠 ID 목록 조회
      *
      * 무작위 콘텐츠를 조회하여 다양성을 확보합니다.
      *
+     * ### 정렬 공식 (Issue #107: 언어 가중치 적용)
+     * ```
+     * random_score = RAND()
+     *
+     * language_multiplier = CASE
+     *   WHEN content_language = preferredLanguage THEN 2.0
+     *   ELSE 0.5
+     * END
+     *
+     * final_score = random_score * language_multiplier
+     * ORDER BY final_score DESC (랜덤하되 선호 언어 우선)
+     * ```
+     *
      * @param userId 사용자 ID (차단 필터링용)
      * @param limit 조회할 항목 수
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
-     * @return 랜덤 콘텐츠 ID 목록 (무작위 정렬)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 언어 가중치 적용
+     * @return 랜덤 콘텐츠 ID 목록 (언어 가중치가 적용된 무작위 정렬)
      */
-    fun findRandomContentIds(userId: UUID, limit: Int, excludeIds: List<UUID>, category: Category? = null): Flux<UUID>
+    fun findRandomContentIds(
+        userId: UUID,
+        limit: Int,
+        excludeIds: List<UUID>,
+        category: Category? = null,
+        preferredLanguage: String = "en"
+    ): Flux<UUID>
 
     /**
      * 콘텐츠 ID 목록 기반 상세 정보 조회

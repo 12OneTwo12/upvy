@@ -64,14 +64,14 @@ class FeedServiceImplTest {
             // limit+1개를 조회하므로 21개 제공
             val feedItems = cachedBatch.take(21).map { createFeedItem(it) }
 
-            every { feedCacheService.getRecommendationBatch(userId, 0) } returns
+            every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns
                 Mono.just(cachedBatch)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(250L)
             every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
             // When: 메인 피드 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: 캐시된 배치에서 피드 반환 (limit+1개 조회하여 limit개만 반환)
             StepVerifier.create(result)
@@ -83,9 +83,9 @@ class FeedServiceImplTest {
                 .verifyComplete()
 
             // Then: 캐시에서 조회했는지 확인
-            verify(exactly = 1) { feedCacheService.getRecommendationBatch(userId, 0) }
+            verify(exactly = 1) { feedCacheService.getMainFeedBatch(userId, "en", 0) }
             verify(exactly = 1) { feedRepository.findByContentIds(any(), any()) }
-            verify(exactly = 0) { recommendationService.getRecommendedContentIds(any(), any(), any()) }
+            verify(exactly = 0) { recommendationService.getRecommendedContentIds(any(), any(), any(), any()) }
         }
 
         @Test
@@ -110,14 +110,14 @@ class FeedServiceImplTest {
                 }
             }
 
-            every { feedCacheService.getRecommendationBatch(userId, 0) } returns
+            every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns
                 Mono.just(cachedBatch)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(250L)
             every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
             // When: 메인 피드 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: PHOTO 타입 콘텐츠는 photoUrls를 가지고, VIDEO는 null
             StepVerifier.create(result)
@@ -150,24 +150,25 @@ class FeedServiceImplTest {
             val recommendedIds = List(250) { UUID.randomUUID() }
             val feedItems = recommendedIds.take(20).map { createFeedItem(it) }
 
-            every { feedCacheService.getRecommendationBatch(userId, 0) } returns Mono.empty()
+            every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns Mono.empty()
             every { feedRepository.findRecentlyViewedContentIds(userId, 100) } returns
                 Flux.fromIterable(recentlyViewedIds)
             every {
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = 250,
-                    excludeContentIds = recentlyViewedIds
+                    excludeContentIds = recentlyViewedIds,
+                    preferredLanguage = "en"
                 )
             } returns Flux.fromIterable(recommendedIds)
-            every { feedCacheService.saveRecommendationBatch(userId, 0, recommendedIds) } returns
+            every { feedCacheService.saveMainFeedBatch(userId, "en", 0, recommendedIds) } returns
                 Mono.just(true)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(0L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(0L)
             every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
             // When: 메인 피드 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: 새 배치 생성 후 피드 반환
             StepVerifier.create(result)
@@ -182,10 +183,11 @@ class FeedServiceImplTest {
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = 250,
-                    excludeContentIds = recentlyViewedIds
+                    excludeContentIds = recentlyViewedIds,
+                    preferredLanguage = "en"
                 )
             }
-            verify(exactly = 1) { feedCacheService.saveRecommendationBatch(userId, 0, recommendedIds) }
+            verify(exactly = 1) { feedCacheService.saveMainFeedBatch(userId, "en", 0, recommendedIds) }
         }
 
         @Test
@@ -196,14 +198,14 @@ class FeedServiceImplTest {
             val cachedBatch = List(250) { UUID.randomUUID() }
             val feedItems = cachedBatch.take(20).map { createFeedItem(it) }
 
-            every { feedCacheService.getRecommendationBatch(userId, 1) } returns
+            every { feedCacheService.getMainFeedBatch(userId, "en", 1) } returns
                 Mono.just(cachedBatch)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(250L)
             every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
             // When: cursor = 250으로 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: batch 1 조회
             StepVerifier.create(result)
@@ -212,7 +214,7 @@ class FeedServiceImplTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 1) { feedCacheService.getRecommendationBatch(userId, 1) }
+            verify(exactly = 1) { feedCacheService.getMainFeedBatch(userId, "en", 1) }
         }
 
         @Test
@@ -224,14 +226,14 @@ class FeedServiceImplTest {
             val expectedContentIds = cachedBatch.subList(10, 31) // offset 10 ~ 30 (limit+1)
             val feedItems = expectedContentIds.map { createFeedItem(it) }
 
-            every { feedCacheService.getRecommendationBatch(userId, 0) } returns
+            every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns
                 Mono.just(cachedBatch)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(250L)
             every { feedRepository.findByContentIds(userId, expectedContentIds) } returns
                 Flux.fromIterable(feedItems)
 
             // When: offset 10에서 조회
-            val result = feedService.getMainFeed(userId, pageRequest)
+            val result = feedService.getMainFeed(userId, pageRequest, preferredLanguage = "en")
 
             // Then: 올바른 범위 조회
             StepVerifier.create(result)

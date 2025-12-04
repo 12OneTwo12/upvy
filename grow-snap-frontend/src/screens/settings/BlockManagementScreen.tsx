@@ -65,7 +65,7 @@ export const BlockManagementScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [loading, t]);
+  }, [t]);
 
   // 차단한 콘텐츠 목록 로드
   const loadBlockedContents = useCallback(async (cursor?: string, isRefresh = false) => {
@@ -89,7 +89,7 @@ export const BlockManagementScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [loading, t]);
+  }, [t]);
 
   // 초기 로드
   React.useEffect(() => {

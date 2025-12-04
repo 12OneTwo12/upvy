@@ -63,6 +63,7 @@ fun createContent(
     title: String = "Test Content",
     description: String = "Test Description",
     category: Category = Category.LANGUAGE,
+    language: String = "ko",
     contentInteractionRepository: ContentInteractionRepository? = null
 ): Content {
     // Content 저장
@@ -88,7 +89,7 @@ fun createContent(
             description = description,
             category = category,
             tags = emptyList(),
-            language = "ko"
+            language = language
         )
     ).block()
 

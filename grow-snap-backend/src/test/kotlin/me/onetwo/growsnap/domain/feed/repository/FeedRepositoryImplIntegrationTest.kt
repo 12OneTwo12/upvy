@@ -7,8 +7,13 @@ import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_BLOCKS
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_BLOCKS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import me.onetwo.growsnap.util.createContent
 import me.onetwo.growsnap.util.createUserWithProfile
 import org.jooq.DSLContext
@@ -126,9 +131,19 @@ class FeedRepositoryImplIntegrationTest {
     fun tearDown() {
         // Then: 테스트 데이터 정리 (R2DBC 사용 시 reactive 방식으로 처리)
         // 모든 데이터를 명시적으로 삭제 (foreign key 순서 고려)
-        Mono.from(dslContext.deleteFrom(CONTENT_BLOCKS).where(CONTENT_BLOCKS.USER_ID.eq(userAId.toString())))
-            .then(Mono.from(dslContext.deleteFrom(USER_BLOCKS).where(USER_BLOCKS.BLOCKER_ID.eq(userAId.toString()))))
-            .then(Mono.from(dslContext.deleteFrom(FOLLOWS).where(FOLLOWS.FOLLOWER_ID.eq(userAId.toString()))))
+        // 1. 관계 테이블 먼저 삭제 (외래 키 제약 조건)
+        Mono.from(dslContext.deleteFrom(CONTENT_BLOCKS))
+            .then(Mono.from(dslContext.deleteFrom(USER_BLOCKS)))
+            .then(Mono.from(dslContext.deleteFrom(FOLLOWS)))
+            // 2. 콘텐츠 관련 자식 테이블 삭제
+            .then(Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)))
+            .then(Mono.from(dslContext.deleteFrom(CONTENT_METADATA)))
+            // 3. 콘텐츠 부모 테이블 삭제
+            .then(Mono.from(dslContext.deleteFrom(CONTENTS)))
+            // 4. 사용자 관련 자식 테이블 삭제
+            .then(Mono.from(dslContext.deleteFrom(USER_PROFILES)))
+            // 5. 사용자 부모 테이블 삭제
+            .then(Mono.from(dslContext.deleteFrom(USERS)))
             .block()
     }
 
@@ -435,6 +450,265 @@ class FeedRepositoryImplIntegrationTest {
 
         // Then: contentB1은 제외됨
         assertFalse(result.contains(contentB1Id))
+    }
+
+    // ==================== 언어 가중치 테스트 (Issue #107) ====================
+
+    @Test
+    @DisplayName("[Popular] 선호 언어와 일치하는 콘텐츠가 2.0x 가중치로 우선 추천된다")
+    fun `should prioritize content matching preferred language with 2x weight in popular strategy`() {
+        // Given: 동일한 인기도의 한국어/영어 콘텐츠 생성
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-lang-$testId@example.com",
+            nickname = "c-lang-$testId"
+        )
+
+        // 한국어 콘텐츠: 10 likes
+        val koreanContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Korean Content",
+            category = Category.PROGRAMMING,
+            language = "ko",
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(10) {
+            contentInteractionRepository.incrementLikeCount(koreanContent.id!!).block()
+        }
+
+        // 영어 콘텐츠: 10 likes (동일한 인기도)
+        val englishContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "English Content",
+            category = Category.PROGRAMMING,
+            language = "en",
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(10) {
+            contentInteractionRepository.incrementLikeCount(englishContent.id!!).block()
+        }
+
+        // When: 한국어 사용자가 인기 콘텐츠 조회
+        val koreanUserResult = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "ko"
+        ).collectList().block()!!
+
+        // Then: 한국어 콘텐츠가 먼저 나와야 함 (100 * 2.0 = 200 vs 100 * 0.5 = 50)
+        val koreanContentIndex = koreanUserResult.indexOf(koreanContent.id!!)
+        val englishContentIndex = koreanUserResult.indexOf(englishContent.id!!)
+        assertTrue(koreanContentIndex < englishContentIndex,
+            "Korean content should come before English content for Korean user (index: $koreanContentIndex < $englishContentIndex)")
+
+        // When: 영어 사용자가 인기 콘텐츠 조회
+        val englishUserResult = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en"
+        ).collectList().block()!!
+
+        // Then: 영어 콘텐츠가 먼저 나와야 함 (100 * 2.0 = 200 vs 100 * 0.5 = 50)
+        val koreanContentIndex2 = englishUserResult.indexOf(koreanContent.id!!)
+        val englishContentIndex2 = englishUserResult.indexOf(englishContent.id!!)
+        assertTrue(englishContentIndex2 < koreanContentIndex2,
+            "English content should come before Korean content for English user (index: $englishContentIndex2 < $koreanContentIndex2)")
+    }
+
+    @Test
+    @DisplayName("[New] 선호 언어와 일치하는 콘텐츠가 2.0x 가중치로 우선 추천된다")
+    fun `should prioritize content matching preferred language with 2x weight in new strategy`() {
+        // Given: 동일한 시간에 생성된 한국어/영어 콘텐츠
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-new-$testId@example.com",
+            nickname = "c-new-$testId"
+        )
+
+        // 한국어 신규 콘텐츠
+        val koreanContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "New Korean Content",
+            category = Category.PROGRAMMING,
+            language = "ko",
+            contentInteractionRepository = contentInteractionRepository
+        )
+
+        // 영어 신규 콘텐츠 (동일 시간대)
+        val englishContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "New English Content",
+            category = Category.PROGRAMMING,
+            language = "en",
+            contentInteractionRepository = contentInteractionRepository
+        )
+
+        // When: 한국어 사용자가 신규 콘텐츠 조회
+        val koreanUserResult = feedRepository.findNewContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "ko"
+        ).collectList().block()!!
+
+        // Then: 한국어 콘텐츠가 먼저 나와야 함
+        val koreanContentIndex = koreanUserResult.indexOf(koreanContent.id!!)
+        val englishContentIndex = koreanUserResult.indexOf(englishContent.id!!)
+        assertTrue(koreanContentIndex < englishContentIndex,
+            "Korean content should come before English content for Korean user in new strategy")
+
+        // When: 영어 사용자가 신규 콘텐츠 조회
+        val englishUserResult = feedRepository.findNewContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en"
+        ).collectList().block()!!
+
+        // Then: 영어 콘텐츠가 먼저 나와야 함
+        val koreanContentIndex2 = englishUserResult.indexOf(koreanContent.id!!)
+        val englishContentIndex2 = englishUserResult.indexOf(englishContent.id!!)
+        assertTrue(englishContentIndex2 < koreanContentIndex2,
+            "English content should come before Korean content for English user in new strategy")
+    }
+
+    @Test
+    @DisplayName("[Random] 랜덤 전략에서도 언어 가중치가 적용되어 선호 언어가 더 자주 나온다")
+    fun `should apply language weight in random strategy`() {
+        // Given: 다수의 한국어/영어 콘텐츠 생성
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-rand-$testId@example.com",
+            nickname = "c-rand-$testId"
+        )
+
+        val koreanContents = mutableListOf<UUID>()
+        val englishContents = mutableListOf<UUID>()
+
+        repeat(10) { i ->
+            // 한국어 콘텐츠
+            val korean = createContent(
+                contentRepository = contentRepository,
+                creatorId = creator.id!!,
+                title = "Korean Random $i",
+                category = Category.ART,
+                language = "ko",
+                contentInteractionRepository = contentInteractionRepository
+            )
+            koreanContents.add(korean.id!!)
+
+            // 영어 콘텐츠
+            val english = createContent(
+                contentRepository = contentRepository,
+                creatorId = creator.id!!,
+                title = "English Random $i",
+                category = Category.ART,
+                language = "en",
+                contentInteractionRepository = contentInteractionRepository
+            )
+            englishContents.add(english.id!!)
+        }
+
+        // When: 한국어 사용자가 랜덤 콘텐츠 조회 (100번 반복하여 통계적 검증)
+        var koreanCount = 0
+        var englishCount = 0
+
+        repeat(50) {
+            val result = feedRepository.findRandomContentIds(
+                userId = userAId,
+                limit = 10,
+                excludeIds = emptyList(),
+                category = Category.ART,
+                preferredLanguage = "ko"
+            ).collectList().block()!!
+
+            // 상위 5개 중 한국어/영어 개수 카운트
+            result.take(5).forEach { contentId ->
+                when {
+                    koreanContents.contains(contentId) -> koreanCount++
+                    englishContents.contains(contentId) -> englishCount++
+                }
+            }
+        }
+
+        // Then: 한국어 콘텐츠가 영어 콘텐츠보다 유의미하게 더 많이 나와야 함
+        // 언어 가중치가 없다면 50:50, 있다면 대략 80:20 또는 그 이상
+        assertTrue(koreanCount > englishCount,
+            "Korean content should appear more frequently than English content for Korean user (Korean: $koreanCount, English: $englishCount)")
+
+        // 최소 1.5배 이상 차이 나야 함 (통계적 유의성)
+        assertTrue(koreanCount > englishCount * 1.5,
+            "Korean content should appear at least 1.5x more than English content (Korean: $koreanCount, English: $englishCount)")
+    }
+
+    @Test
+    @DisplayName("[Category Filter] 카테고리별 조회 시에도 언어 가중치가 적용된다")
+    fun `should apply language weight with category filter`() {
+        // Given: 동일 카테고리의 한국어/영어 콘텐츠
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-cat-$testId@example.com",
+            nickname = "c-cat-$testId"
+        )
+
+        // 한국어 PROGRAMMING 콘텐츠: 50 likes
+        val koreanContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Korean Programming",
+            category = Category.PROGRAMMING,
+            language = "ko",
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(50) {
+            contentInteractionRepository.incrementLikeCount(koreanContent.id!!).block()
+        }
+
+        // 영어 PROGRAMMING 콘텐츠: 50 likes
+        val englishContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "English Programming",
+            category = Category.PROGRAMMING,
+            language = "en",
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(50) {
+            contentInteractionRepository.incrementLikeCount(englishContent.id!!).block()
+        }
+
+        // When: PROGRAMMING 카테고리에서 한국어 사용자가 조회
+        val result = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = Category.PROGRAMMING,
+            preferredLanguage = "ko"
+        ).collectList().block()!!
+
+        // Then: 한국어 콘텐츠가 먼저 나와야 함
+        val koreanContentIndex = result.indexOf(koreanContent.id!!)
+        val englishContentIndex = result.indexOf(englishContent.id!!)
+        assertTrue(koreanContentIndex < englishContentIndex,
+            "Korean content should come first in category filter with language weight")
     }
 
     // ==================== 헬퍼 메서드 ====================
