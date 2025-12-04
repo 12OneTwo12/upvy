@@ -218,14 +218,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       setPosition(currentPosition);
       setIsPlaying(status.isPlaying);
 
-      // 트리밍 끝에 도달하면 정지하고 시작 위치로 이동
-      if (currentPosition >= trimEnd) {
+      // 트리밍 끝에 도달하면 정지하고 시작 위치로 이동 (재생 중일 때만)
+      if (status.isPlaying && currentPosition >= trimEnd) {
         videoRef.current?.pauseAsync();
-        videoRef.current?.setPositionAsync(trimStart * 1000);
-      }
-
-      // 트리밍 시작 이전이면 시작 위치로 이동
-      if (currentPosition < trimStart) {
         videoRef.current?.setPositionAsync(trimStart * 1000);
       }
     }
@@ -372,9 +367,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     if (isPlaying) {
       await videoRef.current?.pauseAsync();
     } else {
-      // 재생 전에 항상 시작 위치로 이동
-      console.log('▶️ Play from:', trimStart.toFixed(2), 'seconds');
-      await videoRef.current?.setPositionAsync(trimStart * 1000);
+      // 현재 위치가 트리밍 범위를 벗어났으면 시작 위치로 이동
+      if (position >= trimEnd || position < trimStart) {
+        console.log('▶️ Play from:', trimStart.toFixed(2), 'seconds');
+        await videoRef.current?.setPositionAsync(trimStart * 1000);
+      }
       await videoRef.current?.playAsync();
     }
   };
@@ -451,7 +448,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
           // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
           if (videoRef.current) {
-            videoRef.current.setPositionAsync(Math.floor(newStart * 1000)).catch(() => {
+            videoRef.current.setPositionAsync(Math.floor(newStart * 1000), {
+              toleranceMillisBefore: 100,
+              toleranceMillisAfter: 100,
+            }).catch(() => {
               // seek 에러 무시
             });
           }
@@ -509,7 +509,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
           // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
           if (videoRef.current) {
-            videoRef.current.setPositionAsync(Math.floor(newEnd * 1000)).catch(() => {
+            videoRef.current.setPositionAsync(Math.floor(newEnd * 1000), {
+              toleranceMillisBefore: 100,
+              toleranceMillisAfter: 100,
+            }).catch(() => {
               // seek 에러 무시
             });
           }
