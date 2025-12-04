@@ -451,7 +451,7 @@ class FeedRepositoryImplIntegrationTest {
             nickname = "c-lang-$testId"
         )
 
-        // 한국어 콘텐츠: 100 likes
+        // 한국어 콘텐츠: 10 likes
         val koreanContent = createContent(
             contentRepository = contentRepository,
             creatorId = creator.id!!,
@@ -460,11 +460,11 @@ class FeedRepositoryImplIntegrationTest {
             language = "ko",
             contentInteractionRepository = contentInteractionRepository
         )
-        repeat(100) {
+        repeat(10) {
             contentInteractionRepository.incrementLikeCount(koreanContent.id!!).block()
         }
 
-        // 영어 콘텐츠: 100 likes (동일한 인기도)
+        // 영어 콘텐츠: 10 likes (동일한 인기도)
         val englishContent = createContent(
             contentRepository = contentRepository,
             creatorId = creator.id!!,
@@ -473,7 +473,7 @@ class FeedRepositoryImplIntegrationTest {
             language = "en",
             contentInteractionRepository = contentInteractionRepository
         )
-        repeat(100) {
+        repeat(10) {
             contentInteractionRepository.incrementLikeCount(englishContent.id!!).block()
         }
 

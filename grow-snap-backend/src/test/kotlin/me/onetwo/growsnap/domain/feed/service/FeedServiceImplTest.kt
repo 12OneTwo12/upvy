@@ -64,9 +64,9 @@ class FeedServiceImplTest {
             // limit+1개를 조회하므로 21개 제공
             val feedItems = cachedBatch.take(21).map { createFeedItem(it) }
 
-            every { feedCacheService.getRecommendationBatch(userId, 0) } returns
+            every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns
                 Mono.just(cachedBatch)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(250L)
             every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
@@ -83,7 +83,7 @@ class FeedServiceImplTest {
                 .verifyComplete()
 
             // Then: 캐시에서 조회했는지 확인
-            verify(exactly = 1) { feedCacheService.getRecommendationBatch(userId, 0) }
+            verify(exactly = 1) { feedCacheService.getMainFeedBatch(userId, "en", 0) }
             verify(exactly = 1) { feedRepository.findByContentIds(any(), any()) }
             verify(exactly = 0) { recommendationService.getRecommendedContentIds(any(), any(), any(), any()) }
         }
@@ -110,9 +110,9 @@ class FeedServiceImplTest {
                 }
             }
 
-            every { feedCacheService.getRecommendationBatch(userId, 0) } returns
+            every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns
                 Mono.just(cachedBatch)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(250L)
             every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
@@ -150,7 +150,7 @@ class FeedServiceImplTest {
             val recommendedIds = List(250) { UUID.randomUUID() }
             val feedItems = recommendedIds.take(20).map { createFeedItem(it) }
 
-            every { feedCacheService.getRecommendationBatch(userId, 0) } returns Mono.empty()
+            every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns Mono.empty()
             every { feedRepository.findRecentlyViewedContentIds(userId, 100) } returns
                 Flux.fromIterable(recentlyViewedIds)
             every {
@@ -161,9 +161,9 @@ class FeedServiceImplTest {
                     preferredLanguage = "en"
                 )
             } returns Flux.fromIterable(recommendedIds)
-            every { feedCacheService.saveRecommendationBatch(userId, 0, recommendedIds) } returns
+            every { feedCacheService.saveMainFeedBatch(userId, "en", 0, recommendedIds) } returns
                 Mono.just(true)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(0L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(0L)
             every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
@@ -187,7 +187,7 @@ class FeedServiceImplTest {
                     preferredLanguage = "en"
                 )
             }
-            verify(exactly = 1) { feedCacheService.saveRecommendationBatch(userId, 0, recommendedIds) }
+            verify(exactly = 1) { feedCacheService.saveMainFeedBatch(userId, "en", 0, recommendedIds) }
         }
 
         @Test
@@ -198,9 +198,9 @@ class FeedServiceImplTest {
             val cachedBatch = List(250) { UUID.randomUUID() }
             val feedItems = cachedBatch.take(20).map { createFeedItem(it) }
 
-            every { feedCacheService.getRecommendationBatch(userId, 1) } returns
+            every { feedCacheService.getMainFeedBatch(userId, "en", 1) } returns
                 Mono.just(cachedBatch)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(250L)
             every { feedRepository.findByContentIds(any(), any()) } returns
                 Flux.fromIterable(feedItems)
 
@@ -214,7 +214,7 @@ class FeedServiceImplTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 1) { feedCacheService.getRecommendationBatch(userId, 1) }
+            verify(exactly = 1) { feedCacheService.getMainFeedBatch(userId, "en", 1) }
         }
 
         @Test
@@ -226,9 +226,9 @@ class FeedServiceImplTest {
             val expectedContentIds = cachedBatch.subList(10, 31) // offset 10 ~ 30 (limit+1)
             val feedItems = expectedContentIds.map { createFeedItem(it) }
 
-            every { feedCacheService.getRecommendationBatch(userId, 0) } returns
+            every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns
                 Mono.just(cachedBatch)
-            every { feedCacheService.getBatchSize(any(), any()) } returns Mono.just(250L)
+            every { feedCacheService.getMainFeedBatchSize(any(), any(), any()) } returns Mono.just(250L)
             every { feedRepository.findByContentIds(userId, expectedContentIds) } returns
                 Flux.fromIterable(feedItems)
 

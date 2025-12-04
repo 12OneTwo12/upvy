@@ -360,7 +360,7 @@ class FeedControllerTest {
         fun refreshFeed_WithAuthentication_ReturnsNoContent() {
             // Given: 인증된 사용자
             val userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
-            every { feedCacheService.clearUserCache(userId) } returns Mono.just(true)
+            every { feedCacheService.clearAllMainFeedCache(userId) } returns Mono.just(true)
 
             // When & Then: 피드 새로고침 API 호출
             webTestClient

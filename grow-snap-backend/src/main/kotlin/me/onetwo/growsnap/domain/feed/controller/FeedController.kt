@@ -104,13 +104,14 @@ class FeedController(
      * TikTok/Instagram Reels의 "Pull to Refresh" 기능과 동일합니다.
      *
      * ### 처리 흐름
-     * 1. Redis에서 사용자의 모든 추천 배치 삭제
+     * 1. Redis에서 사용자의 모든 언어별 메인 피드 배치 삭제
      * 2. 다음 GET /api/v1/feed 호출 시 새로운 추천 알고리즘 실행
      * 3. 새로운 250개 배치 생성
      *
      * ### 요구사항
      * - 인증된 사용자만 호출 가능
      * - Redis 캐시만 삭제 (성능 영향 최소화)
+     * - 모든 언어의 메인 피드 캐시를 삭제 (Issue #107)
      *
      * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
      * @return 204 No Content
@@ -123,7 +124,7 @@ class FeedController(
         return principal
             .toUserId()
             .flatMap { userId ->
-                feedCacheService.clearUserCache(userId)
+                feedCacheService.clearAllMainFeedCache(userId)
             }
             .then()
     }

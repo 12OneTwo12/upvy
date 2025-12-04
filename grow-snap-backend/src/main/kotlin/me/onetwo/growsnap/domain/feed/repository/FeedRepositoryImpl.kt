@@ -24,6 +24,7 @@ import me.onetwo.growsnap.jooq.generated.tables.references.USER_SAVES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
 import org.jooq.Condition
 import org.jooq.DSLContext
+import org.jooq.DatePart
 import org.jooq.Record
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
@@ -352,19 +353,8 @@ class FeedRepositoryImpl(
         category: Category?,
         preferredLanguage: String
     ): Flux<UUID> {
-        // 1. 기본 최신도 점수 계산 (최근일수록 높은 점수)
-        // UNIX_TIMESTAMP는 초 단위 정수를 반환하므로 Double로 캐스팅
-        val baseRecencyScore = DSL.field(
-            "UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP({0})",
-            Long::class.java,
-            CONTENTS.CREATED_AT
-        ).cast(Double::class.java)
-
-        // 2. 언어 가중치 계산 (Issue #107)
+        // 1. 언어 가중치 계산 (Issue #107)
         val languageMultiplier = calculateLanguageMultiplier(preferredLanguage)
-
-        // 3. 최종 점수 = 기본 점수 × 언어 가중치
-        val finalScore = baseRecencyScore.mul(languageMultiplier)
 
         var query = dslContext
             .select(CONTENTS.ID)
@@ -387,10 +377,12 @@ class FeedRepositoryImpl(
             query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
         }
 
-        // 4. 최종 점수로 정렬 (언어 가중치가 적용된 최신순)
+        // 2. 언어 가중치 먼저 적용하고 (높은 가중치 우선), 그 다음 최신순 정렬
+        // 언어가 일치하는 콘텐츠 (2.0)가 먼저 나오고, 그 안에서 최신순
+        // 언어가 불일치하는 콘텐츠 (0.5)가 나중에 나오고, 그 안에서 최신순
         return Flux.from(
             query
-                .orderBy(finalScore.desc())
+                .orderBy(languageMultiplier.desc(), CONTENTS.CREATED_AT.desc())
                 .limit(limit)
         ).map { record -> UUID.fromString(record.get(CONTENTS.ID)) }
     }
