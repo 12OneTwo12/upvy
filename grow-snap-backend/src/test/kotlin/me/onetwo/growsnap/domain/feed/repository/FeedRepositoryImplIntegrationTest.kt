@@ -7,8 +7,13 @@ import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_BLOCKS
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.growsnap.jooq.generated.tables.references.CONTENTS
 import me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_BLOCKS
+import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
+import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import me.onetwo.growsnap.util.createContent
 import me.onetwo.growsnap.util.createUserWithProfile
 import org.jooq.DSLContext
@@ -126,9 +131,19 @@ class FeedRepositoryImplIntegrationTest {
     fun tearDown() {
         // Then: 테스트 데이터 정리 (R2DBC 사용 시 reactive 방식으로 처리)
         // 모든 데이터를 명시적으로 삭제 (foreign key 순서 고려)
-        Mono.from(dslContext.deleteFrom(CONTENT_BLOCKS).where(CONTENT_BLOCKS.USER_ID.eq(userAId.toString())))
-            .then(Mono.from(dslContext.deleteFrom(USER_BLOCKS).where(USER_BLOCKS.BLOCKER_ID.eq(userAId.toString()))))
-            .then(Mono.from(dslContext.deleteFrom(FOLLOWS).where(FOLLOWS.FOLLOWER_ID.eq(userAId.toString()))))
+        // 1. 관계 테이블 먼저 삭제 (외래 키 제약 조건)
+        Mono.from(dslContext.deleteFrom(CONTENT_BLOCKS))
+            .then(Mono.from(dslContext.deleteFrom(USER_BLOCKS)))
+            .then(Mono.from(dslContext.deleteFrom(FOLLOWS)))
+            // 2. 콘텐츠 관련 자식 테이블 삭제
+            .then(Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)))
+            .then(Mono.from(dslContext.deleteFrom(CONTENT_METADATA)))
+            // 3. 콘텐츠 부모 테이블 삭제
+            .then(Mono.from(dslContext.deleteFrom(CONTENTS)))
+            // 4. 사용자 관련 자식 테이블 삭제
+            .then(Mono.from(dslContext.deleteFrom(USER_PROFILES)))
+            // 5. 사용자 부모 테이블 삭제
+            .then(Mono.from(dslContext.deleteFrom(USERS)))
             .block()
     }
 
