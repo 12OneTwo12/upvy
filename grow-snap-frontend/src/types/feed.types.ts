@@ -121,6 +121,7 @@ export type FeedResponse = CursorPageResponse<FeedItem>;
 export interface FeedRequest {
   cursor?: string | null;
   limit?: number;
+  language?: string;
 }
 
 /**

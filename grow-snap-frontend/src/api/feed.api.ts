@@ -24,6 +24,7 @@ export const getMainFeed = async (params?: FeedRequest): Promise<FeedResponse> =
     params: {
       cursor: params?.cursor || undefined,
       limit: params?.limit || 20,
+      language: params?.language,
     },
   });
   return response.data;
@@ -90,6 +91,7 @@ export const getCategoryFeed = async (
       params: {
         cursor: params?.cursor || undefined,
         limit: params?.limit || 20,
+        language: params?.language,
       },
     }
   );

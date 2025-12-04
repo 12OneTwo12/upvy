@@ -33,6 +33,7 @@ import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
 import { shareContent, getShareLink } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
+import { useLanguageStore } from '@/stores/languageStore';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -62,13 +63,14 @@ export function useFeed(options: UseFeedOptions) {
 
   const queryClient = useQueryClient();
   const navigation = useNavigation();
+  const currentLanguage = useLanguageStore((state) => state.currentLanguage);
 
   // Query key 생성
   const getQueryKey = () => {
     if (feedType === 'category' && category) {
-      return ['categoryFeed', category];
+      return ['categoryFeed', category, currentLanguage];
     }
-    return ['feed', feedType];
+    return ['feed', feedType, currentLanguage];
   };
 
   const queryKey = getQueryKey();
@@ -85,9 +87,9 @@ export function useFeed(options: UseFeedOptions) {
     queryKey,
     queryFn: ({ pageParam }) => {
       if (feedType === 'category' && category) {
-        return getCategoryFeed(category, { cursor: pageParam, limit: 10 });
+        return getCategoryFeed(category, { cursor: pageParam, limit: 10, language: currentLanguage });
       } else if (feedType === 'main') {
-        return getMainFeed({ cursor: pageParam, limit: 10 });
+        return getMainFeed({ cursor: pageParam, limit: 10, language: currentLanguage });
       } else {
         return getFollowingFeed({ cursor: pageParam, limit: 10 });
       }
