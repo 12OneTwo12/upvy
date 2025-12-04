@@ -24,7 +24,6 @@ import me.onetwo.growsnap.jooq.generated.tables.references.USER_SAVES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
 import org.jooq.Condition
 import org.jooq.DSLContext
-import org.jooq.DatePart
 import org.jooq.Record
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
@@ -336,7 +335,7 @@ class FeedRepositoryImpl(
      * END
      *
      * final_score = recency_score * language_multiplier
-     * ORDER BY final_score DESC (최신 콘텐츠 중 선호 언어 우선)
+     * ORDER BY (language_multiplier) DESC, (created_at) DESC (최신 콘텐츠 중 선호 언어 우선)
      * ```
      *
      * @param userId 사용자 ID (차단 필터링용)

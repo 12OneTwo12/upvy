@@ -3,7 +3,6 @@ package me.onetwo.growsnap.infrastructure.logging
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.buffer.DataBuffer
-import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.server.reactive.ServerHttpRequest
@@ -17,7 +16,6 @@ import org.springframework.web.server.WebFilter
 import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
@@ -36,6 +34,7 @@ import java.util.UUID
 @Component
 class GlobalRequestResponseLoggingFilter : WebFilter {
 
+    @Suppress("ObjectPropertyNaming")
     companion object {
         private val logger = LoggerFactory.getLogger(GlobalRequestResponseLoggingFilter::class.java)
         private const val REQUEST_ID_HEADER = "X-Request-ID"
@@ -191,6 +190,7 @@ class GlobalRequestResponseLoggingFilter : WebFilter {
                 mediaType.subtype.contains("html")
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private fun extractContent(buffer: DataBuffer, limit: Int): String {
         try {
             val sb = StringBuilder()
