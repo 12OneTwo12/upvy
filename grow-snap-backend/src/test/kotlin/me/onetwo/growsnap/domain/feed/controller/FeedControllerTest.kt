@@ -465,7 +465,7 @@ class FeedControllerTest {
                 getCursor = { it.contentId.toString() }
             )
 
-            every { feedService.getCategoryFeed(userId, Category.PROGRAMMING, any()) } returns Mono.just(response)
+            every { feedService.getCategoryFeed(userId, Category.PROGRAMMING, any(), any()) } returns Mono.just(response)
 
             // When & Then: 카테고리 피드 조회 API 호출
             webTestClient
@@ -549,6 +549,7 @@ class FeedControllerTest {
                 feedService.getCategoryFeed(
                     userId,
                     Category.PROGRAMMING,
+                    any(),
                     any()
                 )
             } returns Mono.just(response)
@@ -582,6 +583,7 @@ class FeedControllerTest {
                 feedService.getCategoryFeed(
                     userId,
                     Category.LANGUAGE,
+                    any(),
                     any()
                 )
             } returns Mono.just(response)
@@ -612,7 +614,7 @@ class FeedControllerTest {
                 getCursor = { (cursor.toLong() + feedItems.indexOf(it) + 1).toString() }
             )
 
-            every { feedService.getCategoryFeed(userId, Category.ART, any()) } returns Mono.just(response)
+            every { feedService.getCategoryFeed(userId, Category.ART, any(), any()) } returns Mono.just(response)
 
             // When & Then: 커서와 함께 조회
             webTestClient

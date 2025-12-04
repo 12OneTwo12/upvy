@@ -168,7 +168,8 @@ class FeedController(
         principal: Mono<Principal>,
         @PathVariable category: Category,
         @RequestParam(required = false) cursor: String?,
-        @RequestParam(required = false, defaultValue = "20") limit: Int
+        @RequestParam(required = false, defaultValue = "20") limit: Int,
+        @RequestParam(defaultValue = "en") language: String
     ): Mono<ResponseEntity<FeedResponse>> {
         return principal
             .toUserIdOrNull()
@@ -177,7 +178,8 @@ class FeedController(
                 feedService.getCategoryFeed(
                     userId = userId,
                     category = category,
-                    pageRequest = pageRequest
+                    pageRequest = pageRequest,
+                    preferredLanguage = language
                 )
             }
             .map { ResponseEntity.ok(it) }

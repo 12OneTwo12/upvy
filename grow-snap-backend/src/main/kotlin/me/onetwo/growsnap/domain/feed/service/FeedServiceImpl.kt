@@ -172,7 +172,8 @@ class FeedServiceImpl(
     override fun getCategoryFeed(
         userId: UUID?,
         category: Category,
-        pageRequest: CursorPageRequest
+        pageRequest: CursorPageRequest,
+        preferredLanguage: String
     ): Mono<FeedResponse> {
         // userId가 null이면 ANONYMOUS_USER_ID 사용 (비인증 사용자)
         val effectiveUserId = userId ?: ANONYMOUS_USER_ID
@@ -186,14 +187,14 @@ class FeedServiceImpl(
         val offsetInBatch = offset % FeedCacheService.BATCH_SIZE
 
         logger.debug(
-            "Fetching category feed - userId: {}, category: {}, offset: {}, batchNumber: {}, offsetInBatch: {}",
-            effectiveUserId, category.name, offset, batchNumber, offsetInBatch
+            "Fetching category feed - userId: {}, category: {}, language: {}, offset: {}, batchNumber: {}, offsetInBatch: {}",
+            effectiveUserId, category.name, preferredLanguage, offset, batchNumber, offsetInBatch
         )
 
-        return feedCacheService.getCategoryRecommendationBatch(effectiveUserId, category, batchNumber)
+        return feedCacheService.getCategoryRecommendationBatch(effectiveUserId, category, preferredLanguage, batchNumber)
             .switchIfEmpty(
-                // 캐시 미스: 새 배치 생성
-                generateAndCacheCategoryBatch(effectiveUserId, category, batchNumber)
+                // 캐시 미스: 새 배치 생성 (언어 가중치 적용)
+                generateAndCacheCategoryBatch(effectiveUserId, category, preferredLanguage, batchNumber)
             )
             .flatMap { cachedBatch ->
                 // 배치에서 필요한 범위만 추출
@@ -202,7 +203,7 @@ class FeedServiceImpl(
                 val contentIds = cachedBatch.subList(startIndex, endIndex)
 
                 // Prefetch 체크 (50% 소진 시 다음 배치 생성)
-                checkAndPrefetchNextCategoryBatch(effectiveUserId, category, batchNumber, offset, cachedBatch.size)
+                checkAndPrefetchNextCategoryBatch(effectiveUserId, category, preferredLanguage, batchNumber, offset, cachedBatch.size)
 
                 // 상세 정보 조회
                 feedRepository.findByContentIds(effectiveUserId, contentIds)
@@ -296,43 +297,50 @@ class FeedServiceImpl(
     }
 
     /**
-     * 새로운 카테고리별 추천 배치 생성 및 캐싱
+     * 새로운 언어별 카테고리 추천 배치 생성 및 캐싱
      *
      * 카테고리별 추천 알고리즘을 실행하여 250개의 콘텐츠 ID를 생성하고 Redis에 저장합니다.
+     * 언어 가중치가 적용되어 언어별로 별도의 배치를 생성합니다.
+     *
+     * Issue #107: 카테고리 피드에도 언어 가중치 적용
      *
      * @param userId 사용자 ID
      * @param category 카테고리
+     * @param language 언어 (ISO 639-1)
      * @param batchNumber 배치 번호
      * @return 생성된 콘텐츠 ID 목록
      */
-    private fun generateAndCacheCategoryBatch(userId: UUID, category: Category, batchNumber: Int): Mono<List<UUID>> {
+    private fun generateAndCacheCategoryBatch(userId: UUID, category: Category, language: String, batchNumber: Int): Mono<List<UUID>> {
         return feedRepository.findRecentlyViewedContentIds(userId, RECENTLY_VIEWED_LIMIT)
             .collectList()
             .flatMap { recentlyViewedIds ->
-                // 카테고리별 추천 알고리즘으로 250개 생성 (언어 가중치 기본값 "en" 사용)
+                // 카테고리별 추천 알고리즘으로 250개 생성 (언어 가중치 적용)
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = FeedCacheService.BATCH_SIZE,
                     excludeContentIds = recentlyViewedIds,
-                    preferredLanguage = "en",  // 캐시된 배치는 기본 언어 사용
+                    preferredLanguage = language,  // 사용자 선호 언어 적용
                     category = category
                 )
                     .collectList()
                     .flatMap { recommendedIds ->
-                        // Redis에 저장
-                        feedCacheService.saveCategoryRecommendationBatch(userId, category, batchNumber, recommendedIds)
+                        // Redis에 언어별로 저장
+                        feedCacheService.saveCategoryRecommendationBatch(userId, category, language, batchNumber, recommendedIds)
                             .thenReturn(recommendedIds)
                     }
             }
     }
 
     /**
-     * 카테고리별 Prefetch 체크 및 다음 배치 백그라운드 생성
+     * 언어별 카테고리 Prefetch 체크 및 다음 배치 백그라운드 생성
      *
      * 사용자가 현재 배치의 50%를 소진했으면, 다음 배치를 백그라운드에서 미리 생성합니다.
      *
+     * Issue #107: 카테고리 피드에도 언어 가중치 적용
+     *
      * @param userId 사용자 ID
      * @param category 카테고리
+     * @param language 언어 (ISO 639-1)
      * @param currentBatch 현재 배치 번호
      * @param currentOffset 현재 offset
      * @param batchSize 현재 배치 크기
@@ -340,6 +348,7 @@ class FeedServiceImpl(
     private fun checkAndPrefetchNextCategoryBatch(
         userId: UUID,
         category: Category,
+        language: String,
         currentBatch: Int,
         currentOffset: Long,
         batchSize: Int
@@ -351,20 +360,21 @@ class FeedServiceImpl(
             val nextBatch = currentBatch + 1
 
             // 이미 캐시되어 있는지 확인
-            feedCacheService.getCategoryBatchSize(userId, category, nextBatch)
+            feedCacheService.getCategoryBatchSize(userId, category, language, nextBatch)
                 .filter { it == 0L }  // 캐시가 없을 때만
                 .flatMap {
-                    // 백그라운드에서 비동기로 생성 (응답 지연 방지)
-                    generateAndCacheCategoryBatch(userId, category, nextBatch)
+                    // 백그라운드에서 비동기로 생성 (응답 지연 방지, 언어 가중치 적용)
+                    generateAndCacheCategoryBatch(userId, category, language, nextBatch)
                 }
                 .subscribeOn(Schedulers.boundedElastic())  // 백그라운드 스레드
                 .subscribe(
                     { },  // onNext: 성공 시 아무것도 하지 않음
                     { error ->
                         logger.error(
-                            "Failed to prefetch next category batch for user {} in category {}",
+                            "Failed to prefetch next category batch for user {} in category {} with language {}",
                             userId,
                             category.name,
+                            language,
                             error
                         )
                     }  // onError

@@ -31,18 +31,21 @@ class FeedCacheService(
 ) {
 
     /**
-     * 카테고리별 추천 피드 배치 조회
+     * 언어별 카테고리 추천 피드 배치 조회
      *
-     * Redis에서 캐싱된 카테고리별 추천 콘텐츠 ID 배치를 조회합니다.
+     * Redis에서 캐싱된 언어별 카테고리 추천 콘텐츠 ID 배치를 조회합니다.
      * 캐시가 없으면 empty Mono를 반환합니다.
+     *
+     * Issue #107: 카테고리 피드에도 언어 가중치 적용을 위해 언어별 캐싱 지원 추가
      *
      * @param userId 사용자 ID
      * @param category 카테고리
+     * @param language 언어 (ISO 639-1, 예: ko, en)
      * @param batchNumber 배치 번호 (0부터 시작)
      * @return 추천 콘텐츠 ID 목록 (최대 250개)
      */
-    fun getCategoryRecommendationBatch(userId: UUID, category: Category, batchNumber: Int): Mono<List<UUID>> {
-        val key = buildCategoryBatchKey(userId, category, batchNumber)
+    fun getCategoryRecommendationBatch(userId: UUID, category: Category, language: String, batchNumber: Int): Mono<List<UUID>> {
+        val key = buildCategoryBatchKey(userId, category, language, batchNumber)
 
         return redisTemplate.opsForList()
             .range(key, 0, -1)  // 전체 조회
@@ -52,15 +55,18 @@ class FeedCacheService(
     }
 
     /**
-     * 카테고리별 추천 피드 배치 저장
+     * 언어별 카테고리 추천 피드 배치 저장
      *
-     * 카테고리별 추천 알고리즘 결과를 Redis에 캐싱합니다.
+     * 언어별 카테고리 추천 알고리즘 결과를 Redis에 캐싱합니다.
      * TTL은 30분으로 설정됩니다.
      *
      * Lua 스크립트를 사용하여 RPUSH와 EXPIRE를 원자적으로 실행합니다.
      *
+     * Issue #107: 카테고리 피드에도 언어 가중치 적용을 위해 언어별 캐싱 지원 추가
+     *
      * @param userId 사용자 ID
      * @param category 카테고리
+     * @param language 언어 (ISO 639-1, 예: ko, en)
      * @param batchNumber 배치 번호
      * @param contentIds 추천 콘텐츠 ID 목록
      * @return 저장 완료 신호
@@ -68,6 +74,7 @@ class FeedCacheService(
     fun saveCategoryRecommendationBatch(
         userId: UUID,
         category: Category,
+        language: String,
         batchNumber: Int,
         contentIds: List<UUID>
     ): Mono<Boolean> {
@@ -75,7 +82,7 @@ class FeedCacheService(
             return Mono.just(false)
         }
 
-        val key = buildCategoryBatchKey(userId, category, batchNumber)
+        val key = buildCategoryBatchKey(userId, category, language, batchNumber)
         val values = contentIds.map { it.toString() }
         val ttlSeconds = batchTtl.seconds
 
@@ -101,30 +108,35 @@ class FeedCacheService(
     }
 
     /**
-     * 카테고리별 배치 크기 조회
+     * 언어별 카테고리 배치 크기 조회
+     *
+     * Issue #107: 카테고리 피드에도 언어 가중치 적용을 위해 언어별 캐싱 지원 추가
      *
      * @param userId 사용자 ID
      * @param category 카테고리
+     * @param language 언어 (ISO 639-1, 예: ko, en)
      * @param batchNumber 배치 번호
      * @return 배치에 저장된 ID 개수
      */
-    fun getCategoryBatchSize(userId: UUID, category: Category, batchNumber: Int): Mono<Long> {
-        val key = buildCategoryBatchKey(userId, category, batchNumber)
+    fun getCategoryBatchSize(userId: UUID, category: Category, language: String, batchNumber: Int): Mono<Long> {
+        val key = buildCategoryBatchKey(userId, category, language, batchNumber)
         return redisTemplate.opsForList().size(key)
     }
 
     /**
-     * 특정 카테고리의 모든 배치 삭제
+     * 특정 카테고리의 모든 배치 삭제 (모든 언어)
      *
-     * 사용자의 특정 카테고리 추천 캐시를 모두 삭제합니다.
+     * 사용자의 특정 카테고리 추천 캐시를 모든 언어에 대해 삭제합니다.
      * 재추천이 필요할 때 사용합니다.
+     *
+     * Issue #107: 언어별 캐싱을 지원하므로 모든 언어 캐시 삭제
      *
      * @param userId 사용자 ID
      * @param category 카테고리
      * @return 삭제 완료 신호
      */
     fun clearCategoryCache(userId: UUID, category: Category): Mono<Boolean> {
-        val pattern = "feed:category:$userId:${category.name}:batch:*"
+        val pattern = "feed:category:$userId:${category.name}:lang:*:batch:*"
         val scanOptions = ScanOptions.scanOptions()
             .match(pattern)
             .build()
@@ -142,15 +154,18 @@ class FeedCacheService(
     }
 
     /**
-     * 카테고리별 Redis 키 생성
+     * 언어별 카테고리 Redis 키 생성
+     *
+     * Issue #107: 카테고리 피드에도 언어 가중치 적용을 위해 언어별 캐싱 지원 추가
      *
      * @param userId 사용자 ID
      * @param category 카테고리
+     * @param language 언어 (ISO 639-1, 예: ko, en)
      * @param batchNumber 배치 번호
-     * @return Redis key
+     * @return Redis key (예: feed:category:{userId}:{category}:lang:{language}:batch:{batchNumber})
      */
-    private fun buildCategoryBatchKey(userId: UUID, category: Category, batchNumber: Int): String {
-        return "feed:category:$userId:${category.name}:batch:$batchNumber"
+    private fun buildCategoryBatchKey(userId: UUID, category: Category, language: String, batchNumber: Int): String {
+        return "feed:category:$userId:${category.name}:lang:$language:batch:$batchNumber"
     }
 
     /**

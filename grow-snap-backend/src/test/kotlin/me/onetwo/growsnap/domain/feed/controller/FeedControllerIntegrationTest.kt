@@ -440,10 +440,12 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
                 providerId = "google-123"
             )
             val category = Category.PROGRAMMING
-            val cacheKey = "feed:category:${user.id!!}:${category.name}:batch:0"
+            val cacheKey = "feed:category:${user.id!!}:${category.name}:lang:ko:batch:0"
+            val secondCacheKey = "feed:category:${user.id}:${category.name}:lang:en:batch:0"
 
             // Redis에 테스트 캐시 데이터 저장
             redisTemplate.opsForValue().set(cacheKey, "test-content-ids").block()
+            redisTemplate.opsForValue().set(secondCacheKey, "test-content-ids").block()
 
             // 캐시가 저장되었는지 사전 확인
             val keyExistsBeforeRefresh = redisTemplate.hasKey(cacheKey).block()
@@ -459,7 +461,9 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
 
             // Then: Redis 캐시가 삭제되었는지 확인
             val keyExistsAfterRefresh = redisTemplate.hasKey(cacheKey).block()
+            val secondKeyExistsAfterRefresh = redisTemplate.hasKey(secondCacheKey).block()
             assertThat(keyExistsAfterRefresh).isFalse()
+            assertThat(secondKeyExistsAfterRefresh).isFalse()
         }
 
         @ParameterizedTest
