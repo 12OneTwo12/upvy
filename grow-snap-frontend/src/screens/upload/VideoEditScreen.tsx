@@ -91,6 +91,26 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     });
   }, [isDraggingStart, isDraggingEnd, navigation]);
 
+  // 트리밍 범위 변경 시 썸네일 재생성 (드래그 종료 후)
+  const prevTrimRange = useRef({ start: 0, end: 0 });
+  React.useEffect(() => {
+    // 드래그 중이면 무시
+    if (isDraggingStart || isDraggingEnd) return;
+    // videoUri가 없거나 duration이 0이면 무시
+    if (!videoUri || duration === 0) return;
+    // 트리밍 범위가 변경되지 않았으면 무시
+    if (prevTrimRange.current.start === trimStart && prevTrimRange.current.end === trimEnd) return;
+
+    // 범위가 유의미하게 변경되었을 때만 썸네일 재생성 (0.5초 이상 차이)
+    const startDiff = Math.abs(prevTrimRange.current.start - trimStart);
+    const endDiff = Math.abs(prevTrimRange.current.end - trimEnd);
+    if (startDiff > 0.5 || endDiff > 0.5) {
+      console.log('🖼️ Trim range changed, regenerating thumbnails:', trimStart, '-', trimEnd);
+      prevTrimRange.current = { start: trimStart, end: trimEnd };
+      generateThumbnailsInRange(videoUri, trimStart, trimEnd);
+    }
+  }, [isDraggingStart, isDraggingEnd, trimStart, trimEnd, videoUri, duration]);
+
   // 실제 파일 URI 로드
   React.useEffect(() => {
     const loadVideoUri = async () => {
@@ -189,11 +209,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     loadVideoUri();
   }, [asset.id, asset.uri, navigation]);
 
-  // videoUri가 로드되고 duration이 있으면 썸네일 생성
+  // videoUri가 로드되고 duration이 있으면 초기 썸네일 생성
   React.useEffect(() => {
     if (videoUri && duration > 0 && thumbnails.length === 0) {
-      console.log('🖼️ Generating thumbnails - videoUri:', videoUri, 'duration:', duration);
-      generateThumbnails(videoUri, duration);
+      console.log('🖼️ Generating initial thumbnails - videoUri:', videoUri, 'range: 0 -', duration);
+      generateThumbnailsInRange(videoUri, 0, Math.min(duration, MAX_VIDEO_DURATION));
     }
   }, [videoUri, duration]);
 
@@ -205,9 +225,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       setDuration(durationSec);
       setTrimEnd(Math.min(durationSec, MAX_VIDEO_DURATION));
 
-      // 자동으로 썸네일 생성 (videoUri가 있을 때만)
+      // 자동으로 타임라인 프레임 생성 (videoUri가 있을 때만)
+      // 썸네일은 useEffect에서 트리밍 범위 기준으로 생성됨
       if (videoUri) {
-        generateThumbnails(videoUri, durationSec);
         generateTimelineFrames(videoUri, durationSec);
       }
     }
@@ -227,15 +247,17 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   };
 
-  const generateThumbnails = async (uri: string, durationSec: number) => {
-    console.log('🖼️ generateThumbnails called - uri:', uri, 'duration:', durationSec);
+  // 트리밍 범위 내에서 썸네일 생성
+  const generateThumbnailsInRange = async (uri: string, startSec: number, endSec: number) => {
+    const rangeDuration = endSec - startSec;
+    console.log('🖼️ generateThumbnails called - uri:', uri, 'range:', startSec, '-', endSec);
     setIsGeneratingThumbnails(true);
     try {
-      // 3개의 타임스탬프에서 썸네일 생성
+      // 트리밍 범위 내에서 3개의 타임스탬프 생성
       const times = [
-        Math.max(0, durationSec * 0.1),
-        durationSec * 0.5,
-        Math.min(durationSec * 0.9, durationSec - 1),
+        startSec + rangeDuration * 0.1,   // 트리밍 범위의 10%
+        startSec + rangeDuration * 0.5,   // 트리밍 범위의 50%
+        startSec + Math.min(rangeDuration * 0.9, rangeDuration - 0.5),  // 트리밍 범위의 90%
       ];
 
       console.log('🖼️ Generating thumbnails at times:', times);
@@ -334,17 +356,24 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
       // react-native-video-trim의 trim() 함수 호출
       // startTime, endTime은 밀리초(ms) 단위
-      const trimmedPath = await trim(inputUri, {
+      const result = await trim(inputUri, {
         startTime: Math.floor(startTime * 1000), // ms 단위
         endTime: Math.floor(endTime * 1000),     // ms 단위
       });
 
+      if (!result.success) {
+        throw new Error('Video trim failed');
+      }
+
       setTrimmingProgress(100);
       console.log('✅ Video trimmed successfully');
-      console.log('✂️ Result path:', trimmedPath);
+      console.log('✂️ Result path:', result.outputPath);
+      console.log('✂️ Duration:', result.duration, 'ms');
 
       // file:// 접두사 확인 및 추가
-      const resultUri = trimmedPath.startsWith('file://') ? trimmedPath : `file://${trimmedPath}`;
+      const resultUri = result.outputPath.startsWith('file://')
+        ? result.outputPath
+        : `file://${result.outputPath}`;
       return resultUri;
 
     } catch (error) {
