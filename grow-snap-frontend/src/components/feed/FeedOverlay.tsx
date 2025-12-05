@@ -12,11 +12,13 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import { ReportModal } from '@/components/report/ReportModal';
 import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
 import { BlockConfirmModal } from '@/components/block/BlockConfirmModal';
-import type { CreatorInfo, InteractionInfo } from '@/types/feed.types';
+import { DeleteConfirmModal, ContentEditModal } from '@/components/content';
+import type { CreatorInfo, InteractionInfo, Category } from '@/types/feed.types';
 import type { BlockType } from '@/types/block.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -28,6 +30,9 @@ interface FeedOverlayProps {
   description: string | null;
   interactions: InteractionInfo;
   contentId: string; // 신고 기능을 위한 콘텐츠 ID
+  category: Category; // 수정 기능을 위한 카테고리
+  tags: string[]; // 수정 기능을 위한 태그
+  language?: string; // 수정 기능을 위한 언어 (기본값: 'ko')
   onLike?: () => void;
   onComment?: () => void;
   onSave?: () => void;
@@ -35,6 +40,8 @@ interface FeedOverlayProps {
   onFollow?: () => void;
   onCreatorPress?: () => void;
   onBlockSuccess?: () => void; // 차단 성공 시 호출
+  onDeleteSuccess?: () => void; // 삭제 성공 시 호출
+  onEditSuccess?: () => void; // 수정 성공 시 호출
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
   tabBarHeight: number;
@@ -54,6 +61,9 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   description,
   interactions,
   contentId,
+  category,
+  tags,
+  language = 'ko',
   onLike,
   onComment,
   onSave,
@@ -61,12 +71,15 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onFollow,
   onCreatorPress,
   onBlockSuccess,
+  onDeleteSuccess,
+  onEditSuccess,
   isExpanded,
   setIsExpanded,
   tabBarHeight,
 }) => {
   const { t } = useTranslation('feed');
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
   const isLoading = isLoadingState(creator);
   const isOwnPost = !isLoading && currentUser && currentUser.id === creator.userId;
@@ -76,6 +89,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showBlockModal, setShowBlockModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [blockType, setBlockType] = useState<BlockType>('content');
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -112,9 +127,27 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   // 설명이 길면 더보기 표시 (60자 이상)
   const shouldShowMore = fullText.length > 60;
 
-  // 액션 시트 옵션
-  const actionSheetOptions: ActionSheetOption[] = useMemo(
-    () => [
+  // 액션 시트 옵션 - 내 콘텐츠 vs 타인 콘텐츠 분기
+  const actionSheetOptions: ActionSheetOption[] = useMemo(() => {
+    if (isOwnPost) {
+      // 내 콘텐츠: 수정, 삭제 옵션
+      return [
+        {
+          label: t('menu.edit'),
+          icon: 'create-outline',
+          onPress: () => setShowEditModal(true),
+        },
+        {
+          label: t('menu.delete'),
+          icon: 'trash-outline',
+          onPress: () => setShowDeleteModal(true),
+          destructive: true,
+        },
+      ];
+    }
+
+    // 타인 콘텐츠: 관심없음, 차단, 신고 옵션
+    return [
       {
         label: t('menu.notInterested'),
         icon: 'eye-off-outline',
@@ -138,9 +171,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         onPress: () => setShowReportModal(true),
         destructive: true,
       },
-    ],
-    [t]
-  );
+    ];
+  }, [t, isOwnPost]);
 
   const formatCount = (count: number): string => {
     if (count >= 1000000) {
@@ -313,6 +345,40 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           onSuccess={() => {
             // 차단 성공 시 다음 콘텐츠로 자동 스크롤 (Instagram/TikTok 스타일)
             onBlockSuccess?.();
+          }}
+        />
+
+        {/* 삭제 확인 모달 */}
+        <DeleteConfirmModal
+          visible={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          contentId={contentId}
+          contentTitle={title}
+          onSuccess={() => {
+            // 피드/콘텐츠 쿼리 무효화
+            queryClient.invalidateQueries({ queryKey: ['feed'] });
+            queryClient.invalidateQueries({ queryKey: ['myContents'] });
+            queryClient.invalidateQueries({ queryKey: ['content', contentId] });
+            onDeleteSuccess?.();
+          }}
+        />
+
+        {/* 수정 모달 */}
+        <ContentEditModal
+          visible={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          contentId={contentId}
+          initialTitle={title}
+          initialDescription={description}
+          initialCategory={category}
+          initialTags={tags}
+          initialLanguage={language}
+          onSuccess={() => {
+            // 피드/콘텐츠 쿼리 무효화
+            queryClient.invalidateQueries({ queryKey: ['feed'] });
+            queryClient.invalidateQueries({ queryKey: ['myContents'] });
+            queryClient.invalidateQueries({ queryKey: ['content', contentId] });
+            onEditSuccess?.();
           }}
         />
 

@@ -28,6 +28,27 @@
     "notInterested": "Not interested in this content",
     "blockUser": "Block this user"
   },
+  "deleteContent": {
+    "title": "Delete this post?",
+    "description": "Deleted posts cannot be recovered.",
+    "confirmButton": "Delete",
+    "successTitle": "Deleted",
+    "successMessage": "Your post has been deleted.",
+    "errorTitle": "Delete Failed",
+    "forbiddenMessage": "You don't have permission to delete this post.",
+    "notFoundMessage": "Post not found."
+  },
+  "editContent": {
+    "title": "Edit Post",
+    "successTitle": "Updated",
+    "successMessage": "Your post has been updated.",
+    "errorTitle": "Update Failed",
+    "forbiddenMessage": "You don't have permission to edit this post.",
+    "notFoundMessage": "Post not found.",
+    "discardTitle": "Discard Changes",
+    "discardMessage": "You have unsaved changes. Are you sure you want to discard them?",
+    "discardButton": "Discard"
+  },
   "comments": {
     "title": "Comments",
     "placeholder": "Add a comment...",
