@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { trim, isValidFile } from 'react-native-video-trim';
 import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -89,6 +90,26 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       gestureEnabled: !isDraggingStart && !isDraggingEnd,
     });
   }, [isDraggingStart, isDraggingEnd, navigation]);
+
+  // 트리밍 범위 변경 시 썸네일 재생성 (드래그 종료 후)
+  const prevTrimRange = useRef({ start: 0, end: 0 });
+  React.useEffect(() => {
+    // 드래그 중이면 무시
+    if (isDraggingStart || isDraggingEnd) return;
+    // videoUri가 없거나 duration이 0이면 무시
+    if (!videoUri || duration === 0) return;
+    // 트리밍 범위가 변경되지 않았으면 무시
+    if (prevTrimRange.current.start === trimStart && prevTrimRange.current.end === trimEnd) return;
+
+    // 범위가 유의미하게 변경되었을 때만 썸네일 재생성 (0.5초 이상 차이)
+    const startDiff = Math.abs(prevTrimRange.current.start - trimStart);
+    const endDiff = Math.abs(prevTrimRange.current.end - trimEnd);
+    if (startDiff > 0.5 || endDiff > 0.5) {
+      console.log('🖼️ Trim range changed, regenerating thumbnails:', trimStart, '-', trimEnd);
+      prevTrimRange.current = { start: trimStart, end: trimEnd };
+      generateThumbnailsInRange(videoUri, trimStart, trimEnd);
+    }
+  }, [isDraggingStart, isDraggingEnd, trimStart, trimEnd, videoUri, duration]);
 
   // 실제 파일 URI 로드
   React.useEffect(() => {
@@ -188,11 +209,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     loadVideoUri();
   }, [asset.id, asset.uri, navigation]);
 
-  // videoUri가 로드되고 duration이 있으면 썸네일 생성
+  // videoUri가 로드되고 duration이 있으면 초기 썸네일 생성
   React.useEffect(() => {
     if (videoUri && duration > 0 && thumbnails.length === 0) {
-      console.log('🖼️ Generating thumbnails - videoUri:', videoUri, 'duration:', duration);
-      generateThumbnails(videoUri, duration);
+      console.log('🖼️ Generating initial thumbnails - videoUri:', videoUri, 'range: 0 -', duration);
+      generateThumbnailsInRange(videoUri, 0, Math.min(duration, MAX_VIDEO_DURATION));
     }
   }, [videoUri, duration]);
 
@@ -204,9 +225,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       setDuration(durationSec);
       setTrimEnd(Math.min(durationSec, MAX_VIDEO_DURATION));
 
-      // 자동으로 썸네일 생성 (videoUri가 있을 때만)
+      // 자동으로 타임라인 프레임 생성 (videoUri가 있을 때만)
+      // 썸네일은 useEffect에서 트리밍 범위 기준으로 생성됨
       if (videoUri) {
-        generateThumbnails(videoUri, durationSec);
         generateTimelineFrames(videoUri, durationSec);
       }
     }
@@ -218,28 +239,25 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       setPosition(currentPosition);
       setIsPlaying(status.isPlaying);
 
-      // 트리밍 끝에 도달하면 정지하고 시작 위치로 이동
-      if (currentPosition >= trimEnd) {
+      // 트리밍 끝에 도달하면 정지하고 시작 위치로 이동 (재생 중일 때만)
+      if (status.isPlaying && currentPosition >= trimEnd) {
         videoRef.current?.pauseAsync();
-        videoRef.current?.setPositionAsync(trimStart * 1000);
-      }
-
-      // 트리밍 시작 이전이면 시작 위치로 이동
-      if (currentPosition < trimStart) {
         videoRef.current?.setPositionAsync(trimStart * 1000);
       }
     }
   };
 
-  const generateThumbnails = async (uri: string, durationSec: number) => {
-    console.log('🖼️ generateThumbnails called - uri:', uri, 'duration:', durationSec);
+  // 트리밍 범위 내에서 썸네일 생성
+  const generateThumbnailsInRange = async (uri: string, startSec: number, endSec: number) => {
+    const rangeDuration = endSec - startSec;
+    console.log('🖼️ generateThumbnails called - uri:', uri, 'range:', startSec, '-', endSec);
     setIsGeneratingThumbnails(true);
     try {
-      // 3개의 타임스탬프에서 썸네일 생성
+      // 트리밍 범위 내에서 3개의 타임스탬프 생성
       const times = [
-        Math.max(0, durationSec * 0.1),
-        durationSec * 0.5,
-        Math.min(durationSec * 0.9, durationSec - 1),
+        startSec + rangeDuration * 0.1,   // 트리밍 범위의 10%
+        startSec + rangeDuration * 0.5,   // 트리밍 범위의 50%
+        startSec + Math.min(rangeDuration * 0.9, rangeDuration - 0.5),  // 트리밍 범위의 90%
       ];
 
       console.log('🖼️ Generating thumbnails at times:', times);
@@ -317,48 +335,53 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   };
 
-  // VideoAssetExporter (AVFoundation)를 사용한 비디오 트리밍
+  // react-native-video-trim을 사용한 비디오 트리밍 (Best Practice)
+  // FFmpeg 기반으로 안정적인 트리밍 결과를 제공합니다.
   const trimVideoNative = async (inputUri: string, startTime: number, endTime: number): Promise<string> => {
     try {
-      console.log('✂️ Starting video trim with AVFoundation');
+      console.log('✂️ Starting video trim with react-native-video-trim');
       console.log('✂️ Input URI:', inputUri);
 
-      // Lazy import to avoid "runtime not ready" error
-      const { VideoAssetExporter } = await import('video-asset-exporter');
-
-      // iOS URIs often have hash fragments with metadata - strip them
-      const cleanUri = inputUri.split('#')[0];
-
-      // file:// 접두사 제거하여 파일 경로만 추출
-      const inputPath = cleanUri.replace('file://', '');
-
-      // 출력 파일 경로 생성
-      const timestamp = Date.now();
-      const outputPath = `${FileSystem.documentDirectory}trimmed_${timestamp}.mp4`;
-      const outputFilePath = outputPath.replace('file://', '');
-
-      console.log('✂️ Input path:', inputPath);
-      console.log('✂️ Output path:', outputFilePath);
-      console.log('✂️ Trim range:', startTime.toFixed(2), '-', endTime.toFixed(2), 'seconds');
+      // iOS URI에는 해시(#) 뒤에 메타데이터가 붙어있을 수 있음
+      // iOS plist 메타데이터는 '#YnBsaXN0'(base64 시그니처)로 시작함
+      // 파일명에 #이 있을 수 있으므로 iOS 메타데이터 패턴만 제거
+      const cleanUri = inputUri.replace(/#YnBsaXN0[A-Za-z0-9+/=]*$/, '');
+      console.log('✂️ Clean URI:', cleanUri);
 
       setIsTrimming(true);
-      setTrimmingProgress(50);
+      setTrimmingProgress(10);
 
-      // VideoAssetExporter.trimVideo 호출
-      const resultPath = await VideoAssetExporter.trimVideo(
-        inputPath,
-        outputFilePath,
-        startTime,
-        endTime
-      );
+      // 파일 유효성 검사
+      const isValid = await isValidFile(cleanUri);
+      if (!isValid) {
+        throw new Error('Invalid video file');
+      }
 
+      setTrimmingProgress(20);
+      console.log('✂️ Trim range:', startTime, '-', endTime, 'seconds');
+
+      // react-native-video-trim의 trim() 함수 호출
+      // startTime, endTime은 밀리초(ms) 단위
+      const result = await trim(cleanUri, {
+        startTime: Math.floor(startTime * 1000), // ms 단위
+        endTime: Math.floor(endTime * 1000),     // ms 단위
+      });
+
+      if (!result.success) {
+        throw new Error('Video trim failed');
+      }
+
+      setTrimmingProgress(100);
       console.log('✅ Video trimmed successfully');
-      console.log('✂️ Result path:', resultPath);
+      console.log('✂️ Result path:', result.outputPath);
+      console.log('✂️ Duration:', result.duration, 'ms');
 
-      // file:// 접두사 추가하여 반환
-      const resultUri = resultPath.startsWith('file://') ? resultPath : `file://${resultPath}`;
-
+      // file:// 접두사 확인 및 추가
+      const resultUri = result.outputPath.startsWith('file://')
+        ? result.outputPath
+        : `file://${result.outputPath}`;
       return resultUri;
+
     } catch (error) {
       console.error('❌ Video trim failed:', error);
       throw error;
@@ -372,9 +395,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     if (isPlaying) {
       await videoRef.current?.pauseAsync();
     } else {
-      // 재생 전에 항상 시작 위치로 이동
-      console.log('▶️ Play from:', trimStart.toFixed(2), 'seconds');
-      await videoRef.current?.setPositionAsync(trimStart * 1000);
+      // 현재 위치가 트리밍 범위를 벗어났으면 시작 위치로 이동
+      if (position >= trimEnd || position < trimStart) {
+        console.log('▶️ Play from:', trimStart.toFixed(2), 'seconds');
+        await videoRef.current?.setPositionAsync(trimStart * 1000);
+      }
       await videoRef.current?.playAsync();
     }
   };
@@ -442,7 +467,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         const newStart = Math.max(0, Math.min(trimEndRef.current - 1, initialTrimStart.current + deltaTime));
 
         setTrimStart(newStart);
-        console.log('🟢 Dragging - dx:', gestureState.dx.toFixed(1), 'newStart:', newStart.toFixed(2));
 
         // Throttle: 100ms마다 한 번만 seek
         const now = Date.now();
@@ -451,7 +475,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
           // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
           if (videoRef.current) {
-            videoRef.current.setPositionAsync(Math.floor(newStart * 1000)).catch(() => {
+            videoRef.current.setPositionAsync(Math.floor(newStart * 1000), {
+              toleranceMillisBefore: 100,
+              toleranceMillisAfter: 100,
+            }).catch(() => {
               // seek 에러 무시
             });
           }
@@ -509,7 +536,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
           // 드래그 중 비디오를 해당 위치로 이동 (실시간 프리뷰)
           if (videoRef.current) {
-            videoRef.current.setPositionAsync(Math.floor(newEnd * 1000)).catch(() => {
+            videoRef.current.setPositionAsync(Math.floor(newEnd * 1000), {
+              toleranceMillisBefore: 100,
+              toleranceMillisAfter: 100,
+            }).catch(() => {
               // seek 에러 무시
             });
           }
@@ -576,6 +606,14 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
       // 1. 비디오 업로드
       console.log('📤 Starting video upload...');
+      
+      // 파일 존재 여부 및 정보 확인
+      const fileInfo = await FileSystem.getInfoAsync(videoToUpload);
+      if (!fileInfo.exists) {
+        throw new Error(`File does not exist at path: ${videoToUpload}`);
+      }
+      console.log('📄 File exists, size:', fileInfo.size);
+
       const videoResponse = await fetch(videoToUpload);
       const videoBlob = await videoResponse.blob();
 
