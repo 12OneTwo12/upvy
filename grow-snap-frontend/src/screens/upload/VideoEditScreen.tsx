@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { trim, isValidFile } from 'react-native-video-trim';
 import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -312,48 +313,40 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     }
   };
 
-  // VideoAssetExporter (AVFoundation)를 사용한 비디오 트리밍
+  // react-native-video-trim을 사용한 비디오 트리밍 (Best Practice)
+  // FFmpeg 기반으로 안정적인 트리밍 결과를 제공합니다.
   const trimVideoNative = async (inputUri: string, startTime: number, endTime: number): Promise<string> => {
     try {
-      console.log('✂️ Starting video trim with AVFoundation');
+      console.log('✂️ Starting video trim with react-native-video-trim');
       console.log('✂️ Input URI:', inputUri);
 
-      // Lazy import to avoid "runtime not ready" error
-      const { VideoAssetExporter } = await import('video-asset-exporter');
-
-      // iOS URIs often have hash fragments with metadata - strip them
-      const cleanUri = inputUri.split('#')[0];
-
-      // file:// 접두사 제거하여 파일 경로만 추출
-      const inputPath = cleanUri.replace('file://', '');
-
-      // 출력 파일 경로 생성
-      const timestamp = Date.now();
-      const outputPath = `${FileSystem.documentDirectory}trimmed_${timestamp}.mp4`;
-      const outputFilePath = outputPath.replace('file://', '');
-
-      console.log('✂️ Input path:', inputPath);
-      console.log('✂️ Output path:', outputFilePath);
-      console.log('✂️ Trim range:', startTime.toFixed(2), '-', endTime.toFixed(2), 'seconds');
-
       setIsTrimming(true);
-      setTrimmingProgress(50);
+      setTrimmingProgress(10);
 
-      // VideoAssetExporter.trimVideo 호출
-      const resultPath = await VideoAssetExporter.trimVideo(
-        inputPath,
-        outputFilePath,
-        startTime,
-        endTime
-      );
+      // 파일 유효성 검사
+      const isValid = await isValidFile(inputUri);
+      if (!isValid) {
+        throw new Error('Invalid video file');
+      }
 
+      setTrimmingProgress(20);
+      console.log('✂️ Trim range:', startTime, '-', endTime, 'seconds');
+
+      // react-native-video-trim의 trim() 함수 호출
+      // startTime, endTime은 밀리초(ms) 단위
+      const trimmedPath = await trim(inputUri, {
+        startTime: Math.floor(startTime * 1000), // ms 단위
+        endTime: Math.floor(endTime * 1000),     // ms 단위
+      });
+
+      setTrimmingProgress(100);
       console.log('✅ Video trimmed successfully');
-      console.log('✂️ Result path:', resultPath);
+      console.log('✂️ Result path:', trimmedPath);
 
-      // file:// 접두사 추가하여 반환
-      const resultUri = resultPath.startsWith('file://') ? resultPath : `file://${resultPath}`;
-
+      // file:// 접두사 확인 및 추가
+      const resultUri = trimmedPath.startsWith('file://') ? trimmedPath : `file://${trimmedPath}`;
       return resultUri;
+
     } catch (error) {
       console.error('❌ Video trim failed:', error);
       throw error;
@@ -579,6 +572,14 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
       // 1. 비디오 업로드
       console.log('📤 Starting video upload...');
+      
+      // 파일 존재 여부 및 정보 확인
+      const fileInfo = await FileSystem.getInfoAsync(videoToUpload);
+      if (!fileInfo.exists) {
+        throw new Error(`File does not exist at path: ${videoToUpload}`);
+      }
+      console.log('📄 File exists, size:', fileInfo.size);
+
       const videoResponse = await fetch(videoToUpload);
       const videoBlob = await videoResponse.blob();
 
