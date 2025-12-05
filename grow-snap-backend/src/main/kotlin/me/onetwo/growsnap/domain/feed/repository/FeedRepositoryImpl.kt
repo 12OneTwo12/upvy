@@ -750,14 +750,15 @@ class FeedRepositoryImpl(
      * @return JOOQ Field (시간 감쇠 계산식)
      */
     private fun calculateTimeDecay(): Field<Double> {
-        // MySQL: DATEDIFF(end, start) - 날짜 차이 반환
-        val daysSinceCreated = DSL.field(
-            "DATEDIFF(CURDATE(), {0})",
+        // MySQL 네이티브 SQL 사용하여 시간 감쇠 계산
+        // JOOQ DSL의 exp() + inline() 조합이 MySQL에서 올바른 값을 생성하지 않는 이슈 해결
+        // 공식: EXP(-0.05 * DATEDIFF(CURDATE(), created_at))
+        return DSL.field(
+            "EXP(-{0} * DATEDIFF(CURDATE(), {1}))",
             Double::class.java,
+            DSL.inline(TIME_DECAY_RATE),
             CONTENTS.CREATED_AT
         )
-        // exp()는 BigDecimal 반환하므로 Double로 캐스팅
-        return DSL.exp(DSL.inline(-TIME_DECAY_RATE).mul(daysSinceCreated)).cast(Double::class.java)
     }
 
     /**

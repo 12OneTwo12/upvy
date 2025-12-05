@@ -61,8 +61,10 @@ abstract class AbstractIntegrationTest {
      */
     @BeforeEach
     fun cleanupDatabase() {
-        // 외래 키 제약 조건을 일시적으로 비활성화
-        Mono.from(dslContext.query("SET FOREIGN_KEY_CHECKS = 0"))
+        // 세션 타임존을 UTC로 설정 (DATEDIFF, CURDATE 등이 UTC 기준으로 동작)
+        // 그 후 외래 키 제약 조건을 일시적으로 비활성화
+        Mono.from(dslContext.query("SET time_zone = '+00:00'"))
+            .then(Mono.from(dslContext.query("SET FOREIGN_KEY_CHECKS = 0")))
             // 관계 테이블 삭제 (자식 테이블)
             .then(Mono.from(dslContext.deleteFrom(SEARCH_HISTORY)))
             .then(Mono.from(dslContext.deleteFrom(REPORTS)))
@@ -107,7 +109,9 @@ abstract class AbstractIntegrationTest {
                 .withUsername("test")
                 .withPassword("test")
                 .withInitScript("sql/schema-test.sql")
-                .withReuse(true)
+                .withEnv("TZ", "UTC")  // 컨테이너 OS 타임존
+                .withCommand("--default-time-zone=+00:00")  // MySQL 서버 타임존 - DATEDIFF, CURDATE 등이 UTC 기준
+                .withReuse(false)  // 타임존 설정 적용을 위해 재사용 비활성화
                 .withStartupTimeout(Duration.ofSeconds(120))
                 .also {
                     it.start()
@@ -143,10 +147,10 @@ abstract class AbstractIntegrationTest {
         @JvmStatic
         @DynamicPropertySource
         fun registerContainerProperties(registry: DynamicPropertyRegistry) {
-            // MySQL R2DBC URL 구성
+            // MySQL R2DBC URL 구성 (serverZoneId=UTC로 타임존 설정)
             val mysqlHost = mysqlContainer.host
             val mysqlPort = mysqlContainer.getMappedPort(MYSQL_PORT)
-            val r2dbcUrl = "r2dbc:mysql://$mysqlHost:$mysqlPort/testdb"
+            val r2dbcUrl = "r2dbc:mysql://$mysqlHost:$mysqlPort/testdb?serverZoneId=UTC"
 
             registry.add("spring.r2dbc.url") { r2dbcUrl }
             registry.add("spring.r2dbc.username") { "test" }

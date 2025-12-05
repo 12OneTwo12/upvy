@@ -25,6 +25,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
@@ -928,6 +929,7 @@ class FeedRepositoryImplIntegrationTest : AbstractIntegrationTest() {
     @DisplayName("[Popular Decay] 14일 경과 시 인기도 점수가 약 50% 감소한다")
     fun `findPopularContentIds should apply ~50% decay after 14 days`() {
         // Given: 14일 전 콘텐츠(100 likes)와 최신 콘텐츠(45 likes)
+        // Category.SCIENCE 사용 - 다른 테스트에서 사용되지 않아 격리됨
         val testId = UUID.randomUUID().toString().substring(0, 8)
         val (creator, _) = createUserWithProfile(
             userRepository = userRepository,
@@ -936,12 +938,13 @@ class FeedRepositoryImplIntegrationTest : AbstractIntegrationTest() {
             nickname = "c-decay14-$testId"
         )
 
-        // 14일 전 콘텐츠: 100 likes → 100 * 0.50 = 50
+        // 14일 전 콘텐츠: 100 likes → decay 적용 후 약 50점
+        // decay = EXP(-0.05 * 14) ≈ 0.497, 100 * 0.497 ≈ 50
         val oldHighPopContent = createContent(
             contentRepository = contentRepository,
             creatorId = creator.id!!,
             title = "Old High Pop Content",
-            category = Category.DESIGN,
+            category = Category.SCIENCE,
             contentInteractionRepository = contentInteractionRepository
         )
         repeat(100) { contentInteractionRepository.incrementLikeCount(oldHighPopContent.id!!).block() }
@@ -949,32 +952,31 @@ class FeedRepositoryImplIntegrationTest : AbstractIntegrationTest() {
         val fourteenDaysAgo = Instant.now().minus(14, ChronoUnit.DAYS)
         updateContentCreatedAt(oldHighPopContent.id!!, fourteenDaysAgo)
 
-        // 최신 콘텐츠: 45 likes → 45 * 1.0 = 45
+        // 최신 콘텐츠: 45 likes → 45점 (decay 없음)
         val newLowPopContent = createContent(
             contentRepository = contentRepository,
             creatorId = creator.id!!,
             title = "New Low Pop Content",
-            category = Category.DESIGN,
+            category = Category.SCIENCE,
             contentInteractionRepository = contentInteractionRepository
         )
         repeat(45) { contentInteractionRepository.incrementLikeCount(newLowPopContent.id!!).block() }
 
-        // When: 인기 콘텐츠 조회
+        // When: 인기 콘텐츠 조회 (SCIENCE 카테고리로 필터링하여 테스트 격리)
         val result = feedRepository.findPopularContentIds(
             userId = userAId,
             limit = 10,
             excludeIds = emptyList(),
-            category = null,
-            preferredLanguage = "en"
+            category = Category.SCIENCE,
+            preferredLanguage = "ko"
         ).collectList().block()!!
 
-        // Then: 14일 전 100 likes (≈50점) > 최신 45 likes (45점)
-        // 14일 decay가 ~50%이므로 100 * 0.5 = 50 > 45
+        // Then: 14일 전 100 likes (decay 후 ≈50점) > 최신 45 likes (45점)
         val oldIndex = result.indexOf(oldHighPopContent.id!!)
         val newIndex = result.indexOf(newLowPopContent.id!!)
 
         assertTrue(oldIndex != -1 && newIndex != -1,
-            "Both contents should be in results")
+            "Both contents should be in results (oldIndex: $oldIndex, newIndex: $newIndex)")
         assertTrue(oldIndex < newIndex,
             "Old high-pop content should still rank higher (old: $oldIndex, new: $newIndex)")
     }
