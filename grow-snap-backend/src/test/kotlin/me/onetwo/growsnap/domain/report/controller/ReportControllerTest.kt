@@ -118,7 +118,8 @@ class ReportControllerTest {
                             fieldWithPath("reportType").description("신고 타입"),
                             fieldWithPath("description").description("신고 상세 설명"),
                             fieldWithPath("status").description("신고 처리 상태 (PENDING, APPROVED, REJECTED)"),
-                            fieldWithPath("createdAt").description("신고 생성 시각")
+                            fieldWithPath("createdAt").description("신고 생성 시각"),
+                            fieldWithPath("isFunCategoryContent").description("FUN 카테고리 콘텐츠 여부 (콘텐츠 신고 시에만 유효)")
                         )
                     )
                 )
@@ -190,7 +191,8 @@ class ReportControllerTest {
                             fieldWithPath("reportType").description("신고 타입"),
                             fieldWithPath("description").description("신고 상세 설명"),
                             fieldWithPath("status").description("신고 처리 상태 (PENDING, APPROVED, REJECTED)"),
-                            fieldWithPath("createdAt").description("신고 생성 시각")
+                            fieldWithPath("createdAt").description("신고 생성 시각"),
+                            fieldWithPath("isFunCategoryContent").description("FUN 카테고리 콘텐츠 여부 (콘텐츠 신고 시에만 유효)")
                         )
                     )
                 )
@@ -262,7 +264,8 @@ class ReportControllerTest {
                             fieldWithPath("reportType").description("신고 타입"),
                             fieldWithPath("description").description("신고 상세 설명"),
                             fieldWithPath("status").description("신고 처리 상태 (PENDING, APPROVED, REJECTED)"),
-                            fieldWithPath("createdAt").description("신고 생성 시각")
+                            fieldWithPath("createdAt").description("신고 생성 시각"),
+                            fieldWithPath("isFunCategoryContent").description("FUN 카테고리 콘텐츠 여부 (콘텐츠 신고 시에만 유효)")
                         )
                     )
                 )

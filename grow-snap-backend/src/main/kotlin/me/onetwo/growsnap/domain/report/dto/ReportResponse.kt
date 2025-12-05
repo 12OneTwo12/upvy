@@ -19,6 +19,7 @@ import java.time.Instant
  * @property description 신고 상세 설명
  * @property status 신고 처리 상태
  * @property createdAt 신고 접수 시각
+ * @property isFunCategoryContent FUN 카테고리 콘텐츠 여부 (OFF_TOPIC 신고 시 프론트엔드에서 안내 표시용)
  */
 data class ReportResponse(
     val id: Long,
@@ -28,16 +29,18 @@ data class ReportResponse(
     val reportType: ReportType,
     val description: String?,
     val status: ReportStatus,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val isFunCategoryContent: Boolean = false
 ) {
     companion object {
         /**
          * Report 모델을 ReportResponse DTO로 변환합니다.
          *
          * @param report 신고 모델
+         * @param isFunCategoryContent FUN 카테고리 콘텐츠 여부
          * @return 신고 응답 DTO
          */
-        fun from(report: Report): ReportResponse {
+        fun from(report: Report, isFunCategoryContent: Boolean = false): ReportResponse {
             return ReportResponse(
                 id = report.id ?: error("신고 ID가 없습니다"),
                 reporterId = report.reporterId.toString(),
@@ -46,7 +49,8 @@ data class ReportResponse(
                 reportType = report.reportType,
                 description = report.description,
                 status = report.status,
-                createdAt = report.createdAt ?: error("신고 생성 시각이 없습니다")
+                createdAt = report.createdAt ?: error("신고 생성 시각이 없습니다"),
+                isFunCategoryContent = isFunCategoryContent
             )
         }
     }

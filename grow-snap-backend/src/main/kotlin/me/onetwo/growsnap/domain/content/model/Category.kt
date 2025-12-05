@@ -33,5 +33,8 @@ enum class Category(val displayName: String, val description: String) {
 
     // 트렌드 & 인사이트
     TREND("트렌드", "최신 트렌드, 인사이트 등"),
-    OTHER("기타", "기타 카테고리")
+    OTHER("기타", "기타 카테고리"),
+
+    // 재미 & 가벼운 콘텐츠
+    FUN("재미", "재미있거나 가벼운 콘텐츠 (학습 증진을 위해 노출 빈도가 낮음)")
 }

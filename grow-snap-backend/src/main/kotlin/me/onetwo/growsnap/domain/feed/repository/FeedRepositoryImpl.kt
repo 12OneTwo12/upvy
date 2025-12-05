@@ -275,7 +275,8 @@ class FeedRepositoryImpl(
         limit: Int,
         excludeIds: List<UUID>,
         category: Category?,
-        preferredLanguage: String
+        preferredLanguage: String,
+        excludeCategory: Category?
     ): Flux<UUID> {
         // 1. 기본 인기도 점수 계산 (부동소수점 연산)
         val basePopularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
@@ -305,6 +306,11 @@ class FeedRepositoryImpl(
         // 카테고리 필터링 (category가 null이 아닐 때만)
         if (category != null) {
             query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
+        }
+
+        // 카테고리 제외 필터링 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
+        if (excludeCategory != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.ne(excludeCategory.name))
         }
 
         // 제외할 콘텐츠 필터링
@@ -350,7 +356,8 @@ class FeedRepositoryImpl(
         limit: Int,
         excludeIds: List<UUID>,
         category: Category?,
-        preferredLanguage: String
+        preferredLanguage: String,
+        excludeCategory: Category?
     ): Flux<UUID> {
         // 1. 언어 가중치 계산 (Issue #107)
         val languageMultiplier = calculateLanguageMultiplier(preferredLanguage)
@@ -369,6 +376,11 @@ class FeedRepositoryImpl(
         // 카테고리 필터링 (category가 null이 아닐 때만)
         if (category != null) {
             query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
+        }
+
+        // 카테고리 제외 필터링 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
+        if (excludeCategory != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.ne(excludeCategory.name))
         }
 
         // 제외할 콘텐츠 필터링
@@ -416,7 +428,8 @@ class FeedRepositoryImpl(
         limit: Int,
         excludeIds: List<UUID>,
         category: Category?,
-        preferredLanguage: String
+        preferredLanguage: String,
+        excludeCategory: Category?
     ): Flux<UUID> {
         // 1. 기본 랜덤 점수 계산
         val baseRandomScore = DSL.rand()
@@ -441,6 +454,11 @@ class FeedRepositoryImpl(
         // 카테고리 필터링 (category가 null이 아닐 때만)
         if (category != null) {
             query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
+        }
+
+        // 카테고리 제외 필터링 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
+        if (excludeCategory != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.ne(excludeCategory.name))
         }
 
         // 제외할 콘텐츠 필터링

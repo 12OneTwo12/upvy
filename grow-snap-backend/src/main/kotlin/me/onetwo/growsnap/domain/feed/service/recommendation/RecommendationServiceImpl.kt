@@ -14,15 +14,18 @@ import java.util.UUID
  * 추천 서비스 구현체
  *
  * 요구사항 명세서 섹션 2.2.1의 추천 알고리즘을 구현합니다.
+ *
+ * ## 추천 전략 (비율)
  * - 협업 필터링 (40%): Item-based Collaborative Filtering
  * - 인기 콘텐츠 (30%): 높은 인터랙션
  * - 신규 콘텐츠 (10%): 최근 업로드
  * - 랜덤 콘텐츠 (20%): 다양성 확보
  *
- * Issue #107: 언어 기반 가중치 적용
- * - Repository 레벨에서 SQL CASE WHEN을 통해 언어 가중치 적용
- * - 사용자 선호 언어와 일치하는 콘텐츠: 2.0x 가중치
- * - 사용자 선호 언어와 불일치하는 콘텐츠: 0.5x 가중치
+ * ## Issue #92: FUN 카테고리 믹싱
+ * 전체 피드에서 20%는 FUN 카테고리로 구성하되, FUN 콘텐츠에도 동일한 추천 전략 적용
+ *
+ * ## Issue #107: 언어 기반 가중치 적용
+ * Repository 레벨에서 SQL CASE WHEN을 통해 언어 가중치 적용
  *
  * @property feedRepository 피드 데이터 조회를 위한 레포지토리
  * @property collaborativeFilteringService Item-based 협업 필터링 서비스
@@ -37,32 +40,12 @@ class RecommendationServiceImpl(
     /**
      * 추천 콘텐츠 ID 목록 조회
      *
-     * 여러 추천 전략을 병렬로 실행하여 콘텐츠 ID 목록을 반환합니다.
-     * 언어 가중치는 Repository 레벨에서 SQL로 적용됩니다.
-     *
-     * ### 추천 전략 (비율)
-     * - 협업 필터링 (40%): Item-based Collaborative Filtering
-     * - 인기 콘텐츠 (30%): 높은 인터랙션
-     * - 신규 콘텐츠 (10%): 최근 업로드
-     * - 랜덤 콘텐츠 (20%): 다양성 확보
-     *
-     * ### 처리 흐름
-     * 1. 각 전략별로 가져올 콘텐츠 수 계산
-     * 2. **병렬로** 각 전략별 콘텐츠 조회 (Mono.zip 사용)
-     *    - Repository에서 언어 가중치가 적용된 결과 반환
-     * 3. 결과 합치기 및 무작위 섞기
-     *
-     * ### 성능 최적화
-     * - Mono.zip을 사용하여 4개 전략을 동시에 실행
-     * - 순차 처리(Flux.concat) 대비 약 4배 빠른 응답 시간
-     * - Repository에서 DB 레벨 언어 가중치 적용 (단일 쿼리)
-     *
      * @param userId 사용자 ID
      * @param limit 조회할 콘텐츠 수
      * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 기본값: "en"
-     * @param category 필터링할 카테고리 (null이면 전체 피드)
-     * @return 추천 콘텐츠 ID 목록 (Repository에서 언어 가중치 적용됨)
+     * @param preferredLanguage 사용자 선호 언어 (ISO 639-1)
+     * @param category 필터링할 카테고리 (null이면 전체 피드 + FUN 믹싱)
+     * @return 추천 콘텐츠 ID 목록
      */
     override fun getRecommendedContentIds(
         userId: UUID,
@@ -71,19 +54,170 @@ class RecommendationServiceImpl(
         preferredLanguage: String,
         category: Category?
     ): Flux<UUID> {
+        // 특정 카테고리 조회 시: FUN 믹싱 없이 해당 카테고리만
+        if (category != null) {
+            return fetchContentsByAllStrategies(userId, limit, excludeContentIds, preferredLanguage, category)
+                .flatMapMany { Flux.fromIterable(it) }
+        }
+
+        // 전체 피드: FUN 믹싱 적용 (Issue #92)
+        return getRecommendedContentIdsWithFunMixing(userId, limit, excludeContentIds, preferredLanguage)
+    }
+
+    /**
+     * 모든 추천 전략을 적용하여 콘텐츠 ID 목록 조회
+     *
+     * **핵심 로직을 하나의 메서드로 추출하여 중복 제거 (DRY 원칙)**
+     *
+     * 협업 필터링, 인기, 신규, 랜덤 4가지 전략을 병렬로 실행하고 결과를 합칩니다.
+     * 일반 콘텐츠와 FUN 콘텐츠 모두 이 메서드를 통해 동일한 추천 품질을 보장합니다.
+     *
+     * @param userId 사용자 ID
+     * @param limit 조회할 콘텐츠 수
+     * @param excludeContentIds 제외할 콘텐츠 ID 목록
+     * @param preferredLanguage 사용자 선호 언어
+     * @param category 포함할 카테고리 (null이면 전체)
+     * @param excludeCategory 제외할 카테고리 (null이면 제외 없음)
+     * @return 셔플된 콘텐츠 ID 목록
+     */
+    private fun fetchContentsByAllStrategies(
+        userId: UUID,
+        limit: Int,
+        excludeContentIds: List<UUID>,
+        preferredLanguage: String,
+        category: Category? = null,
+        excludeCategory: Category? = null
+    ): Mono<List<UUID>> {
         val strategyLimits = RecommendationStrategy.calculateLimits(limit)
 
-        // 병렬로 모든 전략 실행 (Repository가 언어 가중치를 적용하여 반환)
         return Mono.zip(
-            getCollaborativeContentIds(userId, strategyLimits[RecommendationStrategy.COLLABORATIVE]!!, excludeContentIds, preferredLanguage, category).collectList(),
-            feedRepository.findPopularContentIds(userId, strategyLimits[RecommendationStrategy.POPULAR]!!, excludeContentIds, category, preferredLanguage).collectList(),
-            feedRepository.findNewContentIds(userId, strategyLimits[RecommendationStrategy.NEW]!!, excludeContentIds, category, preferredLanguage).collectList(),
-            feedRepository.findRandomContentIds(userId, strategyLimits[RecommendationStrategy.RANDOM]!!, excludeContentIds, category, preferredLanguage).collectList()
-        ).flatMapMany { tuple ->
-            // 모든 결과 합치기 및 무작위 섞기
-            val allIds = tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4
-            Flux.fromIterable(allIds.shuffled())
+            getCollaborativeContentIds(
+                userId,
+                strategyLimits[RecommendationStrategy.COLLABORATIVE]!!,
+                excludeContentIds,
+                preferredLanguage,
+                category,
+                excludeCategory
+            ).collectList(),
+            feedRepository.findPopularContentIds(
+                userId,
+                strategyLimits[RecommendationStrategy.POPULAR]!!,
+                excludeContentIds,
+                category,
+                preferredLanguage,
+                excludeCategory
+            ).collectList(),
+            feedRepository.findNewContentIds(
+                userId,
+                strategyLimits[RecommendationStrategy.NEW]!!,
+                excludeContentIds,
+                category,
+                preferredLanguage,
+                excludeCategory
+            ).collectList(),
+            feedRepository.findRandomContentIds(
+                userId,
+                strategyLimits[RecommendationStrategy.RANDOM]!!,
+                excludeContentIds,
+                category,
+                preferredLanguage,
+                excludeCategory
+            ).collectList()
+        ).map { tuple ->
+            (tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4).shuffled()
         }
+    }
+
+    /**
+     * FUN 믹싱을 적용한 추천 콘텐츠 조회 (Issue #92)
+     *
+     * 전체 피드에서 80%는 일반 콘텐츠, 20%는 FUN 카테고리로 구성합니다.
+     * **FUN 콘텐츠에도 동일한 4가지 추천 전략을 적용합니다.**
+     *
+     * ## Best Practice 근거
+     * - Netflix/TikTok: 카테고리 믹싱 시에도 각 카테고리 내에서 engagement 기반 랭킹 적용
+     * - FUN 콘텐츠도 인기/신규/협업필터링으로 최적의 콘텐츠 제공
+     *
+     * @param userId 사용자 ID
+     * @param limit 총 콘텐츠 수
+     * @param excludeContentIds 제외할 콘텐츠 ID 목록
+     * @param preferredLanguage 사용자 선호 언어
+     * @return 인터리빙된 콘텐츠 ID 목록 (4:1 비율)
+     */
+    private fun getRecommendedContentIdsWithFunMixing(
+        userId: UUID,
+        limit: Int,
+        excludeContentIds: List<UUID>,
+        preferredLanguage: String
+    ): Flux<UUID> {
+        val regularLimit = (limit * REGULAR_CONTENT_RATIO).toInt().coerceAtLeast(1)
+        val funLimit = (limit * FUN_CONTENT_RATIO).toInt().coerceAtLeast(1)
+
+        return Mono.zip(
+            // 일반 콘텐츠: FUN 제외, 모든 전략 적용
+            fetchContentsByAllStrategies(
+                userId,
+                regularLimit,
+                excludeContentIds,
+                preferredLanguage,
+                excludeCategory = Category.FUN
+            ),
+            // FUN 콘텐츠: FUN만, 모든 전략 적용 (협업필터링 + 인기 + 신규 + 랜덤)
+            fetchContentsByAllStrategies(
+                userId,
+                funLimit,
+                excludeContentIds,
+                preferredLanguage,
+                category = Category.FUN
+            )
+        ).flatMapMany { tuple ->
+            val regularIds = tuple.t1
+            val funIds = tuple.t2
+
+            val result = interleaveFunContent(regularIds, funIds)
+            logger.debug(
+                "Feed mixing complete: regularCount={}, funCount={}, totalCount={}",
+                regularIds.size, funIds.size, result.size
+            )
+
+            Flux.fromIterable(result)
+        }
+    }
+
+    /**
+     * 일반 콘텐츠와 FUN 콘텐츠를 4:1 비율로 인터리빙
+     *
+     * 5개마다 1개의 FUN 콘텐츠가 포함되도록 배치합니다.
+     * 예: [일반, 일반, 일반, 일반, FUN, 일반, 일반, 일반, 일반, FUN, ...]
+     *
+     * @param regularIds 일반 콘텐츠 ID 목록
+     * @param funIds FUN 카테고리 콘텐츠 ID 목록
+     * @return 인터리빙된 콘텐츠 ID 목록
+     */
+    private fun interleaveFunContent(regularIds: List<UUID>, funIds: List<UUID>): List<UUID> {
+        if (funIds.isEmpty()) {
+            return regularIds
+        }
+
+        val result = mutableListOf<UUID>()
+        var regularIndex = 0
+        var funIndex = 0
+
+        while (regularIndex < regularIds.size || funIndex < funIds.size) {
+            // 4개의 일반 콘텐츠 추가
+            repeat(INTERLEAVE_REGULAR_COUNT) {
+                if (regularIndex < regularIds.size) {
+                    result.add(regularIds[regularIndex++])
+                }
+            }
+
+            // 1개의 FUN 콘텐츠 추가
+            if (funIndex < funIds.size) {
+                result.add(funIds[funIndex++])
+            }
+        }
+
+        return result
     }
 
     /**
@@ -95,27 +229,15 @@ class RecommendationServiceImpl(
      *
      * ### 처리 흐름
      * 1. Item-based CF 알고리즘으로 추천 콘텐츠 조회
-     *    - 내가 좋아요/저장/공유한 콘텐츠 조회 (seed items)
-     *    - 각 seed item을 좋아한 다른 사용자 찾기
-     *    - 그 사용자들이 좋아한 다른 콘텐츠 추천
-     * 2. 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback (언어 가중치 적용)
-     * 3. 추천 결과가 부족하면 인기 콘텐츠로 보충 (언어 가중치 적용)
-     *
-     * ### Best Practice 근거
-     * - Netflix, YouTube, TikTok 등이 사용하는 방식
-     * - User-based CF보다 확장성과 성능이 우수
-     * - 실시간 계산 가능 (배치 처리 불필요)
-     *
-     * ### 향후 개선 계획 (Phase 2)
-     * - Cosine Similarity / Jaccard Similarity 적용
-     * - Matrix Factorization
-     * - Neural Collaborative Filtering
+     * 2. 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback
+     * 3. 추천 결과가 부족하면 인기 콘텐츠로 보충
      *
      * @param userId 사용자 ID
      * @param limit 조회할 콘텐츠 수
      * @param excludeContentIds 제외할 콘텐츠 ID 목록
-     * @param preferredLanguage 사용자 선호 언어 (fallback 시 사용)
-     * @param category 필터링할 카테고리 (null이면 전체)
+     * @param preferredLanguage 사용자 선호 언어
+     * @param category 포함할 카테고리 (null이면 전체)
+     * @param excludeCategory 제외할 카테고리
      * @return 협업 필터링 추천 콘텐츠 ID 목록
      */
     private fun getCollaborativeContentIds(
@@ -123,38 +245,90 @@ class RecommendationServiceImpl(
         limit: Int,
         excludeContentIds: List<UUID>,
         preferredLanguage: String,
-        category: Category?
+        category: Category? = null,
+        excludeCategory: Category? = null
     ): Flux<UUID> {
-        return collaborativeFilteringService.getRecommendedContents(userId, limit, preferredLanguage, category)
-            .filter { !excludeContentIds.contains(it) }  // 제외 목록 필터링
+        // excludeCategory 필터링이 필요한 경우 여유있게 더 조회
+        val cfLimit = if (excludeCategory != null) limit * CF_OVERSAMPLE_MULTIPLIER else limit
+
+        return collaborativeFilteringService.getRecommendedContents(userId, cfLimit, preferredLanguage, category)
+            .filter { !excludeContentIds.contains(it) }
             .collectList()
-            .flatMapMany { recommendedIds ->
-                if (recommendedIds.isEmpty()) {
-                    // CF 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback (언어 가중치 적용)
-                    logger.debug("No CF recommendations for user {}, falling back to popular content", userId)
-                    feedRepository.findPopularContentIds(userId, limit, excludeContentIds, category, preferredLanguage)
-                } else if (recommendedIds.size < limit) {
-                    // CF 추천 결과가 부족하면 인기 콘텐츠로 보충 (언어 가중치 적용)
-                    val remaining = limit - recommendedIds.size
-                    logger.debug(
-                        "CF recommendations ({}) < limit ({}), adding {} popular contents",
-                        recommendedIds.size,
-                        limit,
-                        remaining
-                    )
-                    Flux.concat(
-                        Flux.fromIterable(recommendedIds),
-                        feedRepository.findPopularContentIds(userId, remaining, excludeContentIds + recommendedIds, category, preferredLanguage)
-                    )
-                } else {
-                    // CF 추천 결과가 충분함
-                    logger.debug("Returning {} CF recommendations for user {}", recommendedIds.size, userId)
-                    Flux.fromIterable(recommendedIds.take(limit))
-                }
+            .flatMap { recommendedIds ->
+                filterByExcludeCategory(recommendedIds, excludeCategory, limit)
             }
+            .flatMapMany { recommendedIds ->
+                supplementWithPopularContent(userId, recommendedIds, limit, excludeContentIds, category, preferredLanguage, excludeCategory)
+            }
+    }
+
+    /**
+     * excludeCategory에 해당하는 콘텐츠 필터링
+     */
+    private fun filterByExcludeCategory(
+        contentIds: List<UUID>,
+        excludeCategory: Category?,
+        limit: Int
+    ): Mono<List<UUID>> {
+        if (excludeCategory == null || contentIds.isEmpty()) {
+            return Mono.just(contentIds.take(limit))
+        }
+
+        return feedRepository.findCategoriesByContentIds(contentIds)
+            .collectList()
+            .map { categories ->
+                contentIds.zip(categories)
+                    .filter { (_, cat) -> cat != excludeCategory.name }
+                    .map { (id, _) -> id }
+                    .take(limit)
+            }
+    }
+
+    /**
+     * CF 결과가 부족할 때 인기 콘텐츠로 보충
+     */
+    private fun supplementWithPopularContent(
+        userId: UUID,
+        recommendedIds: List<UUID>,
+        limit: Int,
+        excludeContentIds: List<UUID>,
+        category: Category?,
+        preferredLanguage: String,
+        excludeCategory: Category?
+    ): Flux<UUID> {
+        return when {
+            recommendedIds.isEmpty() -> {
+                logger.debug("No CF recommendations for user {}, falling back to popular content", userId)
+                feedRepository.findPopularContentIds(userId, limit, excludeContentIds, category, preferredLanguage, excludeCategory)
+            }
+            recommendedIds.size < limit -> {
+                val remaining = limit - recommendedIds.size
+                logger.debug("CF recommendations ({}) < limit ({}), supplementing with {} popular contents", recommendedIds.size, limit, remaining)
+                Flux.concat(
+                    Flux.fromIterable(recommendedIds),
+                    feedRepository.findPopularContentIds(userId, remaining, excludeContentIds + recommendedIds, category, preferredLanguage, excludeCategory)
+                )
+            }
+            else -> {
+                logger.debug("Returning {} CF recommendations for user {}", recommendedIds.size, userId)
+                Flux.fromIterable(recommendedIds.take(limit))
+            }
+        }
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(RecommendationServiceImpl::class.java)
+
+        /** 일반 콘텐츠 비율 (80%) */
+        private const val REGULAR_CONTENT_RATIO = 0.8
+
+        /** FUN 콘텐츠 비율 (20%) */
+        private const val FUN_CONTENT_RATIO = 0.2
+
+        /** 인터리빙 시 일반 콘텐츠 개수 (4개마다 1개 FUN) */
+        private const val INTERLEAVE_REGULAR_COUNT = 4
+
+        /** CF excludeCategory 필터링을 위한 오버샘플링 배수 */
+        private const val CF_OVERSAMPLE_MULTIPLIER = 2
     }
 }

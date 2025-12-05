@@ -65,6 +65,7 @@ interface FeedRepository {
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
      * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 언어 가중치 적용
+     * @param excludeCategory 제외할 카테고리 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
      * @return 인기 콘텐츠 ID 목록 (최종 점수 순 정렬)
      */
     fun findPopularContentIds(
@@ -72,7 +73,8 @@ interface FeedRepository {
         limit: Int,
         excludeIds: List<UUID>,
         category: Category? = null,
-        preferredLanguage: String = "en"
+        preferredLanguage: String = "en",
+        excludeCategory: Category? = null
     ): Flux<UUID>
 
     /**
@@ -98,6 +100,7 @@ interface FeedRepository {
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
      * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 언어 가중치 적용
+     * @param excludeCategory 제외할 카테고리 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
      * @return 신규 콘텐츠 ID 목록 (언어 가중치가 적용된 최신순 정렬)
      */
     fun findNewContentIds(
@@ -105,7 +108,8 @@ interface FeedRepository {
         limit: Int,
         excludeIds: List<UUID>,
         category: Category? = null,
-        preferredLanguage: String = "en"
+        preferredLanguage: String = "en",
+        excludeCategory: Category? = null
     ): Flux<UUID>
 
     /**
@@ -131,6 +135,7 @@ interface FeedRepository {
      * @param excludeIds 제외할 콘텐츠 ID 목록
      * @param category 카테고리 필터 (null이면 전체 조회)
      * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 언어 가중치 적용
+     * @param excludeCategory 제외할 카테고리 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
      * @return 랜덤 콘텐츠 ID 목록 (언어 가중치가 적용된 무작위 정렬)
      */
     fun findRandomContentIds(
@@ -138,7 +143,8 @@ interface FeedRepository {
         limit: Int,
         excludeIds: List<UUID>,
         category: Category? = null,
-        preferredLanguage: String = "en"
+        preferredLanguage: String = "en",
+        excludeCategory: Category? = null
     ): Flux<UUID>
 
     /**
