@@ -27,6 +27,8 @@ import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -854,6 +856,181 @@ class FeedRepositoryImplIntegrationTest : AbstractIntegrationTest() {
                 .set(FOLLOWS.FOLLOWER_ID, followerId.toString())
                 .set(FOLLOWS.FOLLOWING_ID, followingId.toString())
         ).block()
+    }
+
+    private fun updateContentCreatedAt(contentId: UUID, createdAt: Instant) {
+        Mono.from(
+            dslContext.update(CONTENTS)
+                .set(CONTENTS.CREATED_AT, createdAt)
+                .where(CONTENTS.ID.eq(contentId.toString()))
+        ).block()
+    }
+
+    // ==================== 시간 기반 Decay 테스트 (Issue #92) ====================
+
+    @Test
+    @DisplayName("[Popular Decay] 같은 인기도일 때 최신 콘텐츠가 더 높은 순위에 있다")
+    fun `findPopularContentIds should rank newer content higher with same popularity`() {
+        // Given: 동일 인기도의 두 콘텐츠 생성
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-decay-$testId@example.com",
+            nickname = "c-decay-$testId"
+        )
+
+        // 두 콘텐츠 모두 50 likes
+        val newContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "New Content",
+            category = Category.PROGRAMMING,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(50) { contentInteractionRepository.incrementLikeCount(newContent.id!!).block() }
+
+        val oldContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Old Content",
+            category = Category.PROGRAMMING,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(50) { contentInteractionRepository.incrementLikeCount(oldContent.id!!).block() }
+
+        // oldContent의 created_at을 30일 전으로 설정
+        val thirtyDaysAgo = Instant.now().minus(30, ChronoUnit.DAYS)
+        updateContentCreatedAt(oldContent.id!!, thirtyDaysAgo)
+
+        // When: 인기 콘텐츠 조회
+        val result = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en"
+        ).collectList().block()!!
+
+        // Then: 최신 콘텐츠가 먼저 나와야 함
+        // newContent: 50 * decay(0일) = 50 * 1.0 = 50
+        // oldContent: 50 * decay(30일) = 50 * 0.22 ≈ 11
+        val newContentIndex = result.indexOf(newContent.id!!)
+        val oldContentIndex = result.indexOf(oldContent.id!!)
+
+        assertTrue(newContentIndex != -1 && oldContentIndex != -1,
+            "Both contents should be in results")
+        assertTrue(newContentIndex < oldContentIndex,
+            "Newer content should rank higher (new: $newContentIndex, old: $oldContentIndex)")
+    }
+
+    @Test
+    @DisplayName("[Popular Decay] 14일 경과 시 인기도 점수가 약 50% 감소한다")
+    fun `findPopularContentIds should apply ~50% decay after 14 days`() {
+        // Given: 14일 전 콘텐츠(100 likes)와 최신 콘텐츠(45 likes)
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-decay14-$testId@example.com",
+            nickname = "c-decay14-$testId"
+        )
+
+        // 14일 전 콘텐츠: 100 likes → 100 * 0.50 = 50
+        val oldHighPopContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Old High Pop Content",
+            category = Category.DESIGN,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(100) { contentInteractionRepository.incrementLikeCount(oldHighPopContent.id!!).block() }
+
+        val fourteenDaysAgo = Instant.now().minus(14, ChronoUnit.DAYS)
+        updateContentCreatedAt(oldHighPopContent.id!!, fourteenDaysAgo)
+
+        // 최신 콘텐츠: 45 likes → 45 * 1.0 = 45
+        val newLowPopContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "New Low Pop Content",
+            category = Category.DESIGN,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(45) { contentInteractionRepository.incrementLikeCount(newLowPopContent.id!!).block() }
+
+        // When: 인기 콘텐츠 조회
+        val result = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en"
+        ).collectList().block()!!
+
+        // Then: 14일 전 100 likes (≈50점) > 최신 45 likes (45점)
+        // 14일 decay가 ~50%이므로 100 * 0.5 = 50 > 45
+        val oldIndex = result.indexOf(oldHighPopContent.id!!)
+        val newIndex = result.indexOf(newLowPopContent.id!!)
+
+        assertTrue(oldIndex != -1 && newIndex != -1,
+            "Both contents should be in results")
+        assertTrue(oldIndex < newIndex,
+            "Old high-pop content should still rank higher (old: $oldIndex, new: $newIndex)")
+    }
+
+    @Test
+    @DisplayName("[Popular Decay] 30일 경과 시 인기도 점수가 약 22% 감소한다")
+    fun `findPopularContentIds should apply ~22% decay after 30 days`() {
+        // Given: 30일 전 콘텐츠(100 likes)와 최신 콘텐츠(25 likes)
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-decay30-$testId@example.com",
+            nickname = "c-decay30-$testId"
+        )
+
+        // 30일 전 콘텐츠: 100 likes → 100 * 0.22 = 22
+        val oldContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Old Content 30d",
+            category = Category.ART,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(100) { contentInteractionRepository.incrementLikeCount(oldContent.id!!).block() }
+
+        val thirtyDaysAgo = Instant.now().minus(30, ChronoUnit.DAYS)
+        updateContentCreatedAt(oldContent.id!!, thirtyDaysAgo)
+
+        // 최신 콘텐츠: 25 likes → 25 * 1.0 = 25
+        val newContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "New Content",
+            category = Category.ART,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(25) { contentInteractionRepository.incrementLikeCount(newContent.id!!).block() }
+
+        // When: 인기 콘텐츠 조회
+        val result = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en"
+        ).collectList().block()!!
+
+        // Then: 최신 25 likes (25점) > 30일 전 100 likes (≈22점)
+        val oldIndex = result.indexOf(oldContent.id!!)
+        val newIndex = result.indexOf(newContent.id!!)
+
+        assertTrue(oldIndex != -1 && newIndex != -1,
+            "Both contents should be in results")
+        assertTrue(newIndex < oldIndex,
+            "Newer content should rank higher after 30d decay (new: $newIndex, old: $oldIndex)")
     }
 
 }

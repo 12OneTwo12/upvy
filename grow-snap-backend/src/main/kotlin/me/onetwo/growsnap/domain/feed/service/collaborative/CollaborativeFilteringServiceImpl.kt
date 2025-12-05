@@ -9,7 +9,10 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
+import kotlin.math.exp
 
 /**
  * 협업 필터링 서비스 구현체
@@ -78,6 +81,19 @@ class CollaborativeFilteringServiceImpl(
      *
      * Item-based CF 알고리즘을 사용하여 추천합니다.
      * Issue #107: 언어 가중치 적용 및 카테고리 필터링
+     * Issue #92: 시간 기반 Decay 적용으로 최신 콘텐츠 우선 추천
+     *
+     * ### 최종 점수 계산 공식
+     * ```
+     * final_score = cf_score × language_multiplier × time_decay
+     *
+     * time_decay = EXP(-0.02 × days_since_created)
+     * - 0일: 1.0 (100%)
+     * - 14일: ~0.75 (75%)
+     * - 30일: ~0.55 (55%)
+     * - 60일: ~0.30 (30%)
+     * ```
+     * CF는 취향 기반이므로 인기 콘텐츠(0.05)보다 완만한 감쇠율(0.02) 적용
      *
      * @param userId 사용자 ID
      * @param limit 추천 개수
@@ -166,9 +182,11 @@ class CollaborativeFilteringServiceImpl(
                         contentRepository.findByIdsWithMetadata(candidateIds)
                             .collectMap({ it.content.id!! }, { it.metadata })
                             .flatMapMany { metadataMap ->
-                                // 9. 카테고리 필터링 및 언어 가중치 적용하여 최종 점수 계산
+                                // 9. 카테고리 필터링, 언어 가중치, 시간 감쇠 적용하여 최종 점수 계산
+                                val now = Instant.now()
                                 val finalScores = cfScoreList.mapNotNull { (contentId, cfScore) ->
-                                    val metadata = metadataMap[contentId] ?: return@mapNotNull null
+                                    val contentWithMetadata = metadataMap.entries.find { it.key == contentId }
+                                    val metadata = contentWithMetadata?.value ?: return@mapNotNull null
 
                                     // 카테고리 포함 필터링 (category가 지정된 경우)
                                     if (category != null && metadata.category != category) {
@@ -186,7 +204,12 @@ class CollaborativeFilteringServiceImpl(
                                     } else {
                                         LANGUAGE_MULTIPLIER_MISMATCH
                                     }
-                                    val finalScore = cfScore * languageMultiplier
+
+                                    // 시간 기반 Decay 적용 (Issue #92)
+                                    val timeDecay = calculateTimeDecay(metadata.createdAt, now)
+
+                                    // 최종 점수 = CF 점수 × 언어 가중치 × 시간 감쇠
+                                    val finalScore = cfScore * languageMultiplier * timeDecay
                                     contentId to finalScore
                                 }
 
@@ -197,7 +220,7 @@ class CollaborativeFilteringServiceImpl(
                                     .map { it.first }
 
                                 logger.debug(
-                                    "Returning {} recommended contents (with language weighting and category filtering) for user {}{}{}",
+                                    "Returning {} recommended contents (with language weighting, time decay, and category filtering) for user {}{}{}",
                                     recommendedContents.size,
                                     userId,
                                     if (category != null) " in category ${category.name}" else "",
@@ -209,6 +232,30 @@ class CollaborativeFilteringServiceImpl(
                     }
             }
         }
+    }
+
+    /**
+     * 시간 기반 Decay 계산
+     *
+     * 콘텐츠 생성일로부터의 경과일 기반 감쇠를 계산합니다.
+     * 오래된 콘텐츠일수록 점수가 낮아져 최신 콘텐츠가 우선 추천됩니다.
+     *
+     * ### Decay 공식 (CF용 완만한 감쇠)
+     * ```
+     * time_decay = EXP(-0.02 * days_since_created)
+     * ```
+     * - 0일: 1.0 (100%)
+     * - 14일: ~0.75 (75%)
+     * - 30일: ~0.55 (55%)
+     * - 60일: ~0.30 (30%)
+     *
+     * @param createdAt 콘텐츠 생성 시각
+     * @param now 현재 시각
+     * @return 시간 감쇠 계수 (0.0 ~ 1.0)
+     */
+    private fun calculateTimeDecay(createdAt: Instant, now: Instant): Double {
+        val daysSinceCreated = ChronoUnit.DAYS.between(createdAt, now).toDouble()
+        return exp(-TIME_DECAY_RATE * daysSinceCreated)
     }
 
     companion object {
@@ -245,5 +292,16 @@ class CollaborativeFilteringServiceImpl(
          */
         private const val LANGUAGE_MULTIPLIER_MATCH = 2.0
         private const val LANGUAGE_MULTIPLIER_MISMATCH = 0.5
+
+        /**
+         * 시간 기반 Decay 감쇠율 (Issue #92)
+         *
+         * EXP(-rate * days) 공식에 사용되는 감쇠율입니다.
+         * CF 추천은 취향 기반이므로 인기 콘텐츠(0.05)보다 완만한 감쇠 적용:
+         * - 0.02: 14일 후 약 75%, 30일 후 약 55%, 60일 후 약 30%
+         *
+         * 오래된 "클래식" 콘텐츠도 추천 가치가 있으므로 너무 공격적인 감쇠 회피
+         */
+        private const val TIME_DECAY_RATE = 0.02
     }
 }
