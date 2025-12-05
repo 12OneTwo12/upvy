@@ -28,6 +28,27 @@
     "notInterested": "이 콘텐츠 관심없음",
     "blockUser": "사용자 차단하기"
   },
+  "deleteContent": {
+    "title": "게시물을 삭제하시겠습니까?",
+    "description": "삭제된 게시물은 복구할 수 없습니다.",
+    "confirmButton": "삭제",
+    "successTitle": "삭제 완료",
+    "successMessage": "게시물이 삭제되었습니다.",
+    "errorTitle": "삭제 실패",
+    "forbiddenMessage": "이 게시물을 삭제할 권한이 없습니다.",
+    "notFoundMessage": "게시물을 찾을 수 없습니다."
+  },
+  "editContent": {
+    "title": "게시물 수정",
+    "successTitle": "수정 완료",
+    "successMessage": "게시물이 수정되었습니다.",
+    "errorTitle": "수정 실패",
+    "forbiddenMessage": "이 게시물을 수정할 권한이 없습니다.",
+    "notFoundMessage": "게시물을 찾을 수 없습니다.",
+    "discardTitle": "변경 사항 취소",
+    "discardMessage": "저장하지 않은 변경 사항이 있습니다. 정말 취소하시겠습니까?",
+    "discardButton": "취소하기"
+  },
   "comments": {
     "title": "댓글",
     "placeholder": "댓글을 입력하세요...",

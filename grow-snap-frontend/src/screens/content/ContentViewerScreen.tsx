@@ -4,7 +4,7 @@
  * FeedScreen과 동일하지만 스크롤 비활성화 (단일 콘텐츠만 표시)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Dimensions, StatusBar, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +21,34 @@ import { followUser, unfollowUser } from '@/api/follow.api';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// 로딩 중일 때 보여줄 스켈레톤 아이템 (FeedScreen과 동일한 패턴)
+const loadingFeedItem: FeedItemType = {
+  contentId: 'loading',
+  contentType: 'VIDEO',
+  url: '',
+  photoUrls: null,
+  thumbnailUrl: '',
+  duration: 0,
+  width: 1080,
+  height: 1920,
+  title: '',
+  description: '',
+  category: 'OTHER',
+  tags: [],
+  creator: {
+    userId: 'loading',
+    nickname: '',
+    profileImageUrl: null,
+  },
+  interactions: {
+    likeCount: 0,
+    commentCount: 0,
+    saveCount: 0,
+    shareCount: 0,
+  },
+  subtitles: [],
+};
 
 export default function ContentViewerScreen() {
   const { t } = useTranslation('feed');
@@ -264,18 +292,11 @@ export default function ContentViewerScreen() {
     navigation.goBack();
   };
 
-  // 로딩 중
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
-        <ActivityIndicator size="large" color="#FFFFFF" />
-      </View>
-    );
-  }
+  // 표시할 아이템 결정: 로딩 중이면 스켈레톤, 아니면 실제 데이터
+  const displayItem = isLoading ? loadingFeedItem : feedItem;
 
-  // 데이터 없음
-  if (!feedItem) {
+  // 데이터 없음 (로딩 완료 후에도 데이터가 없는 경우)
+  if (!isLoading && !feedItem) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' }}>
         <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
@@ -310,8 +331,8 @@ export default function ContentViewerScreen() {
       {/* 콘텐츠 - FeedScreen과 동일 (스크롤 없음) */}
       <View style={{ height: SCREEN_HEIGHT, backgroundColor: '#000000' }}>
         <FeedItem
-          item={feedItem}
-          isFocused={true}
+          item={displayItem!}
+          isFocused={!isLoading}
           shouldPreload={true}
           hasBeenLoaded={false}
           onVideoLoaded={() => {}}
@@ -322,6 +343,24 @@ export default function ContentViewerScreen() {
           onFollow={handleFollow}
           onCreatorPress={handleCreatorPress}
         />
+
+        {/* 로딩 중일 때 중앙 스피너 추가 (FeedScreen과 동일) */}
+        {isLoading && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              justifyContent: 'center',
+              alignItems: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </View>
+        )}
       </View>
 
       {/* 댓글 모달 */}
