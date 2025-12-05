@@ -51,7 +51,9 @@ export type Category =
   | 'HOBBY'
   // 트렌드 & 인사이트
   | 'TREND'
-  | 'OTHER';
+  | 'OTHER'
+  // 재미 & 가벼운 콘텐츠
+  | 'FUN';
 
 /**
  * 카테고리 표시 정보
@@ -94,6 +96,9 @@ export const CATEGORIES: CategoryInfo[] = [
   // 트렌드 & 인사이트
   { value: 'TREND', displayName: '트렌드', description: '최신 트렌드, 인사이트 등' },
   { value: 'OTHER', displayName: '기타', description: '기타 카테고리' },
+
+  // 재미 & 가벼운 콘텐츠
+  { value: 'FUN', displayName: '재미', description: '재미있거나 가벼운 콘텐츠' },
 ];
 
 /**

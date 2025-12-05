@@ -90,6 +90,7 @@ export const ContentEditModal: React.FC<ContentEditModalProps> = ({
       setLanguage(initialLanguage);
       setTagInput('');
       setShowCategoryPicker(false);
+      setIsSubmitting(false); // 모달 열릴 때 로딩 상태 초기화
     }
   }, [visible, initialTitle, initialDescription, initialCategory, initialTags, initialLanguage]);
 

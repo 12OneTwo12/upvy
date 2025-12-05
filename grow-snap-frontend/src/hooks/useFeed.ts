@@ -533,6 +533,22 @@ export function useFeed(options: UseFeedOptions) {
     // 마지막 콘텐츠를 차단한 경우는 그대로 유지 (사용자가 스와이프하여 이동)
   }, [currentIndex, displayItems.length]);
 
+  // 삭제 성공 후 다음 콘텐츠로 스크롤 및 피드 새로고침
+  const handleDeleteSuccess = useCallback(async () => {
+    const nextIndex = currentIndex + 1;
+
+    // 다음 콘텐츠가 있으면 스크롤
+    if (nextIndex < displayItems.length) {
+      flatListRef.current?.scrollToIndex({
+        index: nextIndex,
+        animated: true,
+      });
+    }
+
+    // 피드 데이터 새로고침 (삭제된 콘텐츠 제거)
+    await queryClient.invalidateQueries({ queryKey });
+  }, [currentIndex, displayItems.length, queryClient, queryKey]);
+
   // Video 로드 완료 콜백
   const handleVideoLoaded = useCallback((contentId: string) => {
     videoLoadedCache.current.set(contentId, true);
@@ -643,6 +659,7 @@ export function useFeed(options: UseFeedOptions) {
     handleFollow,
     handleCreatorPress,
     handleBlockSuccess,
+    handleDeleteSuccess,
 
     // Video 관리
     handleVideoLoaded,

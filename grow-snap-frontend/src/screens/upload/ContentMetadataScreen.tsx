@@ -52,6 +52,31 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
+  /**
+   * FUN 카테고리 선택 시 가이드라인 표시
+   */
+  const handleCategorySelect = (categoryValue: Category) => {
+    if (categoryValue === 'FUN') {
+      Alert.alert(
+        t('upload:metadata.funCategoryGuideline.title'),
+        t('upload:metadata.funCategoryGuideline.message'),
+        [
+          { text: t('common:button.cancel'), style: 'cancel' },
+          {
+            text: t('common:button.confirm'),
+            onPress: () => {
+              setSelectedCategory(categoryValue);
+              setShowCategoryPicker(false);
+            },
+          },
+        ]
+      );
+    } else {
+      setSelectedCategory(categoryValue);
+      setShowCategoryPicker(false);
+    }
+  };
+
   const handleAddTag = () => {
     const trimmedTag = tagInput.trim();
 
@@ -245,10 +270,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                     styles.categoryItem,
                     selectedCategory === category.value && styles.categoryItemSelected,
                   ]}
-                  onPress={() => {
-                    setSelectedCategory(category.value);
-                    setShowCategoryPicker(false);
-                  }}
+                  onPress={() => handleCategorySelect(category.value)}
                 >
                   <View>
                     <Text style={styles.categoryName}>{t(`search:category.${category.value}.name`, category.displayName)}</Text>

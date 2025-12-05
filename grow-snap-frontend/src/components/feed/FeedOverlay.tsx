@@ -333,6 +333,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           targetType="content"
           targetId={contentId}
           targetName={title}
+          contentCategory={category}
         />
 
         {/* 차단 확인 모달 */}

@@ -43,6 +43,7 @@ interface FeedItemProps {
   onFollow?: () => void;
   onCreatorPress?: () => void;
   onBlockSuccess?: () => void; // 차단 성공 시 호출
+  onDeleteSuccess?: () => void; // 삭제 성공 시 호출
 }
 
 export const FeedItem: React.FC<FeedItemProps> = ({
@@ -58,6 +59,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   onFollow,
   onCreatorPress,
   onBlockSuccess,
+  onDeleteSuccess,
 }) => {
   const tabBarHeight = useSafeBottomTabBarHeight();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -201,6 +203,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         onFollow={onFollow}
         onCreatorPress={onCreatorPress}
         onBlockSuccess={onBlockSuccess}
+        onDeleteSuccess={onDeleteSuccess}
         isExpanded={isExpanded}
         setIsExpanded={setIsExpanded}
         tabBarHeight={tabBarHeight}
