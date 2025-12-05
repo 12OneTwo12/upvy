@@ -158,11 +158,17 @@ class CommentRepositoryImpl(
                             countRepliesByParentCommentId(cursor)
                                 .map { cursorReplyCount ->
                                     val cursorPopularityScore = cursorLikeCount + cursorReplyCount
-                                    // (인기 점수 < 커서 점수) OR (인기 점수 = 커서 점수 AND 생성일 > 커서 생성일)
+                                    // (인기 점수 < 커서 점수) OR (인기 점수 = 커서 점수 AND 생성일 > 커서 생성일) OR
+                                    // (인기 점수 = 커서 점수 AND 생성일 = 커서 생성일 AND ID > 커서 ID)
                                     popularityScore.lt(cursorPopularityScore)
                                         .or(
                                             popularityScore.eq(cursorPopularityScore)
                                                 .and(COMMENTS.CREATED_AT.gt(cursorComment.createdAt))
+                                        )
+                                        .or(
+                                            popularityScore.eq(cursorPopularityScore)
+                                                .and(COMMENTS.CREATED_AT.eq(cursorComment.createdAt))
+                                                .and(COMMENTS.ID.gt(cursor.toString()))
                                         )
                                 }
                         }
@@ -203,7 +209,7 @@ class CommentRepositoryImpl(
                                 COMMENTS.DELETED_AT
                             )
                             .having(havingCondition)
-                            .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc())
+                            .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc(), COMMENTS.ID.asc())
                             .limit(limit + 1) // hasNext 확인을 위해 +1 조회
                     ).map { record -> recordToComment(record) }
                 }
@@ -247,7 +253,7 @@ class CommentRepositoryImpl(
                         COMMENTS.UPDATED_BY,
                         COMMENTS.DELETED_AT
                     )
-                    .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc())
+                    .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc(), COMMENTS.ID.asc())
                     .limit(limit + 1) // hasNext 확인을 위해 +1 조회
             ).map { record -> recordToComment(record) }
         }
@@ -275,8 +281,15 @@ class CommentRepositoryImpl(
                             .from(COMMENTS)
                             .where(COMMENTS.PARENT_COMMENT_ID.eq(parentCommentId.toString()))
                             .and(COMMENTS.DELETED_AT.isNull)
-                            .and(COMMENTS.CREATED_AT.gt(cursorComment.createdAt))
-                            .orderBy(COMMENTS.CREATED_AT.asc())
+                            // 같은 시간에 생성된 댓글도 ID로 구분 (안정적인 cursor 페이징)
+                            .and(
+                                COMMENTS.CREATED_AT.gt(cursorComment.createdAt)
+                                    .or(
+                                        COMMENTS.CREATED_AT.eq(cursorComment.createdAt)
+                                            .and(COMMENTS.ID.gt(cursorComment.id.toString()))
+                                    )
+                            )
+                            .orderBy(COMMENTS.CREATED_AT.asc(), COMMENTS.ID.asc())
                             .limit(limit + 1) // hasNext 확인을 위해 +1 조회
                     ).map { record -> recordToComment(record) }
                 }
@@ -303,7 +316,7 @@ class CommentRepositoryImpl(
                     .from(COMMENTS)
                     .where(COMMENTS.PARENT_COMMENT_ID.eq(parentCommentId.toString()))
                     .and(COMMENTS.DELETED_AT.isNull)
-                    .orderBy(COMMENTS.CREATED_AT.asc())
+                    .orderBy(COMMENTS.CREATED_AT.asc(), COMMENTS.ID.asc())
                     .limit(limit + 1) // hasNext 확인을 위해 +1 조회
             ).map { record -> recordToComment(record) }
         }

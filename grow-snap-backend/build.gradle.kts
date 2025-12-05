@@ -46,10 +46,14 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("com.ninja-squad:springmockk:4.0.2")
 
-    // Testcontainers for integration testing with Redis
+    // Testcontainers for integration testing with Redis and MySQL
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers:1.19.3")
     testImplementation("org.testcontainers:junit-jupiter:1.19.3")
+    testImplementation("org.testcontainers:mysql:1.19.3")
+    testImplementation("org.testcontainers:r2dbc:1.19.3")
+    // MySQL JDBC driver for Testcontainers init script execution
+    testRuntimeOnly("com.mysql:mysql-connector-j:8.2.0")
 
     // ArchUnit for architecture testing
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
@@ -88,7 +92,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("io.r2dbc:r2dbc-pool")
     runtimeOnly("io.asyncer:r2dbc-mysql:1.0.5")
-    testRuntimeOnly("io.r2dbc:r2dbc-h2")
 
     // JOOQ 기본 런타임 라이브러리
     implementation("org.jooq:jooq:$jooqVersion")
@@ -252,12 +255,10 @@ jooq {
 
                         // DATETIME을 Instant로 강제 매핑 (UTC 기준)
                         // MySQL DATETIME(6) best practice for global apps with UTC
-                        // H2 converts DATETIME to LOCALDATETIME, so we match both patterns
                         forcedTypes.add(
                             org.jooq.meta.jaxb.ForcedType().apply {
                                 userType = "java.time.Instant"
                                 converter = "me.onetwo.growsnap.config.jooq.InstantConverter"
-                                // Match both TIMESTAMP and LOCALDATETIME (H2 uses LOCALDATETIME internally)
                                 includeTypes = "TIMESTAMP.*|LOCALDATETIME.*"
                             }
                         )

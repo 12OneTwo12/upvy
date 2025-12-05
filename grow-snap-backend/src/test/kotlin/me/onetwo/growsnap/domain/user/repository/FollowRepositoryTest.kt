@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.user.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.user.model.Follow
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
@@ -24,7 +25,7 @@ import org.springframework.test.context.ActiveProfiles
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("팔로우 Repository 테스트")
-class FollowRepositoryTest {
+class FollowRepositoryTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var followRepository: FollowRepository
@@ -32,8 +33,7 @@ class FollowRepositoryTest {
     @Autowired
     private lateinit var userRepository: UserRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var follower: User
     private lateinit var following: User

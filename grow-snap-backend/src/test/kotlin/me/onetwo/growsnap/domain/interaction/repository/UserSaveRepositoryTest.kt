@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.interaction.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
@@ -36,7 +37,7 @@ import java.util.UUID
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("UserSaveRepository 통합 테스트")
-class UserSaveRepositoryTest {
+class UserSaveRepositoryTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var userSaveRepository: UserSaveRepository
@@ -44,8 +45,7 @@ class UserSaveRepositoryTest {
     @Autowired
     private lateinit var userRepository: UserRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var testUserId: UUID
     private lateinit var testContentId: UUID

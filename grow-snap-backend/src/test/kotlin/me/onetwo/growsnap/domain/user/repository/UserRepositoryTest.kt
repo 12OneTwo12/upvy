@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.user.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import java.util.UUID
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
@@ -26,13 +27,12 @@ import org.springframework.test.context.ActiveProfiles
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("사용자 Repository 테스트")
-class UserRepositoryTest {
+class UserRepositoryTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var userRepository: UserRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var testUser: User
 

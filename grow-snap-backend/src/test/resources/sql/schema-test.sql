@@ -1,23 +1,28 @@
 -- Drop all tables first to ensure clean state for each test context
-DROP TABLE IF EXISTS search_history CASCADE;
-DROP TABLE IF EXISTS reports CASCADE;
-DROP TABLE IF EXISTS user_blocks CASCADE;
-DROP TABLE IF EXISTS content_blocks CASCADE;
-DROP TABLE IF EXISTS user_comment_likes CASCADE;
-DROP TABLE IF EXISTS user_content_interactions CASCADE;
-DROP TABLE IF EXISTS user_likes CASCADE;
-DROP TABLE IF EXISTS user_saves CASCADE;
-DROP TABLE IF EXISTS user_view_history CASCADE;
-DROP TABLE IF EXISTS comments CASCADE;
-DROP TABLE IF EXISTS content_subtitles CASCADE;
-DROP TABLE IF EXISTS content_interactions CASCADE;
-DROP TABLE IF EXISTS content_metadata CASCADE;
-DROP TABLE IF EXISTS content_photos CASCADE;
-DROP TABLE IF EXISTS contents CASCADE;
-DROP TABLE IF EXISTS follows CASCADE;
-DROP TABLE IF EXISTS user_profiles CASCADE;
-DROP TABLE IF EXISTS user_status_history CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
+-- Disable foreign key checks for clean drop
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS search_history;
+DROP TABLE IF EXISTS reports;
+DROP TABLE IF EXISTS user_blocks;
+DROP TABLE IF EXISTS content_blocks;
+DROP TABLE IF EXISTS user_comment_likes;
+DROP TABLE IF EXISTS user_content_interactions;
+DROP TABLE IF EXISTS user_likes;
+DROP TABLE IF EXISTS user_saves;
+DROP TABLE IF EXISTS user_view_history;
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS content_subtitles;
+DROP TABLE IF EXISTS content_interactions;
+DROP TABLE IF EXISTS content_metadata;
+DROP TABLE IF EXISTS content_photos;
+DROP TABLE IF EXISTS contents;
+DROP TABLE IF EXISTS follows;
+DROP TABLE IF EXISTS user_profiles;
+DROP TABLE IF EXISTS user_status_history;
+DROP TABLE IF EXISTS users;
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- Users Table
 CREATE TABLE users (
@@ -27,9 +32,9 @@ CREATE TABLE users (
     provider_id VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     CONSTRAINT unique_provider_user UNIQUE (provider, provider_id)
@@ -49,9 +54,9 @@ CREATE TABLE user_profiles (
     bio VARCHAR(500),
     follower_count INT DEFAULT 0,
     following_count INT DEFAULT 0,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     deleted_at_unix BIGINT NOT NULL DEFAULT 0,
@@ -72,7 +77,7 @@ CREATE TABLE user_status_history (
     new_status VARCHAR(20) NOT NULL,
     reason VARCHAR(255) NULL,
     metadata JSON NULL,
-    changed_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    changed_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     changed_by VARCHAR(36) NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -85,9 +90,9 @@ CREATE TABLE follows (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     follower_id CHAR(36) NOT NULL,
     following_id CHAR(36) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -110,9 +115,9 @@ CREATE TABLE contents (
     width INT NOT NULL,
     height INT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
@@ -132,9 +137,9 @@ CREATE TABLE content_photos (
     display_order INT NOT NULL DEFAULT 0,
     width INT NOT NULL,
     height INT NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
@@ -149,14 +154,14 @@ CREATE TABLE content_metadata (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     content_id CHAR(36) NOT NULL UNIQUE,
     title VARCHAR(200) NOT NULL,
-    description CLOB,
+    description TEXT,
     category VARCHAR(50) NOT NULL,
     tags JSON,
     difficulty_level VARCHAR(20),
     language VARCHAR(10) NOT NULL DEFAULT 'ko',
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
@@ -175,9 +180,9 @@ CREATE TABLE content_interactions (
     save_count INT DEFAULT 0,
     share_count INT DEFAULT 0,
     view_count INT DEFAULT 0,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
@@ -194,9 +199,9 @@ CREATE TABLE content_subtitles (
     content_id CHAR(36) NOT NULL,
     language VARCHAR(10) NOT NULL,
     subtitle_url VARCHAR(500) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
@@ -212,12 +217,12 @@ CREATE TABLE user_view_history (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id CHAR(36) NOT NULL,
     content_id CHAR(36) NOT NULL,
-    watched_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    watched_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     watched_duration INT DEFAULT 0,
     completion_rate INT DEFAULT 0,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -236,9 +241,9 @@ CREATE TABLE user_content_interactions (
     user_id CHAR(36) NOT NULL,
     content_id CHAR(36) NOT NULL,
     interaction_type VARCHAR(20) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -258,10 +263,10 @@ CREATE TABLE comments (
     content_id CHAR(36) NOT NULL,
     user_id CHAR(36) NOT NULL,
     parent_comment_id CHAR(36) NULL,
-    content CLOB NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    content TEXT NOT NULL,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
@@ -280,9 +285,9 @@ CREATE TABLE user_likes (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id CHAR(36) NOT NULL,
     content_id CHAR(36) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     deleted_at_unix BIGINT NOT NULL DEFAULT 0,
@@ -301,9 +306,9 @@ CREATE TABLE user_saves (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id CHAR(36) NOT NULL,
     content_id CHAR(36) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     deleted_at_unix BIGINT NOT NULL DEFAULT 0,
@@ -323,9 +328,9 @@ CREATE TABLE user_comment_likes (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id CHAR(36) NOT NULL,
     comment_id CHAR(36) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     deleted_at_unix BIGINT NOT NULL DEFAULT 0,
@@ -345,11 +350,11 @@ CREATE TABLE reports (
     target_type VARCHAR(20) NOT NULL,
     target_id CHAR(36) NOT NULL,
     reason VARCHAR(50) NOT NULL,
-    description CLOB,
+    description TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
@@ -367,9 +372,9 @@ CREATE TABLE search_history (
     user_id CHAR(36) NOT NULL,
     keyword VARCHAR(100) NOT NULL,
     search_type VARCHAR(20) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -386,9 +391,9 @@ CREATE TABLE user_blocks (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     blocker_id CHAR(36) NOT NULL,
     blocked_id CHAR(36) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -405,9 +410,9 @@ CREATE TABLE content_blocks (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id CHAR(36) NOT NULL,
     content_id CHAR(36) NOT NULL,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

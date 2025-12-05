@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.block.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.ContentStatus
@@ -33,13 +34,12 @@ import java.util.UUID
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 차단 Repository 통합 테스트")
-class ContentBlockRepositoryImplTest {
+class ContentBlockRepositoryImplTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var contentBlockRepository: ContentBlockRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var userId: UUID
     private lateinit var contentId: UUID

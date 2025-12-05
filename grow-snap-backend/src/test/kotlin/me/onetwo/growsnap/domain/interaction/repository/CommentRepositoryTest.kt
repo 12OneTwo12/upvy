@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.interaction.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.ContentStatus
@@ -36,7 +37,7 @@ import java.util.UUID
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("댓글 Repository 통합 테스트")
-class CommentRepositoryTest {
+class CommentRepositoryTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var commentRepository: CommentRepository
@@ -47,8 +48,7 @@ class CommentRepositoryTest {
     @Autowired
     private lateinit var userRepository: UserRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var testUser: User
     private lateinit var testUser2: User
@@ -386,15 +386,22 @@ class CommentRepositoryTest {
                 savedComments.add(saved)
             }
 
-            // When: 두 번째 댓글을 cursor로 설정하고 조회
-            val cursor = savedComments[1].id!!
+            // 실제 정렬 기준에 맞게 정렬 (인기도 동일 → 생성일 → ID 순)
+            val sortedComments = savedComments.sortedWith(
+                compareBy({ it.createdAt }, { it.id.toString() })
+            )
+
+            // When: 정렬된 목록에서 두 번째 댓글을 cursor로 설정하고 조회
+            val cursorIndex = 1
+            val cursor = sortedComments[cursorIndex].id!!
             val comments = commentRepository.findTopLevelCommentsByContentId(testContentId, cursor, 3).collectList().block()!!
 
-            // Then: 세 번째 댓글부터 조회됨
-            assertEquals(3, comments.size)
-            assertEquals("Comment 2", comments[0].content)
-            assertEquals("Comment 3", comments[1].content)
-            assertEquals("Comment 4", comments[2].content)
+            // Then: cursor 이후의 댓글들이 조회됨
+            val expectedComments = sortedComments.drop(cursorIndex + 1).take(3)
+            assertEquals(expectedComments.size, comments.size)
+            expectedComments.forEachIndexed { index, expected ->
+                assertEquals(expected.content, comments[index].content)
+            }
         }
 
         @Test
@@ -590,15 +597,22 @@ class CommentRepositoryTest {
                 savedReplies.add(saved)
             }
 
-            // When: 두 번째 대댓글을 cursor로 설정하고 조회
-            val cursor = savedReplies[1].id!!
+            // 실제 정렬 기준에 맞게 정렬 (생성일 → ID 순)
+            val sortedReplies = savedReplies.sortedWith(
+                compareBy({ it.createdAt }, { it.id.toString() })
+            )
+
+            // When: 정렬된 목록에서 두 번째 대댓글을 cursor로 설정하고 조회
+            val cursorIndex = 1
+            val cursor = sortedReplies[cursorIndex].id!!
             val replies = commentRepository.findRepliesByParentCommentId(parentComment.id!!, cursor, 3).collectList().block()!!
 
-            // Then: 세 번째 대댓글부터 조회됨
-            assertEquals(3, replies.size)
-            assertEquals("Reply 2", replies[0].content)
-            assertEquals("Reply 3", replies[1].content)
-            assertEquals("Reply 4", replies[2].content)
+            // Then: cursor 이후의 대댓글들이 조회됨
+            val expectedReplies = sortedReplies.drop(cursorIndex + 1).take(3)
+            assertEquals(expectedReplies.size, replies.size)
+            expectedReplies.forEachIndexed { index, expected ->
+                assertEquals(expected.content, replies[index].content)
+            }
         }
     }
 

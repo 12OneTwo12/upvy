@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.block.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.UserRole
@@ -28,13 +29,12 @@ import java.util.UUID
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("사용자 차단 Repository 통합 테스트")
-class UserBlockRepositoryImplTest {
+class UserBlockRepositoryImplTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var userBlockRepository: UserBlockRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var blockerId: UUID
     private lateinit var blockedId: UUID

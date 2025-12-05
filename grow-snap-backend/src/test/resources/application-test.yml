@@ -6,27 +6,15 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
-  # R2DBC H2 Database for Testing
-  # Using a unique DB name per JVM run to avoid test pollution
-  # Each test with @DirtiesContext will get a fresh context but share this DB instance
-  # within that JVM run, so we use timestamp to make it unique per gradle test execution
+  # R2DBC MySQL via Testcontainers
+  # MySQL and Redis connections are dynamically provided by AbstractIntegrationTest
+  # using @DynamicPropertySource with Testcontainers
+  # Schema initialization is done via MySQLContainer.withInitScript()
   r2dbc:
-    url: r2dbc:h2:mem:///testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
     pool:
       enabled: true
       initial-size: 5
       max-size: 10
-
-  # Redis Configuration is provided by @ServiceConnection in TestRedisConfig
-  # No explicit configuration needed - Testcontainers will provide dynamic host/port
-
-  # SQL Initialization
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:sql/schema-test.sql
 
   # AWS Configuration for Test
   cloud:

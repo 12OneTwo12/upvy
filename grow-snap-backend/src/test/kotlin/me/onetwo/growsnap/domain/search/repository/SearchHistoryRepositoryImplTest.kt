@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.search.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.search.model.SearchType
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
@@ -34,7 +35,7 @@ import java.util.UUID
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @ActiveProfiles("test")
 @DisplayName("검색 기록 Repository 통합 테스트")
-class SearchHistoryRepositoryImplTest {
+class SearchHistoryRepositoryImplTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var searchHistoryRepository: SearchHistoryRepository
@@ -45,8 +46,7 @@ class SearchHistoryRepositoryImplTest {
     @Autowired
     private lateinit var userProfileRepository: UserProfileRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var testUser: User
 
