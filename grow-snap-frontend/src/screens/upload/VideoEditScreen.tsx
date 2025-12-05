@@ -342,11 +342,17 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       console.log('✂️ Starting video trim with react-native-video-trim');
       console.log('✂️ Input URI:', inputUri);
 
+      // iOS URI에는 해시(#) 뒤에 메타데이터가 붙어있을 수 있음
+      // iOS plist 메타데이터는 '#YnBsaXN0'(base64 시그니처)로 시작함
+      // 파일명에 #이 있을 수 있으므로 iOS 메타데이터 패턴만 제거
+      const cleanUri = inputUri.replace(/#YnBsaXN0[A-Za-z0-9+/=]*$/, '');
+      console.log('✂️ Clean URI:', cleanUri);
+
       setIsTrimming(true);
       setTrimmingProgress(10);
 
       // 파일 유효성 검사
-      const isValid = await isValidFile(inputUri);
+      const isValid = await isValidFile(cleanUri);
       if (!isValid) {
         throw new Error('Invalid video file');
       }
@@ -356,7 +362,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
       // react-native-video-trim의 trim() 함수 호출
       // startTime, endTime은 밀리초(ms) 단위
-      const result = await trim(inputUri, {
+      const result = await trim(cleanUri, {
         startTime: Math.floor(startTime * 1000), // ms 단위
         endTime: Math.floor(endTime * 1000),     // ms 단위
       });
@@ -461,7 +467,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         const newStart = Math.max(0, Math.min(trimEndRef.current - 1, initialTrimStart.current + deltaTime));
 
         setTrimStart(newStart);
-        console.log('🟢 Dragging - dx:', gestureState.dx.toFixed(1), 'newStart:', newStart.toFixed(2));
 
         // Throttle: 100ms마다 한 번만 seek
         const now = Date.now();
