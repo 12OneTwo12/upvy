@@ -228,7 +228,7 @@ class RecommendationServiceImpl(
      * "이 콘텐츠를 좋아한 사람들은 이것도 좋아했습니다"
      *
      * ### 처리 흐름
-     * 1. Item-based CF 알고리즘으로 추천 콘텐츠 조회
+     * 1. Item-based CF 알고리즘으로 추천 콘텐츠 조회 (excludeCategory 포함)
      * 2. 추천 결과가 없으면 (신규 사용자) 인기 콘텐츠로 fallback
      * 3. 추천 결과가 부족하면 인기 콘텐츠로 보충
      *
@@ -248,39 +248,11 @@ class RecommendationServiceImpl(
         category: Category? = null,
         excludeCategory: Category? = null
     ): Flux<UUID> {
-        // excludeCategory 필터링이 필요한 경우 여유있게 더 조회
-        val cfLimit = if (excludeCategory != null) limit * CF_OVERSAMPLE_MULTIPLIER else limit
-
-        return collaborativeFilteringService.getRecommendedContents(userId, cfLimit, preferredLanguage, category)
+        return collaborativeFilteringService.getRecommendedContents(userId, limit, preferredLanguage, category, excludeCategory)
             .filter { !excludeContentIds.contains(it) }
             .collectList()
-            .flatMap { recommendedIds ->
-                filterByExcludeCategory(recommendedIds, excludeCategory, limit)
-            }
             .flatMapMany { recommendedIds ->
                 supplementWithPopularContent(userId, recommendedIds, limit, excludeContentIds, category, preferredLanguage, excludeCategory)
-            }
-    }
-
-    /**
-     * excludeCategory에 해당하는 콘텐츠 필터링
-     */
-    private fun filterByExcludeCategory(
-        contentIds: List<UUID>,
-        excludeCategory: Category?,
-        limit: Int
-    ): Mono<List<UUID>> {
-        if (excludeCategory == null || contentIds.isEmpty()) {
-            return Mono.just(contentIds.take(limit))
-        }
-
-        return feedRepository.findCategoriesByContentIds(contentIds)
-            .collectList()
-            .map { categories ->
-                contentIds.zip(categories)
-                    .filter { (_, cat) -> cat != excludeCategory.name }
-                    .map { (id, _) -> id }
-                    .take(limit)
             }
     }
 
@@ -327,8 +299,5 @@ class RecommendationServiceImpl(
 
         /** 인터리빙 시 일반 콘텐츠 개수 (4개마다 1개 FUN) */
         private const val INTERLEAVE_REGULAR_COUNT = 4
-
-        /** CF excludeCategory 필터링을 위한 오버샘플링 배수 */
-        private const val CF_OVERSAMPLE_MULTIPLIER = 2
     }
 }

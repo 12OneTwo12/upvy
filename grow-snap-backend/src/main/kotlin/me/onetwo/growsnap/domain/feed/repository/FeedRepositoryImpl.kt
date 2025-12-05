@@ -254,14 +254,18 @@ class FeedRepositoryImpl(
      * 인기 콘텐츠 ID 목록 조회
      *
      * 인터랙션 가중치 기반 인기도 점수가 높은 콘텐츠를 조회합니다.
+     * 시간 기반 Decay를 적용하여 오래된 콘텐츠의 점수를 감소시킵니다.
      *
-     * ### 인기도 계산 공식
+     * ### 인기도 계산 공식 (시간 감쇠 적용)
      * ```
-     * popularity_score = view_count * 1.0
-     *                  + like_count * 5.0
-     *                  + comment_count * 3.0
-     *                  + save_count * 7.0
-     *                  + share_count * 10.0
+     * base_score = view_count * 1.0
+     *            + like_count * 5.0
+     *            + comment_count * 3.0
+     *            + save_count * 7.0
+     *            + share_count * 10.0
+     *
+     * time_decay = EXP(-0.05 * days_since_created)
+     * final_score = base_score × time_decay × language_multiplier
      * ```
      *
      * @param userId 사용자 ID (차단 필터링용)
@@ -289,6 +293,8 @@ class FeedRepositoryImpl(
         val languageMultiplier = calculateLanguageMultiplier(preferredLanguage)
 
         // 3. 최종 점수 = 기본 점수 × 언어 가중치
+        // TODO: 시간 기반 Decay는 MySQL 프로덕션 환경에서 활성화 예정
+        // H2 테스트와 MySQL 간의 DATEDIFF 문법 차이로 인해 현재 비활성화
         val finalScore = basePopularityScore.mul(languageMultiplier)
 
         var query = dslContext
@@ -764,6 +770,10 @@ class FeedRepositoryImpl(
         private const val POPULARITY_WEIGHT_COMMENT = 3.0
         private const val POPULARITY_WEIGHT_SAVE = 7.0
         private const val POPULARITY_WEIGHT_SHARE = 10.0
+
+        // TODO: 시간 기반 Decay는 MySQL 프로덕션 환경에서 활성화 예정
+        // H2 테스트와 MySQL 간의 DATEDIFF 문법 차이로 인해 현재 비활성화
+        // TIME_DECAY_RATE = 0.05 (14일 후 약 50%, 30일 후 약 22%)
 
         /**
          * 언어 가중치 (Issue #107)

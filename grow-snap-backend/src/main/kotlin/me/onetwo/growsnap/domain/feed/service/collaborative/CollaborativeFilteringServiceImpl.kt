@@ -82,10 +82,17 @@ class CollaborativeFilteringServiceImpl(
      * @param userId 사용자 ID
      * @param limit 추천 개수
      * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en)
-     * @param category 필터링할 카테고리 (null이면 전체)
+     * @param category 포함할 카테고리 (null이면 전체)
+     * @param excludeCategory 제외할 카테고리 (null이면 제외 없음)
      * @return 추천 콘텐츠 ID 목록 (최종 점수 높은 순)
      */
-    override fun getRecommendedContents(userId: UUID, limit: Int, preferredLanguage: String, category: Category?): Flux<UUID> {
+    override fun getRecommendedContents(
+        userId: UUID,
+        limit: Int,
+        preferredLanguage: String,
+        category: Category?,
+        excludeCategory: Category?
+    ): Flux<UUID> {
         // 1. 내가 인터랙션한 콘텐츠 조회 (seed items)
         val myInteractionsMono = userContentInteractionRepository
             .findAllInteractionsByUser(userId, MAX_SEED_ITEMS)
@@ -163,8 +170,13 @@ class CollaborativeFilteringServiceImpl(
                                 val finalScores = cfScoreList.mapNotNull { (contentId, cfScore) ->
                                     val metadata = metadataMap[contentId] ?: return@mapNotNull null
 
-                                    // 카테고리 필터링 (category가 지정된 경우)
+                                    // 카테고리 포함 필터링 (category가 지정된 경우)
                                     if (category != null && metadata.category != category) {
+                                        return@mapNotNull null
+                                    }
+
+                                    // 카테고리 제외 필터링 (excludeCategory가 지정된 경우)
+                                    if (excludeCategory != null && metadata.category == excludeCategory) {
                                         return@mapNotNull null
                                     }
 
@@ -185,10 +197,11 @@ class CollaborativeFilteringServiceImpl(
                                     .map { it.first }
 
                                 logger.debug(
-                                    "Returning {} recommended contents (with language weighting and category filtering) for user {}{}",
+                                    "Returning {} recommended contents (with language weighting and category filtering) for user {}{}{}",
                                     recommendedContents.size,
                                     userId,
-                                    if (category != null) " in category ${category.name}" else ""
+                                    if (category != null) " in category ${category.name}" else "",
+                                    if (excludeCategory != null) " excluding ${excludeCategory.name}" else ""
                                 )
 
                                 Flux.fromIterable(recommendedContents)
