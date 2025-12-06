@@ -1,0 +1,27 @@
+[[notification-settings-update]]
+=== 알림 설정 수정
+
+내 알림 설정을 수정합니다. PATCH 방식으로 제공된 필드만 수정됩니다.
+
+==== Request
+
+include::{snippets}/notification-settings-update/http-request.adoc[]
+include::{snippets}/notification-settings-update/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/notification-settings-update/http-response.adoc[]
+include::{snippets}/notification-settings-update/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X PATCH http://localhost:8080/api/v1/notifications/settings \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "allNotificationsEnabled": false,
+    "likeNotificationsEnabled": true
+  }'
+----

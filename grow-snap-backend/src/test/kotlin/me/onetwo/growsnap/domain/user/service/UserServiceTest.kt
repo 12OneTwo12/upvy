@@ -4,8 +4,11 @@ import java.util.UUID
 
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
+import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.growsnap.domain.user.event.UserCreatedEvent
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import me.onetwo.growsnap.domain.user.exception.UserNotFoundException
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
@@ -38,6 +41,7 @@ class UserServiceTest {
     private lateinit var userProfileRepository: UserProfileRepository
     private lateinit var followRepository: FollowRepository
     private lateinit var userStatusHistoryRepository: UserStatusHistoryRepository
+    private lateinit var eventPublisher: ReactiveEventPublisher
     private lateinit var userService: UserService
 
     @BeforeEach
@@ -46,7 +50,14 @@ class UserServiceTest {
         userProfileRepository = mockk()
         followRepository = mockk()
         userStatusHistoryRepository = mockk()
-        userService = UserServiceImpl(userRepository, userProfileRepository, followRepository, userStatusHistoryRepository)
+        eventPublisher = mockk()
+        userService = UserServiceImpl(
+            userRepository,
+            userProfileRepository,
+            followRepository,
+            userStatusHistoryRepository,
+            eventPublisher
+        )
     }
 
     @Test
@@ -129,6 +140,7 @@ class UserServiceTest {
         every { userProfileRepository.existsByNickname(any()) } returns Mono.just(false)
         every { userProfileRepository.save(any()) } returns Mono.just(mockProfile)
         every { userStatusHistoryRepository.save(any()) } returns Mono.just(mockHistory)
+        justRun { eventPublisher.publish(any<UserCreatedEvent>()) }
 
         // When
         val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl).block()!!
@@ -141,6 +153,7 @@ class UserServiceTest {
         verify(exactly = 1) { userRepository.save(any()) }
         verify(exactly = 1) { userProfileRepository.save(any()) }
         verify(exactly = 1) { userStatusHistoryRepository.save(any()) }
+        verify(exactly = 1) { eventPublisher.publish(any<UserCreatedEvent>()) }
     }
 
     @Test
