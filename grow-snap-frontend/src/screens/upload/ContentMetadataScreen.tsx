@@ -373,6 +373,23 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                 {t('upload:metadata.english')}
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.languageButton,
+                language === 'ja' && styles.languageButtonActive,
+              ]}
+              onPress={() => setLanguage('ja')}
+            >
+              <Text
+                style={[
+                  styles.languageButtonText,
+                  language === 'ja' && styles.languageButtonTextActive,
+                ]}
+              >
+                {t('upload:metadata.japanese')}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
