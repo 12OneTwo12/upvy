@@ -26,16 +26,6 @@ data class RegisterPushTokenRequest(
 )
 
 /**
- * 푸시 토큰 삭제 요청 DTO
- *
- * @property deviceId 삭제할 디바이스 ID
- */
-data class DeletePushTokenRequest(
-    @field:NotBlank(message = "디바이스 ID는 필수입니다")
-    val deviceId: String
-)
-
-/**
  * 푸시 토큰 응답 DTO
  *
  * @property token 푸시 토큰

@@ -11,7 +11,6 @@ import me.onetwo.growsnap.domain.notification.model.PushToken
 import me.onetwo.growsnap.domain.notification.repository.NotificationRepository
 import me.onetwo.growsnap.domain.notification.repository.PushNotificationLogRepository
 import me.onetwo.growsnap.infrastructure.notification.push.PushProviderClient
-import me.onetwo.growsnap.infrastructure.notification.push.PushResult
 import me.onetwo.growsnap.domain.notification.repository.PushTokenRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service

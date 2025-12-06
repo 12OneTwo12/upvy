@@ -118,7 +118,7 @@ class NotificationControllerIntegrationTest : AbstractIntegrationTest() {
             // Given
             val (user, _) = createUserWithProfile(userRepository, userProfileRepository, email = "test@example.com")
             val notifications = mutableListOf<Notification>()
-            for (i in 1..5) {
+            repeat(5) {
                 notifications.add(createTestNotification(user.id!!))
             }
             val cursor = notifications[2].id!!

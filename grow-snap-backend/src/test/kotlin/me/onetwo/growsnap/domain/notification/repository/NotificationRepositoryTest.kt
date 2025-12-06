@@ -164,7 +164,7 @@ class NotificationRepositoryTest : AbstractIntegrationTest() {
         fun findsNotificationsWithCursor() {
             // Given
             val user = createTestUser()
-            for (i in 1..5) {
+            repeat(5) {
                 notificationRepository.save(createTestNotification(user.id!!)).block()
             }
 
@@ -186,7 +186,7 @@ class NotificationRepositoryTest : AbstractIntegrationTest() {
             // Given
             val user = createTestUser()
             val saved = mutableListOf<Notification>()
-            for (i in 1..5) {
+            repeat(5) {
                 saved.add(notificationRepository.save(createTestNotification(user.id!!)).block()!!)
             }
             val cursor = saved[2].id!! // 3번째 알림을 커서로

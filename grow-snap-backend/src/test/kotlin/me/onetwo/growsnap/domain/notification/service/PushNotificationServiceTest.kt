@@ -17,7 +17,6 @@ import me.onetwo.growsnap.domain.notification.repository.PushNotificationLogRepo
 import me.onetwo.growsnap.domain.notification.repository.PushTokenRepository
 import me.onetwo.growsnap.infrastructure.notification.push.PushProviderClient
 import me.onetwo.growsnap.infrastructure.notification.push.PushResult
-import me.onetwo.growsnap.infrastructure.notification.push.PushSendResult
 import me.onetwo.growsnap.infrastructure.notification.push.TokenResult
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
