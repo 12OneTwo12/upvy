@@ -135,22 +135,15 @@ class NotificationSettingsControllerTest {
             commentNotificationsEnabled = true,
             followNotificationsEnabled = true
         )
-        every {
-            notificationSettingsService.updateSettings(
-                userId = testUserId,
-                allNotificationsEnabled = false,
-                likeNotificationsEnabled = false,
-                commentNotificationsEnabled = true,
-                followNotificationsEnabled = true
-            )
-        } returns Mono.just(updatedSettings)
-
         val request = UpdateNotificationSettingsRequest(
             allNotificationsEnabled = false,
             likeNotificationsEnabled = false,
             commentNotificationsEnabled = true,
             followNotificationsEnabled = true
         )
+        every {
+            notificationSettingsService.updateSettings(testUserId, request)
+        } returns Mono.just(updatedSettings)
 
         // When & Then
         webTestClient
@@ -188,13 +181,7 @@ class NotificationSettingsControllerTest {
             )
 
         verify(exactly = 1) {
-            notificationSettingsService.updateSettings(
-                userId = testUserId,
-                allNotificationsEnabled = false,
-                likeNotificationsEnabled = false,
-                commentNotificationsEnabled = true,
-                followNotificationsEnabled = true
-            )
+            notificationSettingsService.updateSettings(testUserId, request)
         }
     }
 
@@ -208,19 +195,12 @@ class NotificationSettingsControllerTest {
             commentNotificationsEnabled = true,
             followNotificationsEnabled = true
         )
-        every {
-            notificationSettingsService.updateSettings(
-                userId = testUserId,
-                allNotificationsEnabled = false,
-                likeNotificationsEnabled = null,
-                commentNotificationsEnabled = null,
-                followNotificationsEnabled = null
-            )
-        } returns Mono.just(updatedSettings)
-
         val request = UpdateNotificationSettingsRequest(
             allNotificationsEnabled = false
         )
+        every {
+            notificationSettingsService.updateSettings(testUserId, request)
+        } returns Mono.just(updatedSettings)
 
         // When & Then
         webTestClient
@@ -243,13 +223,7 @@ class NotificationSettingsControllerTest {
             )
 
         verify(exactly = 1) {
-            notificationSettingsService.updateSettings(
-                userId = testUserId,
-                allNotificationsEnabled = false,
-                likeNotificationsEnabled = null,
-                commentNotificationsEnabled = null,
-                followNotificationsEnabled = null
-            )
+            notificationSettingsService.updateSettings(testUserId, request)
         }
     }
 

@@ -407,9 +407,9 @@ CREATE TABLE IF NOT EXISTS notification_settings (
     like_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '좋아요 알림 활성화 여부',
     comment_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '댓글 알림 활성화 여부',
     follow_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '팔로우 알림 활성화 여부',
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

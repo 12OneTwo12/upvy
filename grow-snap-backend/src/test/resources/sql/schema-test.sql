@@ -433,9 +433,9 @@ CREATE TABLE notification_settings (
     like_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     comment_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     follow_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
-    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

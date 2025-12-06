@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.notification.service
 
+import me.onetwo.growsnap.domain.notification.dto.UpdateNotificationSettingsRequest
 import me.onetwo.growsnap.domain.notification.model.NotificationSettings
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -25,19 +26,10 @@ interface NotificationSettingsService {
      * 사용자의 알림 설정 수정
      *
      * @param userId 사용자 ID
-     * @param allNotificationsEnabled 전체 알림 활성화 여부 (null이면 변경하지 않음)
-     * @param likeNotificationsEnabled 좋아요 알림 활성화 여부 (null이면 변경하지 않음)
-     * @param commentNotificationsEnabled 댓글 알림 활성화 여부 (null이면 변경하지 않음)
-     * @param followNotificationsEnabled 팔로우 알림 활성화 여부 (null이면 변경하지 않음)
+     * @param request 알림 설정 수정 요청 DTO
      * @return 수정된 알림 설정
      */
-    fun updateSettings(
-        userId: UUID,
-        allNotificationsEnabled: Boolean?,
-        likeNotificationsEnabled: Boolean?,
-        commentNotificationsEnabled: Boolean?,
-        followNotificationsEnabled: Boolean?
-    ): Mono<NotificationSettings>
+    fun updateSettings(userId: UUID, request: UpdateNotificationSettingsRequest): Mono<NotificationSettings>
 
     /**
      * 신규 사용자를 위한 기본 알림 설정 생성

@@ -57,15 +57,7 @@ class NotificationSettingsController(
     ): Mono<ResponseEntity<NotificationSettingsResponse>> {
         return principal
             .toUserId()
-            .flatMap { userId ->
-                notificationSettingsService.updateSettings(
-                    userId = userId,
-                    allNotificationsEnabled = request.allNotificationsEnabled,
-                    likeNotificationsEnabled = request.likeNotificationsEnabled,
-                    commentNotificationsEnabled = request.commentNotificationsEnabled,
-                    followNotificationsEnabled = request.followNotificationsEnabled
-                )
-            }
+            .flatMap { userId -> notificationSettingsService.updateSettings(userId, request) }
             .map { settings -> ResponseEntity.ok(NotificationSettingsResponse.from(settings)) }
     }
 }

@@ -3,6 +3,7 @@ package me.onetwo.growsnap.domain.notification.service
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.growsnap.domain.notification.dto.UpdateNotificationSettingsRequest
 import me.onetwo.growsnap.domain.notification.model.NotificationSettings
 import me.onetwo.growsnap.domain.notification.repository.NotificationSettingsRepository
 import org.junit.jupiter.api.BeforeEach
@@ -118,13 +119,13 @@ class NotificationSettingsServiceTest {
             every { notificationSettingsRepository.update(any()) } returns Mono.just(updatedSettings)
 
             // When
-            val result = notificationSettingsService.updateSettings(
-                userId = testUserId,
+            val request = UpdateNotificationSettingsRequest(
                 allNotificationsEnabled = false,
                 likeNotificationsEnabled = false,
                 commentNotificationsEnabled = false,
                 followNotificationsEnabled = false
             )
+            val result = notificationSettingsService.updateSettings(testUserId, request)
 
             // Then
             StepVerifier.create(result)
@@ -156,13 +157,13 @@ class NotificationSettingsServiceTest {
             every { notificationSettingsRepository.update(any()) } returns Mono.just(updatedSettings)
 
             // When
-            val result = notificationSettingsService.updateSettings(
-                userId = testUserId,
+            val request = UpdateNotificationSettingsRequest(
                 allNotificationsEnabled = false,
                 likeNotificationsEnabled = null,
                 commentNotificationsEnabled = null,
                 followNotificationsEnabled = null
             )
+            val result = notificationSettingsService.updateSettings(testUserId, request)
 
             // Then
             StepVerifier.create(result)
@@ -198,13 +199,13 @@ class NotificationSettingsServiceTest {
             every { notificationSettingsRepository.update(any()) } returns Mono.just(updatedSettings)
 
             // When
-            val result = notificationSettingsService.updateSettings(
-                userId = testUserId,
+            val request = UpdateNotificationSettingsRequest(
                 allNotificationsEnabled = false,
                 likeNotificationsEnabled = null,
                 commentNotificationsEnabled = null,
                 followNotificationsEnabled = null
             )
+            val result = notificationSettingsService.updateSettings(testUserId, request)
 
             // Then
             StepVerifier.create(result)

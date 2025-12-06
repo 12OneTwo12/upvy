@@ -234,9 +234,11 @@ class UserServiceImpl(
                 ).map { tuple -> tuple.t1 }
             }
             .doOnSuccess { savedUser ->
-                // Non-Critical Path: 알림 설정 등 후속 처리를 위해 이벤트 발행
-                eventPublisher.publish(UserCreatedEvent(userId = savedUser.id!!))
-                logger.debug("UserCreatedEvent published: userId=${savedUser.id}")
+                savedUser.id?.let { userId ->
+                    // Non-Critical Path: 알림 설정 등 후속 처리를 위해 이벤트 발행
+                    eventPublisher.publish(UserCreatedEvent(userId = userId))
+                    logger.debug("UserCreatedEvent published: userId={}", userId)
+                } ?: logger.error("Cannot publish UserCreatedEvent: user ID is null after saving")
             }
     }
 

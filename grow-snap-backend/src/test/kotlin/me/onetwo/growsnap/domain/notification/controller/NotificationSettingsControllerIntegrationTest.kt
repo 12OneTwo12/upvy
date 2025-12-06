@@ -2,7 +2,6 @@ package me.onetwo.growsnap.domain.notification.controller
 
 import me.onetwo.growsnap.config.TestSecurityConfig
 import me.onetwo.growsnap.domain.notification.dto.UpdateNotificationSettingsRequest
-import me.onetwo.growsnap.domain.notification.repository.NotificationSettingsRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
 import me.onetwo.growsnap.infrastructure.common.ApiPaths
@@ -36,9 +35,6 @@ class NotificationSettingsControllerIntegrationTest : AbstractIntegrationTest() 
 
     @Autowired
     private lateinit var userProfileRepository: UserProfileRepository
-
-    @Autowired
-    private lateinit var notificationSettingsRepository: NotificationSettingsRepository
 
     @Test
     @DisplayName("알림 설정 조회 시 설정이 없으면 기본 설정 생성")

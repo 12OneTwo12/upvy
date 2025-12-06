@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.notification.service
 
+import me.onetwo.growsnap.domain.notification.dto.UpdateNotificationSettingsRequest
 import me.onetwo.growsnap.domain.notification.model.NotificationSettings
 import me.onetwo.growsnap.domain.notification.repository.NotificationSettingsRepository
 import org.slf4j.LoggerFactory
@@ -46,35 +47,27 @@ class NotificationSettingsServiceImpl(
      * 사용자의 알림 설정 수정
      *
      * @param userId 사용자 ID
-     * @param allNotificationsEnabled 전체 알림 활성화 여부 (null이면 변경하지 않음)
-     * @param likeNotificationsEnabled 좋아요 알림 활성화 여부 (null이면 변경하지 않음)
-     * @param commentNotificationsEnabled 댓글 알림 활성화 여부 (null이면 변경하지 않음)
-     * @param followNotificationsEnabled 팔로우 알림 활성화 여부 (null이면 변경하지 않음)
+     * @param request 알림 설정 수정 요청 DTO
      * @return 수정된 알림 설정
      */
     @Transactional
-    override fun updateSettings(
-        userId: UUID,
-        allNotificationsEnabled: Boolean?,
-        likeNotificationsEnabled: Boolean?,
-        commentNotificationsEnabled: Boolean?,
-        followNotificationsEnabled: Boolean?
-    ): Mono<NotificationSettings> {
+    override fun updateSettings(userId: UUID, request: UpdateNotificationSettingsRequest): Mono<NotificationSettings> {
         return getSettings(userId)
             .flatMap { currentSettings ->
                 val updatedSettings = currentSettings.copy(
-                    allNotificationsEnabled = allNotificationsEnabled ?: currentSettings.allNotificationsEnabled,
-                    likeNotificationsEnabled = likeNotificationsEnabled ?: currentSettings.likeNotificationsEnabled,
-                    commentNotificationsEnabled = commentNotificationsEnabled ?: currentSettings.commentNotificationsEnabled,
-                    followNotificationsEnabled = followNotificationsEnabled ?: currentSettings.followNotificationsEnabled
+                    allNotificationsEnabled = request.allNotificationsEnabled ?: currentSettings.allNotificationsEnabled,
+                    likeNotificationsEnabled = request.likeNotificationsEnabled ?: currentSettings.likeNotificationsEnabled,
+                    commentNotificationsEnabled = request.commentNotificationsEnabled ?: currentSettings.commentNotificationsEnabled,
+                    followNotificationsEnabled = request.followNotificationsEnabled ?: currentSettings.followNotificationsEnabled
                 )
 
                 logger.info(
-                    "Updating notification settings: userId=$userId, " +
-                        "all=${updatedSettings.allNotificationsEnabled}, " +
-                        "like=${updatedSettings.likeNotificationsEnabled}, " +
-                        "comment=${updatedSettings.commentNotificationsEnabled}, " +
-                        "follow=${updatedSettings.followNotificationsEnabled}"
+                    "Updating notification settings: userId={}, all={}, like={}, comment={}, follow={}",
+                    userId,
+                    updatedSettings.allNotificationsEnabled,
+                    updatedSettings.likeNotificationsEnabled,
+                    updatedSettings.commentNotificationsEnabled,
+                    updatedSettings.followNotificationsEnabled
                 )
 
                 notificationSettingsRepository.update(updatedSettings)
