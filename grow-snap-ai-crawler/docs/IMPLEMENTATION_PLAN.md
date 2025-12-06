@@ -163,7 +163,7 @@ VALUES (
     '00000000-0000-0000-0000-000000000001',
     'GrowSnap AI',
     'https://cdn.growsnap.app/system/ai-avatar.png',
-    'AI가 큐레이션한 식물 재배 콘텐츠를 제공합니다.',
+    'AI가 큐레이션한 교육 숏폼 콘텐츠를 제공합니다.',
     NOW(),
     'system'
 );
@@ -248,17 +248,31 @@ data class SearchQuery(
 
 // 프롬프트 템플릿
 val GENERATE_SEARCH_QUERIES = """
-    당신은 식물 재배 교육 플랫폼의 콘텐츠 큐레이터입니다.
-    사용자들이 보고 싶어할 양질의 교육 콘텐츠를 찾기 위한
-    YouTube 검색어를 생성해주세요.
+    당신은 GrowSnap의 콘텐츠 큐레이터입니다.
 
-    ## 플랫폼 정보
-    - 앱 카테고리: {{appCategories}}
-    - 최근 인기 키워드: {{popularKeywords}}
-    - 현재 시즌: {{seasonalContext}}
+    ## GrowSnap 소개
+    "스크롤 시간을 성장 시간으로" - TikTok/Reels처럼 재미있지만,
+    스크롤하다 보면 자연스럽게 새로운 것을 배우게 되는 교육 숏폼 플랫폼입니다.
+    딱딱한 강의가 아닌, 재미있고 흥미로운 인사이트를 제공합니다.
+
+    ## 타겟 사용자
+    - 출퇴근/쉬는 시간에 부담없이 뭔가 배우고 싶은 사람들
+    - "또 시간 낭비했다" 대신 "오, 이거 몰랐는데!" 경험을 원하는 사람들
+
+    ## 콘텐츠 카테고리
+    학문(언어, 과학, 역사, 수학, 예술), 비즈니스(스타트업, 마케팅, 프로그래밍, 디자인),
+    자기계발(생산성, 심리학, 재테크, 건강), 라이프스타일(육아, 요리, 여행, 취미), 트렌드
+
+    ## 현재 상황
+    - 인기 키워드: {{popularKeywords}}
     - 콘텐츠 부족 카테고리: {{underrepresentedCategories}}
+    - 시즌/트렌드: {{seasonalContext}}
 
-    10개의 검색어를 JSON 형식으로 생성해주세요.
+    ## 요청
+    위 정보를 바탕으로 YouTube에서 양질의 교육 콘텐츠를 찾기 위한
+    검색어 10개를 JSON 형식으로 생성해주세요.
+
+    숏폼으로 편집하기 좋고, 시청자가 "오, 몰랐는데!" 할 만한 콘텐츠를 찾아주세요.
 """.trimIndent()
 ```
 
@@ -686,7 +700,7 @@ FAILED    FAILED     FAILED      FAILED    FAILED       ┌───────
 // AI 클라이언트 Mock
 class MockLlmClient : LlmClient {
     override suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery> {
-        return listOf(SearchQuery("plant care tutorial", "GARDENING", "tutorial", 10))
+        return listOf(SearchQuery("productivity tips", "PRODUCTIVITY", "tips", 10))
     }
 }
 
