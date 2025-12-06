@@ -1,0 +1,34 @@
+{
+  "title": "Notifications",
+  "button": {
+    "markAllRead": "Mark all read",
+    "delete": "Delete"
+  },
+  "empty": {
+    "title": "No notifications",
+    "subtitle": "New activity will appear here"
+  },
+  "error": {
+    "loadFailed": "Failed to load notifications",
+    "deleteFailed": "Failed to delete notification",
+    "markAllFailed": "Failed to mark all as read"
+  },
+  "settings": {
+    "title": "Notification Settings",
+    "sections": {
+      "general": "General",
+      "types": "Notification Types"
+    },
+    "allNotifications": "Notifications",
+    "allNotificationsSubtitle": "Turn all push notifications on or off",
+    "likeNotifications": "Likes",
+    "likeNotificationsSubtitle": "Get notified when someone likes your content",
+    "commentNotifications": "Comments & Replies",
+    "commentNotificationsSubtitle": "Get notified when someone comments or replies",
+    "followNotifications": "New Followers",
+    "followNotificationsSubtitle": "Get notified when someone follows you",
+    "permissionWarning": "Notifications are blocked in system settings",
+    "openSettings": "Settings",
+    "info": "Notification settings apply to this device only. Settings on other devices may differ."
+  }
+}

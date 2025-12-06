@@ -156,7 +156,6 @@ export default function SettingsScreen() {
   const { currentLanguage } = useLanguageStore();
 
   // 백엔드 API 준비 후 실제 값으로 대체될 임시 상태
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [privateAccount, setPrivateAccount] = useState(false);
 
   // 현재 선택된 언어 표시 텍스트 가져오기
@@ -379,8 +378,9 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('sections.notifications')}</Text>
 
-          <View
-            style={[styles.settingRow, styles.settingRowDisabled]}
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('NotificationSettings')}
           >
             <View style={styles.settingLeft}>
               <Ionicons
@@ -390,28 +390,18 @@ export default function SettingsScreen() {
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.settingLabel}>{t('notifications.notifications')}</Text>
-                  <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText}>{t('common:label.preparing')}</Text>
-                  </View>
-                </View>
+                <Text style={styles.settingLabel}>{t('notifications.notifications')}</Text>
                 <Text style={styles.settingSubtitle}>
                   {t('notifications.notificationsSubtitle')}
                 </Text>
               </View>
             </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              disabled={true}
-              trackColor={{
-                false: theme.colors.gray[300],
-                true: theme.colors.primary[300],
-              }}
-              thumbColor={notificationsEnabled ? theme.colors.primary[500] : theme.colors.gray[200]}
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme.colors.gray[400]}
             />
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.divider} />

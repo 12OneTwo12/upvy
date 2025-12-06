@@ -1,0 +1,34 @@
+{
+  "title": "알림",
+  "button": {
+    "markAllRead": "모두 읽음",
+    "delete": "삭제"
+  },
+  "empty": {
+    "title": "알림이 없습니다",
+    "subtitle": "새로운 활동이 있으면 여기에 표시됩니다"
+  },
+  "error": {
+    "loadFailed": "알림을 불러오는데 실패했습니다",
+    "deleteFailed": "알림 삭제에 실패했습니다",
+    "markAllFailed": "모두 읽음 처리에 실패했습니다"
+  },
+  "settings": {
+    "title": "알림 설정",
+    "sections": {
+      "general": "일반",
+      "types": "알림 유형"
+    },
+    "allNotifications": "알림",
+    "allNotificationsSubtitle": "모든 푸시 알림을 켜거나 끕니다",
+    "likeNotifications": "좋아요",
+    "likeNotificationsSubtitle": "내 콘텐츠에 좋아요를 누르면 알림",
+    "commentNotifications": "댓글 및 답글",
+    "commentNotificationsSubtitle": "내 콘텐츠에 댓글이나 답글이 달리면 알림",
+    "followNotifications": "새 팔로워",
+    "followNotificationsSubtitle": "누군가 나를 팔로우하면 알림",
+    "permissionWarning": "시스템에서 알림이 차단되어 있습니다",
+    "openSettings": "설정",
+    "info": "알림 설정은 이 기기에서만 적용됩니다. 다른 기기에서는 별도로 설정해야 합니다."
+  }
+}

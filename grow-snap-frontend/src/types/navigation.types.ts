@@ -15,6 +15,8 @@ export type RootStackParamList = {
   PrivacyPolicy: undefined;
   HelpSupport: undefined;
   BlockManagement: undefined;
+  NotificationList: undefined;
+  NotificationSettings: undefined;
 };
 
 /**

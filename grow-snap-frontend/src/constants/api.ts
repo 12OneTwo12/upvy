@@ -132,6 +132,34 @@ export const API_ENDPOINTS = {
     // 특정 검색어 삭제
     DELETE_HISTORY: (keyword: string) => `/search/history/${keyword}`,
   },
+
+  // Notification (알림)
+  NOTIFICATION: {
+    // 알림 목록 조회 (커서 기반 페이징)
+    LIST: '/notifications',
+    // 읽지 않은 알림 수 조회
+    UNREAD_COUNT: '/notifications/unread-count',
+    // 개별 알림 읽음 처리
+    MARK_AS_READ: (notificationId: number) => `/notifications/${notificationId}/read`,
+    // 모든 알림 읽음 처리
+    MARK_ALL_AS_READ: '/notifications/read-all',
+    // 개별 알림 삭제
+    DELETE: (notificationId: number) => `/notifications/${notificationId}`,
+    // 알림 설정 조회
+    SETTINGS: '/notifications/settings',
+    // 알림 설정 수정
+    UPDATE_SETTINGS: '/notifications/settings',
+  },
+
+  // Push Token (푸시 토큰)
+  PUSH_TOKEN: {
+    // 푸시 토큰 등록/갱신
+    REGISTER: '/push-tokens',
+    // 특정 디바이스 푸시 토큰 삭제
+    DELETE: (deviceId: string) => `/push-tokens/${deviceId}`,
+    // 모든 디바이스 푸시 토큰 삭제
+    DELETE_ALL: '/push-tokens',
+  },
 } as const;
 
 /**

@@ -17,6 +17,7 @@ import { RootStackParamList, ProfileStackParamList } from '@/types/navigation.ty
 import { ProfileHeader, ContentGrid } from '@/components/profile';
 import { Button, LoadingSpinner } from '@/components/common';
 import { useAuthStore } from '@/stores/authStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { getMyProfile } from '@/api/auth.api';
 import { getMyContents } from '@/api/content.api';
 import { getSavedContents } from '@/api/interaction.api';
@@ -66,6 +67,24 @@ const useStyles = createStyleSheet({
   },
   iconButton: {
     padding: theme.spacing[2],
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: theme.colors.error,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    fontSize: 10,
+    color: theme.colors.text.inverse,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   scrollView: {
     flex: 1,
@@ -154,7 +173,13 @@ export default function ProfileScreen() {
   const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const { profile: storeProfile, user, updateProfile } = useAuthStore();
+  const { unreadCount, fetchUnreadCount } = useNotificationStore();
   const [activeTab, setActiveTab] = useState<TabType>('my');
+
+  // 읽지 않은 알림 수 조회
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
 
   // 프로필 데이터 로드 (React Query)
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
@@ -215,6 +240,11 @@ export default function ProfileScreen() {
     navigation.navigate('Settings');
   };
 
+  // 알림 화면으로 이동
+  const handleNotifications = () => {
+    navigation.navigate('NotificationList');
+  };
+
   // 팔로워 목록으로 이동
   const handleFollowersPress = () => {
     if (!user?.id) return;
@@ -252,6 +282,16 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{profile.nickname}</Text>
         <View style={styles.headerIcons}>
+          <TouchableOpacity onPress={handleNotifications} style={styles.iconButton}>
+            <Ionicons name="notifications-outline" size={24} color={theme.colors.text.primary} />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleSettings} style={styles.iconButton}>
             <Ionicons name="settings-outline" size={24} color={theme.colors.text.primary} />
           </TouchableOpacity>
