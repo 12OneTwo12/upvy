@@ -590,6 +590,120 @@ crawler:
     approval-threshold: 70        # 승인 대기 기준 (미만은 자동 거절)
 ```
 
+#### 4.5.6 콘텐츠 게시 시 백엔드 테이블 INSERT
+
+> 관리자 승인 후 콘텐츠를 게시할 때 백엔드 DB에 INSERT해야 하는 테이블들
+
+```
+PublishService.publish(job, segment)
+    │
+    ├── 1. contents 테이블 INSERT
+    │       - id: UUID (새로 생성)
+    │       - creator_id: 시스템 계정 UUID
+    │       - content_type: 'VIDEO'
+    │       - url: S3 URL (편집된 클립)
+    │       - thumbnail_url: S3 URL (썸네일)
+    │       - duration: 영상 길이 (초)
+    │       - width, height: 1080x1920 (9:16)
+    │       - status: 'PUBLISHED'
+    │
+    ├── 2. content_metadata 테이블 INSERT
+    │       - content_id: contents.id 참조
+    │       - title: AI가 생성한 제목
+    │       - description: AI가 생성한 설명
+    │       - category: 카테고리 (Category enum)
+    │       - tags: JSON ["태그1", "태그2", ...]
+    │       - language: 'ko' (기본값)
+    │
+    ├── 3. content_interactions 테이블 INSERT
+    │       - content_id: contents.id 참조
+    │       - like_count: 0
+    │       - comment_count: 0
+    │       - save_count: 0
+    │       - share_count: 0
+    │       - view_count: 0
+    │
+    └── 4. ai_content_job 상태 업데이트
+            - status: 'PUBLISHED'
+            - published_content_id: contents.id 참조 (추적용)
+```
+
+**PublishService 구현 예시:**
+
+```kotlin
+@Service
+class PublishService(
+    private val contentRepository: ContentRepository,
+    private val contentMetadataRepository: ContentMetadataRepository,
+    private val contentInteractionRepository: ContentInteractionRepository,
+    private val aiContentJobRepository: AiContentJobRepository,
+    @Value("\${crawler.system-user-id}") private val systemUserId: String
+) {
+    @Transactional
+    fun publish(job: AiContentJob, segment: AiContentSegment): UUID {
+        val contentId = UUID.randomUUID()
+        val creatorId = UUID.fromString(systemUserId)
+        val now = Instant.now()
+
+        // 1. contents 테이블 INSERT
+        val content = Content(
+            id = contentId,
+            creatorId = creatorId,
+            contentType = ContentType.VIDEO,
+            url = segment.s3Key!!,
+            thumbnailUrl = segment.thumbnailS3Key!!,
+            duration = ((segment.endTimeMs - segment.startTimeMs) / 1000).toInt(),
+            width = 1080,
+            height = 1920,
+            status = ContentStatus.PUBLISHED,
+            createdAt = now,
+            createdBy = systemUserId,
+            updatedAt = now,
+            updatedBy = systemUserId
+        )
+        contentRepository.save(content)
+
+        // 2. content_metadata 테이블 INSERT
+        val metadata = ContentMetadata(
+            contentId = contentId,
+            title = segment.title ?: job.originalTitle ?: "Untitled",
+            description = segment.description,
+            category = Category.valueOf(job.category ?: "OTHER"),
+            tags = segment.keywords,
+            language = "ko",
+            createdAt = now,
+            createdBy = systemUserId,
+            updatedAt = now,
+            updatedBy = systemUserId
+        )
+        contentMetadataRepository.save(metadata)
+
+        // 3. content_interactions 테이블 INSERT (초기값 0)
+        val interaction = ContentInteraction(
+            contentId = contentId,
+            likeCount = 0,
+            commentCount = 0,
+            saveCount = 0,
+            shareCount = 0,
+            viewCount = 0,
+            createdAt = now,
+            createdBy = systemUserId,
+            updatedAt = now,
+            updatedBy = systemUserId
+        )
+        contentInteractionRepository.save(interaction)
+
+        // 4. ai_content_job 상태 업데이트
+        job.status = JobStatus.PUBLISHED
+        job.publishedContentId = contentId.toString()
+        job.updatedAt = now
+        aiContentJobRepository.save(job)
+
+        return contentId
+    }
+}
+```
+
 ---
 
 ## 5. Database Schema
