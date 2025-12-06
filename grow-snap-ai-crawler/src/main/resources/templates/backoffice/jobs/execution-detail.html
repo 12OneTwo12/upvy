@@ -76,9 +76,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="param : ${execution.jobParameters.parameters}">
-                            <td th:text="${param.key}">key</td>
-                            <td th:text="${param.value.value}">value</td>
+                        <tr th:each="jobParam : ${execution.jobParameters.parameters}">
+                            <td th:text="${jobParam.key}">key</td>
+                            <td th:text="${jobParam.value.value}">value</td>
                         </tr>
                     </tbody>
                 </table>
