@@ -111,7 +111,7 @@ class AiPoweredSearchReader(
 
             } catch (e: Exception) {
                 logger.error("AI 기반 검색 실패", e)
-                evaluatedVideos = emptyList<EvaluatedVideo>().iterator()
+                throw e  // 예외를 다시 던져서 Step을 FAILED로 처리
             }
         }
     }
