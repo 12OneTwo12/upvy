@@ -144,6 +144,12 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               if (status.isPlaying) {
                 await videoRef.current.pauseAsync();
               }
+              // 포커스 해제 시 위치 리셋 (드래그 중이 아닐 때만)
+              if (!externalIsDragging) {
+                await videoRef.current.setPositionAsync(0);
+                setProgress(0);
+                progressAnim.setValue(0);
+              }
             }
           }
         } catch (error) {
