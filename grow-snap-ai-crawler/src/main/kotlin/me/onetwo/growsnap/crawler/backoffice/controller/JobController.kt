@@ -20,8 +20,8 @@ import java.time.Instant
 class JobController(
     private val jobLauncher: JobLauncher,
     private val jobExplorer: JobExplorer,
-    @Qualifier("aiContentCrawlerJob")
-    private val aiContentCrawlerJob: Job
+    @Qualifier("aiContentJob")
+    private val aiContentJob: Job
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(JobController::class.java)
@@ -67,7 +67,7 @@ class JobController(
                 .addLong("timestamp", System.currentTimeMillis()) // 유니크 파라미터
                 .toJobParameters()
 
-            val execution = jobLauncher.run(aiContentCrawlerJob, params)
+            val execution = jobLauncher.run(aiContentJob, params)
 
             logger.info("Job 수동 실행 시작: executionId={}, triggeredBy={}", execution.id, principal.name)
 
