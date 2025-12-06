@@ -26,7 +26,7 @@ import java.security.Principal
  * @property pushTokenService 푸시 토큰 서비스
  */
 @RestController
-@RequestMapping(ApiPaths.API_V1_NOTIFICATIONS)
+@RequestMapping(ApiPaths.API_V1_PUSH_TOKENS)
 class PushTokenController(
     private val pushTokenService: PushTokenService
 ) {
@@ -40,7 +40,7 @@ class PushTokenController(
      * @param request 푸시 토큰 등록 요청
      * @return 등록된 푸시 토큰 정보
      */
-    @PostMapping("/push-tokens")
+    @PostMapping
     fun registerToken(
         principal: Mono<Principal>,
         @Valid @RequestBody request: RegisterPushTokenRequest
@@ -58,7 +58,7 @@ class PushTokenController(
      * @param deviceId 삭제할 디바이스 ID
      * @return 204 No Content
      */
-    @DeleteMapping("/push-tokens/{deviceId}")
+    @DeleteMapping("/{deviceId}")
     fun deleteToken(
         principal: Mono<Principal>,
         @PathVariable deviceId: String
@@ -77,7 +77,7 @@ class PushTokenController(
      * @param principal 인증된 사용자 Principal
      * @return 204 No Content
      */
-    @DeleteMapping("/push-tokens")
+    @DeleteMapping
     fun deleteAllTokens(
         principal: Mono<Principal>
     ): Mono<ResponseEntity<Void>> {

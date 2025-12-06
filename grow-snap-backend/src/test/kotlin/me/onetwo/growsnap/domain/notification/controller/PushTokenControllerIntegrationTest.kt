@@ -86,7 +86,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .post()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+                .uri(ApiPaths.API_V1_PUSH_TOKENS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -114,7 +114,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .post()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+                .uri(ApiPaths.API_V1_PUSH_TOKENS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -143,7 +143,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .post()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+                .uri(ApiPaths.API_V1_PUSH_TOKENS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -163,7 +163,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .post()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+                .uri(ApiPaths.API_V1_PUSH_TOKENS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""{"token": "", "deviceId": "", "deviceType": "IOS", "provider": "EXPO"}""")
                 .exchange()
@@ -186,7 +186,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens/to-delete-device")
+                .uri("${ApiPaths.API_V1_PUSH_TOKENS}/to-delete-device")
                 .exchange()
                 .expectStatus().isNoContent
 
@@ -205,7 +205,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens/non-existing-device")
+                .uri("${ApiPaths.API_V1_PUSH_TOKENS}/non-existing-device")
                 .exchange()
                 .expectStatus().isNoContent
         }
@@ -228,7 +228,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+                .uri(ApiPaths.API_V1_PUSH_TOKENS)
                 .exchange()
                 .expectStatus().isNoContent
 
@@ -247,7 +247,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
             webTestClient
                 .mutateWith(mockUser(user.id!!))
                 .delete()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+                .uri(ApiPaths.API_V1_PUSH_TOKENS)
                 .exchange()
                 .expectStatus().isNoContent
         }
@@ -269,7 +269,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
 
             webTestClient
                 .post()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+                .uri(ApiPaths.API_V1_PUSH_TOKENS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .exchange()
@@ -281,7 +281,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
         fun deleteToken_Unauthorized() {
             webTestClient
                 .delete()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens/device-id")
+                .uri("${ApiPaths.API_V1_PUSH_TOKENS}/device-id")
                 .exchange()
                 .expectStatus().isUnauthorized
         }
@@ -291,7 +291,7 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
         fun deleteAllTokens_Unauthorized() {
             webTestClient
                 .delete()
-                .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+                .uri(ApiPaths.API_V1_PUSH_TOKENS)
                 .exchange()
                 .expectStatus().isUnauthorized
         }

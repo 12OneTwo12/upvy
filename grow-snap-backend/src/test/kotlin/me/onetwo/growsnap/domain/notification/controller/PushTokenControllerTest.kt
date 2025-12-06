@@ -74,7 +74,7 @@ class PushTokenControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .post()
-            .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+            .uri(ApiPaths.API_V1_PUSH_TOKENS)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
@@ -130,7 +130,7 @@ class PushTokenControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .post()
-            .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+            .uri(ApiPaths.API_V1_PUSH_TOKENS)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
@@ -151,7 +151,7 @@ class PushTokenControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .delete()
-            .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens/{deviceId}", testDeviceId)
+            .uri("${ApiPaths.API_V1_PUSH_TOKENS}/{deviceId}", testDeviceId)
             .exchange()
             .expectStatus().isNoContent
             .expectBody()
@@ -177,7 +177,7 @@ class PushTokenControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .delete()
-            .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+            .uri(ApiPaths.API_V1_PUSH_TOKENS)
             .exchange()
             .expectStatus().isNoContent
             .expectBody()
@@ -204,7 +204,7 @@ class PushTokenControllerTest {
         // When & Then
         webTestClient
             .post()
-            .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+            .uri(ApiPaths.API_V1_PUSH_TOKENS)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
@@ -226,7 +226,7 @@ class PushTokenControllerTest {
         webTestClient
             .mutateWith(mockUser(testUserId))
             .post()
-            .uri("${ApiPaths.API_V1_NOTIFICATIONS}/push-tokens")
+            .uri(ApiPaths.API_V1_PUSH_TOKENS)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(invalidRequest)
             .exchange()
