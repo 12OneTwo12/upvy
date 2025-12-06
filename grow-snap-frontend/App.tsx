@@ -6,7 +6,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/components/common';
 import { logError } from './src/utils/errorHandler';
-import { useAuthStore } from './src/stores/authStore';
 import { useLanguageStore } from './src/stores/languageStore';
 import './src/locales'; // Initialize i18n
 

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
 import { LoadingSpinner } from '@/components/common';
+import { useNotifications } from '@/hooks/useNotifications';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
@@ -15,8 +16,29 @@ import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
 import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
 import { BlockManagementScreen } from '@/screens/settings/BlockManagementScreen';
+import NotificationListScreen from '@/screens/notification/NotificationListScreen';
+import NotificationSettingsScreen from '@/screens/notification/NotificationSettingsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/**
+ * 푸시 알림 초기화 컴포넌트
+ * 인증된 사용자에게 푸시 알림 권한을 요청하고 토큰을 등록합니다.
+ */
+function NotificationHandler() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const profile = useAuthStore((state) => state.profile);
+  const { registerToken } = useNotifications();
+
+  useEffect(() => {
+    // 로그인 완료 및 프로필 설정 완료 시 푸시 토큰 등록
+    if (isAuthenticated && profile) {
+      registerToken();
+    }
+  }, [isAuthenticated, profile, registerToken]);
+
+  return null;
+}
 
 /**
  * Root Navigator
@@ -41,6 +63,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
+      <NotificationHandler />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -66,6 +89,14 @@ export default function RootNavigator() {
             <Stack.Screen
               name="BlockManagement"
               component={BlockManagementScreen}
+            />
+            <Stack.Screen
+              name="NotificationList"
+              component={NotificationListScreen}
+            />
+            <Stack.Screen
+              name="NotificationSettings"
+              component={NotificationSettingsScreen}
             />
           </>
         )}

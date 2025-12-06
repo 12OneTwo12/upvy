@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT unique_provider_user UNIQUE (provider, provider_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_provider_id ON users(provider_id);
-CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
-CREATE INDEX IF NOT EXISTS idx_deleted_at ON users(deleted_at);
+CREATE INDEX idx_email ON users(email);
+CREATE INDEX idx_provider_id ON users(provider_id);
+CREATE INDEX idx_users_status ON users(status);
+CREATE INDEX idx_deleted_at ON users(deleted_at);
 
 -- User Status History Table (Audit Trail)
 CREATE TABLE IF NOT EXISTS user_status_history (
@@ -55,9 +55,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     CONSTRAINT unique_nickname UNIQUE (nickname, deleted_at_unix)
 );
 
-CREATE INDEX IF NOT EXISTS idx_nickname ON user_profiles(nickname);
-CREATE INDEX IF NOT EXISTS idx_user_id ON user_profiles(user_id);
-CREATE INDEX IF NOT EXISTS idx_profile_deleted_at ON user_profiles(deleted_at);
+CREATE INDEX idx_nickname ON user_profiles(nickname);
+CREATE INDEX idx_user_id ON user_profiles(user_id);
+CREATE INDEX idx_profile_deleted_at ON user_profiles(deleted_at);
 
 -- Follows Table (팔로우 관계)
 CREATE TABLE IF NOT EXISTS follows (
@@ -74,9 +74,9 @@ CREATE TABLE IF NOT EXISTS follows (
     CONSTRAINT unique_follow UNIQUE (follower_id, following_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_follower ON follows(follower_id);
-CREATE INDEX IF NOT EXISTS idx_following ON follows(following_id);
-CREATE INDEX IF NOT EXISTS idx_follow_deleted_at ON follows(deleted_at);
+CREATE INDEX idx_follower ON follows(follower_id);
+CREATE INDEX idx_following ON follows(following_id);
+CREATE INDEX idx_follow_deleted_at ON follows(deleted_at);
 
 -- Contents Table (비디오/사진 콘텐츠)
 CREATE TABLE IF NOT EXISTS contents (
@@ -97,11 +97,11 @@ CREATE TABLE IF NOT EXISTS contents (
     FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_creator_id ON contents(creator_id);
-CREATE INDEX IF NOT EXISTS idx_content_type ON contents(content_type);
-CREATE INDEX IF NOT EXISTS idx_status ON contents(status);
-CREATE INDEX IF NOT EXISTS idx_content_created_at ON contents(created_at);
-CREATE INDEX IF NOT EXISTS idx_content_deleted_at ON contents(deleted_at);
+CREATE INDEX idx_creator_id ON contents(creator_id);
+CREATE INDEX idx_content_type ON contents(content_type);
+CREATE INDEX idx_status ON contents(status);
+CREATE INDEX idx_content_created_at ON contents(created_at);
+CREATE INDEX idx_content_deleted_at ON contents(deleted_at);
 
 -- Content Photos Table (사진 콘텐츠의 사진 목록 - 1:N 관계)
 CREATE TABLE IF NOT EXISTS content_photos (
@@ -119,9 +119,9 @@ CREATE TABLE IF NOT EXISTS content_photos (
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_photo_content_id ON content_photos(content_id);
-CREATE INDEX IF NOT EXISTS idx_photo_display_order ON content_photos(content_id, display_order);
-CREATE INDEX IF NOT EXISTS idx_photo_deleted_at ON content_photos(deleted_at);
+CREATE INDEX idx_photo_content_id ON content_photos(content_id);
+CREATE INDEX idx_photo_display_order ON content_photos(content_id, display_order);
+CREATE INDEX idx_photo_deleted_at ON content_photos(deleted_at);
 
 -- Content Metadata Table (콘텐츠 메타데이터)
 CREATE TABLE IF NOT EXISTS content_metadata (
@@ -141,9 +141,9 @@ CREATE TABLE IF NOT EXISTS content_metadata (
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_metadata_content_id ON content_metadata(content_id);
-CREATE INDEX IF NOT EXISTS idx_category ON content_metadata(category);
-CREATE INDEX IF NOT EXISTS idx_metadata_deleted_at ON content_metadata(deleted_at);
+CREATE INDEX idx_metadata_content_id ON content_metadata(content_id);
+CREATE INDEX idx_category ON content_metadata(category);
+CREATE INDEX idx_metadata_deleted_at ON content_metadata(deleted_at);
 
 -- Content Interactions Table (인터랙션 카운트)
 CREATE TABLE IF NOT EXISTS content_interactions (
@@ -162,10 +162,10 @@ CREATE TABLE IF NOT EXISTS content_interactions (
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_interaction_content_id ON content_interactions(content_id);
-CREATE INDEX IF NOT EXISTS idx_like_count ON content_interactions(like_count);
-CREATE INDEX IF NOT EXISTS idx_view_count ON content_interactions(view_count);
-CREATE INDEX IF NOT EXISTS idx_interaction_deleted_at ON content_interactions(deleted_at);
+CREATE INDEX idx_interaction_content_id ON content_interactions(content_id);
+CREATE INDEX idx_like_count ON content_interactions(like_count);
+CREATE INDEX idx_view_count ON content_interactions(view_count);
+CREATE INDEX idx_interaction_deleted_at ON content_interactions(deleted_at);
 
 -- Content Subtitles Table (자막)
 CREATE TABLE IF NOT EXISTS content_subtitles (
@@ -182,9 +182,9 @@ CREATE TABLE IF NOT EXISTS content_subtitles (
     CONSTRAINT unique_content_language UNIQUE (content_id, language)
 );
 
-CREATE INDEX IF NOT EXISTS idx_subtitle_content_id ON content_subtitles(content_id);
-CREATE INDEX IF NOT EXISTS idx_subtitle_language ON content_subtitles(language);
-CREATE INDEX IF NOT EXISTS idx_subtitle_deleted_at ON content_subtitles(deleted_at);
+CREATE INDEX idx_subtitle_content_id ON content_subtitles(content_id);
+CREATE INDEX idx_subtitle_language ON content_subtitles(language);
+CREATE INDEX idx_subtitle_deleted_at ON content_subtitles(deleted_at);
 
 -- User View History Table (사용자 시청 기록)
 CREATE TABLE IF NOT EXISTS user_view_history (
@@ -203,11 +203,11 @@ CREATE TABLE IF NOT EXISTS user_view_history (
     FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_view_user_id ON user_view_history(user_id);
-CREATE INDEX IF NOT EXISTS idx_view_content_id ON user_view_history(content_id);
-CREATE INDEX IF NOT EXISTS idx_watched_at ON user_view_history(watched_at);
-CREATE INDEX IF NOT EXISTS idx_view_deleted_at ON user_view_history(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_user_watched ON user_view_history(user_id, watched_at);
+CREATE INDEX idx_view_user_id ON user_view_history(user_id);
+CREATE INDEX idx_view_content_id ON user_view_history(content_id);
+CREATE INDEX idx_watched_at ON user_view_history(watched_at);
+CREATE INDEX idx_view_deleted_at ON user_view_history(deleted_at);
+CREATE INDEX idx_user_watched ON user_view_history(user_id, watched_at);
 
 -- User Content Interactions Table (사용자별 인터랙션 기록)
 -- 협업 필터링을 위한 사용자-콘텐츠 인터랙션 저장
@@ -226,11 +226,11 @@ CREATE TABLE IF NOT EXISTS user_content_interactions (
     CONSTRAINT unique_user_content_interaction UNIQUE (user_id, content_id, interaction_type)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_interaction_user_id ON user_content_interactions(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_interaction_content_id ON user_content_interactions(content_id);
-CREATE INDEX IF NOT EXISTS idx_user_interaction_type ON user_content_interactions(interaction_type);
-CREATE INDEX IF NOT EXISTS idx_user_interaction_deleted_at ON user_content_interactions(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_user_interaction_composite ON user_content_interactions(user_id, content_id);
+CREATE INDEX idx_user_interaction_user_id ON user_content_interactions(user_id);
+CREATE INDEX idx_user_interaction_content_id ON user_content_interactions(content_id);
+CREATE INDEX idx_user_interaction_type ON user_content_interactions(interaction_type);
+CREATE INDEX idx_user_interaction_deleted_at ON user_content_interactions(deleted_at);
+CREATE INDEX idx_user_interaction_composite ON user_content_interactions(user_id, content_id);
 
 -- Comments Table (댓글 및 답글, 최대 depth 2)
 CREATE TABLE IF NOT EXISTS comments (
@@ -249,11 +249,11 @@ CREATE TABLE IF NOT EXISTS comments (
     FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_comment_content_id ON comments(content_id);
-CREATE INDEX IF NOT EXISTS idx_comment_user_id ON comments(user_id);
-CREATE INDEX IF NOT EXISTS idx_comment_parent_id ON comments(parent_comment_id);
-CREATE INDEX IF NOT EXISTS idx_comment_deleted_at ON comments(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_comment_created_at ON comments(created_at);
+CREATE INDEX idx_comment_content_id ON comments(content_id);
+CREATE INDEX idx_comment_user_id ON comments(user_id);
+CREATE INDEX idx_comment_parent_id ON comments(parent_comment_id);
+CREATE INDEX idx_comment_deleted_at ON comments(deleted_at);
+CREATE INDEX idx_comment_created_at ON comments(created_at);
 
 -- User Likes Table (사용자별 좋아요 상태)
 CREATE TABLE IF NOT EXISTS user_likes (
@@ -271,10 +271,10 @@ CREATE TABLE IF NOT EXISTS user_likes (
     CONSTRAINT unique_user_like UNIQUE (user_id, content_id, deleted_at_unix)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_like_user_id ON user_likes(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_like_content_id ON user_likes(content_id);
-CREATE INDEX IF NOT EXISTS idx_user_like_deleted_at ON user_likes(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_user_like_composite ON user_likes(user_id, content_id);
+CREATE INDEX idx_user_like_user_id ON user_likes(user_id);
+CREATE INDEX idx_user_like_content_id ON user_likes(content_id);
+CREATE INDEX idx_user_like_deleted_at ON user_likes(deleted_at);
+CREATE INDEX idx_user_like_composite ON user_likes(user_id, content_id);
 
 -- User Saves Table (사용자별 저장 상태)
 CREATE TABLE IF NOT EXISTS user_saves (
@@ -292,11 +292,11 @@ CREATE TABLE IF NOT EXISTS user_saves (
     CONSTRAINT unique_user_save UNIQUE (user_id, content_id, deleted_at_unix)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_save_user_id ON user_saves(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_save_content_id ON user_saves(content_id);
-CREATE INDEX IF NOT EXISTS idx_user_save_deleted_at ON user_saves(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_user_save_composite ON user_saves(user_id, content_id);
-CREATE INDEX IF NOT EXISTS idx_user_save_created_at ON user_saves(created_at);
+CREATE INDEX idx_user_save_user_id ON user_saves(user_id);
+CREATE INDEX idx_user_save_content_id ON user_saves(content_id);
+CREATE INDEX idx_user_save_deleted_at ON user_saves(deleted_at);
+CREATE INDEX idx_user_save_composite ON user_saves(user_id, content_id);
+CREATE INDEX idx_user_save_created_at ON user_saves(created_at);
 
 -- User Comment Likes Table (댓글별 좋아요 상태)
 CREATE TABLE IF NOT EXISTS user_comment_likes (
@@ -314,9 +314,9 @@ CREATE TABLE IF NOT EXISTS user_comment_likes (
     CONSTRAINT unique_user_comment_like UNIQUE (user_id, comment_id, deleted_at_unix)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_comment_like_comment_id ON user_comment_likes(comment_id);
-CREATE INDEX IF NOT EXISTS idx_user_comment_like_deleted_at ON user_comment_likes(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_user_comment_like_composite ON user_comment_likes(user_id, comment_id);
+CREATE INDEX idx_user_comment_like_comment_id ON user_comment_likes(comment_id);
+CREATE INDEX idx_user_comment_like_deleted_at ON user_comment_likes(deleted_at);
+CREATE INDEX idx_user_comment_like_composite ON user_comment_likes(user_id, comment_id);
 
 -- Reports Table (신고)
 CREATE TABLE IF NOT EXISTS reports (
@@ -335,11 +335,11 @@ CREATE TABLE IF NOT EXISTS reports (
     FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_report_reporter_id ON reports(reporter_id);
-CREATE INDEX IF NOT EXISTS idx_report_target ON reports(target_type, target_id);
-CREATE INDEX IF NOT EXISTS idx_report_status ON reports(status);
-CREATE INDEX IF NOT EXISTS idx_report_deleted_at ON reports(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_report_created_at ON reports(created_at);
+CREATE INDEX idx_report_reporter_id ON reports(reporter_id);
+CREATE INDEX idx_report_target ON reports(target_type, target_id);
+CREATE INDEX idx_report_status ON reports(status);
+CREATE INDEX idx_report_deleted_at ON reports(deleted_at);
+CREATE INDEX idx_report_created_at ON reports(created_at);
 
 -- Search History Table (검색 기록)
 CREATE TABLE IF NOT EXISTS search_history (
@@ -355,11 +355,11 @@ CREATE TABLE IF NOT EXISTS search_history (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_search_history_user_id ON search_history(user_id);
-CREATE INDEX IF NOT EXISTS idx_search_history_keyword ON search_history(keyword);
-CREATE INDEX IF NOT EXISTS idx_search_history_created_at ON search_history(created_at);
-CREATE INDEX IF NOT EXISTS idx_search_history_composite ON search_history(user_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_search_history_deleted_at ON search_history(deleted_at);
+CREATE INDEX idx_search_history_user_id ON search_history(user_id);
+CREATE INDEX idx_search_history_keyword ON search_history(keyword);
+CREATE INDEX idx_search_history_created_at ON search_history(created_at);
+CREATE INDEX idx_search_history_composite ON search_history(user_id, created_at);
+CREATE INDEX idx_search_history_deleted_at ON search_history(deleted_at);
 
 -- User Blocks Table (사용자 차단)
 CREATE TABLE IF NOT EXISTS user_blocks (
@@ -376,9 +376,9 @@ CREATE TABLE IF NOT EXISTS user_blocks (
     CONSTRAINT unique_user_block UNIQUE (blocker_id, blocked_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_block_blocker_id ON user_blocks(blocker_id);
-CREATE INDEX IF NOT EXISTS idx_user_block_blocked_id ON user_blocks(blocked_id);
-CREATE INDEX IF NOT EXISTS idx_user_block_deleted_at ON user_blocks(deleted_at);
+CREATE INDEX idx_user_block_blocker_id ON user_blocks(blocker_id);
+CREATE INDEX idx_user_block_blocked_id ON user_blocks(blocked_id);
+CREATE INDEX idx_user_block_deleted_at ON user_blocks(deleted_at);
 
 -- Content Blocks Table (콘텐츠 차단/관심없음)
 CREATE TABLE IF NOT EXISTS content_blocks (
@@ -395,9 +395,9 @@ CREATE TABLE IF NOT EXISTS content_blocks (
     CONSTRAINT unique_content_block UNIQUE (user_id, content_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_content_block_user_id ON content_blocks(user_id);
-CREATE INDEX IF NOT EXISTS idx_content_block_content_id ON content_blocks(content_id);
-CREATE INDEX IF NOT EXISTS idx_content_block_deleted_at ON content_blocks(deleted_at);
+CREATE INDEX idx_content_block_user_id ON content_blocks(user_id);
+CREATE INDEX idx_content_block_content_id ON content_blocks(content_id);
+CREATE INDEX idx_content_block_deleted_at ON content_blocks(deleted_at);
 
 -- Notification Settings Table (알림 설정)
 CREATE TABLE IF NOT EXISTS notification_settings (
@@ -415,8 +415,8 @@ CREATE TABLE IF NOT EXISTS notification_settings (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_notification_settings_user_id ON notification_settings(user_id);
-CREATE INDEX IF NOT EXISTS idx_notification_settings_deleted_at ON notification_settings(deleted_at);
+CREATE INDEX idx_notification_settings_user_id ON notification_settings(user_id);
+CREATE INDEX idx_notification_settings_deleted_at ON notification_settings(deleted_at);
 
 -- Push Tokens Table (푸시 토큰 - 다양한 푸시 제공자 지원)
 CREATE TABLE IF NOT EXISTS push_tokens (
@@ -435,11 +435,11 @@ CREATE TABLE IF NOT EXISTS push_tokens (
     CONSTRAINT unique_push_user_device UNIQUE (user_id, device_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_push_tokens_user_id ON push_tokens(user_id);
-CREATE INDEX IF NOT EXISTS idx_push_tokens_token ON push_tokens(token);
-CREATE INDEX IF NOT EXISTS idx_push_tokens_device_id ON push_tokens(device_id);
-CREATE INDEX IF NOT EXISTS idx_push_tokens_provider ON push_tokens(provider);
-CREATE INDEX IF NOT EXISTS idx_push_tokens_deleted_at ON push_tokens(deleted_at);
+CREATE INDEX idx_push_tokens_user_id ON push_tokens(user_id);
+CREATE INDEX idx_push_tokens_token ON push_tokens(token);
+CREATE INDEX idx_push_tokens_device_id ON push_tokens(device_id);
+CREATE INDEX idx_push_tokens_provider ON push_tokens(provider);
+CREATE INDEX idx_push_tokens_deleted_at ON push_tokens(deleted_at);
 
 -- Notifications Table (알림)
 CREATE TABLE IF NOT EXISTS notifications (
@@ -462,13 +462,13 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read);
-CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
-CREATE INDEX IF NOT EXISTS idx_notifications_deleted_at ON notifications(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
-CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_notifications_delivery_status ON notifications(delivery_status);
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_user_read ON notifications(user_id, is_read);
+CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+CREATE INDEX idx_notifications_deleted_at ON notifications(deleted_at);
+CREATE INDEX idx_notifications_type ON notifications(type);
+CREATE INDEX idx_notifications_user_created ON notifications(user_id, created_at DESC);
+CREATE INDEX idx_notifications_delivery_status ON notifications(delivery_status);
 
 -- Push Notification Logs Table (푸시 발송 로그 - Append Only)
 CREATE TABLE IF NOT EXISTS push_notification_logs (
@@ -488,8 +488,8 @@ CREATE TABLE IF NOT EXISTS push_notification_logs (
     FOREIGN KEY (push_token_id) REFERENCES push_tokens(id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_push_logs_notification_id ON push_notification_logs(notification_id);
-CREATE INDEX IF NOT EXISTS idx_push_logs_push_token_id ON push_notification_logs(push_token_id);
-CREATE INDEX IF NOT EXISTS idx_push_logs_status ON push_notification_logs(status);
-CREATE INDEX IF NOT EXISTS idx_push_logs_sent_at ON push_notification_logs(sent_at);
-CREATE INDEX IF NOT EXISTS idx_push_logs_provider ON push_notification_logs(provider);
+CREATE INDEX idx_push_logs_notification_id ON push_notification_logs(notification_id);
+CREATE INDEX idx_push_logs_push_token_id ON push_notification_logs(push_token_id);
+CREATE INDEX idx_push_logs_status ON push_notification_logs(status);
+CREATE INDEX idx_push_logs_sent_at ON push_notification_logs(sent_at);
+CREATE INDEX idx_push_logs_provider ON push_notification_logs(provider);
