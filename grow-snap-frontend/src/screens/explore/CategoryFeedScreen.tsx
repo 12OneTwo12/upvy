@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, useIsFocused, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { ExploreStackParamList } from '@/types/navigation.types';
@@ -34,6 +34,7 @@ export default function CategoryFeedScreen() {
 
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const isScreenFocused = useIsFocused();
   const { t } = useTranslation('search');
 
   // 선택된 카테고리 정보
@@ -93,7 +94,7 @@ export default function CategoryFeedScreen() {
       >
         <FeedItem
           item={item}
-          isFocused={index === currentIndex}
+          isFocused={index === currentIndex && isScreenFocused}
           shouldPreload={shouldPreload}
           hasBeenLoaded={hasBeenLoaded}
           onVideoLoaded={() => handleVideoLoaded(item.contentId)}

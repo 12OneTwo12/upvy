@@ -6,7 +6,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { View, Dimensions, StatusBar, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,6 +54,7 @@ export default function ContentViewerScreen() {
   const { t } = useTranslation('feed');
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const isScreenFocused = useIsFocused();
   const { contentId } = route.params;
 
   const [commentModalVisible, setCommentModalVisible] = useState(false);
@@ -340,7 +341,7 @@ export default function ContentViewerScreen() {
       <View style={{ height: SCREEN_HEIGHT, backgroundColor: '#000000' }}>
         <FeedItem
           item={displayItem!}
-          isFocused={!isLoading}
+          isFocused={!isLoading && isScreenFocused}
           shouldPreload={true}
           hasBeenLoaded={false}
           onVideoLoaded={() => {}}

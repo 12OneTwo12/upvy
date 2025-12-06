@@ -17,7 +17,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
@@ -29,6 +29,7 @@ export default function FeedScreen() {
   const [currentTab, setCurrentTab] = useState<FeedTab>('recommended');
   const queryClient = useQueryClient();
   const navigation = useNavigation();
+  const isScreenFocused = useIsFocused();
 
   // 피드 타입 결정
   const feedType = currentTab === 'recommended' ? 'main' : 'following';
@@ -121,7 +122,7 @@ export default function FeedScreen() {
       >
         <FeedItem
           item={item}
-          isFocused={index === currentIndex}
+          isFocused={index === currentIndex && isScreenFocused}
           shouldPreload={shouldPreload}
           hasBeenLoaded={hasBeenLoaded}
           onVideoLoaded={() => handleVideoLoaded(item.contentId)}
