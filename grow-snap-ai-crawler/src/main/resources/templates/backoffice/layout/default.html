@@ -86,22 +86,22 @@
         </div>
         <ul class="nav flex-column">
             <li class="nav-item">
-                <a class="nav-link" th:classappend="${#httpServletRequest.requestURI == '/backoffice/dashboard'} ? 'active'" href="/backoffice/dashboard">
+                <a class="nav-link" th:classappend="${currentUri == '/backoffice/dashboard'} ? 'active'" href="/backoffice/dashboard">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" th:classappend="${#httpServletRequest.requestURI.startsWith('/backoffice/pending') && !#httpServletRequest.requestURI.contains('approved') && !#httpServletRequest.requestURI.contains('rejected')} ? 'active'" href="/backoffice/pending">
+                <a class="nav-link" th:classappend="${currentUri.startsWith('/backoffice/pending') && !currentUri.contains('approved') && !currentUri.contains('rejected')} ? 'active'" href="/backoffice/pending">
                     <i class="bi bi-hourglass-split"></i> Pending
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" th:classappend="${#httpServletRequest.requestURI.contains('approved')} ? 'active'" href="/backoffice/pending/approved">
+                <a class="nav-link" th:classappend="${currentUri.contains('approved')} ? 'active'" href="/backoffice/pending/approved">
                     <i class="bi bi-check-circle"></i> Approved
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" th:classappend="${#httpServletRequest.requestURI.contains('rejected')} ? 'active'" href="/backoffice/pending/rejected">
+                <a class="nav-link" th:classappend="${currentUri.contains('rejected')} ? 'active'" href="/backoffice/pending/rejected">
                     <i class="bi bi-x-circle"></i> Rejected
                 </a>
             </li>
@@ -109,7 +109,7 @@
                 <span class="nav-link text-white-50 small text-uppercase">System</span>
             </li>
             <li class="nav-item">
-                <a class="nav-link" th:classappend="${#httpServletRequest.requestURI.startsWith('/backoffice/jobs')} ? 'active'" href="/backoffice/jobs">
+                <a class="nav-link" th:classappend="${currentUri.startsWith('/backoffice/jobs')} ? 'active'" href="/backoffice/jobs">
                     <i class="bi bi-gear"></i> Jobs
                 </a>
             </li>
