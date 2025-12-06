@@ -91,6 +91,73 @@ class ExpoPushProviderClient(
             }
             .onErrorReturn(PushSendResult(successCount = 0, failureCount = tokens.size))
     }
+
+    /**
+     * Expo Push API를 통해 푸시 알림 발송 (상세 결과 포함)
+     */
+    override fun sendPushWithResult(
+        tokens: List<String>,
+        title: String,
+        body: String,
+        data: String?
+    ): Mono<PushResult> {
+        if (tokens.isEmpty()) {
+            logger.debug("No tokens to send push notification")
+            return Mono.just(PushResult(hasSuccess = false, tokenResults = emptyList()))
+        }
+
+        val messages = tokens.map { token ->
+            mutableMapOf<String, Any?>(
+                "to" to token,
+                "title" to title,
+                "body" to body,
+                "sound" to "default"
+            ).apply {
+                if (data != null) {
+                    put("data", objectMapper.readValue(data, Map::class.java))
+                }
+            }
+        }
+
+        logger.debug("Sending Expo push notification with result: tokens={}, title={}", tokens.size, title)
+
+        return webClient.post()
+            .bodyValue(messages)
+            .retrieve()
+            .bodyToMono(ExpoPushResponse::class.java)
+            .map { response ->
+                val tokenResults = response.data?.map { ticket ->
+                    TokenResult(
+                        success = ticket.status == "ok",
+                        messageId = ticket.id,
+                        errorCode = ticket.details?.get("error")?.toString(),
+                        errorMessage = ticket.message
+                    )
+                } ?: tokens.map { TokenResult(success = false, errorMessage = "No response data") }
+
+                PushResult(
+                    hasSuccess = tokenResults.any { it.success },
+                    tokenResults = tokenResults
+                )
+            }
+            .doOnSuccess { result ->
+                val successCount = result.tokenResults.count { it.success }
+                logger.info(
+                    "Expo push notification sent with result: success={}, failure={}",
+                    successCount,
+                    result.tokenResults.size - successCount
+                )
+            }
+            .doOnError { error ->
+                logger.error("Failed to send Expo push notification with result", error)
+            }
+            .onErrorReturn(
+                PushResult(
+                    hasSuccess = false,
+                    tokenResults = tokens.map { TokenResult(success = false, errorMessage = "Network error") }
+                )
+            )
+    }
 }
 
 /**

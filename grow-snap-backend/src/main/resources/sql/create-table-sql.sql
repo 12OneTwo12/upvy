@@ -450,6 +450,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     body VARCHAR(500) NOT NULL COMMENT '알림 본문',
     data JSON NULL COMMENT '추가 데이터 (클릭 시 이동 정보 등)',
     is_read BOOLEAN NOT NULL DEFAULT FALSE COMMENT '읽음 여부',
+    delivery_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '발송 상태 (PENDING, SENT, DELIVERED, FAILED, SKIPPED)',
     actor_id CHAR(36) NULL COMMENT '알림 발생 주체 (좋아요/팔로우한 사용자)',
     target_type VARCHAR(30) NULL COMMENT '타겟 타입 (CONTENT, COMMENT)',
     target_id CHAR(36) NULL COMMENT '타겟 ID (콘텐츠 ID, 댓글 ID 등)',
@@ -467,3 +468,28 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created
 CREATE INDEX IF NOT EXISTS idx_notifications_deleted_at ON notifications(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_delivery_status ON notifications(delivery_status);
+
+-- Push Notification Logs Table (푸시 발송 로그 - Append Only)
+CREATE TABLE IF NOT EXISTS push_notification_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    notification_id BIGINT NOT NULL COMMENT '연관 알림 ID',
+    push_token_id BIGINT NULL COMMENT '사용된 푸시 토큰 ID',
+    provider VARCHAR(20) NOT NULL COMMENT '푸시 제공자 (EXPO, FCM, APNS)',
+    status VARCHAR(20) NOT NULL COMMENT '발송 상태 (SENT, DELIVERED, FAILED, EXPIRED)',
+    provider_message_id VARCHAR(255) NULL COMMENT '프로바이더 응답 ID (Expo ticket ID 등)',
+    error_code VARCHAR(50) NULL COMMENT '에러 코드',
+    error_message VARCHAR(500) NULL COMMENT '에러 메시지',
+    attempt_count INT NOT NULL DEFAULT 1 COMMENT '시도 횟수',
+    sent_at DATETIME(6) NOT NULL COMMENT '발송 시각',
+    delivered_at DATETIME(6) NULL COMMENT '도착 확인 시각',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE CASCADE,
+    FOREIGN KEY (push_token_id) REFERENCES push_tokens(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_logs_notification_id ON push_notification_logs(notification_id);
+CREATE INDEX IF NOT EXISTS idx_push_logs_push_token_id ON push_notification_logs(push_token_id);
+CREATE INDEX IF NOT EXISTS idx_push_logs_status ON push_notification_logs(status);
+CREATE INDEX IF NOT EXISTS idx_push_logs_sent_at ON push_notification_logs(sent_at);
+CREATE INDEX IF NOT EXISTS idx_push_logs_provider ON push_notification_logs(provider);

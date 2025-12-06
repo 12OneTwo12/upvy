@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.growsnap.domain.notification.model.DeliveryStatus
 import me.onetwo.growsnap.domain.notification.model.DeviceType
 import me.onetwo.growsnap.domain.notification.model.Notification
 import me.onetwo.growsnap.domain.notification.model.NotificationSettings
@@ -11,9 +12,13 @@ import me.onetwo.growsnap.domain.notification.model.NotificationTargetType
 import me.onetwo.growsnap.domain.notification.model.NotificationType
 import me.onetwo.growsnap.domain.notification.model.PushProvider
 import me.onetwo.growsnap.domain.notification.model.PushToken
+import me.onetwo.growsnap.domain.notification.repository.NotificationRepository
+import me.onetwo.growsnap.domain.notification.repository.PushNotificationLogRepository
 import me.onetwo.growsnap.domain.notification.repository.PushTokenRepository
 import me.onetwo.growsnap.infrastructure.notification.push.PushProviderClient
+import me.onetwo.growsnap.infrastructure.notification.push.PushResult
 import me.onetwo.growsnap.infrastructure.notification.push.PushSendResult
+import me.onetwo.growsnap.infrastructure.notification.push.TokenResult
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -32,7 +37,9 @@ class PushNotificationServiceTest {
 
     private lateinit var notificationService: NotificationService
     private lateinit var notificationSettingsService: NotificationSettingsService
+    private lateinit var notificationRepository: NotificationRepository
     private lateinit var pushTokenRepository: PushTokenRepository
+    private lateinit var pushLogRepository: PushNotificationLogRepository
     private lateinit var pushProviderClient: PushProviderClient
     private lateinit var objectMapper: ObjectMapper
     private lateinit var pushNotificationService: PushNotificationService
@@ -47,16 +54,22 @@ class PushNotificationServiceTest {
     fun setUp() {
         notificationService = mockk()
         notificationSettingsService = mockk()
+        notificationRepository = mockk()
         pushTokenRepository = mockk()
+        pushLogRepository = mockk()
         pushProviderClient = mockk()
         objectMapper = ObjectMapper()
 
         every { pushProviderClient.providerType } returns PushProvider.EXPO
+        every { notificationRepository.updateDeliveryStatus(any(), any()) } returns Mono.just(true)
+        every { pushLogRepository.save(any()) } returns Mono.just(mockk())
 
         pushNotificationService = PushNotificationServiceImpl(
             notificationService = notificationService,
             notificationSettingsService = notificationSettingsService,
+            notificationRepository = notificationRepository,
             pushTokenRepository = pushTokenRepository,
+            pushLogRepository = pushLogRepository,
             pushProviders = listOf(pushProviderClient),
             objectMapper = objectMapper
         )
@@ -125,7 +138,9 @@ class PushNotificationServiceTest {
             every { notificationSettingsService.getSettings(testUserId) } returns Mono.just(settings)
             every { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) } returns Mono.just(notification)
             every { pushTokenRepository.findByUserId(testUserId) } returns Flux.just(pushToken)
-            every { pushProviderClient.sendPush(any(), any(), any(), any()) } returns Mono.just(PushSendResult(1, 0))
+            every { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) } returns Mono.just(
+                PushResult(hasSuccess = true, tokenResults = listOf(TokenResult(success = true, messageId = "test-id")))
+            )
 
             // When
             val result = pushNotificationService.sendLikeNotification(
@@ -142,7 +157,7 @@ class PushNotificationServiceTest {
 
             verify(exactly = 1) { notificationSettingsService.getSettings(testUserId) }
             verify(exactly = 1) { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { pushProviderClient.sendPush(any(), any(), any(), any()) }
+            verify(exactly = 1) { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) }
         }
 
         @Test
@@ -165,11 +180,14 @@ class PushNotificationServiceTest {
         }
 
         @Test
-        @DisplayName("알림 설정이 비활성화되어 있으면 발송하지 않는다")
-        fun doesNotSendWhenDisabled() {
+        @DisplayName("알림 설정이 비활성화되어 있으면 SKIPPED 상태로 저장하고 푸시는 발송하지 않는다")
+        fun savesAsSkippedWhenDisabled() {
             // Given
             val settings = createTestSettings(likeNotificationsEnabled = false)
+            val notification = createTestNotification()
+
             every { notificationSettingsService.getSettings(testUserId) } returns Mono.just(settings)
+            every { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) } returns Mono.just(notification)
 
             // When
             val result = pushNotificationService.sendLikeNotification(
@@ -185,15 +203,20 @@ class PushNotificationServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { notificationSettingsService.getSettings(testUserId) }
-            verify(exactly = 0) { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationRepository.updateDeliveryStatus(notification.id!!, DeliveryStatus.SKIPPED) }
+            verify(exactly = 0) { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) }
         }
 
         @Test
-        @DisplayName("전체 알림이 비활성화되어 있으면 발송하지 않는다")
-        fun doesNotSendWhenAllDisabled() {
+        @DisplayName("전체 알림이 비활성화되어 있으면 SKIPPED 상태로 저장하고 푸시는 발송하지 않는다")
+        fun savesAsSkippedWhenAllDisabled() {
             // Given
             val settings = createTestSettings(allNotificationsEnabled = false)
+            val notification = createTestNotification()
+
             every { notificationSettingsService.getSettings(testUserId) } returns Mono.just(settings)
+            every { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) } returns Mono.just(notification)
 
             // When
             val result = pushNotificationService.sendLikeNotification(
@@ -208,7 +231,9 @@ class PushNotificationServiceTest {
                 .expectNext(Unit)
                 .verifyComplete()
 
-            verify(exactly = 0) { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationRepository.updateDeliveryStatus(notification.id!!, DeliveryStatus.SKIPPED) }
+            verify(exactly = 0) { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) }
         }
     }
 
@@ -227,7 +252,9 @@ class PushNotificationServiceTest {
             every { notificationSettingsService.getSettings(testUserId) } returns Mono.just(settings)
             every { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) } returns Mono.just(notification)
             every { pushTokenRepository.findByUserId(testUserId) } returns Flux.just(pushToken)
-            every { pushProviderClient.sendPush(any(), any(), any(), any()) } returns Mono.just(PushSendResult(1, 0))
+            every { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) } returns Mono.just(
+                PushResult(hasSuccess = true, tokenResults = listOf(TokenResult(success = true, messageId = "test-id")))
+            )
 
             // When
             val result = pushNotificationService.sendCommentNotification(
@@ -247,11 +274,14 @@ class PushNotificationServiceTest {
         }
 
         @Test
-        @DisplayName("댓글 알림 설정이 비활성화되어 있으면 발송하지 않는다")
-        fun doesNotSendWhenDisabled() {
+        @DisplayName("댓글 알림 설정이 비활성화되어 있으면 SKIPPED 상태로 저장하고 푸시는 발송하지 않는다")
+        fun savesAsSkippedWhenDisabled() {
             // Given
             val settings = createTestSettings(commentNotificationsEnabled = false)
+            val notification = createTestNotification()
+
             every { notificationSettingsService.getSettings(testUserId) } returns Mono.just(settings)
+            every { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) } returns Mono.just(notification)
 
             // When
             val result = pushNotificationService.sendCommentNotification(
@@ -267,7 +297,9 @@ class PushNotificationServiceTest {
                 .expectNext(Unit)
                 .verifyComplete()
 
-            verify(exactly = 0) { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationService.createNotification(any(), eq(NotificationType.COMMENT), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationRepository.updateDeliveryStatus(notification.id!!, DeliveryStatus.SKIPPED) }
+            verify(exactly = 0) { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) }
         }
     }
 
@@ -286,7 +318,9 @@ class PushNotificationServiceTest {
             every { notificationSettingsService.getSettings(testUserId) } returns Mono.just(settings)
             every { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) } returns Mono.just(notification)
             every { pushTokenRepository.findByUserId(testUserId) } returns Flux.just(pushToken)
-            every { pushProviderClient.sendPush(any(), any(), any(), any()) } returns Mono.just(PushSendResult(1, 0))
+            every { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) } returns Mono.just(
+                PushResult(hasSuccess = true, tokenResults = listOf(TokenResult(success = true, messageId = "test-id")))
+            )
 
             // When
             val result = pushNotificationService.sendFollowNotification(
@@ -304,11 +338,14 @@ class PushNotificationServiceTest {
         }
 
         @Test
-        @DisplayName("팔로우 알림 설정이 비활성화되어 있으면 발송하지 않는다")
-        fun doesNotSendWhenDisabled() {
+        @DisplayName("팔로우 알림 설정이 비활성화되어 있으면 SKIPPED 상태로 저장하고 푸시는 발송하지 않는다")
+        fun savesAsSkippedWhenDisabled() {
             // Given
             val settings = createTestSettings(followNotificationsEnabled = false)
+            val notification = createTestNotification()
+
             every { notificationSettingsService.getSettings(testUserId) } returns Mono.just(settings)
+            every { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) } returns Mono.just(notification)
 
             // When
             val result = pushNotificationService.sendFollowNotification(
@@ -322,7 +359,9 @@ class PushNotificationServiceTest {
                 .expectNext(Unit)
                 .verifyComplete()
 
-            verify(exactly = 0) { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationService.createNotification(any(), eq(NotificationType.FOLLOW), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationRepository.updateDeliveryStatus(notification.id!!, DeliveryStatus.SKIPPED) }
+            verify(exactly = 0) { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) }
         }
     }
 
@@ -331,8 +370,8 @@ class PushNotificationServiceTest {
     inner class NoPushTokenTest {
 
         @Test
-        @DisplayName("푸시 토큰이 없으면 알림은 저장하지만 푸시는 발송하지 않는다")
-        fun savesNotificationButDoesNotSendPush() {
+        @DisplayName("푸시 토큰이 없으면 알림은 저장하고 SKIPPED 상태로 표시하며 푸시는 발송하지 않는다")
+        fun savesNotificationAsSkippedAndDoesNotSendPush() {
             // Given
             val settings = createTestSettings()
             val notification = createTestNotification()
@@ -355,7 +394,8 @@ class PushNotificationServiceTest {
                 .verifyComplete()
 
             verify(exactly = 1) { notificationService.createNotification(any(), any(), any(), any(), any(), any(), any(), any()) }
-            verify(exactly = 0) { pushProviderClient.sendPush(any(), any(), any(), any()) }
+            verify(exactly = 1) { notificationRepository.updateDeliveryStatus(notification.id!!, DeliveryStatus.SKIPPED) }
+            verify(exactly = 0) { pushProviderClient.sendPushWithResult(any(), any(), any(), any()) }
         }
     }
 }

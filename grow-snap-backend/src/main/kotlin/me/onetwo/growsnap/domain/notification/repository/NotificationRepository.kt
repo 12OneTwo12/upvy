@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.notification.repository
 
+import me.onetwo.growsnap.domain.notification.model.DeliveryStatus
 import me.onetwo.growsnap.domain.notification.model.Notification
 import me.onetwo.growsnap.domain.notification.model.NotificationTargetType
 import me.onetwo.growsnap.domain.notification.model.NotificationType
@@ -40,6 +41,7 @@ class NotificationRepository(
                 .set(NOTIFICATIONS.BODY, notification.body)
                 .set(NOTIFICATIONS.DATA, notification.data?.let { JSON.json(it) })
                 .set(NOTIFICATIONS.IS_READ, notification.isRead)
+                .set(NOTIFICATIONS.DELIVERY_STATUS, notification.deliveryStatus.name)
                 .set(NOTIFICATIONS.ACTOR_ID, notification.actorId?.toString())
                 .set(NOTIFICATIONS.TARGET_TYPE, notification.targetType?.name)
                 .set(NOTIFICATIONS.TARGET_ID, notification.targetId?.toString())
@@ -49,6 +51,24 @@ class NotificationRepository(
         ).map { record ->
             notification.copy(id = record.get(NOTIFICATIONS.ID))
         }
+    }
+
+    /**
+     * 알림 발송 상태 업데이트
+     *
+     * @param id 알림 ID
+     * @param status 새로운 발송 상태
+     * @return 업데이트 성공 여부
+     */
+    fun updateDeliveryStatus(id: Long, status: DeliveryStatus): Mono<Boolean> {
+        val now = Instant.now()
+        return Mono.from(
+            dsl.update(NOTIFICATIONS)
+                .set(NOTIFICATIONS.DELIVERY_STATUS, status.name)
+                .set(NOTIFICATIONS.UPDATED_AT, now)
+                .where(NOTIFICATIONS.ID.eq(id))
+                .and(NOTIFICATIONS.DELETED_AT.isNull)
+        ).map { rowsAffected -> rowsAffected > 0 }
     }
 
     /**
@@ -178,6 +198,7 @@ class NotificationRepository(
             body = record.body!!,
             data = record.data?.toString(),
             isRead = record.isRead ?: false,
+            deliveryStatus = record.deliveryStatus?.let { DeliveryStatus.valueOf(it) } ?: DeliveryStatus.PENDING,
             actorId = record.actorId?.let { UUID.fromString(it) },
             targetType = record.targetType?.let { NotificationTargetType.valueOf(it) },
             targetId = record.targetId?.let { UUID.fromString(it) },

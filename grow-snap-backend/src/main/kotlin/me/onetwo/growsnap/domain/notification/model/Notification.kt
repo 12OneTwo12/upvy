@@ -16,6 +16,7 @@ import java.util.UUID
  * @property body 알림 본문
  * @property data 추가 데이터 (JSON 형식, 클릭 시 이동 정보 등)
  * @property isRead 읽음 여부
+ * @property deliveryStatus 발송 상태 (PENDING, SENT, DELIVERED, FAILED, SKIPPED)
  * @property actorId 알림 발생 주체 ID (좋아요/팔로우한 사용자)
  * @property targetType 타겟 유형 (CONTENT, COMMENT, USER)
  * @property targetId 타겟 ID (콘텐츠 ID, 댓글 ID 등)
@@ -33,6 +34,7 @@ data class Notification(
     val body: String,
     val data: String? = null,
     val isRead: Boolean = false,
+    val deliveryStatus: DeliveryStatus = DeliveryStatus.PENDING,
     val actorId: UUID? = null,
     val targetType: NotificationTargetType? = null,
     val targetId: UUID? = null,
