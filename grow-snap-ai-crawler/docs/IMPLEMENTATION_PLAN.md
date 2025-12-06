@@ -1,7 +1,7 @@
 # AI Content Crawler - 구현 계획서
 
 > 작성일: 2024-12-06
-> 버전: 1.0
+> 버전: 1.1
 > 관련 이슈: [#14 AI 콘텐츠 생성 시스템 구현](https://github.com/12OneTwo12/grow-snap/issues/14)
 
 ---
@@ -12,8 +12,8 @@
 YouTube CC 라이선스 콘텐츠를 자동으로 수집, 분석, 편집하여 교육용 쇼트폼 콘텐츠를 생성하는 배치 시스템 구현
 
 ### 1.2 핵심 목표
-- **자동화**: 사람 개입 최소화 (품질 검토 단계만 수동)
-- **품질 보장**: AI 기반 품질 점수 + 관리자 승인 이중 검증
+- **자동화**: AI 기반 지능형 검색 및 콘텐츠 생성
+- **품질 보장**: AI 품질 점수 + 관리자 사전 승인 (Option B)
 - **확장성**: AI 제공자(Vertex AI, OpenAI 등) 유연한 교체 가능
 - **안정성**: 실패 복구, 재시도 로직, 배치 모니터링
 
@@ -57,7 +57,7 @@ YouTube CC 라이선스 콘텐츠를 자동으로 수집, 분석, 편집하여 �
 │         │           └─────────────┘                                 │
 │         ▼                                                           │
 │  ┌─────────────┐                                                   │
-│  │  Publish    │───▶ grow-snap-backend DB                          │
+│  │  Publish    │───▶ grow-snap-backend DB (관리자 승인 후)          │
 │  └─────────────┘                                                   │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -72,8 +72,8 @@ External Services:
 
 ```
 aiContentJob
-├── Step 1: crawlStep (YouTube 비디오 검색)
-│   ├── ItemReader: YouTubeSearchReader
+├── Step 1: crawlStep (AI 기반 YouTube 검색)
+│   ├── ItemReader: AiPoweredSearchReader
 │   ├── ItemProcessor: VideoCandidateProcessor
 │   └── ItemWriter: AiContentJobWriter
 │
@@ -92,10 +92,10 @@ aiContentJob
 │   ├── ItemProcessor: VideoEditProcessor
 │   └── ItemWriter: EditedVideoWriter
 │
-└── Step 5: reviewStep (품질 검토 및 발행 준비)
+└── Step 5: reviewStep (품질 검토 → 승인 대기)
     ├── ItemReader: EditedJobReader
     ├── ItemProcessor: QualityReviewProcessor
-    └── ItemWriter: ReviewResultWriter
+    └── ItemWriter: PendingApprovalWriter
 ```
 
 ### 2.3 AI 추상화 레이어
@@ -106,6 +106,8 @@ interface LlmClient {
     suspend fun analyze(prompt: String): String
     suspend fun extractKeySegments(transcript: String): List<Segment>
     suspend fun generateMetadata(content: String): ContentMetadata
+    suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery>  // NEW
+    suspend fun evaluateVideos(candidates: List<VideoCandidate>): List<EvaluatedVideo>  // NEW
 }
 
 // STT 제공자 추상화
@@ -119,51 +121,186 @@ interface SttClient {
 
 ---
 
-## 3. Implementation Phases
+## 3. 백엔드 선행 작업 (Phase 0)
 
-### Phase 1: 인프라 및 YouTube 크롤링 (Step 1)
+> 크롤러 구현 전 백엔드에서 먼저 처리해야 할 작업
 
-#### 3.1.1 작업 목록
+### 3.1 시스템 계정 생성
+
+크롤러가 콘텐츠를 게시할 때 사용할 전용 계정이 필요합니다.
+
+#### 3.1.1 OAuthProvider 수정
+
+```kotlin
+// User.kt
+enum class OAuthProvider {
+    GOOGLE,
+    NAVER,
+    KAKAO,
+    SYSTEM    // NEW: 시스템 계정용
+}
+```
+
+#### 3.1.2 시스템 계정 생성 SQL
+
+```sql
+-- 시스템 계정 생성 (1회성)
+INSERT INTO users (id, email, provider, provider_id, role, status, created_at, created_by)
+VALUES (
+    '00000000-0000-0000-0000-000000000001',  -- 고정 UUID
+    'ai-crawler@growsnap.app',
+    'SYSTEM',
+    'ai-content-crawler',
+    'USER',
+    'ACTIVE',
+    NOW(),
+    'system'
+);
+
+-- 시스템 계정 프로필 생성
+INSERT INTO user_profiles (user_id, nickname, profile_image_url, bio, created_at, created_by)
+VALUES (
+    '00000000-0000-0000-0000-000000000001',
+    'GrowSnap AI',
+    'https://cdn.growsnap.app/system/ai-avatar.png',
+    'AI가 큐레이션한 식물 재배 콘텐츠를 제공합니다.',
+    NOW(),
+    'system'
+);
+```
+
+### 3.2 작업 목록
 
 | ID | 작업 | 파일 | 우선순위 |
 |----|------|------|----------|
-| P1-01 | YouTube Data API v3 클라이언트 구현 | `client/youtube/YouTubeClient.kt` | HIGH |
-| P1-02 | CC 라이선스 비디오 검색 로직 | `client/youtube/YouTubeSearchService.kt` | HIGH |
-| P1-03 | CrawlStep Reader 구현 | `batch/step/crawl/YouTubeSearchReader.kt` | HIGH |
-| P1-04 | CrawlStep Processor 구현 | `batch/step/crawl/VideoCandidateProcessor.kt` | HIGH |
-| P1-05 | CrawlStep Writer 구현 | `batch/step/crawl/AiContentJobWriter.kt` | HIGH |
-| P1-06 | CrawlStep 통합 설정 | `batch/config/CrawlStepConfig.kt` | HIGH |
-| P1-07 | yt-dlp 래퍼 구현 | `client/video/YtDlpWrapper.kt` | MEDIUM |
-| P1-08 | 비디오 다운로드 서비스 | `service/VideoDownloadService.kt` | MEDIUM |
-| P1-09 | 단위 테스트 작성 | `test/.../crawl/*Test.kt` | HIGH |
-| P1-10 | 통합 테스트 작성 | `test/.../CrawlStepIntegrationTest.kt` | MEDIUM |
+| P0-01 | OAuthProvider에 SYSTEM 추가 | `domain/user/model/User.kt` | CRITICAL |
+| P0-02 | 시스템 계정 생성 SQL 실행 | DB Migration | CRITICAL |
+| P0-03 | 관리자 검토 API 추가 (선택) | `AdminController.kt` | MEDIUM |
 
-#### 3.1.2 데이터 모델
+---
+
+## 4. Implementation Phases
+
+### Phase 1: AI 기반 YouTube 크롤링 (Step 1)
+
+> 기존 고정 키워드 검색 → **LLM 기반 지능형 검색**으로 변경
+
+#### 4.1.1 AI 검색 파이프라인
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    AI-Powered Search Pipeline                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
+│  │  Context    │───▶│  LLM Query  │───▶│  YouTube    │             │
+│  │  Collector  │    │  Generator  │    │  Search     │             │
+│  └─────────────┘    └─────────────┘    └──────┬──────┘             │
+│        │                                      │                     │
+│        │ 트렌드, 시즌, 카테고리                 │                     │
+│        │ 인기 콘텐츠 분석                      ▼                     │
+│        │                            ┌─────────────┐                │
+│        │                            │  LLM Video  │                │
+│        │                            │  Evaluator  │                │
+│        │                            └──────┬──────┘                │
+│        │                                   │                       │
+│        │                                   ▼ 메타데이터 기반 사전 평가   │
+│        │                            ┌─────────────┐                │
+│        └───────────────────────────▶│  Candidate  │                │
+│                                     │  Selector   │                │
+│                                     └─────────────┘                │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### 4.1.2 SearchContextCollector
 
 ```kotlin
-// YouTube API 검색 요청
-data class YouTubeSearchRequest(
-    val query: String,              // 검색 키워드
-    val maxResults: Int = 10,       // 최대 결과 수
-    val publishedAfter: String?,    // 게시일 필터
-    val videoDuration: String?,     // 영상 길이 필터 (short, medium, long)
-    val videoLicense: String = "creativeCommon"  // CC 라이선스만
-)
+/**
+ * 검색 컨텍스트 수집기
+ *
+ * 현재 트렌드, 시즌, 인기 콘텐츠를 분석하여
+ * LLM에게 제공할 컨텍스트를 생성합니다.
+ */
+interface SearchContextCollector {
+    suspend fun collect(): SearchContext
+}
 
-// 검색 결과
-data class VideoCandidate(
-    val videoId: String,
-    val title: String,
-    val channelId: String,
-    val channelTitle: String?,
-    val description: String?,
-    val publishedAt: String?,
-    val duration: String?,          // ISO 8601 (PT1H2M3S)
-    val thumbnailUrl: String?
+data class SearchContext(
+    val appCategories: List<String>,          // 앱 지원 카테고리
+    val popularKeywords: List<String>,         // 최근 인기 검색어
+    val topPerformingTags: List<String>,       // 인기 태그
+    val seasonalContext: String?,              // 계절 정보
+    val recentlyPublished: List<String>,       // 최근 게시된 콘텐츠 (중복 방지)
+    val underrepresentedCategories: List<String> // 콘텐츠 부족 카테고리
 )
 ```
 
-#### 3.1.3 API 쿼터 관리
+#### 4.1.3 LLM 검색 쿼리 생성
+
+```kotlin
+data class SearchQuery(
+    val query: String,                 // 실제 검색어
+    val targetCategory: String,        // 목표 카테고리
+    val expectedContentType: String,   // 예상 콘텐츠 유형
+    val priority: Int                  // 우선순위 (1-10)
+)
+
+// 프롬프트 템플릿
+val GENERATE_SEARCH_QUERIES = """
+    당신은 식물 재배 교육 플랫폼의 콘텐츠 큐레이터입니다.
+    사용자들이 보고 싶어할 양질의 교육 콘텐츠를 찾기 위한
+    YouTube 검색어를 생성해주세요.
+
+    ## 플랫폼 정보
+    - 앱 카테고리: {{appCategories}}
+    - 최근 인기 키워드: {{popularKeywords}}
+    - 현재 시즌: {{seasonalContext}}
+    - 콘텐츠 부족 카테고리: {{underrepresentedCategories}}
+
+    10개의 검색어를 JSON 형식으로 생성해주세요.
+""".trimIndent()
+```
+
+#### 4.1.4 LLM 비디오 사전 평가
+
+```kotlin
+/**
+ * LLM 기반 비디오 사전 평가기
+ *
+ * 실제 다운로드 전에 메타데이터만으로 품질을 평가하여
+ * API 쿼터와 처리 시간을 절약합니다.
+ */
+data class EvaluatedVideo(
+    val candidate: VideoCandidate,
+    val relevanceScore: Int,          // 관련성 점수 (0-100)
+    val educationalValue: Int,        // 교육적 가치 (0-100)
+    val predictedQuality: Int,        // 예상 품질 (0-100)
+    val recommendation: Recommendation,
+    val reasoning: String
+)
+
+enum class Recommendation {
+    HIGHLY_RECOMMENDED,   // 강력 추천 - 즉시 처리
+    RECOMMENDED,          // 추천 - 처리 대기열에 추가
+    MAYBE,                // 보류 - 다른 후보 없을 때 고려
+    SKIP                  // 제외 - 처리하지 않음
+}
+```
+
+#### 4.1.5 작업 목록
+
+| ID | 작업 | 파일 | 우선순위 |
+|----|------|------|----------|
+| P1-01 | SearchContextCollector 구현 | `search/SearchContextCollector.kt` | HIGH |
+| P1-02 | LlmSearchQueryGenerator 구현 | `search/LlmSearchQueryGenerator.kt` | HIGH |
+| P1-03 | LlmVideoEvaluator 구현 | `search/LlmVideoEvaluator.kt` | HIGH |
+| P1-04 | YouTube Data API v3 클라이언트 | `client/youtube/YouTubeClient.kt` | HIGH |
+| P1-05 | CrawlStep Reader/Processor/Writer | `batch/step/crawl/*.kt` | HIGH |
+| P1-06 | yt-dlp 래퍼 구현 | `client/video/YtDlpWrapper.kt` | MEDIUM |
+| P1-07 | 단위/통합 테스트 | `test/.../crawl/*Test.kt` | HIGH |
+
+#### 4.1.6 API 쿼터 관리
 
 ```yaml
 # YouTube Data API 쿼터: 10,000 units/day
@@ -174,31 +311,14 @@ data class VideoCandidate(
 # 전략:
 #   - 배치당 검색 10회로 제한
 #   - 검색 결과 캐싱 (Redis, TTL 24h)
-#   - 중복 비디오 필터링
-```
-
-#### 3.1.4 테스트 케이스
-
-```kotlin
-// 단위 테스트
-class YouTubeClientTest {
-    @Test fun `CC 라이선스 비디오만 검색되어야 함`()
-    @Test fun `검색 결과가 없을 때 빈 리스트 반환`()
-    @Test fun `API 할당량 초과 시 예외 처리`()
-}
-
-class VideoCandidateProcessorTest {
-    @Test fun `이미 처리된 비디오는 필터링되어야 함`()
-    @Test fun `영상 길이가 기준 미달이면 필터링`()
-    @Test fun `적합한 비디오는 AiContentJob으로 변환`()
-}
+#   - LLM 사전 평가로 불필요한 처리 최소화
 ```
 
 ---
 
 ### Phase 2: 음성-텍스트 변환 (Step 2)
 
-#### 3.2.1 작업 목록
+#### 4.2.1 작업 목록
 
 | ID | 작업 | 파일 | 우선순위 |
 |----|------|------|----------|
@@ -206,24 +326,12 @@ class VideoCandidateProcessorTest {
 | P2-02 | WhisperSttClient 구현 | `client/stt/WhisperSttClient.kt` | HIGH |
 | P2-03 | VertexAiSttClient 구현 | `client/stt/VertexAiSttClient.kt` | MEDIUM |
 | P2-04 | 오디오 추출 서비스 | `service/AudioExtractService.kt` | HIGH |
-| P2-05 | TranscribeStep Reader | `batch/step/transcribe/PendingJobReader.kt` | HIGH |
-| P2-06 | TranscribeStep Processor | `batch/step/transcribe/TranscribeProcessor.kt` | HIGH |
-| P2-07 | TranscribeStep Writer | `batch/step/transcribe/TranscriptWriter.kt` | HIGH |
-| P2-08 | TranscribeStep 설정 | `batch/config/TranscribeStepConfig.kt` | HIGH |
-| P2-09 | 단위/통합 테스트 | `test/.../transcribe/*Test.kt` | HIGH |
+| P2-05 | TranscribeStep Reader/Processor/Writer | `batch/step/transcribe/*.kt` | HIGH |
+| P2-06 | 단위/통합 테스트 | `test/.../transcribe/*Test.kt` | HIGH |
 
-#### 3.2.2 Whisper API 통합
+#### 4.2.2 Whisper API 통합
 
 ```kotlin
-// Whisper API 요청 형식
-data class WhisperRequest(
-    val audioUrl: String,
-    val language: String = "ko",      // 기본 한국어
-    val responseFormat: String = "verbose_json",
-    val timestampGranularities: List<String> = listOf("segment")
-)
-
-// 응답 파싱
 data class TranscriptResult(
     val text: String,                 // 전체 텍스트
     val segments: List<TranscriptSegment>,
@@ -238,7 +346,7 @@ data class TranscriptSegment(
 )
 ```
 
-#### 3.2.3 오디오 처리 파이프라인
+#### 4.2.3 오디오 처리 파이프라인
 
 ```
 1. 비디오 파일 → FFmpeg → 오디오 추출 (MP3/WAV)
@@ -252,7 +360,7 @@ data class TranscriptSegment(
 
 ### Phase 3: LLM 분석 및 세그먼트 추출 (Step 3)
 
-#### 3.3.1 작업 목록
+#### 4.3.1 작업 목록
 
 | ID | 작업 | 파일 | 우선순위 |
 |----|------|------|----------|
@@ -260,13 +368,10 @@ data class TranscriptSegment(
 | P3-02 | VertexAiLlmClient 구현 | `client/llm/VertexAiLlmClient.kt` | HIGH |
 | P3-03 | OpenAiLlmClient 구현 | `client/llm/OpenAiLlmClient.kt` | MEDIUM |
 | P3-04 | 프롬프트 템플릿 관리 | `prompt/PromptTemplates.kt` | HIGH |
-| P3-05 | AnalyzeStep Reader | `batch/step/analyze/TranscribedJobReader.kt` | HIGH |
-| P3-06 | AnalyzeStep Processor | `batch/step/analyze/LlmAnalyzeProcessor.kt` | HIGH |
-| P3-07 | AnalyzeStep Writer | `batch/step/analyze/AnalysisWriter.kt` | HIGH |
-| P3-08 | AnalyzeStep 설정 | `batch/config/AnalyzeStepConfig.kt` | HIGH |
-| P3-09 | 단위/통합 테스트 | `test/.../analyze/*Test.kt` | HIGH |
+| P3-05 | AnalyzeStep Reader/Processor/Writer | `batch/step/analyze/*.kt` | HIGH |
+| P3-06 | 단위/통합 테스트 | `test/.../analyze/*Test.kt` | HIGH |
 
-#### 3.3.2 LLM 프롬프트 설계
+#### 4.3.2 LLM 프롬프트 설계
 
 ```kotlin
 object PromptTemplates {
@@ -285,8 +390,6 @@ object PromptTemplates {
 
         자막 내용:
         {{transcript}}
-
-        JSON 형식으로만 응답하세요:
     """.trimIndent()
 
     val METADATA_GENERATION = """
@@ -297,7 +400,7 @@ object PromptTemplates {
         추출된 구간: {{segment}}
 
         다음 형식으로 응답해주세요:
-        - title: 매력적인 제목 (30자 이내, 이모지 포함)
+        - title: 매력적인 제목 (30자 이내)
         - description: 설명 (100자 이내)
         - tags: 해시태그 (5개)
         - category: 카테고리
@@ -306,34 +409,11 @@ object PromptTemplates {
 }
 ```
 
-#### 3.3.3 LLM 응답 파싱
-
-```kotlin
-data class SegmentExtractionResponse(
-    val segments: List<Segment>
-)
-
-data class Segment(
-    val startTimeMs: Long,
-    val endTimeMs: Long,
-    val title: String,
-    val description: String?,
-    val keywords: List<String>,
-    val qualityScore: Int
-)
-
-// JSON 파싱 유틸리티
-class LlmResponseParser {
-    fun parseSegments(response: String): List<Segment>
-    fun parseMetadata(response: String): ContentMetadata
-}
-```
-
 ---
 
 ### Phase 4: 비디오 편집 (Step 4)
 
-#### 3.4.1 작업 목록
+#### 4.4.1 작업 목록
 
 | ID | 작업 | 파일 | 우선순위 |
 |----|------|------|----------|
@@ -341,91 +421,120 @@ class LlmResponseParser {
 | P4-02 | 비디오 클리핑 서비스 | `service/VideoClipService.kt` | HIGH |
 | P4-03 | 썸네일 생성 서비스 | `service/ThumbnailService.kt` | MEDIUM |
 | P4-04 | S3 업로드 서비스 | `service/S3UploadService.kt` | HIGH |
-| P4-05 | EditStep Reader | `batch/step/edit/AnalyzedJobReader.kt` | HIGH |
-| P4-06 | EditStep Processor | `batch/step/edit/VideoEditProcessor.kt` | HIGH |
-| P4-07 | EditStep Writer | `batch/step/edit/EditedVideoWriter.kt` | HIGH |
-| P4-08 | EditStep 설정 | `batch/config/EditStepConfig.kt` | HIGH |
-| P4-09 | 단위/통합 테스트 | `test/.../edit/*Test.kt` | HIGH |
+| P4-05 | EditStep Reader/Processor/Writer | `batch/step/edit/*.kt` | HIGH |
+| P4-06 | 단위/통합 테스트 | `test/.../edit/*Test.kt` | HIGH |
 
-#### 3.4.2 FFmpeg 명령어 템플릿
+#### 4.4.2 FFmpeg 명령어 템플릿
 
 ```kotlin
 object FFmpegCommands {
 
     // 구간 클리핑
-    fun clip(input: String, output: String, startMs: Long, endMs: Long): List<String> {
-        val startSec = startMs / 1000.0
-        val durationSec = (endMs - startMs) / 1000.0
-        return listOf(
-            "ffmpeg", "-i", input,
-            "-ss", startSec.toString(),
-            "-t", durationSec.toString(),
-            "-c:v", "libx264",
-            "-c:a", "aac",
-            "-y", output
-        )
-    }
+    fun clip(input: String, output: String, startMs: Long, endMs: Long): List<String>
 
     // 썸네일 추출
-    fun thumbnail(input: String, output: String, timeMs: Long): List<String> {
-        val timeSec = timeMs / 1000.0
-        return listOf(
-            "ffmpeg", "-i", input,
-            "-ss", timeSec.toString(),
-            "-vframes", "1",
-            "-q:v", "2",
-            "-y", output
-        )
-    }
+    fun thumbnail(input: String, output: String, timeMs: Long): List<String>
 
     // 세로 리사이징 (9:16 쇼츠 포맷)
-    fun resizeVertical(input: String, output: String): List<String> {
-        return listOf(
-            "ffmpeg", "-i", input,
-            "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
-            "-c:a", "copy",
-            "-y", output
-        )
-    }
+    fun resizeVertical(input: String, output: String): List<String>
 }
 ```
 
-#### 3.4.3 S3 구조
+#### 4.4.3 S3 구조
 
 ```
 s3://grow-snap-ai-content/
 ├── raw/                      # 원본 다운로드
-│   └── {videoId}/
-│       └── video.mp4
+│   └── {videoId}/video.mp4
 ├── clips/                    # 편집된 클립
-│   └── {jobId}/
-│       └── {segmentId}.mp4
+│   └── {jobId}/{segmentId}.mp4
 ├── thumbnails/               # 썸네일
-│   └── {jobId}/
-│       └── {segmentId}.jpg
+│   └── {jobId}/{segmentId}.jpg
 └── temp/                     # 임시 파일 (자동 정리)
-    └── audio/
-        └── {jobId}.mp3
+    └── audio/{jobId}.mp3
 ```
 
 ---
 
-### Phase 5: 품질 검토 및 발행 (Step 5)
+### Phase 5: 품질 검토 및 승인 대기 (Step 5)
 
-#### 3.5.1 작업 목록
+> **Option B 적용**: 모든 콘텐츠는 관리자 사전 승인 필요
 
-| ID | 작업 | 파일 | 우선순위 |
-|----|------|------|----------|
-| P5-01 | 품질 점수 계산 서비스 | `service/QualityScoreService.kt` | HIGH |
-| P5-02 | ReviewStep Reader | `batch/step/review/EditedJobReader.kt` | HIGH |
-| P5-03 | ReviewStep Processor | `batch/step/review/QualityReviewProcessor.kt` | HIGH |
-| P5-04 | ReviewStep Writer | `batch/step/review/ReviewResultWriter.kt` | HIGH |
-| P5-05 | ReviewStep 설정 | `batch/config/ReviewStepConfig.kt` | HIGH |
-| P5-06 | 관리자 승인 API | 백엔드 연동 | MEDIUM |
-| P5-07 | 발행 서비스 | `service/PublishService.kt` | HIGH |
-| P5-08 | 단위/통합 테스트 | `test/.../review/*Test.kt` | HIGH |
+#### 4.5.1 품질 점수 처리 플로우
 
-#### 3.5.2 품질 점수 산정 기준
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      Quality Review Flow (Option B)                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  품질 점수 산정                                                       │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────┐            │
+│  │                    Score >= 85                       │            │
+│  │              PENDING_APPROVAL (우선)                 │───────┐    │
+│  │                  priority: HIGH                      │       │    │
+│  └─────────────────────────────────────────────────────┘       │    │
+│                                                                │    │
+│  ┌─────────────────────────────────────────────────────┐       │    │
+│  │                  70 <= Score < 85                    │       │    │
+│  │              PENDING_APPROVAL (일반)                 │───────┤    │
+│  │                  priority: NORMAL                    │       │    │
+│  └─────────────────────────────────────────────────────┘       │    │
+│                                                                │    │
+│  ┌─────────────────────────────────────────────────────┐       │    │
+│  │                    Score < 70                        │       │    │
+│  │                    REJECTED                          │       │    │
+│  │              (자동 거절, 검토 불필요)                  │       │    │
+│  └─────────────────────────────────────────────────────┘       │    │
+│                                                                │    │
+│                          ┌─────────────────────┐               │    │
+│                          │   관리자 검토 대기열  │◀──────────────┘    │
+│                          │   (우선순위별 정렬)   │                    │
+│                          └──────────┬──────────┘                    │
+│                                     │                               │
+│                    ┌────────────────┼────────────────┐              │
+│                    ▼                ▼                ▼              │
+│               APPROVED          REJECTED         NEEDS_EDIT         │
+│                  │                                   │              │
+│                  ▼                                   ▼              │
+│              PUBLISHED                         재편집 후 재심사       │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### 4.5.2 JobStatus 및 ReviewPriority
+
+```kotlin
+enum class JobStatus {
+    // 처리 단계
+    PENDING,              // 생성됨, 처리 대기
+    CRAWLED,              // 비디오 다운로드 완료
+    TRANSCRIBED,          // 음성-텍스트 변환 완료
+    ANALYZED,             // LLM 분석 완료
+    EDITED,               // 비디오 편집 완료
+
+    // 검토 단계
+    PENDING_APPROVAL,     // 관리자 승인 대기
+
+    // 최종 상태
+    APPROVED,             // 승인됨 (게시 준비 완료)
+    PUBLISHED,            // 게시 완료
+    REJECTED,             // 거절됨
+    NEEDS_EDIT,           // 재편집 필요
+
+    // 에러
+    FAILED                // 처리 실패
+}
+
+enum class ReviewPriority {
+    HIGH,     // 85점 이상 - 우선 검토
+    NORMAL,   // 70-84점 - 일반 검토
+    LOW       // 기타
+}
+```
+
+#### 4.5.3 품질 점수 산정 기준
 
 ```kotlin
 data class QualityScore(
@@ -436,50 +545,42 @@ data class QualityScore(
     val educationalValue: Int         // 교육적 가치 (0-25)
 )
 
-// 자동 처리 기준
-// - 70점 이상: 관리자 승인 대기열로 이동
-// - 50-69점: 수동 검토 필요 (NEEDS_REVIEW)
-// - 50점 미만: 자동 거절 (REJECTED)
+// 처리 기준 (Option B)
+// - 85점 이상: PENDING_APPROVAL (priority: HIGH) - 우선 검토
+// - 70-84점: PENDING_APPROVAL (priority: NORMAL) - 일반 검토
+// - 70점 미만: REJECTED - 자동 거절
 ```
 
-#### 3.5.3 백엔드 연동
+#### 4.5.4 작업 목록
 
-```kotlin
-// 승인된 콘텐츠 → 백엔드 content 테이블에 삽입
-// 공유 DB 사용으로 직접 삽입 가능
+| ID | 작업 | 파일 | 우선순위 |
+|----|------|------|----------|
+| P5-01 | 품질 점수 계산 서비스 | `service/QualityScoreService.kt` | HIGH |
+| P5-02 | ReviewStep Reader/Processor/Writer | `batch/step/review/*.kt` | HIGH |
+| P5-03 | PublishService (승인 후 게시) | `service/PublishService.kt` | HIGH |
+| P5-04 | 단위/통합 테스트 | `test/.../review/*Test.kt` | HIGH |
 
-@Entity
-@Table(name = "content")
-class Content(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+#### 4.5.5 크롤러 설정
 
-    val userId: Long,                 // AI 크리에이터 계정 ID
-    val title: String,
-    val description: String,
-    val contentUrl: String,           // S3 URL
-    val thumbnailUrl: String,
-    val category: String,
-    val tags: String,                 // JSON array
-    val status: String = "PUBLISHED",
-    val sourceType: String = "AI_GENERATED",
-    val originalVideoId: String?,     // YouTube 원본 ID
+```yaml
+# grow-snap-ai-crawler/application.yml
 
-    // Audit Trail
-    val createdAt: LocalDateTime,
-    val createdBy: String = "system",
-    val updatedAt: LocalDateTime,
-    val updatedBy: String = "system",
-    val deletedAt: LocalDateTime? = null
-)
+crawler:
+  # 콘텐츠 게시에 사용할 시스템 계정 ID
+  system-user-id: "00000000-0000-0000-0000-000000000001"
+  system-user-name: "GrowSnap AI"
+
+  # 품질 점수 기준
+  quality:
+    high-priority-threshold: 85   # 우선 검토 기준
+    approval-threshold: 70        # 승인 대기 기준 (미만은 자동 거절)
 ```
 
 ---
 
-## 4. Database Schema
+## 5. Database Schema
 
-### 4.1 테이블 설계
+### 5.1 테이블 설계
 
 ```sql
 -- AI 콘텐츠 작업 테이블
@@ -494,6 +595,10 @@ CREATE TABLE ai_content_job (
     transcript_text TEXT,
     raw_video_s3_key VARCHAR(500),
     quality_score INT,
+    review_priority VARCHAR(20),      -- HIGH, NORMAL, LOW
+    reviewed_at DATETIME,
+    reviewed_by VARCHAR(100),
+    review_comment TEXT,
     error_message TEXT,
     retry_count INT DEFAULT 0,
 
@@ -505,6 +610,8 @@ CREATE TABLE ai_content_job (
     deleted_at DATETIME,
 
     INDEX idx_status (status),
+    INDEX idx_review_priority (review_priority),
+    INDEX idx_status_priority (status, review_priority),
     INDEX idx_youtube_video_id (youtube_video_id),
     INDEX idx_created_at (created_at)
 );
@@ -534,42 +641,25 @@ CREATE TABLE ai_content_segment (
     INDEX idx_job_id (job_id),
     INDEX idx_is_selected (is_selected)
 );
-
--- 검색 키워드 관리 테이블
-CREATE TABLE ai_search_keyword (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    keyword VARCHAR(200) NOT NULL,
-    category VARCHAR(100),
-    priority INT DEFAULT 0,
-    is_active BOOLEAN DEFAULT TRUE,
-    last_searched_at DATETIME,
-
-    -- Audit Trail
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(100) NOT NULL DEFAULT 'system',
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(100) NOT NULL DEFAULT 'system',
-    deleted_at DATETIME,
-
-    UNIQUE INDEX idx_keyword (keyword)
-);
 ```
 
-### 4.2 상태 전이 다이어그램
+### 5.2 상태 전이 다이어그램
 
 ```
 PENDING → CRAWLED → TRANSCRIBED → ANALYZED → EDITED → PENDING_APPROVAL
    ↓          ↓           ↓            ↓          ↓              ↓
-FAILED    FAILED     FAILED      FAILED    FAILED       APPROVED/REJECTED
-                                                              ↓
-                                                         PUBLISHED
+FAILED    FAILED     FAILED      FAILED    FAILED       ┌────────┴────────┐
+                                                        ▼                 ▼
+                                                   APPROVED           REJECTED
+                                                      ↓
+                                                  PUBLISHED
 ```
 
 ---
 
-## 5. Testing Strategy
+## 6. Testing Strategy
 
-### 5.1 테스트 피라미드
+### 6.1 테스트 피라미드
 
 ```
                     ┌───────────────────┐
@@ -581,7 +671,7 @@ FAILED    FAILED     FAILED      FAILED    FAILED       APPROVED/REJECTED
                     └───────────────────┘
 ```
 
-### 5.2 테스트 범위
+### 6.2 테스트 범위
 
 | 영역 | 커버리지 목표 | 필수 테스트 |
 |------|--------------|------------|
@@ -590,13 +680,13 @@ FAILED    FAILED     FAILED      FAILED    FAILED       APPROVED/REJECTED
 | Batch Step | 85%+ | Reader/Processor/Writer |
 | Domain | 95%+ | 엔티티, 값 객체 |
 
-### 5.3 Mock 전략
+### 6.3 Mock 전략
 
 ```kotlin
 // AI 클라이언트 Mock
 class MockLlmClient : LlmClient {
-    override suspend fun analyze(prompt: String): String {
-        return """{"segments": [...]}"""
+    override suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery> {
+        return listOf(SearchQuery("plant care tutorial", "GARDENING", "tutorial", 10))
     }
 }
 
@@ -615,43 +705,41 @@ class YouTubeClientTest {
 
 ---
 
-## 6. Risk Assessment
+## 7. Risk Assessment
 
-### 6.1 기술적 위험
+### 7.1 기술적 위험
 
 | 위험 | 영향도 | 발생 확률 | 완화 전략 |
 |------|--------|----------|----------|
-| YouTube API 할당량 초과 | HIGH | MEDIUM | 검색 결과 캐싱, 일일 제한 설정 |
+| YouTube API 할당량 초과 | HIGH | MEDIUM | 검색 결과 캐싱, LLM 사전 평가로 처리량 최소화 |
 | AI API 비용 급증 | HIGH | MEDIUM | 토큰 사용량 모니터링, 일일 한도 설정 |
 | 저작권 문제 | HIGH | LOW | CC 라이선스 검증 강화, 원본 출처 명시 |
 | FFmpeg 처리 실패 | MEDIUM | MEDIUM | 재시도 로직, 대체 코덱 설정 |
 | STT 정확도 저하 | MEDIUM | MEDIUM | 다국어 모델 사용, 후처리 로직 |
 
-### 6.2 운영적 위험
+### 7.2 운영적 위험
 
 | 위험 | 영향도 | 발생 확률 | 완화 전략 |
 |------|--------|----------|----------|
 | 배치 실패 누적 | MEDIUM | MEDIUM | 알림 설정, 자동 재시도 |
 | 저장소 용량 초과 | LOW | LOW | 임시 파일 정리, S3 수명주기 정책 |
-| 품질 저하 콘텐츠 발행 | HIGH | LOW | 이중 검토 (AI + 관리자) |
+| 품질 저하 콘텐츠 발행 | HIGH | LOW | Option B (모든 콘텐츠 사전 승인) |
 
 ---
 
-## 7. Dependencies & Prerequisites
+## 8. Dependencies & Prerequisites
 
-### 7.1 외부 서비스 설정
+### 8.1 외부 서비스 설정
 
 ```yaml
-# 필요한 API 키 및 자격 증명
 youtube:
-  api-key: ${YOUTUBE_API_KEY}  # Google Cloud Console에서 발급
+  api-key: ${YOUTUBE_API_KEY}
 
 ai:
   vertex:
     project-id: ${GCP_PROJECT_ID}
     location: asia-northeast3
-    credentials: ${GOOGLE_APPLICATION_CREDENTIALS}  # 서비스 계정 JSON
-
+    credentials: ${GOOGLE_APPLICATION_CREDENTIALS}
   openai:
     api-key: ${OPENAI_API_KEY}
 
@@ -663,7 +751,7 @@ aws:
     bucket: grow-snap-ai-content
 ```
 
-### 7.2 시스템 요구사항
+### 8.2 시스템 요구사항
 
 ```bash
 # 필수 설치 항목
@@ -683,33 +771,42 @@ pip install yt-dlp
 
 ---
 
-## 8. Milestones
+## 9. Milestones & Checklist
 
-### 8.1 Phase별 마일스톤
+### 9.1 Phase별 마일스톤
 
 | Phase | 목표 | 완료 기준 |
 |-------|------|----------|
-| Phase 1 | YouTube 크롤링 | CrawlStep 통합 테스트 통과 |
+| Phase 0 | 백엔드 선행 작업 | 시스템 계정 생성 완료 |
+| Phase 1 | AI 기반 YouTube 크롤링 | CrawlStep 통합 테스트 통과 |
 | Phase 2 | STT 변환 | TranscribeStep 통합 테스트 통과 |
 | Phase 3 | LLM 분석 | AnalyzeStep 통합 테스트 통과 |
 | Phase 4 | 비디오 편집 | EditStep 통합 테스트 통과 |
 | Phase 5 | 품질 검토 | ReviewStep 통합 테스트 통과 |
 | Release | 운영 배포 | 전체 파이프라인 E2E 테스트 통과 |
 
-### 8.2 검증 체크리스트
+### 9.2 검증 체크리스트
 
+**백엔드 선행 작업**
+- [ ] OAuthProvider에 SYSTEM 추가
+- [ ] 시스템 계정 생성 SQL 실행
+- [ ] 시스템 계정 프로필 생성
+
+**크롤러 구현**
 - [ ] 모든 단위 테스트 통과
 - [ ] 코드 커버리지 80% 이상
-- [ ] API 문서 작성 완료
-- [ ] 운영 매뉴얼 작성
+- [ ] 전체 파이프라인 E2E 테스트 통과
+
+**운영 준비**
 - [ ] 모니터링 대시보드 구성
 - [ ] 알림 설정 완료
+- [ ] 운영 매뉴얼 작성
 
 ---
 
-## 9. Appendix
+## 10. Appendix
 
-### 9.1 참고 자료
+### 10.1 참고 자료
 
 - [YouTube Data API v3 Documentation](https://developers.google.com/youtube/v3)
 - [Spring Batch Reference](https://docs.spring.io/spring-batch/reference/)
@@ -717,7 +814,7 @@ pip install yt-dlp
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
 - [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
 
-### 9.2 용어 정의
+### 10.2 용어 정의
 
 | 용어 | 설명 |
 |------|------|
