@@ -89,6 +89,7 @@
     "language": "언어",
     "korean": "한국어",
     "english": "English",
+    "japanese": "日本語",
     "publish": "게시",
     "required": "*",
     "characterCount": "{{count}}/{{max}}",

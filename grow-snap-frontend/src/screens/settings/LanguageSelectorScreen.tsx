@@ -13,6 +13,7 @@ import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import { useLanguageStore } from '@/stores/languageStore';
 import { supportedLanguages } from '@/locales';
+import type { SupportedLanguage } from '@/locales';
 
 const useStyles = createStyleSheet({
   container: {
@@ -84,7 +85,7 @@ export default function LanguageSelectorScreen() {
    * Handle language selection
    */
   const handleSelectLanguage = async (languageCode: string) => {
-    await setLanguage(languageCode as 'ko' | 'en');
+    await setLanguage(languageCode as SupportedLanguage);
     // Go back after language is changed
     navigation.goBack();
   };

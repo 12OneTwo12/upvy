@@ -27,6 +27,18 @@ import koInteractions from './ko/interactions.json';
 import koLegal from './ko/legal.json';
 import koNotification from './ko/notification.json';
 
+import jaCommon from './ja/common.json';
+import jaErrors from './ja/errors.json';
+import jaAuth from './ja/auth.json';
+import jaSettings from './ja/settings.json';
+import jaProfile from './ja/profile.json';
+import jaFeed from './ja/feed.json';
+import jaUpload from './ja/upload.json';
+import jaSearch from './ja/search.json';
+import jaInteractions from './ja/interactions.json';
+import jaLegal from './ja/legal.json';
+import jaNotification from './ja/notification.json';
+
 // Language resources
 const resources = {
   en: {
@@ -55,15 +67,37 @@ const resources = {
     legal: koLegal,
     notification: koNotification,
   },
+  ja: {
+    common: jaCommon,
+    errors: jaErrors,
+    auth: jaAuth,
+    settings: jaSettings,
+    profile: jaProfile,
+    feed: jaFeed,
+    upload: jaUpload,
+    search: jaSearch,
+    interactions: jaInteractions,
+    legal: jaLegal,
+    notification: jaNotification,
+  },
 };
+
+// Supported languages configuration
+export const supportedLanguages = [
+  { code: 'ko', name: '한국어', nameEn: 'Korean' },
+  { code: 'en', name: 'English', nameEn: 'English' },
+  { code: 'ja', name: '日本語', nameEn: 'Japanese' },
+] as const;
+
+export type SupportedLanguage = typeof supportedLanguages[number]['code'];
 
 // Get device language (fallback to 'ko')
 const getDeviceLanguage = (): string => {
   const locales = Localization.getLocales();
   if (locales && locales.length > 0) {
     const languageCode = locales[0].languageCode;
-    // Support only 'en' and 'ko'
-    if (languageCode === 'en' || languageCode === 'ko') {
+    // Check if device language is supported
+    if (supportedLanguages.some(lang => lang.code === languageCode)) {
       return languageCode;
     }
   }
@@ -86,10 +120,3 @@ i18n
   });
 
 export default i18n;
-
-export const supportedLanguages = [
-  { code: 'ko', name: '한국어', nameEn: 'Korean' },
-  { code: 'en', name: 'English', nameEn: 'English' },
-] as const;
-
-export type SupportedLanguage = typeof supportedLanguages[number]['code'];

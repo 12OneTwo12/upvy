@@ -89,6 +89,7 @@
     "language": "Language",
     "korean": "한국어",
     "english": "English",
+    "japanese": "日本語",
     "publish": "Post",
     "required": "*",
     "characterCount": "{{count}}/{{max}}",

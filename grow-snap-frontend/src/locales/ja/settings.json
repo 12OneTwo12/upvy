@@ -1,0 +1,47 @@
+{
+  "title": "設定",
+  "sections": {
+    "account": "アカウント",
+    "privacy": "プライバシーとセキュリティ",
+    "notifications": "通知",
+    "general": "一般"
+  },
+  "account": {
+    "editProfile": "プロフィール編集",
+    "editProfileSubtitle": "ニックネーム、自己紹介などを変更"
+  },
+  "privacy": {
+    "privateAccount": "非公開アカウント",
+    "privateAccountSubtitle": "フォロワーの承認を必要にする",
+    "blockManagement": "ブロック管理",
+    "blockManagementSubtitle": "ブロックしたユーザーとコンテンツを管理"
+  },
+  "notifications": {
+    "notifications": "通知",
+    "notificationsSubtitle": "いいね、コメント、フォロー通知"
+  },
+  "general": {
+    "language": "言語",
+    "languageSubtitle": "アプリの言語を選択",
+    "termsOfService": "利用規約",
+    "privacyPolicy": "プライバシーポリシー",
+    "helpSupport": "ヘルプとサポート",
+    "version": "バージョン情報"
+  },
+  "logout": {
+    "title": "ログアウト",
+    "message": "ログアウトしてもよろしいですか？",
+    "button": "ログアウト"
+  },
+  "withdraw": {
+    "title": "アカウント削除",
+    "message": "アカウントを削除してもよろしいですか？すべてのデータが削除され、復元できません。",
+    "button": "アカウント削除",
+    "failed": "アカウント削除に失敗しました",
+    "link": "アカウント削除"
+  },
+  "comingSoon": {
+    "title": "近日公開",
+    "message": "{{feature}}機能は現在開発中です。\n近日公開予定です。"
+  }
+}
