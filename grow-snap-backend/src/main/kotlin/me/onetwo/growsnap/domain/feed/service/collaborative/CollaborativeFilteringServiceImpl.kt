@@ -185,8 +185,7 @@ class CollaborativeFilteringServiceImpl(
                                 // 9. 카테고리 필터링, 언어 가중치, 시간 감쇠 적용하여 최종 점수 계산
                                 val now = Instant.now()
                                 val finalScores = cfScoreList.mapNotNull { (contentId, cfScore) ->
-                                    val contentWithMetadata = metadataMap.entries.find { it.key == contentId }
-                                    val metadata = contentWithMetadata?.value ?: return@mapNotNull null
+                                    val metadata = metadataMap[contentId] ?: return@mapNotNull null
 
                                     // 카테고리 포함 필터링 (category가 지정된 경우)
                                     if (category != null && metadata.category != category) {

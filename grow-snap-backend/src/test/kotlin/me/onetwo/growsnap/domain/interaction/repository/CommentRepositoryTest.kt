@@ -371,7 +371,6 @@ class CommentRepositoryTest : AbstractIntegrationTest() {
 
         @Test
         @DisplayName("cursor를 지정하면, 해당 위치 이후부터 조회된다")
-        @org.junit.jupiter.api.Disabled("TODO: cursor 페이징 로직 GROUP BY + HAVING 조합 디버깅 필요")
         fun findTopLevelComments_WithCursor_ReturnsAfterCursor() {
             // Given: 5개의 최상위 댓글 생성
             repeat(5) { index ->
@@ -587,7 +586,6 @@ class CommentRepositoryTest : AbstractIntegrationTest() {
 
         @Test
         @DisplayName("cursor를 지정하면, 해당 위치 이후부터 조회된다")
-        @org.junit.jupiter.api.Disabled("TODO: cursor 페이징 로직 디버깅 필요")
         fun findReplies_WithCursor_ReturnsAfterCursor() {
             // Given: 부모 댓글 생성
             val parentComment = commentRepository.save(
