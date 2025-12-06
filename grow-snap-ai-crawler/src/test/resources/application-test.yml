@@ -1,0 +1,105 @@
+spring:
+  application:
+    name: grow-snap-ai-crawler-test
+
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false
+
+  datasource:
+    url: jdbc:tc:mysql:8.0:///testdb?TC_REUSABLE=true
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: none  # Flyway가 스키마 생성
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  security:
+    user:
+      name: admin
+      password: admin123
+
+# AI 설정 (Mock 사용)
+ai:
+  llm:
+    provider: mock
+    project-id: test-project
+    location: us-central1
+    model: gemini-1.5-pro
+  stt:
+    provider: mock
+    language-code: ko-KR
+    sample-rate-hertz: 16000
+    enable-word-time-offsets: true
+
+# OpenAI (사용 안함)
+openai:
+  api-key: test-key
+  model: gpt-4o
+
+# YouTube Data API
+youtube:
+  api-key: test-key
+  daily-quota: 10000
+
+# AWS S3 (Mock)
+spring.cloud.aws:
+  s3:
+    region: ap-northeast-2
+  credentials:
+    access-key: test-access-key
+    secret-key: test-secret-key
+
+s3:
+  bucket:
+    raw-videos: test-raw-videos
+    edited-videos: test-edited-videos
+    thumbnails: test-thumbnails
+
+# 배치 스케줄링
+batch:
+  schedule:
+    cron: "0 0 3 * * *"
+  chunk-size: 5
+  retry:
+    max-attempts: 3
+    backoff-initial: 1000
+    backoff-max: 30000
+    backoff-multiplier: 2.0
+
+# 품질 검수
+quality:
+  min-score: 70
+
+# 크롤러 설정
+crawler:
+  system-user-id: 00000000-0000-0000-0000-000000000001
+
+# FFmpeg
+ffmpeg:
+  path: /usr/bin/ffmpeg
+  temp-dir: /tmp/ai-crawler-test
+
+# yt-dlp
+ytdlp:
+  path: /usr/local/bin/yt-dlp
+  output-dir: /tmp/ai-crawler-test/downloads
+
+# Logging
+logging:
+  level:
+    root: WARN
+    me.onetwo.growsnap.crawler: INFO
+    org.springframework.batch: WARN
+    org.testcontainers: INFO
