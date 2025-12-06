@@ -1,0 +1,21 @@
+[[push-token-delete]]
+=== 푸시 토큰 삭제 (특정 디바이스)
+
+특정 디바이스의 푸시 토큰을 삭제합니다.
+
+==== Request
+
+include::{snippets}/push-token-delete/http-request.adoc[]
+include::{snippets}/push-token-delete/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/push-token-delete/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X DELETE http://localhost:8080/api/v1/push-tokens/device-unique-id \
+  -H "Authorization: Bearer {access_token}"
+----

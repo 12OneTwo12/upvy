@@ -2,6 +2,8 @@
 -- Disable foreign key checks for clean drop
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS expo_push_tokens;
 DROP TABLE IF EXISTS notification_settings;
 DROP TABLE IF EXISTS search_history;
 DROP TABLE IF EXISTS reports;
@@ -443,3 +445,53 @@ CREATE TABLE notification_settings (
 
 CREATE INDEX idx_notification_settings_user_id ON notification_settings(user_id);
 CREATE INDEX idx_notification_settings_deleted_at ON notification_settings(deleted_at);
+
+-- Push Tokens Table (다양한 푸시 제공자 지원)
+CREATE TABLE push_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    token VARCHAR(500) NOT NULL,
+    device_id VARCHAR(255) NOT NULL,
+    device_type VARCHAR(20) NOT NULL DEFAULT 'UNKNOWN',
+    provider VARCHAR(20) NOT NULL DEFAULT 'EXPO',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_push_user_device UNIQUE (user_id, device_id)
+);
+
+CREATE INDEX idx_push_tokens_user_id ON push_tokens(user_id);
+CREATE INDEX idx_push_tokens_token ON push_tokens(token);
+CREATE INDEX idx_push_tokens_device_id ON push_tokens(device_id);
+CREATE INDEX idx_push_tokens_provider ON push_tokens(provider);
+CREATE INDEX idx_push_tokens_deleted_at ON push_tokens(deleted_at);
+
+-- Notifications Table
+CREATE TABLE notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    type VARCHAR(30) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    body VARCHAR(500) NOT NULL,
+    data JSON NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    actor_id CHAR(36) NULL,
+    target_type VARCHAR(30) NULL,
+    target_id CHAR(36) NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_user_read ON notifications(user_id, is_read);
+CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+CREATE INDEX idx_notifications_deleted_at ON notifications(deleted_at);
+CREATE INDEX idx_notifications_type ON notifications(type);
+CREATE INDEX idx_notifications_user_created ON notifications(user_id, created_at DESC);
