@@ -113,6 +113,8 @@ class CustomReactiveOAuth2UserService(
                     profileImageUrl = profile?.get("profile_image_url") as? String
                 )
             }
+
+            OAuthProvider.SYSTEM -> throw IllegalArgumentException("SYSTEM 계정은 OAuth2 로그인을 사용하지 않습니다")
         }
     }
 }
