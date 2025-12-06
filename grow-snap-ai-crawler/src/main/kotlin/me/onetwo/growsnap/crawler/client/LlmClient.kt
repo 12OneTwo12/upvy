@@ -1,7 +1,11 @@
 package me.onetwo.growsnap.crawler.client
 
 import me.onetwo.growsnap.crawler.domain.ContentMetadata
+import me.onetwo.growsnap.crawler.domain.EvaluatedVideo
+import me.onetwo.growsnap.crawler.domain.SearchContext
+import me.onetwo.growsnap.crawler.domain.SearchQuery
 import me.onetwo.growsnap.crawler.domain.Segment
+import me.onetwo.growsnap.crawler.domain.VideoCandidate
 
 /**
  * LLM (Large Language Model) 클라이언트 인터페이스
@@ -34,4 +38,26 @@ interface LlmClient {
      * @return 제목, 설명, 태그, 카테고리, 난이도
      */
     suspend fun generateMetadata(content: String): ContentMetadata
+
+    /**
+     * AI 기반 검색 쿼리 생성
+     *
+     * 현재 상황(트렌드, 시즌, 카테고리 등)을 분석하여
+     * 양질의 교육 콘텐츠를 찾기 위한 검색어를 생성합니다.
+     *
+     * @param context 검색 컨텍스트 (앱 카테고리, 인기 키워드, 부족한 카테고리 등)
+     * @return 생성된 검색 쿼리 목록 (우선순위 순)
+     */
+    suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery>
+
+    /**
+     * 비디오 후보 사전 평가
+     *
+     * 실제 다운로드 전에 메타데이터만으로 비디오의 품질을 평가하여
+     * API 쿼터와 처리 시간을 절약합니다.
+     *
+     * @param candidates 평가할 비디오 후보 목록
+     * @return 평가 결과 (관련성 점수, 교육적 가치, 추천 등급)
+     */
+    suspend fun evaluateVideos(candidates: List<VideoCandidate>): List<EvaluatedVideo>
 }

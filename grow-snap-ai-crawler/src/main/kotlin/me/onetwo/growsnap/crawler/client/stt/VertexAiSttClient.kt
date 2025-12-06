@@ -1,0 +1,220 @@
+package me.onetwo.growsnap.crawler.client.stt
+
+import com.google.cloud.speech.v1.RecognitionAudio
+import com.google.cloud.speech.v1.RecognitionConfig
+import com.google.cloud.speech.v1.RecognitionConfig.AudioEncoding
+import com.google.cloud.speech.v1.SpeechClient
+import com.google.protobuf.ByteString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import me.onetwo.growsnap.crawler.client.SttClient
+import me.onetwo.growsnap.crawler.domain.TranscriptResult
+import me.onetwo.growsnap.crawler.domain.TranscriptSegment
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.stereotype.Component
+import java.net.URI
+import java.net.URL
+import javax.annotation.PostConstruct
+import javax.annotation.PreDestroy
+
+/**
+ * Google Cloud Speech-to-Text 클라이언트 구현체
+ *
+ * Google Cloud Speech-to-Text API를 사용하여 음성을 텍스트로 변환합니다.
+ * 긴 오디오 파일의 경우 LongRunningRecognize를 사용합니다.
+ */
+@Component
+@ConditionalOnProperty(name = ["ai.stt.provider"], havingValue = "vertex-ai")
+class VertexAiSttClient(
+    @Value("\${ai.stt.language-code:ko-KR}") private val languageCode: String,
+    @Value("\${ai.stt.sample-rate-hertz:16000}") private val sampleRateHertz: Int,
+    @Value("\${ai.stt.enable-word-time-offsets:true}") private val enableWordTimeOffsets: Boolean
+) : SttClient {
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(VertexAiSttClient::class.java)
+        private const val MAX_SYNC_AUDIO_DURATION_SECONDS = 60
+    }
+
+    private lateinit var speechClient: SpeechClient
+
+    @PostConstruct
+    fun init() {
+        logger.info("Google Cloud Speech-to-Text 클라이언트 초기화: languageCode={}", languageCode)
+        speechClient = SpeechClient.create()
+    }
+
+    @PreDestroy
+    fun destroy() {
+        speechClient.close()
+    }
+
+    override suspend fun transcribe(audioUrl: String): TranscriptResult = withContext(Dispatchers.IO) {
+        logger.info("음성 텍스트 변환 시작: audioUrl={}", audioUrl)
+
+        try {
+            val recognitionConfig = buildRecognitionConfig()
+
+            // URL에서 오디오 데이터 로드 또는 GCS URI 사용
+            val recognitionAudio = if (audioUrl.startsWith("gs://")) {
+                buildRecognitionAudioFromGcs(audioUrl)
+            } else {
+                buildRecognitionAudioFromUrl(audioUrl)
+            }
+
+            // 긴 오디오인 경우 비동기 처리
+            val response = speechClient.recognize(recognitionConfig, recognitionAudio)
+
+            val segments = mutableListOf<TranscriptSegment>()
+            val textBuilder = StringBuilder()
+
+            response.resultsList.forEach { result ->
+                val alternative = result.alternativesList.firstOrNull() ?: return@forEach
+
+                textBuilder.append(alternative.transcript).append(" ")
+
+                // 단어 레벨 타임스탬프가 있는 경우
+                if (enableWordTimeOffsets && alternative.wordsCount > 0) {
+                    val words = alternative.wordsList
+                    var segmentStart = words.first().startTime.seconds * 1000 +
+                            words.first().startTime.nanos / 1_000_000
+                    var segmentEnd = segmentStart
+                    val segmentText = StringBuilder()
+
+                    words.forEach { wordInfo ->
+                        val wordStartMs = wordInfo.startTime.seconds * 1000 +
+                                wordInfo.startTime.nanos / 1_000_000
+                        val wordEndMs = wordInfo.endTime.seconds * 1000 +
+                                wordInfo.endTime.nanos / 1_000_000
+
+                        // 세그먼트 구분 (5초 간격 또는 문장 끝)
+                        if (wordStartMs - segmentEnd > 1000 || segmentText.length > 200) {
+                            if (segmentText.isNotEmpty()) {
+                                segments.add(TranscriptSegment(
+                                    startTimeMs = segmentStart,
+                                    endTimeMs = segmentEnd,
+                                    text = segmentText.toString().trim()
+                                ))
+                            }
+                            segmentStart = wordStartMs
+                            segmentText.clear()
+                        }
+
+                        segmentText.append(wordInfo.word).append(" ")
+                        segmentEnd = wordEndMs
+                    }
+
+                    // 마지막 세그먼트 추가
+                    if (segmentText.isNotEmpty()) {
+                        segments.add(TranscriptSegment(
+                            startTimeMs = segmentStart,
+                            endTimeMs = segmentEnd,
+                            text = segmentText.toString().trim()
+                        ))
+                    }
+                }
+            }
+
+            val fullText = textBuilder.toString().trim()
+            val confidence = response.resultsList.firstOrNull()?.alternativesList?.firstOrNull()?.confidence
+
+            logger.info("음성 텍스트 변환 완료: textLength={}, segmentsCount={}, confidence={}",
+                fullText.length, segments.size, confidence)
+
+            TranscriptResult(
+                text = fullText,
+                segments = segments,
+                language = languageCode,
+                confidence = confidence
+            )
+
+        } catch (e: Exception) {
+            logger.error("음성 텍스트 변환 실패: audioUrl={}", audioUrl, e)
+            throw SttException("Failed to transcribe audio", e)
+        }
+    }
+
+    /**
+     * 긴 오디오 파일 (60초 이상)에 대한 비동기 처리
+     */
+    suspend fun transcribeLongAudio(gcsUri: String): TranscriptResult = withContext(Dispatchers.IO) {
+        logger.info("긴 오디오 텍스트 변환 시작 (LongRunningRecognize): gcsUri={}", gcsUri)
+
+        try {
+            val recognitionConfig = buildRecognitionConfig()
+            val audio = RecognitionAudio.newBuilder()
+                .setUri(gcsUri)
+                .build()
+
+            // 비동기 처리 시작
+            val response = speechClient.longRunningRecognizeAsync(recognitionConfig, audio).get()
+
+            val segments = mutableListOf<TranscriptSegment>()
+            val textBuilder = StringBuilder()
+
+            response.resultsList.forEach { result ->
+                val alternative = result.alternativesList.firstOrNull() ?: return@forEach
+                textBuilder.append(alternative.transcript).append(" ")
+
+                // 결과 레벨에서 타임스탬프 추출
+                if (result.resultEndTime != null) {
+                    val endMs = result.resultEndTime.seconds * 1000 +
+                            result.resultEndTime.nanos / 1_000_000
+
+                    segments.add(TranscriptSegment(
+                        startTimeMs = 0, // 시작 시간 정보가 없는 경우
+                        endTimeMs = endMs,
+                        text = alternative.transcript
+                    ))
+                }
+            }
+
+            val fullText = textBuilder.toString().trim()
+
+            logger.info("긴 오디오 텍스트 변환 완료: textLength={}, segmentsCount={}",
+                fullText.length, segments.size)
+
+            TranscriptResult(
+                text = fullText,
+                segments = segments,
+                language = languageCode
+            )
+
+        } catch (e: Exception) {
+            logger.error("긴 오디오 텍스트 변환 실패: gcsUri={}", gcsUri, e)
+            throw SttException("Failed to transcribe long audio", e)
+        }
+    }
+
+    private fun buildRecognitionConfig(): RecognitionConfig {
+        return RecognitionConfig.newBuilder()
+            .setEncoding(AudioEncoding.LINEAR16)
+            .setSampleRateHertz(sampleRateHertz)
+            .setLanguageCode(languageCode)
+            .setEnableWordTimeOffsets(enableWordTimeOffsets)
+            .setEnableAutomaticPunctuation(true)
+            .setModel("latest_long")  // 긴 오디오에 최적화된 모델
+            .build()
+    }
+
+    private fun buildRecognitionAudioFromGcs(gcsUri: String): RecognitionAudio {
+        return RecognitionAudio.newBuilder()
+            .setUri(gcsUri)
+            .build()
+    }
+
+    private fun buildRecognitionAudioFromUrl(audioUrl: String): RecognitionAudio {
+        val url = URI(audioUrl).toURL()
+        val audioBytes = url.openStream().use { it.readBytes() }
+        return RecognitionAudio.newBuilder()
+            .setContent(ByteString.copyFrom(audioBytes))
+            .build()
+    }
+}
+
+/**
+ * STT 예외
+ */
+class SttException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)

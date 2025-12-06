@@ -25,16 +25,15 @@ spring:
 # AI 설정
 ai:
   llm:
-    provider: ${AI_LLM_PROVIDER:vertex}
+    provider: ${AI_LLM_PROVIDER:vertex-ai}  # vertex-ai 또는 mock
+    project-id: ${GCP_PROJECT_ID:}
+    location: ${GCP_LOCATION:us-central1}
     model: ${AI_LLM_MODEL:gemini-1.5-pro}
   stt:
-    provider: ${AI_STT_PROVIDER:google}
-    model: ${AI_STT_MODEL:chirp}
-
-# Vertex AI (Google Cloud)
-vertex:
-  project-id: ${GCP_PROJECT_ID:}
-  location: ${GCP_LOCATION:asia-northeast3}
+    provider: ${AI_STT_PROVIDER:vertex-ai}  # vertex-ai 또는 mock
+    language-code: ${AI_STT_LANGUAGE:ko-KR}
+    sample-rate-hertz: ${AI_STT_SAMPLE_RATE:16000}
+    enable-word-time-offsets: true
 
 # OpenAI (대안)
 openai:

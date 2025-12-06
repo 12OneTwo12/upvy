@@ -32,6 +32,23 @@ youtube:
   api-key: test-api-key
   daily-quota: 100
 
+# S3 설정 (테스트용)
+s3:
+  bucket:
+    raw-videos: test-raw-videos
+    edited-videos: test-edited-videos
+    thumbnails: test-thumbnails
+
+# FFmpeg 설정 (테스트용)
+ffmpeg:
+  path: /usr/bin/ffmpeg
+  temp-dir: /tmp/test-ai-crawler
+
+# yt-dlp 설정 (테스트용)
+ytdlp:
+  path: /usr/local/bin/yt-dlp
+  output-dir: /tmp/test-ai-crawler/downloads
+
 batch:
   schedule:
     cron: "-"  # 테스트에서는 스케줄 비활성화

@@ -1,0 +1,99 @@
+package me.onetwo.growsnap.crawler.client.llm
+
+import me.onetwo.growsnap.crawler.client.LlmClient
+import me.onetwo.growsnap.crawler.domain.ContentMetadata
+import me.onetwo.growsnap.crawler.domain.Difficulty
+import me.onetwo.growsnap.crawler.domain.EvaluatedVideo
+import me.onetwo.growsnap.crawler.domain.Recommendation
+import me.onetwo.growsnap.crawler.domain.SearchContext
+import me.onetwo.growsnap.crawler.domain.SearchQuery
+import me.onetwo.growsnap.crawler.domain.Segment
+import me.onetwo.growsnap.crawler.domain.VideoCandidate
+import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.stereotype.Component
+
+/**
+ * 테스트용 Mock LLM 클라이언트
+ *
+ * 테스트 환경에서 실제 AI API 호출 없이 동작을 시뮬레이션합니다.
+ * application-test.yml에서 ai.llm.provider=mock으로 설정하면 활성화됩니다.
+ */
+@Component
+@ConditionalOnProperty(name = ["ai.llm.provider"], havingValue = "mock")
+class MockLlmClient : LlmClient {
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(MockLlmClient::class.java)
+    }
+
+    var analyzeResponse: String = "Mock analysis response"
+    var segmentsResponse: List<Segment> = listOf(
+        Segment(
+            startTimeMs = 60000,
+            endTimeMs = 120000,
+            title = "Mock Segment 1",
+            description = "This is a mock segment for testing",
+            keywords = listOf("mock", "test", "segment")
+        )
+    )
+    var metadataResponse: ContentMetadata = ContentMetadata(
+        title = "Mock Title",
+        description = "Mock Description for testing purposes",
+        tags = listOf("mock", "test"),
+        category = "PROGRAMMING",
+        difficulty = Difficulty.BEGINNER
+    )
+    var searchQueriesResponse: List<SearchQuery> = listOf(
+        SearchQuery(
+            query = "productivity tips for developers",
+            targetCategory = "PRODUCTIVITY",
+            expectedContentType = "tutorial",
+            priority = 10
+        ),
+        SearchQuery(
+            query = "kotlin programming best practices",
+            targetCategory = "PROGRAMMING",
+            expectedContentType = "educational",
+            priority = 9
+        )
+    )
+
+    override suspend fun analyze(prompt: String): String {
+        logger.debug("MockLlmClient.analyze called: prompt length={}", prompt.length)
+        return analyzeResponse
+    }
+
+    override suspend fun extractKeySegments(transcript: String): List<Segment> {
+        logger.debug("MockLlmClient.extractKeySegments called: transcript length={}", transcript.length)
+        return segmentsResponse
+    }
+
+    override suspend fun generateMetadata(content: String): ContentMetadata {
+        logger.debug("MockLlmClient.generateMetadata called: content length={}", content.length)
+        return metadataResponse
+    }
+
+    override suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery> {
+        logger.debug(
+            "MockLlmClient.generateSearchQueries called: categories={}, underrepresented={}",
+            context.appCategories,
+            context.underrepresentedCategories
+        )
+        return searchQueriesResponse
+    }
+
+    override suspend fun evaluateVideos(candidates: List<VideoCandidate>): List<EvaluatedVideo> {
+        logger.debug("MockLlmClient.evaluateVideos called: candidates count={}", candidates.size)
+        return candidates.map { candidate ->
+            EvaluatedVideo(
+                candidate = candidate,
+                relevanceScore = 85,
+                educationalValue = 80,
+                predictedQuality = 82,
+                recommendation = Recommendation.RECOMMENDED,
+                reasoning = "Mock evaluation: Good educational content"
+            )
+        }
+    }
+}

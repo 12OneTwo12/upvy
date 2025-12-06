@@ -13,8 +13,80 @@ data class VideoCandidate(
     val description: String? = null,
     val publishedAt: String? = null,
     val duration: String? = null,  // ISO 8601 duration (PT1H2M3S)
-    val thumbnailUrl: String? = null
+    val thumbnailUrl: String? = null,
+    val viewCount: Long? = null,
+    val likeCount: Long? = null
 )
+
+/**
+ * 검색 컨텍스트
+ *
+ * LLM이 검색 쿼리를 생성할 때 참고하는 현재 상황 정보
+ */
+data class SearchContext(
+    val appCategories: List<String>,
+    val popularKeywords: List<String>,
+    val topPerformingTags: List<String>,
+    val seasonalContext: String?,
+    val recentlyPublished: List<String>,
+    val underrepresentedCategories: List<String>
+)
+
+/**
+ * AI 생성 검색 쿼리
+ *
+ * LLM이 생성한 YouTube 검색어
+ */
+data class SearchQuery(
+    val query: String,
+    val targetCategory: String,
+    val expectedContentType: String,
+    val priority: Int
+)
+
+/**
+ * LLM 비디오 평가 결과
+ *
+ * 메타데이터 기반으로 비디오의 품질을 사전 평가한 결과
+ */
+data class EvaluatedVideo(
+    val candidate: VideoCandidate,
+    val relevanceScore: Int,
+    val educationalValue: Int,
+    val predictedQuality: Int,
+    val recommendation: Recommendation,
+    val reasoning: String
+)
+
+/**
+ * 비디오 추천 등급
+ */
+enum class Recommendation {
+    HIGHLY_RECOMMENDED,
+    RECOMMENDED,
+    MAYBE,
+    SKIP
+}
+
+/**
+ * 품질 점수
+ */
+data class QualityScore(
+    val totalScore: Int,
+    val contentRelevance: Int,
+    val audioClarity: Int,
+    val visualQuality: Int,
+    val educationalValue: Int
+)
+
+/**
+ * 검토 우선순위
+ */
+enum class ReviewPriority {
+    HIGH,
+    NORMAL,
+    LOW
+}
 
 /**
  * 핵심 구간 (세그먼트)
