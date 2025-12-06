@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import i18n from '@/locales';
+import i18n, { supportedLanguages } from '@/locales';
 import type { SupportedLanguage } from '@/locales';
 
 const LANGUAGE_STORAGE_KEY = '@growsnap:language';
@@ -42,10 +42,10 @@ export const useLanguageStore = create<LanguageState>((set, get) => ({
       // Try to get saved language from AsyncStorage
       const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
 
-      if (savedLanguage && (savedLanguage === 'ko' || savedLanguage === 'en' || savedLanguage === 'ja')) {
+      if (savedLanguage && supportedLanguages.some(lang => lang.code === savedLanguage)) {
         // Use saved language
         await i18n.changeLanguage(savedLanguage);
-        set({ currentLanguage: savedLanguage, isInitialized: true });
+        set({ currentLanguage: savedLanguage as SupportedLanguage, isInitialized: true });
       } else {
         // Use device language (already set in i18n initialization)
         const deviceLanguage = i18n.language as SupportedLanguage;

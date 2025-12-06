@@ -82,13 +82,22 @@ const resources = {
   },
 };
 
+// Supported languages configuration
+export const supportedLanguages = [
+  { code: 'ko', name: '한국어', nameEn: 'Korean' },
+  { code: 'en', name: 'English', nameEn: 'English' },
+  { code: 'ja', name: '日本語', nameEn: 'Japanese' },
+] as const;
+
+export type SupportedLanguage = typeof supportedLanguages[number]['code'];
+
 // Get device language (fallback to 'ko')
 const getDeviceLanguage = (): string => {
   const locales = Localization.getLocales();
   if (locales && locales.length > 0) {
     const languageCode = locales[0].languageCode;
-    // Support 'en', 'ko', and 'ja'
-    if (languageCode === 'en' || languageCode === 'ko' || languageCode === 'ja') {
+    // Check if device language is supported
+    if (supportedLanguages.some(lang => lang.code === languageCode)) {
       return languageCode;
     }
   }
@@ -111,11 +120,3 @@ i18n
   });
 
 export default i18n;
-
-export const supportedLanguages = [
-  { code: 'ko', name: '한국어', nameEn: 'Korean' },
-  { code: 'en', name: 'English', nameEn: 'English' },
-  { code: 'ja', name: '日本語', nameEn: 'Japanese' },
-] as const;
-
-export type SupportedLanguage = typeof supportedLanguages[number]['code'];
