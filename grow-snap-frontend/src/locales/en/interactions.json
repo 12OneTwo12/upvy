@@ -50,7 +50,12 @@
     "alreadyReportedTitle": "Already reported",
     "alreadyReportedMessage": "We're reviewing it. Please wait!",
     "errorTitle": "Oops, something went wrong",
-    "errorMessage": "Please try again later."
+    "errorMessage": "Please try again later.",
+    "funCategoryAlert": {
+      "title": "This is Fun Content",
+      "message": "This content is for break time.\n\nThe Fun category allows entertainment content unrelated to studying, and is intentionally provided to reduce learning fatigue.\n\nReporting just because it's off-topic may be dismissed after review.\n\nDo you still want to report?",
+      "confirm": "Report"
+    }
   },
   "block": {
     "user": {

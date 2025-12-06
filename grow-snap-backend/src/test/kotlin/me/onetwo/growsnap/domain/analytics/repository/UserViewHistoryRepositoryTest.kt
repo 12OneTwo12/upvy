@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.analytics.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.ContentStatus
@@ -39,7 +40,7 @@ import java.util.UUID
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("사용자 시청 기록 Repository 통합 테스트")
-class UserViewHistoryRepositoryTest {
+class UserViewHistoryRepositoryTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var userViewHistoryRepository: UserViewHistoryRepository
@@ -47,8 +48,7 @@ class UserViewHistoryRepositoryTest {
     @Autowired
     private lateinit var userRepository: UserRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var testUser: User
     private lateinit var testContent1Id: UUID

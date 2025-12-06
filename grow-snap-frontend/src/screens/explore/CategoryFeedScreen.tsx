@@ -65,6 +65,7 @@ export default function CategoryFeedScreen() {
     handleFollow,
     handleCreatorPress,
     handleBlockSuccess,
+    handleDeleteSuccess,
     handleVideoLoaded,
     isVideoLoaded,
     handleScroll,
@@ -103,6 +104,7 @@ export default function CategoryFeedScreen() {
           onFollow={() => handleFollow(item.creator.userId, item.creator.isFollowing ?? false)}
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
           onBlockSuccess={handleBlockSuccess}
+          onDeleteSuccess={handleDeleteSuccess}
         />
 
         {isLoadingItem && (

@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /**
@@ -75,12 +77,14 @@ class CollaborativeFilteringServiceTest {
      * @param contentId 콘텐츠 ID
      * @param language 언어 (기본값: "en")
      * @param category 카테고리 (기본값: PROGRAMMING)
+     * @param createdAt 콘텐츠 생성 시각 (기본값: 현재)
      * @return ContentWithMetadata 객체
      */
     private fun createContentWithMetadata(
         contentId: UUID,
         language: String = "en",
-        category: Category = Category.PROGRAMMING
+        category: Category = Category.PROGRAMMING,
+        createdAt: Instant = Instant.now()
     ): ContentWithMetadata {
         val content = Content(
             id = contentId,
@@ -90,13 +94,15 @@ class CollaborativeFilteringServiceTest {
             thumbnailUrl = "https://example.com/thumbnail.jpg",
             width = 1920,
             height = 1080,
-            status = ContentStatus.PUBLISHED
+            status = ContentStatus.PUBLISHED,
+            createdAt = createdAt
         )
         val metadata = ContentMetadata(
             contentId = contentId,
             title = "Test Content",
             category = category,
-            language = language
+            language = language,
+            createdAt = createdAt
         )
         return ContentWithMetadata(content, metadata)
     }
@@ -357,6 +363,173 @@ class CollaborativeFilteringServiceTest {
                 .assertNext { recommendedContents ->
                     assertThat(recommendedContents).hasSize(1)
                     assertThat(recommendedContents[0]).isEqualTo(contentId3)
+                }
+                .verifyComplete()
+        }
+
+        @Test
+        @DisplayName("시간 Decay 테스트: 같은 CF 점수일 때 최신 콘텐츠가 더 높은 순위에 있다")
+        fun getRecommendedContents_AppliesTimeDecay_NewerContentRanksHigher() {
+            // Given: 나는 Content1을 좋아요
+            val myInteractions = listOf(UserInteraction(contentId1, InteractionType.LIKE))
+
+            every {
+                userContentInteractionRepository.findAllInteractionsByUser(userId, any())
+            } returns Flux.fromIterable(myInteractions)
+
+            // Content1을 좋아한 유사 사용자
+            every {
+                userContentInteractionRepository.findUsersByContent(contentId1, null, any())
+            } returns Flux.just(similarUser1)
+
+            // similarUser1이 좋아한 콘텐츠: Content2(LIKE), Content3(LIKE) - 동일한 CF 점수
+            every {
+                userContentInteractionRepository.findAllInteractionsByUser(similarUser1, any())
+            } returns Flux.just(
+                UserInteraction(contentId2, InteractionType.LIKE),  // 점수 1.0
+                UserInteraction(contentId3, InteractionType.LIKE)   // 점수 1.0
+            )
+
+            val now = Instant.now()
+
+            // Mock: Content2는 최신 (오늘), Content3는 30일 전
+            every {
+                contentRepository.findByIdsWithMetadata(any())
+            } answers {
+                val ids = firstArg<List<UUID>>()
+                Flux.fromIterable(ids.map { id ->
+                    when (id) {
+                        contentId2 -> createContentWithMetadata(id, language = "en", createdAt = now)
+                        contentId3 -> createContentWithMetadata(id, language = "en", createdAt = now.minus(30, ChronoUnit.DAYS))
+                        else -> createContentWithMetadata(id, language = "en", createdAt = now)
+                    }
+                })
+            }
+
+            // When: 추천 콘텐츠 조회
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
+
+            // Then: 최신 콘텐츠(Content2)가 먼저 나와야 함
+            // Content2: 1.0 * 1.0 (오늘 → decay=1.0) = 1.0
+            // Content3: 1.0 * 0.55 (30일 전 → decay≈0.55) = 0.55
+            StepVerifier.create(result.collectList())
+                .assertNext { recommendedContents ->
+                    assertThat(recommendedContents).hasSize(2)
+                    assertThat(recommendedContents[0]).isEqualTo(contentId2)  // 최신 콘텐츠
+                    assertThat(recommendedContents[1]).isEqualTo(contentId3)  // 오래된 콘텐츠
+                }
+                .verifyComplete()
+        }
+
+        @Test
+        @DisplayName("시간 Decay 테스트: 60일 경과 콘텐츠는 30% 정도의 점수만 유지")
+        fun getRecommendedContents_AppliesTimeDecay_OldContentGetsReducedScore() {
+            // Given: 나는 Content1을 좋아요
+            val myInteractions = listOf(UserInteraction(contentId1, InteractionType.LIKE))
+
+            every {
+                userContentInteractionRepository.findAllInteractionsByUser(userId, any())
+            } returns Flux.fromIterable(myInteractions)
+
+            // Content1을 좋아한 유사 사용자
+            every {
+                userContentInteractionRepository.findUsersByContent(contentId1, null, any())
+            } returns Flux.just(similarUser1)
+
+            // similarUser1이 좋아한 콘텐츠:
+            // Content2(LIKE) - 점수 1.0, 최신
+            // Content3(SHARE) - 점수 2.0, 60일 전 → 2.0 * 0.30 = 0.6
+            every {
+                userContentInteractionRepository.findAllInteractionsByUser(similarUser1, any())
+            } returns Flux.just(
+                UserInteraction(contentId2, InteractionType.LIKE),   // 1.0
+                UserInteraction(contentId3, InteractionType.SHARE)   // 2.0
+            )
+
+            val now = Instant.now()
+
+            // Mock: Content2는 최신, Content3는 60일 전
+            every {
+                contentRepository.findByIdsWithMetadata(any())
+            } answers {
+                val ids = firstArg<List<UUID>>()
+                Flux.fromIterable(ids.map { id ->
+                    when (id) {
+                        contentId2 -> createContentWithMetadata(id, language = "en", createdAt = now)
+                        contentId3 -> createContentWithMetadata(id, language = "en", createdAt = now.minus(60, ChronoUnit.DAYS))
+                        else -> createContentWithMetadata(id, language = "en", createdAt = now)
+                    }
+                })
+            }
+
+            // When: 추천 콘텐츠 조회
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
+
+            // Then: Content2(1.0)가 Content3(0.6)보다 높은 점수
+            // Content2: 1.0 * 1.0 = 1.0
+            // Content3: 2.0 * ~0.30 = ~0.6
+            StepVerifier.create(result.collectList())
+                .assertNext { recommendedContents ->
+                    assertThat(recommendedContents).hasSize(2)
+                    assertThat(recommendedContents[0]).isEqualTo(contentId2)  // LIKE이지만 최신
+                    assertThat(recommendedContents[1]).isEqualTo(contentId3)  // SHARE지만 60일 전
+                }
+                .verifyComplete()
+        }
+
+        @Test
+        @DisplayName("시간 Decay 테스트: CF 완만한 감쇠율로 14일 경과해도 75% 유지")
+        fun getRecommendedContents_AppliesTimeDecay_MildDecayFor14Days() {
+            // Given: 나는 Content1을 좋아요
+            val myInteractions = listOf(UserInteraction(contentId1, InteractionType.LIKE))
+
+            every {
+                userContentInteractionRepository.findAllInteractionsByUser(userId, any())
+            } returns Flux.fromIterable(myInteractions)
+
+            // Content1을 좋아한 유사 사용자
+            every {
+                userContentInteractionRepository.findUsersByContent(contentId1, null, any())
+            } returns Flux.just(similarUser1)
+
+            // similarUser1이 좋아한 콘텐츠:
+            // Content2(LIKE) - 점수 1.0, 최신
+            // Content3(SAVE) - 점수 1.5, 14일 전 → 1.5 * 0.75 = 1.125 > 1.0
+            every {
+                userContentInteractionRepository.findAllInteractionsByUser(similarUser1, any())
+            } returns Flux.just(
+                UserInteraction(contentId2, InteractionType.LIKE),   // 1.0
+                UserInteraction(contentId3, InteractionType.SAVE)    // 1.5
+            )
+
+            val now = Instant.now()
+
+            // Mock: Content2는 최신, Content3는 14일 전
+            every {
+                contentRepository.findByIdsWithMetadata(any())
+            } answers {
+                val ids = firstArg<List<UUID>>()
+                Flux.fromIterable(ids.map { id ->
+                    when (id) {
+                        contentId2 -> createContentWithMetadata(id, language = "en", createdAt = now)
+                        contentId3 -> createContentWithMetadata(id, language = "en", createdAt = now.minus(14, ChronoUnit.DAYS))
+                        else -> createContentWithMetadata(id, language = "en", createdAt = now)
+                    }
+                })
+            }
+
+            // When: 추천 콘텐츠 조회
+            val result = collaborativeFilteringService.getRecommendedContents(userId, 10, "en")
+
+            // Then: Content3(1.125)가 Content2(1.0)보다 높은 점수
+            // CF는 완만한 감쇠율(0.02)이므로 14일 후에도 75% 유지
+            // Content2: 1.0 * 1.0 = 1.0
+            // Content3: 1.5 * ~0.75 = ~1.125
+            StepVerifier.create(result.collectList())
+                .assertNext { recommendedContents ->
+                    assertThat(recommendedContents).hasSize(2)
+                    assertThat(recommendedContents[0]).isEqualTo(contentId3)  // SAVE + 14일 전 = 1.125
+                    assertThat(recommendedContents[1]).isEqualTo(contentId2)  // LIKE + 최신 = 1.0
                 }
                 .verifyComplete()
         }

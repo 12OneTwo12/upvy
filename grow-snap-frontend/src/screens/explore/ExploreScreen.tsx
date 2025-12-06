@@ -43,6 +43,7 @@ const CATEGORY_ICON_MAP: Record<Category, keyof typeof Ionicons.glyphMap> = {
   HOBBY: 'game-controller',
   TREND: 'flame',
   OTHER: 'grid',
+  FUN: 'happy',
 };
 
 type ExploreScreenNavigationProp = NativeStackNavigationProp<

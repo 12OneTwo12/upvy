@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.domain.content.repository
 
+import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.jooq.generated.tables.ContentMetadata.Companion.CONTENT_METADATA
 import me.onetwo.growsnap.jooq.generated.tables.Contents.Companion.CONTENTS
 import org.jooq.DSLContext
@@ -54,5 +55,32 @@ class ContentMetadataRepository(
                     )
                 }
             )
+    }
+
+    /**
+     * 콘텐츠의 카테고리를 조회합니다.
+     *
+     * @param contentId 콘텐츠 ID
+     * @return 카테고리를 담은 Mono (존재하지 않으면 empty)
+     */
+    fun findCategoryByContentId(contentId: UUID): Mono<Category> {
+        return Mono.from(
+            dsl
+                .select(CONTENT_METADATA.CATEGORY)
+                .from(CONTENT_METADATA)
+                .join(CONTENTS).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
+                .where(CONTENT_METADATA.CONTENT_ID.eq(contentId.toString()))
+                .and(CONTENTS.DELETED_AT.isNull)
+                .and(CONTENT_METADATA.DELETED_AT.isNull)
+        )
+            .mapNotNull { record ->
+                record.getValue(CONTENT_METADATA.CATEGORY)?.let { categoryName ->
+                    try {
+                        Category.valueOf(categoryName)
+                    } catch (e: IllegalArgumentException) {
+                        null
+                    }
+                }
+            }
     }
 }

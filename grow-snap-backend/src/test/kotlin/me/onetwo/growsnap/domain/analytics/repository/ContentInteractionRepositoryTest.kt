@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.analytics.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.ContentInteraction
@@ -43,7 +44,7 @@ import java.util.UUID
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 인터랙션 Repository 통합 테스트")
-class ContentInteractionRepositoryTest {
+class ContentInteractionRepositoryTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var contentInteractionRepository: ContentInteractionRepository
@@ -51,8 +52,7 @@ class ContentInteractionRepositoryTest {
     @Autowired
     private lateinit var userRepository: UserRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var testUser: User
     private lateinit var testContentId: UUID

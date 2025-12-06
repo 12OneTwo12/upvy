@@ -39,7 +39,8 @@ export type Category =
   | 'TRAVEL'
   | 'HOBBY'
   | 'TREND'
-  | 'OTHER';
+  | 'OTHER'
+  | 'FUN';
 
 /**
  * 크리에이터 정보

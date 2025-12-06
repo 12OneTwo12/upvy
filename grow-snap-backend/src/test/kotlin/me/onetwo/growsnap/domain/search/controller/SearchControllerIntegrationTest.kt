@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.search.controller
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
@@ -49,7 +50,7 @@ import java.util.UUID
 @Import(TestSecurityConfig::class)
 @ActiveProfiles("test")
 @DisplayName("SearchController 통합 테스트")
-class SearchControllerIntegrationTest {
+class SearchControllerIntegrationTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

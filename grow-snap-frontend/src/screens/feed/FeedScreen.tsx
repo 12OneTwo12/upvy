@@ -60,6 +60,7 @@ export default function FeedScreen() {
     handleFollow,
     handleCreatorPress,
     handleBlockSuccess,
+    handleDeleteSuccess,
     handleVideoLoaded,
     isVideoLoaded,
     clearVideoCache,
@@ -131,6 +132,7 @@ export default function FeedScreen() {
           onFollow={() => handleFollow(item.creator.userId, item.creator.isFollowing ?? false)}
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
           onBlockSuccess={handleBlockSuccess}
+          onDeleteSuccess={handleDeleteSuccess}
         />
 
         {isLoadingItem && (

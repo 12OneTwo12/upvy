@@ -4,6 +4,8 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.growsnap.domain.content.model.Category
+import me.onetwo.growsnap.domain.content.repository.ContentMetadataRepository
 import me.onetwo.growsnap.domain.report.dto.ReportRequest
 import me.onetwo.growsnap.domain.report.exception.ReportException
 import me.onetwo.growsnap.domain.report.model.Report
@@ -26,7 +28,8 @@ import java.util.UUID
 class ReportServiceTest {
 
     private val reportRepository: ReportRepository = mockk()
-    private val reportService: ReportService = ReportServiceImpl(reportRepository)
+    private val contentMetadataRepository: ContentMetadataRepository = mockk()
+    private val reportService: ReportService = ReportServiceImpl(reportRepository, contentMetadataRepository)
 
     @Nested
     @DisplayName("report - 대상 신고")
@@ -58,6 +61,7 @@ class ReportServiceTest {
 
             every { reportRepository.exists(reporterId, TargetType.CONTENT, contentId) } returns Mono.just(false)
             every { reportRepository.save(reporterId, TargetType.CONTENT, contentId, ReportType.SPAM, "스팸 콘텐츠입니다") } returns Mono.just(savedReport)
+            every { contentMetadataRepository.findCategoryByContentId(contentId) } returns Mono.just(Category.PROGRAMMING)
 
             // When
             val result = reportService.report(reporterId, TargetType.CONTENT, contentId, request)
@@ -70,11 +74,13 @@ class ReportServiceTest {
                     assertEquals(TargetType.CONTENT, response.targetType)
                     assertEquals(contentId.toString(), response.targetId)
                     assertEquals(ReportType.SPAM, response.reportType)
+                    assertEquals(false, response.isFunCategoryContent)
                 }
                 .verifyComplete()
 
             verify(exactly = 1) { reportRepository.exists(reporterId, TargetType.CONTENT, contentId) }
             verify(exactly = 1) { reportRepository.save(reporterId, TargetType.CONTENT, contentId, ReportType.SPAM, "스팸 콘텐츠입니다") }
+            verify(exactly = 1) { contentMetadataRepository.findCategoryByContentId(contentId) }
         }
 
         @Test

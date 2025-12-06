@@ -108,6 +108,10 @@
       "requiredFields": "Title and category are required fields",
       "tagsHelp": "Tags help with content discovery",
       "manageContent": "Posted content can be managed from your profile"
+    },
+    "funCategoryGuideline": {
+      "title": "FUN Category Guidelines",
+      "message": "This category is for break time content to reduce learning fatigue.\n\n✅ Suitable content:\n• Pure entertainment unrelated to studying\n• Memes, comedy, humor videos\n• Animal/cute videos\n• Daily vlogs, challenges\n• Dance, music, cooking, travel\n• Positive motivation\n\n❌ Unsuitable content:\n• Profanity, hate speech\n• Sexual/violent content\n• Advertising/spam content"
     }
   },
   "management": {

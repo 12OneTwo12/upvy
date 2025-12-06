@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.interaction.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.content.model.ContentStatus
 import me.onetwo.growsnap.domain.content.model.ContentType
@@ -40,7 +41,7 @@ import java.util.UUID
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("CommentLikeRepository 통합 테스트")
-class CommentLikeRepositoryTest {
+class CommentLikeRepositoryTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var commentLikeRepository: CommentLikeRepository
@@ -51,8 +52,7 @@ class CommentLikeRepositoryTest {
     @Autowired
     private lateinit var userRepository: UserRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var testUserId: UUID
     private lateinit var testCommentId: UUID

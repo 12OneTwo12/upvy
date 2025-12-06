@@ -24,6 +24,7 @@ import me.onetwo.growsnap.jooq.generated.tables.references.USER_SAVES
 import me.onetwo.growsnap.jooq.generated.tables.references.USER_VIEW_HISTORY
 import org.jooq.Condition
 import org.jooq.DSLContext
+import org.jooq.Field
 import org.jooq.Record
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
@@ -254,14 +255,18 @@ class FeedRepositoryImpl(
      * 인기 콘텐츠 ID 목록 조회
      *
      * 인터랙션 가중치 기반 인기도 점수가 높은 콘텐츠를 조회합니다.
+     * 시간 기반 Decay를 적용하여 오래된 콘텐츠의 점수를 감소시킵니다.
      *
-     * ### 인기도 계산 공식
+     * ### 인기도 계산 공식 (시간 감쇠 적용)
      * ```
-     * popularity_score = view_count * 1.0
-     *                  + like_count * 5.0
-     *                  + comment_count * 3.0
-     *                  + save_count * 7.0
-     *                  + share_count * 10.0
+     * base_score = view_count * 1.0
+     *            + like_count * 5.0
+     *            + comment_count * 3.0
+     *            + save_count * 7.0
+     *            + share_count * 10.0
+     *
+     * time_decay = EXP(-0.05 * days_since_created)
+     * final_score = base_score × time_decay × language_multiplier
      * ```
      *
      * @param userId 사용자 ID (차단 필터링용)
@@ -275,7 +280,8 @@ class FeedRepositoryImpl(
         limit: Int,
         excludeIds: List<UUID>,
         category: Category?,
-        preferredLanguage: String
+        preferredLanguage: String,
+        excludeCategory: Category?
     ): Flux<UUID> {
         // 1. 기본 인기도 점수 계산 (부동소수점 연산)
         val basePopularityScore = CONTENT_INTERACTIONS.VIEW_COUNT.cast(Double::class.java).mul(POPULARITY_WEIGHT_VIEW)
@@ -287,8 +293,11 @@ class FeedRepositoryImpl(
         // 2. 언어 가중치 계산 (Issue #107)
         val languageMultiplier = calculateLanguageMultiplier(preferredLanguage)
 
-        // 3. 최종 점수 = 기본 점수 × 언어 가중치
-        val finalScore = basePopularityScore.mul(languageMultiplier)
+        // 3. 시간 기반 Decay 계산
+        val timeDecay = calculateTimeDecay()
+
+        // 4. 최종 점수 = 기본 점수 × 시간 감쇠 × 언어 가중치
+        val finalScore = basePopularityScore.mul(timeDecay).mul(languageMultiplier)
 
         var query = dslContext
             .select(CONTENTS.ID)
@@ -307,12 +316,17 @@ class FeedRepositoryImpl(
             query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
         }
 
+        // 카테고리 제외 필터링 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
+        if (excludeCategory != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.ne(excludeCategory.name))
+        }
+
         // 제외할 콘텐츠 필터링
         if (excludeIds.isNotEmpty()) {
             query = query.and(CONTENTS.ID.notIn(excludeIds.map { it.toString() }))
         }
 
-        // 4. 최종 점수로 정렬 (언어 가중치가 적용된 인기도 순)
+        // 5. 최종 점수로 정렬 (시간 감쇠 + 언어 가중치가 적용된 인기도 순)
         return Flux.from(
             query
                 .orderBy(finalScore.desc())
@@ -350,7 +364,8 @@ class FeedRepositoryImpl(
         limit: Int,
         excludeIds: List<UUID>,
         category: Category?,
-        preferredLanguage: String
+        preferredLanguage: String,
+        excludeCategory: Category?
     ): Flux<UUID> {
         // 1. 언어 가중치 계산 (Issue #107)
         val languageMultiplier = calculateLanguageMultiplier(preferredLanguage)
@@ -369,6 +384,11 @@ class FeedRepositoryImpl(
         // 카테고리 필터링 (category가 null이 아닐 때만)
         if (category != null) {
             query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
+        }
+
+        // 카테고리 제외 필터링 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
+        if (excludeCategory != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.ne(excludeCategory.name))
         }
 
         // 제외할 콘텐츠 필터링
@@ -416,7 +436,8 @@ class FeedRepositoryImpl(
         limit: Int,
         excludeIds: List<UUID>,
         category: Category?,
-        preferredLanguage: String
+        preferredLanguage: String,
+        excludeCategory: Category?
     ): Flux<UUID> {
         // 1. 기본 랜덤 점수 계산
         val baseRandomScore = DSL.rand()
@@ -441,6 +462,11 @@ class FeedRepositoryImpl(
         // 카테고리 필터링 (category가 null이 아닐 때만)
         if (category != null) {
             query = query.and(CONTENT_METADATA.CATEGORY.eq(category.name))
+        }
+
+        // 카테고리 제외 필터링 (Issue #92: FUN 믹싱 시 일반 콘텐츠에서 FUN 제외)
+        if (excludeCategory != null) {
+            query = query.and(CONTENT_METADATA.CATEGORY.ne(excludeCategory.name))
         }
 
         // 제외할 콘텐츠 필터링
@@ -708,6 +734,34 @@ class FeedRepositoryImpl(
             .otherwise(LANGUAGE_MULTIPLIER_MISMATCH)
 
     /**
+     * 시간 기반 Decay 계산
+     *
+     * MySQL의 DATEDIFF 함수를 사용하여 콘텐츠 생성일로부터의 경과일 기반 감쇠를 계산합니다.
+     * 오래된 콘텐츠일수록 점수가 낮아져 최신 콘텐츠가 우선 노출됩니다.
+     *
+     * ### Decay 공식
+     * ```sql
+     * time_decay = EXP(-0.05 * DATEDIFF(CURDATE(), created_at))
+     * ```
+     * - 0일: 1.0 (100%)
+     * - 14일: ~0.50 (50%)
+     * - 30일: ~0.22 (22%)
+     *
+     * @return JOOQ Field (시간 감쇠 계산식)
+     */
+    private fun calculateTimeDecay(): Field<Double> {
+        // MySQL 네이티브 SQL 사용하여 시간 감쇠 계산
+        // JOOQ DSL의 exp() + inline() 조합이 MySQL에서 올바른 값을 생성하지 않는 이슈 해결
+        // 공식: EXP(-0.05 * DATEDIFF(CURDATE(), created_at))
+        return DSL.field(
+            "EXP(-{0} * DATEDIFF(CURDATE(), {1}))",
+            Double::class.java,
+            DSL.inline(TIME_DECAY_RATE),
+            CONTENTS.CREATED_AT
+        )
+    }
+
+    /**
      * 사용자의 차단 필터링 조건 생성
      *
      * 차단한 사용자의 콘텐츠와 차단한 콘텐츠를 필터링하는 JOOQ Condition을 생성합니다.
@@ -746,6 +800,14 @@ class FeedRepositoryImpl(
         private const val POPULARITY_WEIGHT_COMMENT = 3.0
         private const val POPULARITY_WEIGHT_SAVE = 7.0
         private const val POPULARITY_WEIGHT_SHARE = 10.0
+
+        /**
+         * 시간 기반 Decay 감쇠율
+         *
+         * EXP(-rate * days) 공식에 사용되는 감쇠율입니다.
+         * - 0.05: 14일 후 약 50%, 30일 후 약 22%
+         */
+        private const val TIME_DECAY_RATE = 0.05
 
         /**
          * 언어 가중치 (Issue #107)

@@ -1,4 +1,5 @@
 package me.onetwo.growsnap.domain.feed.repository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.model.ContentStatus
@@ -43,7 +44,7 @@ import java.util.UUID
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @ActiveProfiles("test")
 @DisplayName("피드 Repository 통합 테스트")
-class FeedRepositoryImplTest {
+class FeedRepositoryImplTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var feedRepository: FeedRepository
@@ -57,8 +58,7 @@ class FeedRepositoryImplTest {
     @Autowired
     private lateinit var followRepository: FollowRepository
 
-    @Autowired
-    private lateinit var dslContext: DSLContext
+    
 
     private lateinit var viewer: User
     private lateinit var creator1: User

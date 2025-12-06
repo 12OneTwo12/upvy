@@ -6,6 +6,7 @@ import me.onetwo.growsnap.domain.content.model.Category
 import me.onetwo.growsnap.domain.content.repository.ContentRepository
 import me.onetwo.growsnap.domain.user.repository.UserProfileRepository
 import me.onetwo.growsnap.domain.user.repository.UserRepository
+import me.onetwo.growsnap.infrastructure.config.AbstractIntegrationTest
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_BLOCKS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
@@ -16,8 +17,6 @@ import me.onetwo.growsnap.jooq.generated.tables.references.USER_PROFILES
 import me.onetwo.growsnap.jooq.generated.tables.references.USERS
 import me.onetwo.growsnap.util.createContent
 import me.onetwo.growsnap.util.createUserWithProfile
-import org.jooq.DSLContext
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -26,8 +25,11 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -42,7 +44,7 @@ import kotlin.test.assertTrue
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 @Import(TestSecurityConfig::class)
-class FeedRepositoryImplIntegrationTest {
+class FeedRepositoryImplIntegrationTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var feedRepository: FeedRepository
@@ -58,9 +60,6 @@ class FeedRepositoryImplIntegrationTest {
 
     @Autowired
     private lateinit var contentInteractionRepository: ContentInteractionRepository
-
-    @Autowired
-    private lateinit var dslContext: DSLContext
 
     private lateinit var userAId: UUID
     private lateinit var userBId: UUID
@@ -125,26 +124,6 @@ class FeedRepositoryImplIntegrationTest {
             contentInteractionRepository = contentInteractionRepository
         )
         contentC1Id = contentC1.id!!
-    }
-
-    @AfterEach
-    fun tearDown() {
-        // Then: 테스트 데이터 정리 (R2DBC 사용 시 reactive 방식으로 처리)
-        // 모든 데이터를 명시적으로 삭제 (foreign key 순서 고려)
-        // 1. 관계 테이블 먼저 삭제 (외래 키 제약 조건)
-        Mono.from(dslContext.deleteFrom(CONTENT_BLOCKS))
-            .then(Mono.from(dslContext.deleteFrom(USER_BLOCKS)))
-            .then(Mono.from(dslContext.deleteFrom(FOLLOWS)))
-            // 2. 콘텐츠 관련 자식 테이블 삭제
-            .then(Mono.from(dslContext.deleteFrom(CONTENT_INTERACTIONS)))
-            .then(Mono.from(dslContext.deleteFrom(CONTENT_METADATA)))
-            // 3. 콘텐츠 부모 테이블 삭제
-            .then(Mono.from(dslContext.deleteFrom(CONTENTS)))
-            // 4. 사용자 관련 자식 테이블 삭제
-            .then(Mono.from(dslContext.deleteFrom(USER_PROFILES)))
-            // 5. 사용자 부모 테이블 삭제
-            .then(Mono.from(dslContext.deleteFrom(USERS)))
-            .block()
     }
 
     @Test
@@ -711,6 +690,149 @@ class FeedRepositoryImplIntegrationTest {
             "Korean content should come first in category filter with language weight")
     }
 
+    // ==================== excludeCategory 테스트 (Issue #92) ====================
+
+    @Test
+    @DisplayName("[Popular] excludeCategory로 지정한 카테고리는 제외된다")
+    fun `findPopularContentIds should exclude specified category`() {
+        // Given: FUN 카테고리 콘텐츠 생성
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-exc-$testId@example.com",
+            nickname = "c-exc-$testId"
+        )
+
+        val funContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "FUN Content",
+            category = Category.FUN,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(100) { contentInteractionRepository.incrementLikeCount(funContent.id!!).block() }
+
+        val programmingContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Programming Content",
+            category = Category.PROGRAMMING,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(50) { contentInteractionRepository.incrementLikeCount(programmingContent.id!!).block() }
+
+        // When: excludeCategory=FUN으로 조회
+        val result = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en",
+            excludeCategory = Category.FUN
+        ).collectList().block()!!
+
+        // Then: FUN 콘텐츠는 제외되고 PROGRAMMING 콘텐츠만 포함
+        assertFalse(result.contains(funContent.id!!), "FUN content should be excluded")
+        assertTrue(result.contains(programmingContent.id!!), "PROGRAMMING content should be included")
+    }
+
+    @Test
+    @DisplayName("[New] excludeCategory로 지정한 카테고리는 제외된다")
+    fun `findNewContentIds should exclude specified category`() {
+        // Given: FUN 카테고리 콘텐츠 생성
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-new-exc-$testId@example.com",
+            nickname = "c-new-exc-$testId"
+        )
+
+        val funContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "FUN New Content",
+            category = Category.FUN,
+            contentInteractionRepository = contentInteractionRepository
+        )
+
+        val designContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Design New Content",
+            category = Category.DESIGN,
+            contentInteractionRepository = contentInteractionRepository
+        )
+
+        // When: excludeCategory=FUN으로 조회
+        val result = feedRepository.findNewContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en",
+            excludeCategory = Category.FUN
+        ).collectList().block()!!
+
+        // Then: FUN 콘텐츠는 제외되고 DESIGN 콘텐츠만 포함
+        assertFalse(result.contains(funContent.id!!), "FUN content should be excluded")
+        assertTrue(result.contains(designContent.id!!), "DESIGN content should be included")
+    }
+
+    @Test
+    @DisplayName("[Random] excludeCategory로 지정한 카테고리는 제외된다")
+    fun `findRandomContentIds should exclude specified category`() {
+        // Given: FUN 카테고리 콘텐츠 생성
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-rand-exc-$testId@example.com",
+            nickname = "c-rand-exc-$testId"
+        )
+
+        val funContents = mutableListOf<UUID>()
+        val artContents = mutableListOf<UUID>()
+
+        repeat(5) { i ->
+            val fun_ = createContent(
+                contentRepository = contentRepository,
+                creatorId = creator.id!!,
+                title = "FUN Random $i",
+                category = Category.FUN,
+                contentInteractionRepository = contentInteractionRepository
+            )
+            funContents.add(fun_.id!!)
+
+            val art = createContent(
+                contentRepository = contentRepository,
+                creatorId = creator.id!!,
+                title = "ART Random $i",
+                category = Category.ART,
+                contentInteractionRepository = contentInteractionRepository
+            )
+            artContents.add(art.id!!)
+        }
+
+        // When: excludeCategory=FUN으로 여러 번 조회
+        val results = (1..10).flatMap {
+            feedRepository.findRandomContentIds(
+                userId = userAId,
+                limit = 10,
+                excludeIds = emptyList(),
+                category = null,
+                preferredLanguage = "en",
+                excludeCategory = Category.FUN
+            ).collectList().block()!!
+        }
+
+        // Then: FUN 콘텐츠는 한 번도 나오지 않음
+        funContents.forEach { funId ->
+            assertFalse(results.contains(funId), "FUN content $funId should never appear")
+        }
+    }
+
     // ==================== 헬퍼 메서드 ====================
 
     private fun blockUser(blockerId: UUID, blockedId: UUID) {
@@ -735,6 +857,182 @@ class FeedRepositoryImplIntegrationTest {
                 .set(FOLLOWS.FOLLOWER_ID, followerId.toString())
                 .set(FOLLOWS.FOLLOWING_ID, followingId.toString())
         ).block()
+    }
+
+    private fun updateContentCreatedAt(contentId: UUID, createdAt: Instant) {
+        Mono.from(
+            dslContext.update(CONTENTS)
+                .set(CONTENTS.CREATED_AT, createdAt)
+                .where(CONTENTS.ID.eq(contentId.toString()))
+        ).block()
+    }
+
+    // ==================== 시간 기반 Decay 테스트 (Issue #92) ====================
+
+    @Test
+    @DisplayName("[Popular Decay] 같은 인기도일 때 최신 콘텐츠가 더 높은 순위에 있다")
+    fun `findPopularContentIds should rank newer content higher with same popularity`() {
+        // Given: 동일 인기도의 두 콘텐츠 생성
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-decay-$testId@example.com",
+            nickname = "c-decay-$testId"
+        )
+
+        // 두 콘텐츠 모두 50 likes
+        val newContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "New Content",
+            category = Category.PROGRAMMING,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(50) { contentInteractionRepository.incrementLikeCount(newContent.id!!).block() }
+
+        val oldContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Old Content",
+            category = Category.PROGRAMMING,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(50) { contentInteractionRepository.incrementLikeCount(oldContent.id!!).block() }
+
+        // oldContent의 created_at을 30일 전으로 설정
+        val thirtyDaysAgo = Instant.now().minus(30, ChronoUnit.DAYS)
+        updateContentCreatedAt(oldContent.id!!, thirtyDaysAgo)
+
+        // When: 인기 콘텐츠 조회
+        val result = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en"
+        ).collectList().block()!!
+
+        // Then: 최신 콘텐츠가 먼저 나와야 함
+        // newContent: 50 * decay(0일) = 50 * 1.0 = 50
+        // oldContent: 50 * decay(30일) = 50 * 0.22 ≈ 11
+        val newContentIndex = result.indexOf(newContent.id!!)
+        val oldContentIndex = result.indexOf(oldContent.id!!)
+
+        assertTrue(newContentIndex != -1 && oldContentIndex != -1,
+            "Both contents should be in results")
+        assertTrue(newContentIndex < oldContentIndex,
+            "Newer content should rank higher (new: $newContentIndex, old: $oldContentIndex)")
+    }
+
+    @Test
+    @DisplayName("[Popular Decay] 14일 경과 시 인기도 점수가 약 50% 감소한다")
+    fun `findPopularContentIds should apply ~50% decay after 14 days`() {
+        // Given: 14일 전 콘텐츠(100 likes)와 최신 콘텐츠(45 likes)
+        // Category.SCIENCE 사용 - 다른 테스트에서 사용되지 않아 격리됨
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-decay14-$testId@example.com",
+            nickname = "c-decay14-$testId"
+        )
+
+        // 14일 전 콘텐츠: 100 likes → decay 적용 후 약 50점
+        // decay = EXP(-0.05 * 14) ≈ 0.497, 100 * 0.497 ≈ 50
+        val oldHighPopContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Old High Pop Content",
+            category = Category.SCIENCE,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(100) { contentInteractionRepository.incrementLikeCount(oldHighPopContent.id!!).block() }
+
+        val fourteenDaysAgo = Instant.now().minus(14, ChronoUnit.DAYS)
+        updateContentCreatedAt(oldHighPopContent.id!!, fourteenDaysAgo)
+
+        // 최신 콘텐츠: 45 likes → 45점 (decay 없음)
+        val newLowPopContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "New Low Pop Content",
+            category = Category.SCIENCE,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(45) { contentInteractionRepository.incrementLikeCount(newLowPopContent.id!!).block() }
+
+        // When: 인기 콘텐츠 조회 (SCIENCE 카테고리로 필터링하여 테스트 격리)
+        val result = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = Category.SCIENCE,
+            preferredLanguage = "ko"
+        ).collectList().block()!!
+
+        // Then: 14일 전 100 likes (decay 후 ≈50점) > 최신 45 likes (45점)
+        val oldIndex = result.indexOf(oldHighPopContent.id!!)
+        val newIndex = result.indexOf(newLowPopContent.id!!)
+
+        assertTrue(oldIndex != -1 && newIndex != -1,
+            "Both contents should be in results (oldIndex: $oldIndex, newIndex: $newIndex)")
+        assertTrue(oldIndex < newIndex,
+            "Old high-pop content should still rank higher (old: $oldIndex, new: $newIndex)")
+    }
+
+    @Test
+    @DisplayName("[Popular Decay] 30일 경과 시 인기도 점수가 약 22% 감소한다")
+    fun `findPopularContentIds should apply ~22% decay after 30 days`() {
+        // Given: 30일 전 콘텐츠(100 likes)와 최신 콘텐츠(25 likes)
+        val testId = UUID.randomUUID().toString().substring(0, 8)
+        val (creator, _) = createUserWithProfile(
+            userRepository = userRepository,
+            userProfileRepository = userProfileRepository,
+            email = "creator-decay30-$testId@example.com",
+            nickname = "c-decay30-$testId"
+        )
+
+        // 30일 전 콘텐츠: 100 likes → 100 * 0.22 = 22
+        val oldContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "Old Content 30d",
+            category = Category.ART,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(100) { contentInteractionRepository.incrementLikeCount(oldContent.id!!).block() }
+
+        val thirtyDaysAgo = Instant.now().minus(30, ChronoUnit.DAYS)
+        updateContentCreatedAt(oldContent.id!!, thirtyDaysAgo)
+
+        // 최신 콘텐츠: 25 likes → 25 * 1.0 = 25
+        val newContent = createContent(
+            contentRepository = contentRepository,
+            creatorId = creator.id!!,
+            title = "New Content",
+            category = Category.ART,
+            contentInteractionRepository = contentInteractionRepository
+        )
+        repeat(25) { contentInteractionRepository.incrementLikeCount(newContent.id!!).block() }
+
+        // When: 인기 콘텐츠 조회
+        val result = feedRepository.findPopularContentIds(
+            userId = userAId,
+            limit = 10,
+            excludeIds = emptyList(),
+            category = null,
+            preferredLanguage = "en"
+        ).collectList().block()!!
+
+        // Then: 최신 25 likes (25점) > 30일 전 100 likes (≈22점)
+        val oldIndex = result.indexOf(oldContent.id!!)
+        val newIndex = result.indexOf(newContent.id!!)
+
+        assertTrue(oldIndex != -1 && newIndex != -1,
+            "Both contents should be in results")
+        assertTrue(newIndex < oldIndex,
+            "Newer content should rank higher after 30d decay (new: $newIndex, old: $oldIndex)")
     }
 
 }

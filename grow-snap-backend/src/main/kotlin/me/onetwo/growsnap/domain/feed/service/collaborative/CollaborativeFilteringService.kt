@@ -63,7 +63,7 @@ interface CollaborativeFilteringService {
      * 1. 내가 인터랙션한 콘텐츠 조회 (seed items)
      * 2. 각 seed item을 좋아한 다른 사용자 찾기
      * 3. 그 사용자들이 좋아한 콘텐츠 중 내가 안 본 것 추천
-     * 4. 카테고리 필터링 (category가 지정된 경우)
+     * 4. 카테고리 필터링 (category 포함 / excludeCategory 제외)
      * 5. CF 점수 계산 (공통 사용자가 많을수록 높은 점수)
      * 6. 언어 가중치 적용: final_score = cf_score × language_multiplier
      * 7. 최종 점수 순으로 정렬
@@ -71,8 +71,15 @@ interface CollaborativeFilteringService {
      * @param userId 사용자 ID
      * @param limit 추천 개수
      * @param preferredLanguage 사용자 선호 언어 (ISO 639-1, 예: ko, en) - 기본값: "en"
-     * @param category 필터링할 카테고리 (null이면 전체)
+     * @param category 포함할 카테고리 (null이면 전체)
+     * @param excludeCategory 제외할 카테고리 (null이면 제외 없음)
      * @return 추천 콘텐츠 ID 목록 (최종 점수 높은 순)
      */
-    fun getRecommendedContents(userId: UUID, limit: Int, preferredLanguage: String, category: Category? = null): Flux<UUID>
+    fun getRecommendedContents(
+        userId: UUID,
+        limit: Int,
+        preferredLanguage: String,
+        category: Category? = null,
+        excludeCategory: Category? = null
+    ): Flux<UUID>
 }

@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { reportTarget } from '@/api/report.api';
 import { ReportType, TargetType } from '@/types/report.types';
+import type { Category } from '@/types/content.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -34,6 +35,7 @@ interface ReportModalProps {
   targetType: TargetType;
   targetId: string;
   targetName?: string; // 신고 대상 이름 (콘텐츠 제목 또는 사용자 닉네임)
+  contentCategory?: Category; // 콘텐츠 카테고리 (FUN 카테고리 + OFF_TOPIC 신고 시 안내 표시용)
 }
 
 export const ReportModal: React.FC<ReportModalProps> = ({
@@ -42,6 +44,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   targetType,
   targetId,
   targetName,
+  contentCategory,
 }) => {
   const { t } = useTranslation('interactions');
   const { t: tCommon } = useTranslation('common');
@@ -66,6 +69,28 @@ export const ReportModal: React.FC<ReportModalProps> = ({
     setDescription('');
     setIsSubmitting(false);
     onClose();
+  };
+
+  /**
+   * FUN 카테고리 + OFF_TOPIC 신고 시 확인 알림 표시
+   */
+  const handleReasonSelect = (reason: ReportType) => {
+    if (contentCategory === 'FUN' && reason === 'OFF_TOPIC') {
+      Alert.alert(
+        t('report.funCategoryAlert.title'),
+        t('report.funCategoryAlert.message'),
+        [
+          { text: tCommon('button.cancel'), style: 'cancel' },
+          {
+            text: t('report.funCategoryAlert.confirm'),
+            onPress: () => setSelectedReason(reason),
+            style: 'destructive',
+          },
+        ]
+      );
+    } else {
+      setSelectedReason(reason);
+    }
   };
 
   const handleSubmit = async () => {
@@ -143,7 +168,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                   styles.reasonItem,
                   selectedReason === reason && styles.reasonItemSelected,
                 ]}
-                onPress={() => setSelectedReason(reason)}
+                onPress={() => handleReasonSelect(reason)}
               >
                 <View style={styles.reasonContent}>
                   <View style={styles.reasonTextContainer}>

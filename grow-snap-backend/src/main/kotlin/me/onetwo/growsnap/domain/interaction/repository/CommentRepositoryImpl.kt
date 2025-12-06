@@ -142,29 +142,37 @@ class CommentRepositoryImpl(
 
         // Cursor 기반 페이징: 커서 댓글의 인기 점수와 생성일을 기준으로 필터링
         return if (cursor != null) {
-            // 커서가 있으면 먼저 커서 댓글 조회
-            findById(cursor)
-                .flatMap { cursorComment ->
-                    // 커서 댓글의 인기 점수 계산
-                    Mono.from(
-                        dslContext
-                            .selectCount()
-                            .from(USER_COMMENT_LIKES)
-                            .where(USER_COMMENT_LIKES.COMMENT_ID.eq(cursor.toString()))
-                            .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
-                    ).map { record -> record.value1() }
-                        .defaultIfEmpty(0)
-                        .flatMap { cursorLikeCount ->
-                            countRepliesByParentCommentId(cursor)
-                                .map { cursorReplyCount ->
-                                    val cursorPopularityScore = cursorLikeCount + cursorReplyCount
-                                    // (인기 점수 < 커서 점수) OR (인기 점수 = 커서 점수 AND 생성일 > 커서 생성일)
-                                    popularityScore.lt(cursorPopularityScore)
-                                        .or(
-                                            popularityScore.eq(cursorPopularityScore)
-                                                .and(COMMENTS.CREATED_AT.gt(cursorComment.createdAt))
-                                        )
-                                }
+            // Cursor의 createdAt을 서브쿼리로 가져옴 (Instant 타입 변환 이슈 방지)
+            val cursorCreatedAtSubquery = DSL.select(COMMENTS.CREATED_AT)
+                .from(COMMENTS)
+                .where(COMMENTS.ID.eq(cursor.toString()))
+
+            // 커서 댓글의 인기 점수 계산
+            Mono.from(
+                dslContext
+                    .selectCount()
+                    .from(USER_COMMENT_LIKES)
+                    .where(USER_COMMENT_LIKES.COMMENT_ID.eq(cursor.toString()))
+                    .and(USER_COMMENT_LIKES.DELETED_AT.isNull)
+            ).map { record -> record.value1() }
+                .defaultIfEmpty(0)
+                .flatMap { cursorLikeCount ->
+                    countRepliesByParentCommentId(cursor)
+                        .map { cursorReplyCount ->
+                            val cursorPopularityScore = cursorLikeCount + cursorReplyCount
+                            // (인기 점수 < 커서 점수) OR (인기 점수 = 커서 점수 AND 생성일 > 커서 생성일) OR
+                            // (인기 점수 = 커서 점수 AND 생성일 = 커서 생성일 AND ID > 커서 ID)
+                            // 서브쿼리를 사용하여 Instant 타입 변환 이슈 방지
+                            popularityScore.lt(cursorPopularityScore)
+                                .or(
+                                    popularityScore.eq(cursorPopularityScore)
+                                        .and(COMMENTS.CREATED_AT.gt(cursorCreatedAtSubquery))
+                                )
+                                .or(
+                                    popularityScore.eq(cursorPopularityScore)
+                                        .and(COMMENTS.CREATED_AT.eq(cursorCreatedAtSubquery))
+                                        .and(COMMENTS.ID.gt(cursor.toString()))
+                                )
                         }
                 }
                 .flatMapMany { havingCondition ->
@@ -203,7 +211,7 @@ class CommentRepositoryImpl(
                                 COMMENTS.DELETED_AT
                             )
                             .having(havingCondition)
-                            .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc())
+                            .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc(), COMMENTS.ID.asc())
                             .limit(limit + 1) // hasNext 확인을 위해 +1 조회
                     ).map { record -> recordToComment(record) }
                 }
@@ -247,7 +255,7 @@ class CommentRepositoryImpl(
                         COMMENTS.UPDATED_BY,
                         COMMENTS.DELETED_AT
                     )
-                    .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc())
+                    .orderBy(popularityScore.desc(), COMMENTS.CREATED_AT.asc(), COMMENTS.ID.asc())
                     .limit(limit + 1) // hasNext 확인을 위해 +1 조회
             ).map { record -> recordToComment(record) }
         }
@@ -255,35 +263,40 @@ class CommentRepositoryImpl(
 
     override fun findRepliesByParentCommentId(parentCommentId: UUID, cursor: UUID?, limit: Int): Flux<Comment> {
         return if (cursor != null) {
-            // Cursor가 있으면 커서 댓글을 먼저 조회
-            findById(cursor)
-                .flatMapMany { cursorComment ->
-                    Flux.from(
-                        dslContext
-                            .select(
-                                COMMENTS.ID,
-                                COMMENTS.CONTENT_ID,
-                                COMMENTS.USER_ID,
-                                COMMENTS.PARENT_COMMENT_ID,
-                                COMMENTS.CONTENT,
-                                COMMENTS.CREATED_AT,
-                                COMMENTS.CREATED_BY,
-                                COMMENTS.UPDATED_AT,
-                                COMMENTS.UPDATED_BY,
-                                COMMENTS.DELETED_AT
+            // Cursor의 createdAt을 서브쿼리로 가져옴 (Instant 타입 변환 이슈 방지)
+            val cursorCreatedAtSubquery = DSL.select(COMMENTS.CREATED_AT)
+                .from(COMMENTS)
+                .where(COMMENTS.ID.eq(cursor.toString()))
+
+            Flux.from(
+                dslContext
+                    .select(
+                        COMMENTS.ID,
+                        COMMENTS.CONTENT_ID,
+                        COMMENTS.USER_ID,
+                        COMMENTS.PARENT_COMMENT_ID,
+                        COMMENTS.CONTENT,
+                        COMMENTS.CREATED_AT,
+                        COMMENTS.CREATED_BY,
+                        COMMENTS.UPDATED_AT,
+                        COMMENTS.UPDATED_BY,
+                        COMMENTS.DELETED_AT
+                    )
+                    .from(COMMENTS)
+                    .where(COMMENTS.PARENT_COMMENT_ID.eq(parentCommentId.toString()))
+                    .and(COMMENTS.DELETED_AT.isNull)
+                    // 같은 시간에 생성된 댓글도 ID로 구분 (안정적인 cursor 페이징)
+                    // 서브쿼리를 사용하여 타입 변환 이슈 방지
+                    .and(
+                        COMMENTS.CREATED_AT.gt(cursorCreatedAtSubquery)
+                            .or(
+                                COMMENTS.CREATED_AT.eq(cursorCreatedAtSubquery)
+                                    .and(COMMENTS.ID.gt(cursor.toString()))
                             )
-                            .from(COMMENTS)
-                            .where(COMMENTS.PARENT_COMMENT_ID.eq(parentCommentId.toString()))
-                            .and(COMMENTS.DELETED_AT.isNull)
-                            .and(COMMENTS.CREATED_AT.gt(cursorComment.createdAt))
-                            .orderBy(COMMENTS.CREATED_AT.asc())
-                            .limit(limit + 1) // hasNext 확인을 위해 +1 조회
-                    ).map { record -> recordToComment(record) }
-                }
-                .switchIfEmpty(
-                    // 커서 댓글을 찾을 수 없으면 빈 결과 반환
-                    Flux.empty()
-                )
+                    )
+                    .orderBy(COMMENTS.CREATED_AT.asc(), COMMENTS.ID.asc())
+                    .limit(limit + 1) // hasNext 확인을 위해 +1 조회
+            ).map { record -> recordToComment(record) }
         } else {
             // Cursor가 없으면 처음부터 조회
             Flux.from(
@@ -303,7 +316,7 @@ class CommentRepositoryImpl(
                     .from(COMMENTS)
                     .where(COMMENTS.PARENT_COMMENT_ID.eq(parentCommentId.toString()))
                     .and(COMMENTS.DELETED_AT.isNull)
-                    .orderBy(COMMENTS.CREATED_AT.asc())
+                    .orderBy(COMMENTS.CREATED_AT.asc(), COMMENTS.ID.asc())
                     .limit(limit + 1) // hasNext 확인을 위해 +1 조회
             ).map { record -> recordToComment(record) }
         }

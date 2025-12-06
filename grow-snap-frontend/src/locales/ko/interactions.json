@@ -50,7 +50,12 @@
     "alreadyReportedTitle": "이미 신고해주셨어요",
     "alreadyReportedMessage": "확인 중이니 조금만 기다려주세요!",
     "errorTitle": "앗, 문제가 생겼어요",
-    "errorMessage": "잠시 후 다시 시도해주세요."
+    "errorMessage": "잠시 후 다시 시도해주세요.",
+    "funCategoryAlert": {
+      "title": "재미 콘텐츠예요",
+      "message": "이 콘텐츠는 브레이크 타임을 위한 재미 콘텐츠예요.\n\n재미 카테고리는 학습과 무관한 엔터테인먼트 콘텐츠도 허용되며, 학습 피로도를 낮추기 위해 의도적으로 제공돼요.\n\n주제와 맞지 않다는 이유만으로는 검토 후 반려될 수 있어요.\n\n그래도 신고하시겠어요?",
+      "confirm": "신고하기"
+    }
   },
   "block": {
     "user": {

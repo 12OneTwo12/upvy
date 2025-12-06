@@ -52,6 +52,7 @@
     "TRAVEL": { "name": "Travel", "desc": "Destinations, Travel tips, etc." },
     "HOBBY": { "name": "Hobby", "desc": "Reading, Music, Sports, etc." },
     "TREND": { "name": "Trend", "desc": "Latest trends, Insights, etc." },
-    "OTHER": { "name": "Other", "desc": "Other categories" }
+    "OTHER": { "name": "Other", "desc": "Other categories" },
+    "FUN": { "name": "Fun", "desc": "Fun and light entertainment content" }
   }
 }

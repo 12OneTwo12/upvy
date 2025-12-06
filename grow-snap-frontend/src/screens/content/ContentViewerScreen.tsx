@@ -292,6 +292,14 @@ export default function ContentViewerScreen() {
     navigation.goBack();
   };
 
+  // 삭제 성공 핸들러: 프로필로 돌아가며 콘텐츠 목록 새로고침
+  const handleDeleteSuccess = async () => {
+    // 프로필 콘텐츠 목록 새로고침
+    await queryClient.invalidateQueries({ queryKey: ['myContents'] });
+    // 이전 화면으로 돌아가기
+    navigation.goBack();
+  };
+
   // 표시할 아이템 결정: 로딩 중이면 스켈레톤, 아니면 실제 데이터
   const displayItem = isLoading ? loadingFeedItem : feedItem;
 
@@ -342,6 +350,7 @@ export default function ContentViewerScreen() {
           onShare={handleShare}
           onFollow={handleFollow}
           onCreatorPress={handleCreatorPress}
+          onDeleteSuccess={handleDeleteSuccess}
         />
 
         {/* 로딩 중일 때 중앙 스피너 추가 (FeedScreen과 동일) */}

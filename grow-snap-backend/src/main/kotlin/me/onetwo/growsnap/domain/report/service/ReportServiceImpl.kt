@@ -1,5 +1,7 @@
 package me.onetwo.growsnap.domain.report.service
 
+import me.onetwo.growsnap.domain.content.model.Category
+import me.onetwo.growsnap.domain.content.repository.ContentMetadataRepository
 import me.onetwo.growsnap.domain.report.dto.ReportRequest
 import me.onetwo.growsnap.domain.report.dto.ReportResponse
 import me.onetwo.growsnap.domain.report.exception.ReportException
@@ -20,10 +22,12 @@ import java.util.UUID
  * 3. 응답 반환
  *
  * @property reportRepository 신고 레포지토리
+ * @property contentMetadataRepository 콘텐츠 메타데이터 레포지토리 (FUN 카테고리 확인용)
  */
 @Service
 class ReportServiceImpl(
-    private val reportRepository: ReportRepository
+    private val reportRepository: ReportRepository,
+    private val contentMetadataRepository: ContentMetadataRepository
 ) : ReportService {
 
     /**
@@ -67,9 +71,19 @@ class ReportServiceImpl(
                     )
                 }
             }
-            .map { report ->
+            .flatMap { report ->
                 logger.info("Target reported successfully: reportId={}, reporterId={}, targetType={}, targetId={}", report.id, reporterId, targetType, targetId)
-                ReportResponse.from(report)
+
+                // 콘텐츠 신고 시 FUN 카테고리 여부 확인 (프론트엔드에서 OFF_TOPIC + FUN일 때 안내 표시)
+                if (targetType == TargetType.CONTENT) {
+                    contentMetadataRepository.findCategoryByContentId(targetId)
+                        .map { category ->
+                            ReportResponse.from(report, isFunCategoryContent = category == Category.FUN)
+                        }
+                        .defaultIfEmpty(ReportResponse.from(report))
+                } else {
+                    Mono.just(ReportResponse.from(report))
+                }
             }
             .doOnError { error ->
                 logger.error("Failed to report target: reporterId={}, targetType={}, targetId={}", reporterId, targetType, targetId, error)
