@@ -50,6 +50,19 @@ class VertexAiLlmClient(
 
     @PostConstruct
     fun init() {
+        // projectId 검증
+        require(projectId.isNotBlank()) {
+            "GCP_PROJECT_ID 환경변수가 설정되지 않았습니다. Vertex AI를 사용하려면 GCP_PROJECT_ID와 GOOGLE_APPLICATION_CREDENTIALS를 설정하세요."
+        }
+
+        // 인증 방식 안내 (GOOGLE_APPLICATION_CREDENTIALS, gcloud CLI, 또는 메타데이터 서버)
+        val credentialsEnv = System.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if (credentialsEnv.isNullOrBlank()) {
+            logger.info("GOOGLE_APPLICATION_CREDENTIALS 미설정. gcloud auth application-default login 또는 메타데이터 서버를 통해 인증합니다.")
+        } else {
+            logger.info("GOOGLE_APPLICATION_CREDENTIALS를 통해 인증합니다: {}", credentialsEnv)
+        }
+
         logger.info("Vertex AI LLM 클라이언트 초기화: projectId={}, location={}, model={}",
             projectId, location, modelName)
 
