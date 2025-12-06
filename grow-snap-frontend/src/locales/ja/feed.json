@@ -1,0 +1,94 @@
+{
+  "title": "フィード",
+  "tabs": {
+    "following": "フォロー中",
+    "forYou": "おすすめ"
+  },
+  "actions": {
+    "like": "いいね",
+    "unlike": "いいね解除",
+    "comment": "コメント",
+    "share": "共有",
+    "save": "保存",
+    "saved": "保存済み",
+    "report": "報告",
+    "block": "ブロック",
+    "delete": "削除",
+    "follow": "フォロー",
+    "following": "フォロー中",
+    "more": "もっと見る"
+  },
+  "menu": {
+    "report": "報告",
+    "block": "ユーザーをブロック",
+    "delete": "投稿を削除",
+    "edit": "投稿を編集",
+    "copyLink": "リンクをコピー",
+    "shareVia": "共有...",
+    "notInterested": "このコンテンツに興味がない",
+    "blockUser": "このユーザーをブロック"
+  },
+  "deleteContent": {
+    "title": "この投稿を削除しますか？",
+    "description": "削除された投稿は復元できません。",
+    "confirmButton": "削除",
+    "successTitle": "削除完了",
+    "successMessage": "投稿が削除されました。",
+    "errorTitle": "削除失敗",
+    "forbiddenMessage": "この投稿を削除する権限がありません。",
+    "notFoundMessage": "投稿が見つかりません。"
+  },
+  "editContent": {
+    "title": "投稿を編集",
+    "successTitle": "更新完了",
+    "successMessage": "投稿が更新されました。",
+    "errorTitle": "更新失敗",
+    "forbiddenMessage": "この投稿を編集する権限がありません。",
+    "notFoundMessage": "投稿が見つかりません。",
+    "discardTitle": "変更を破棄",
+    "discardMessage": "保存されていない変更があります。破棄してもよろしいですか？",
+    "discardButton": "破棄"
+  },
+  "comments": {
+    "title": "コメント",
+    "placeholder": "コメントを追加...",
+    "viewAll": "{{count}}件のコメントをすべて見る",
+    "noComments": "まだコメントがありません",
+    "reply": "返信",
+    "delete": "削除",
+    "report": "報告"
+  },
+  "loading": {
+    "message": "コンテンツを読み込み中...",
+    "failed": "コンテンツの読み込みに失敗しました",
+    "retry": "タップして再試行"
+  },
+  "empty": {
+    "title": "まだ投稿がありません",
+    "message": "ユーザーをフォローしてフィードに投稿を表示しましょう",
+    "following": {
+      "title": "フォローするクリエイターがいません",
+      "message": "興味のあるクリエイターをフォローして\n最新のコンテンツをチェックしましょう！"
+    },
+    "recommended": {
+      "title": "まだコンテンツがありません",
+      "message": "素晴らしいコンテンツが近日登場！"
+    }
+  },
+  "refresh": {
+    "pullToRefresh": "引っ張って更新",
+    "releaseToRefresh": "離して更新"
+  },
+  "media": {
+    "videoLoadError": "動画を読み込めません",
+    "imageLoadError": "画像を読み込めません",
+    "mediaLoadError": "メディアを読み込めません",
+    "tapToRetry": "タップして再試行"
+  },
+  "share": {
+    "message": "GrowSnapで面白いコンテンツを見つけました！チェックしてみてください 😊\n\n{{url}}",
+    "title": "GrowSnapコンテンツを共有",
+    "failed": "共有に失敗しました",
+    "failedMessage": "後でもう一度お試しください。"
+  }
+}

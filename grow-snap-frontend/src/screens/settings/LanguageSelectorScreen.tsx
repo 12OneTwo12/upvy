@@ -84,7 +84,7 @@ export default function LanguageSelectorScreen() {
    * Handle language selection
    */
   const handleSelectLanguage = async (languageCode: string) => {
-    await setLanguage(languageCode as 'ko' | 'en');
+    await setLanguage(languageCode as 'ko' | 'en' | 'ja');
     // Go back after language is changed
     navigation.goBack();
   };

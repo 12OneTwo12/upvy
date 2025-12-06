@@ -1,0 +1,79 @@
+{
+  "tabs": {
+    "myContent": "マイコンテンツ",
+    "saved": "保存済み"
+  },
+  "stats": {
+    "content": "コンテンツ",
+    "posts": "投稿",
+    "followers": "フォロワー",
+    "following": "フォロー中"
+  },
+  "buttons": {
+    "follow": "フォロー",
+    "following": "フォロー中",
+    "unfollow": "フォロー解除",
+    "editProfile": "プロフィール編集",
+    "message": "メッセージ",
+    "share": "共有",
+    "check": "確認"
+  },
+  "edit": {
+    "title": "プロフィール編集",
+    "nicknameLabel": "ニックネーム",
+    "nicknamePlaceholder": "ニックネームを入力",
+    "bio": "自己紹介",
+    "bioPlaceholder": "自己紹介を入力",
+    "bioLength": "{{length}}/150文字",
+    "website": "ウェブサイト",
+    "websitePlaceholder": "ウェブサイトURLを入力",
+    "changePhoto": "プロフィール写真を変更",
+    "removePhoto": "写真を削除",
+    "uploading": "アップロード中...",
+    "info": "あなたのプロフィール情報はすべてのGrowSnapユーザーに表示されます。",
+    "imageOptions": {
+      "title": "プロフィール画像を変更",
+      "message": "画像の選択方法を選んでください",
+      "camera": "写真を撮る",
+      "gallery": "ギャラリーから選択"
+    },
+    "nickname": {
+      "available": "使用可能",
+      "duplicated": "使用済み",
+      "minLength": "ニックネームは2文字以上必要です。",
+      "checkRequired": "ニックネームを入力し、使用可能か確認してください。"
+    },
+    "success": {
+      "title": "成功",
+      "message": "プロフィールが更新されました。"
+    },
+    "error": {
+      "uploadFailed": "画像のアップロードに失敗しました",
+      "checkFailed": "ニックネーム確認に失敗しました",
+      "saveFailed": "プロフィールの更新に失敗しました",
+      "permissionDenied": "権限が必要です",
+      "permissionMessage": "{{type}}へのアクセス権限が必要です。",
+      "imagePickerError": "画像の選択中にエラーが発生しました。",
+      "duplicatedNickname": "このニックネームは既に使用されています。"
+    }
+  },
+  "follow": {
+    "followers": "フォロワー",
+    "following": "フォロー中",
+    "followList": "フォローリスト",
+    "noFollowers": "まだフォロワーがいません",
+    "noFollowing": "まだ誰もフォローしていません"
+  },
+  "content": {
+    "noPosts": "まだコンテンツがアップロードされていません",
+    "noPostsSubtitle": "最初のコンテンツをアップロードしましょう！",
+    "noSaved": "保存したコンテンツがありません",
+    "noSavedSubtitle": "お気に入りのコンテンツを保存しましょう"
+  },
+  "message": {
+    "comingSoon": "メッセージ機能は近日公開予定です。"
+  },
+  "report": {
+    "action": "報告"
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "report": {
+    "title": "報告",
+    "subtitle": "報告する理由を選んでください",
+    "targetInfo": {
+      "content": "コンテンツ",
+      "user": "ユーザー"
+    },
+    "reasons": {
+      "OFF_TOPIC": {
+        "label": "トピック外",
+        "description": "学習やメイントピックと関係のないコンテンツ"
+      },
+      "SPAM": {
+        "label": "スパム",
+        "description": "広告、宣伝、または繰り返しの無意味なコンテンツ"
+      },
+      "INAPPROPRIATE_CONTENT": {
+        "label": "不適切なコンテンツ",
+        "description": "暴力的または性的なコンテンツ"
+      },
+      "HARASSMENT": {
+        "label": "ハラスメント",
+        "description": "特定の個人を対象とした嫌がらせや誹謗中傷"
+      },
+      "HATE_SPEECH": {
+        "label": "ヘイトスピーチ",
+        "description": "特定のグループに対する差別や憎悪表現"
+      },
+      "MISINFORMATION": {
+        "label": "誤情報",
+        "description": "意図的に虚偽の情報を広めるコンテンツ"
+      },
+      "COPYRIGHT": {
+        "label": "著作権侵害",
+        "description": "許可なく他者の作品を使用しているコンテンツ"
+      },
+      "OTHER": {
+        "label": "その他",
+        "description": "上記に当てはまらないその他の理由"
+      }
+    },
+    "details": "詳細情報（任意）",
+    "detailsPlaceholder": "必要に応じて詳細を入力してください",
+    "characterCount": "{{count}}/500",
+    "submit": "報告を送信",
+    "selectReason": "理由を選択してください。",
+    "successTitle": "報告ありがとうございます",
+    "successMessage": "迅速に確認いたします！",
+    "alreadyReportedTitle": "既に報告済み",
+    "alreadyReportedMessage": "現在確認中です。お待ちください！",
+    "errorTitle": "問題が発生しました",
+    "errorMessage": "後でもう一度お試しください。",
+    "funCategoryAlert": {
+      "title": "これはFUNコンテンツです",
+      "message": "このコンテンツは休憩時間用です。\n\nFUNカテゴリーでは学習と関係のないエンターテイメントコンテンツが許可されており、学習疲れを軽減するために意図的に提供されています。\n\nトピック外というだけで報告すると、確認後に却下される場合があります。\n\nそれでも報告しますか？",
+      "confirm": "報告する"
+    }
+  },
+  "block": {
+    "user": {
+      "title": "{{name}}をブロックしますか？",
+      "description": "このユーザーのすべてのコンテンツはフィードに表示されなくなり、相互フォローは解除されます。",
+      "confirmButton": "ブロック",
+      "successTitle": "ユーザーをブロックしました",
+      "successMessage": "このユーザーのコンテンツは表示されなくなります。"
+    },
+    "content": {
+      "title": "このコンテンツを非表示にしますか？",
+      "description": "このコンテンツはフィードに表示されなくなります。",
+      "confirmButton": "非表示",
+      "successTitle": "コンテンツを非表示にしました",
+      "successMessage": "このコンテンツは表示されなくなります。"
+    },
+    "alreadyBlockedTitle": "既にブロック済み",
+    "errorTitle": "ブロックできません",
+    "unblock": "ブロック解除",
+    "unblockSuccess": "ユーザーのブロックを解除しました"
+  },
+  "blockManagement": {
+    "title": "ブロック管理",
+    "tabs": {
+      "users": "ユーザー",
+      "contents": "コンテンツ"
+    },
+    "empty": {
+      "users": "ブロックしたユーザーはいません",
+      "contents": "ブロックしたコンテンツはありません"
+    },
+    "unblock": {
+      "userTitle": "ブロック解除",
+      "userConfirm": "{{name}}のブロックを解除しますか？",
+      "userSuccess": "ユーザーのブロックを解除しました。",
+      "contentTitle": "ブロック解除",
+      "contentConfirm": "「{{title}}」を再び表示しますか？",
+      "contentSuccess": "コンテンツが再び表示されます。",
+      "error": "ブロック解除に失敗しました。"
+    },
+    "error": {
+      "loadTitle": "エラー",
+      "loadMessage": "ブロックリストの読み込みに失敗しました。"
+    }
+  },
+  "comment": {
+    "title": "コメント",
+    "placeholder": "コメントを追加...",
+    "reply": "返信",
+    "replyTo": "{{name}}に返信",
+    "replyWriting": "{{name}}に返信中",
+    "delete": "コメントを削除",
+    "deleteConfirm": "このコメントを削除しますか？",
+    "report": "コメントを報告",
+    "like": "いいね",
+    "unlike": "いいね解除",
+    "viewReplies": "{{count}}件の返信を見る",
+    "hideReplies": "返信を非表示",
+    "viewMoreReplies": "さらに返信を見る",
+    "emptyTitle": "まだコメントがありません",
+    "emptySubtitle": "最初にコメントしましょう！",
+    "errorTitle": "エラー",
+    "errorMessage": "コメントの投稿に失敗しました。",
+    "timeJustNow": "たった今",
+    "timeMinutesAgo": "{{count}}分前",
+    "timeHoursAgo": "{{count}}時間前",
+    "timeDaysAgo": "{{count}}日前",
+    "timeWeeksAgo": "{{count}}週間前",
+    "timeMonthsAgo": "{{count}}ヶ月前",
+    "timeYearsAgo": "{{count}}年前",
+    "replyAdd": "返信を追加",
+    "replyHide": "返信を非表示",
+    "replyCount": "{{count}}件の返信"
+  }
+}

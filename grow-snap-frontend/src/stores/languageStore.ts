@@ -42,7 +42,7 @@ export const useLanguageStore = create<LanguageState>((set, get) => ({
       // Try to get saved language from AsyncStorage
       const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
 
-      if (savedLanguage && (savedLanguage === 'ko' || savedLanguage === 'en')) {
+      if (savedLanguage && (savedLanguage === 'ko' || savedLanguage === 'en' || savedLanguage === 'ja')) {
         // Use saved language
         await i18n.changeLanguage(savedLanguage);
         set({ currentLanguage: savedLanguage, isInitialized: true });

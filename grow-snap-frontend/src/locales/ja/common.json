@@ -1,0 +1,58 @@
+{
+  "button": {
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "delete": "削除",
+    "edit": "編集",
+    "close": "閉じる",
+    "submit": "送信",
+    "retry": "再試行",
+    "back": "戻る",
+    "next": "次へ",
+    "skip": "スキップ",
+    "done": "完了",
+    "logout": "ログアウト",
+    "login": "ログイン"
+  },
+  "label": {
+    "loading": "読み込み中...",
+    "noData": "データがありません",
+    "comingSoon": "近日公開",
+    "preparing": "準備中"
+  },
+  "time": {
+    "justNow": "たった今",
+    "minuteAgo": "{{count}}分前",
+    "minuteAgo_plural": "{{count}}分前",
+    "hourAgo": "{{count}}時間前",
+    "hourAgo_plural": "{{count}}時間前",
+    "dayAgo": "{{count}}日前",
+    "dayAgo_plural": "{{count}}日前",
+    "weekAgo": "{{count}}週間前",
+    "weekAgo_plural": "{{count}}週間前",
+    "monthAgo": "{{count}}ヶ月前",
+    "monthAgo_plural": "{{count}}ヶ月前",
+    "yearAgo": "{{count}}年前",
+    "yearAgo_plural": "{{count}}年前"
+  },
+  "unit": {
+    "views": "{{count}}回視聴",
+    "likes": "{{count}}いいね",
+    "comments": "{{count}}件のコメント",
+    "followers": "{{count}}人のフォロワー",
+    "following": "{{count}}人をフォロー中",
+    "posts": "{{count}}件の投稿"
+  },
+  "navigation": {
+    "explore": "探索",
+    "search": "検索",
+    "feed": "フィード",
+    "upload": "アップロード",
+    "profile": "プロフィール"
+  },
+  "screen": {
+    "content": "コンテンツ",
+    "category": "カテゴリー"
+  }
+}
