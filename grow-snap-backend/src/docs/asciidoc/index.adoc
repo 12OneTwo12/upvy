@@ -192,3 +192,11 @@ include::search/search-history-delete-all.adoc[]
 include::report/index.adoc[]
 
 include::block/index.adoc[]
+
+[[notification-api]]
+== Notification API
+
+알림 설정 관리 API
+
+include::notification/settings-get.adoc[]
+include::notification/settings-update.adoc[]

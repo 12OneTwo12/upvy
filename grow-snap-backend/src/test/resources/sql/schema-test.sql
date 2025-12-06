@@ -2,6 +2,7 @@
 -- Disable foreign key checks for clean drop
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS notification_settings;
 DROP TABLE IF EXISTS search_history;
 DROP TABLE IF EXISTS reports;
 DROP TABLE IF EXISTS user_blocks;
@@ -423,3 +424,22 @@ CREATE TABLE content_blocks (
 CREATE INDEX idx_content_block_user_id ON content_blocks(user_id);
 CREATE INDEX idx_content_block_content_id ON content_blocks(content_id);
 CREATE INDEX idx_content_block_deleted_at ON content_blocks(deleted_at);
+
+-- Notification Settings Table
+CREATE TABLE notification_settings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL UNIQUE,
+    all_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    like_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    comment_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    follow_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_notification_settings_user_id ON notification_settings(user_id);
+CREATE INDEX idx_notification_settings_deleted_at ON notification_settings(deleted_at);

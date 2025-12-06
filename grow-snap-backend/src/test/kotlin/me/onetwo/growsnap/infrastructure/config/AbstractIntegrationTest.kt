@@ -8,6 +8,7 @@ import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_METADATA
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.growsnap.jooq.generated.tables.references.CONTENT_SUBTITLES
 import me.onetwo.growsnap.jooq.generated.tables.references.FOLLOWS
+import me.onetwo.growsnap.jooq.generated.tables.references.NOTIFICATION_SETTINGS
 import me.onetwo.growsnap.jooq.generated.tables.references.REPORTS
 import me.onetwo.growsnap.jooq.generated.tables.references.SEARCH_HISTORY
 import me.onetwo.growsnap.jooq.generated.tables.references.USERS
@@ -66,6 +67,7 @@ abstract class AbstractIntegrationTest {
         Mono.from(dslContext.query("SET time_zone = '+00:00'"))
             .then(Mono.from(dslContext.query("SET FOREIGN_KEY_CHECKS = 0")))
             // 관계 테이블 삭제 (자식 테이블)
+            .then(Mono.from(dslContext.deleteFrom(NOTIFICATION_SETTINGS)))
             .then(Mono.from(dslContext.deleteFrom(SEARCH_HISTORY)))
             .then(Mono.from(dslContext.deleteFrom(REPORTS)))
             .then(Mono.from(dslContext.deleteFrom(USER_BLOCKS)))

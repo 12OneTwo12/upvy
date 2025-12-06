@@ -1,6 +1,8 @@
 package me.onetwo.growsnap.domain.user.service
 
+import me.onetwo.growsnap.domain.user.event.UserCreatedEvent
 import me.onetwo.growsnap.domain.user.exception.UserNotFoundException
+import me.onetwo.growsnap.infrastructure.event.ReactiveEventPublisher
 import me.onetwo.growsnap.domain.user.model.OAuthProvider
 import me.onetwo.growsnap.domain.user.model.User
 import me.onetwo.growsnap.domain.user.model.UserProfile
@@ -25,6 +27,7 @@ import java.util.UUID
  * @property userProfileRepository 사용자 프로필 Repository
  * @property followRepository 팔로우 Repository
  * @property userStatusHistoryRepository 사용자 상태 변경 이력 Repository
+ * @property eventPublisher 이벤트 Publisher
  */
 @Service
 @Transactional(readOnly = true)
@@ -32,7 +35,8 @@ class UserServiceImpl(
     private val userRepository: UserRepository,
     private val userProfileRepository: UserProfileRepository,
     private val followRepository: FollowRepository,
-    private val userStatusHistoryRepository: UserStatusHistoryRepository
+    private val userStatusHistoryRepository: UserStatusHistoryRepository,
+    private val eventPublisher: ReactiveEventPublisher
 ) : UserService {
 
     private val logger = LoggerFactory.getLogger(UserServiceImpl::class.java)
@@ -194,6 +198,7 @@ class UserServiceImpl(
      * 1. 사용자 생성
      * 2. 상태 이력 기록 (최초 가입)
      * 3. 프로필 자동 생성
+     * 4. UserCreatedEvent 발행 (알림 설정 등 비동기 처리)
      */
     private fun createNewUser(
         email: String,
@@ -227,6 +232,13 @@ class UserServiceImpl(
                     createProfileForNewUser(savedUser, name ?: email.substringBefore("@"), profileImageUrl),
                     userStatusHistoryRepository.save(history)
                 ).map { tuple -> tuple.t1 }
+            }
+            .doOnSuccess { savedUser ->
+                savedUser.id?.let { userId ->
+                    // Non-Critical Path: 알림 설정 등 후속 처리를 위해 이벤트 발행
+                    eventPublisher.publish(UserCreatedEvent(userId = userId))
+                    logger.debug("UserCreatedEvent published: userId={}", userId)
+                } ?: logger.error("Cannot publish UserCreatedEvent: user ID is null after saving")
             }
     }
 

@@ -1,0 +1,21 @@
+[[notification-settings-get]]
+=== 알림 설정 조회
+
+내 알림 설정을 조회합니다. 설정이 존재하지 않으면 기본 설정이 자동으로 생성됩니다.
+
+==== Request
+
+include::{snippets}/notification-settings-get/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/notification-settings-get/http-response.adoc[]
+include::{snippets}/notification-settings-get/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/notifications/settings \
+  -H "Authorization: Bearer {access_token}"
+----

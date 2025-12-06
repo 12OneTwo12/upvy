@@ -398,3 +398,22 @@ CREATE TABLE IF NOT EXISTS content_blocks (
 CREATE INDEX IF NOT EXISTS idx_content_block_user_id ON content_blocks(user_id);
 CREATE INDEX IF NOT EXISTS idx_content_block_content_id ON content_blocks(content_id);
 CREATE INDEX IF NOT EXISTS idx_content_block_deleted_at ON content_blocks(deleted_at);
+
+-- Notification Settings Table (알림 설정)
+CREATE TABLE IF NOT EXISTS notification_settings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL UNIQUE,
+    all_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '전체 알림 활성화 여부',
+    like_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '좋아요 알림 활성화 여부',
+    comment_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '댓글 알림 활성화 여부',
+    follow_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '팔로우 알림 활성화 여부',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_settings_user_id ON notification_settings(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_settings_deleted_at ON notification_settings(deleted_at);
