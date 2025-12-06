@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{backoffice/layout/default}">
+<head>
+    <title>Pending Review</title>
+</head>
+<body>
+    <th:block layout:fragment="page-title">Pending Review</th:block>
+
+    <div layout:fragment="content">
+        <!-- Stats -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">
+                        Total <strong th:text="${contents.totalElements}">0</strong> items
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content List -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 80px">Thumbnail</th>
+                                <th>Title</th>
+                                <th style="width: 120px">Category</th>
+                                <th style="width: 80px">Score</th>
+                                <th style="width: 100px">Priority</th>
+                                <th style="width: 150px">Created</th>
+                                <th style="width: 100px">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="content : ${contents.content}">
+                                <td>
+                                    <div class="bg-secondary rounded" style="width: 60px; height: 80px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-play-fill text-white"></i>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold" th:text="${content.title}">Title</div>
+                                    <small class="text-muted" th:text="${content.youtubeChannel}">Channel</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary" th:text="${content.category.displayName}">Category</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold" th:classappend="${content.qualityScore >= 85} ? 'text-success' : (${content.qualityScore >= 70} ? 'text-primary' : 'text-warning')"
+                                          th:text="${content.qualityScore}">85</span>
+                                </td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${content.reviewPriority.name() == 'HIGH'} ? 'badge-priority-high' : (${content.reviewPriority.name() == 'NORMAL'} ? 'badge-priority-normal' : 'badge-priority-low')"
+                                          th:text="${content.reviewPriority.name()}">HIGH</span>
+                                </td>
+                                <td>
+                                    <span th:text="${#temporals.format(content.createdAt, 'yyyy-MM-dd HH:mm')}">2024-01-01</span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/backoffice/pending/{id}(id=${content.id})}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${contents.content.isEmpty()}">
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    No pending contents
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <nav th:if="${contents.totalPages > 1}" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" th:classappend="${contents.first} ? 'disabled'">
+                    <a class="page-link" th:href="@{/backoffice/pending(page=${currentPage - 1})}">Previous</a>
+                </li>
+                <li th:each="i : ${#numbers.sequence(0, contents.totalPages - 1)}"
+                    class="page-item"
+                    th:classappend="${i == currentPage} ? 'active'">
+                    <a class="page-link" th:href="@{/backoffice/pending(page=${i})}" th:text="${i + 1}">1</a>
+                </li>
+                <li class="page-item" th:classappend="${contents.last} ? 'disabled'">
+                    <a class="page-link" th:href="@{/backoffice/pending(page=${currentPage + 1})}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</body>
+</html>

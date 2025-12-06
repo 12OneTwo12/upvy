@@ -125,8 +125,8 @@ enum class JobStatus {
 /**
  * 콘텐츠 난이도
  */
-enum class Difficulty {
-    BEGINNER,
-    INTERMEDIATE,
-    ADVANCED
+enum class Difficulty(val displayName: String) {
+    BEGINNER("입문"),
+    INTERMEDIATE("중급"),
+    ADVANCED("고급")
 }

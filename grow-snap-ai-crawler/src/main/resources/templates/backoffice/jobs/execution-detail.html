@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{backoffice/layout/default}">
+<head>
+    <title>Job Execution Detail</title>
+</head>
+<body>
+    <th:block layout:fragment="page-title">
+        Job Execution #<span th:text="${execution.id}">1</span>
+    </th:block>
+
+    <div layout:fragment="content">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="/backoffice/jobs" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Jobs
+            </a>
+        </div>
+
+        <!-- Execution Overview -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Execution Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="text-muted">Job Name</label>
+                        <p class="fw-bold" th:text="${execution.jobInstance.jobName}">aiContentCrawlerJob</p>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="text-muted">Status</label>
+                        <p>
+                            <span class="badge fs-6"
+                                  th:classappend="${execution.status.name() == 'COMPLETED'} ? 'bg-success' :
+                                                  (${execution.status.name() == 'FAILED'} ? 'bg-danger' :
+                                                  (${execution.status.name() == 'STARTED'} ? 'bg-warning' : 'bg-secondary'))"
+                                  th:text="${execution.status.name()}">COMPLETED</span>
+                        </p>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="text-muted">Exit Code</label>
+                        <p th:text="${execution.exitStatus.exitCode}">COMPLETED</p>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="text-muted">Start Time</label>
+                        <p th:text="${execution.startTime != null} ? ${#temporals.format(execution.startTime, 'yyyy-MM-dd HH:mm:ss')} : '-'">-</p>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="text-muted">End Time</label>
+                        <p th:text="${execution.endTime != null} ? ${#temporals.format(execution.endTime, 'yyyy-MM-dd HH:mm:ss')} : '-'">-</p>
+                    </div>
+                </div>
+
+                <!-- Exit Description (if failed) -->
+                <div th:if="${execution.exitStatus.exitDescription != null && !execution.exitStatus.exitDescription.isEmpty()}"
+                     class="alert alert-danger mt-3">
+                    <strong>Exit Description:</strong>
+                    <pre class="mb-0 mt-2" style="white-space: pre-wrap;" th:text="${execution.exitStatus.exitDescription}"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job Parameters -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Job Parameters</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="param : ${execution.jobParameters.parameters}">
+                            <td th:text="${param.key}">key</td>
+                            <td th:text="${param.value.value}">value</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Step Executions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Step Executions</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Step Name</th>
+                                <th>Status</th>
+                                <th>Read</th>
+                                <th>Write</th>
+                                <th>Filter</th>
+                                <th>Skip</th>
+                                <th>Commit</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="step : ${stepExecutions}">
+                                <td th:text="${step.stepName}">crawlStep</td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${step.status.name() == 'COMPLETED'} ? 'bg-success' :
+                                                          (${step.status.name() == 'FAILED'} ? 'bg-danger' : 'bg-secondary')"
+                                          th:text="${step.status.name()}">COMPLETED</span>
+                                </td>
+                                <td th:text="${step.readCount}">0</td>
+                                <td th:text="${step.writeCount}">0</td>
+                                <td th:text="${step.filterCount}">0</td>
+                                <td th:text="${step.skipCount}">0</td>
+                                <td th:text="${step.commitCount}">0</td>
+                                <td>
+                                    <span th:if="${step.startTime != null && step.endTime != null}"
+                                          th:text="${T(java.time.Duration).between(step.startTime, step.endTime).toSeconds()} + 's'">0s</span>
+                                    <span th:if="${step.startTime == null || step.endTime == null}">-</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

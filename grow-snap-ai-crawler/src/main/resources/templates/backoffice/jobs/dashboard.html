@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{backoffice/layout/default}">
+<head>
+    <title>Job Management</title>
+</head>
+<body>
+    <th:block layout:fragment="page-title">Job Management</th:block>
+
+    <div layout:fragment="content">
+        <!-- Job Trigger Card -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-play-circle"></i> Run Crawler Job</h5>
+                <span th:if="${isJobRunning}" class="badge bg-warning">
+                    <i class="bi bi-arrow-repeat spin"></i> Job Running
+                </span>
+            </div>
+            <div class="card-body">
+                <form th:action="@{/backoffice/jobs/trigger}" method="post" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="category" class="form-label">Category (Optional)</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="">All Categories</option>
+                            <option value="PROGRAMMING">Programming</option>
+                            <option value="SCIENCE">Science</option>
+                            <option value="LANGUAGE">Language</option>
+                            <option value="HISTORY">History</option>
+                            <option value="MATHEMATICS">Mathematics</option>
+                            <option value="FINANCE">Finance</option>
+                            <option value="MARKETING">Marketing</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="maxVideos" class="form-label">Max Videos</label>
+                        <input type="number" class="form-control" id="maxVideos" name="maxVideos"
+                               value="5" min="1" max="50">
+                    </div>
+                    <div class="col-md-5 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary" th:disabled="${isJobRunning}">
+                            <i class="bi bi-play-fill"></i> Start Crawler Job
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recent Executions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Executions</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Job Name</th>
+                                <th>Status</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Triggered By</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="exec : ${recentExecutions}">
+                                <td th:text="${exec.id}">1</td>
+                                <td th:text="${exec.jobInstance.jobName}">aiContentCrawlerJob</td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${exec.status.name() == 'COMPLETED'} ? 'bg-success' :
+                                                          (${exec.status.name() == 'FAILED'} ? 'bg-danger' :
+                                                          (${exec.status.name() == 'STARTED' || exec.status.name() == 'STARTING'} ? 'bg-warning' : 'bg-secondary'))"
+                                          th:text="${exec.status.name()}">COMPLETED</span>
+                                </td>
+                                <td th:text="${exec.startTime != null} ? ${#temporals.format(exec.startTime, 'yyyy-MM-dd HH:mm:ss')} : '-'">2024-01-01</td>
+                                <td th:text="${exec.endTime != null} ? ${#temporals.format(exec.endTime, 'yyyy-MM-dd HH:mm:ss')} : '-'">2024-01-01</td>
+                                <td th:text="${exec.jobParameters.getString('triggeredBy') ?: 'scheduler'}">admin</td>
+                                <td>
+                                    <a th:href="@{/backoffice/jobs/executions/{id}(id=${exec.id})}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(recentExecutions)}">
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    No job executions yet
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="scripts">
+        <style>
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            .spin {
+                display: inline-block;
+                animation: spin 1s linear infinite;
+            }
+        </style>
+        <script th:if="${isJobRunning}">
+            // Auto-refresh when job is running
+            setTimeout(function() {
+                location.reload();
+            }, 10000);
+        </script>
+    </th:block>
+</body>
+</html>

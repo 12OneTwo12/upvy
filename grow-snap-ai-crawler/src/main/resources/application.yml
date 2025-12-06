@@ -16,11 +16,16 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none  # Flyway가 스키마 관리
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
     show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
 
 # AI 설정
 ai:
@@ -73,6 +78,10 @@ batch:
 # 품질 검수
 quality:
   min-score: 70  # 70점 이상만 승인 대기열로
+
+# 크롤러 설정
+crawler:
+  system-user-id: ${SYSTEM_USER_ID:00000000-0000-0000-0000-000000000001}
 
 # FFmpeg
 ffmpeg:
