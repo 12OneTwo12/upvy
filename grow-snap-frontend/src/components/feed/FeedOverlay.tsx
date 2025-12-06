@@ -265,6 +265,15 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                 </View>
               )}
             </TouchableOpacity>
+
+            {/* 태그 */}
+            {!isLoading && tags && tags.length > 0 && (
+              <View style={styles.tagsContainer}>
+                <Text style={styles.tagsText} numberOfLines={1}>
+                  {tags.map((tag) => `#${tag}`).join(' ')}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* 우측: 인터랙션 버튼 */}
@@ -396,13 +405,17 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
               overScrollMode="never"
               showsVerticalScrollIndicator={false}
             >
-              <Text
-                style={styles.expandedDescription}
-                onLayout={handleExpandedLayout}
-              >
-                <Text style={styles.titleText}>{title}</Text>
-                {description && `\n${description}`}
-              </Text>
+              <View onLayout={handleExpandedLayout}>
+                <Text style={styles.expandedDescription}>
+                  <Text style={styles.titleText}>{title}</Text>
+                  {description && `\n${description}`}
+                </Text>
+                {tags && tags.length > 0 && (
+                  <Text style={styles.expandedTagsText}>
+                    {tags.map((tag) => `#${tag}`).join(' ')}
+                  </Text>
+                )}
+              </View>
             </ScrollView>
           </TouchableOpacity>
         )}
@@ -594,5 +607,19 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontWeight: '700',
+  },
+  tagsContainer: {
+    marginTop: 6,
+  },
+  tagsText: {
+    fontSize: 13,
+    color: '#9BD4FF',
+    lineHeight: 18,
+  },
+  expandedTagsText: {
+    fontSize: 14,
+    color: '#9BD4FF',
+    lineHeight: 20,
+    marginTop: 8,
   },
 });
