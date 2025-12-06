@@ -1,0 +1,103 @@
+spring:
+  application:
+    name: grow-snap-ai-crawler
+
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false  # 스케줄러로 실행
+
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:growsnap}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: false
+
+# AI 설정
+ai:
+  llm:
+    provider: ${AI_LLM_PROVIDER:vertex}
+    model: ${AI_LLM_MODEL:gemini-1.5-pro}
+  stt:
+    provider: ${AI_STT_PROVIDER:google}
+    model: ${AI_STT_MODEL:chirp}
+
+# Vertex AI (Google Cloud)
+vertex:
+  project-id: ${GCP_PROJECT_ID:}
+  location: ${GCP_LOCATION:asia-northeast3}
+
+# OpenAI (대안)
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  model: ${OPENAI_MODEL:gpt-4o}
+
+# YouTube Data API
+youtube:
+  api-key: ${YOUTUBE_API_KEY:}
+  daily-quota: 10000
+
+# AWS S3
+spring.cloud.aws:
+  s3:
+    region: ${AWS_REGION:ap-northeast-2}
+  credentials:
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
+
+s3:
+  bucket:
+    raw-videos: ${S3_BUCKET_RAW:grow-snap-raw-videos}
+    edited-videos: ${S3_BUCKET_EDITED:grow-snap-edited-videos}
+    thumbnails: ${S3_BUCKET_THUMBNAILS:grow-snap-thumbnails}
+
+# 배치 스케줄링
+batch:
+  schedule:
+    cron: "0 0 3 * * *"  # 매일 새벽 3시
+  chunk-size: 5
+  retry:
+    max-attempts: 3
+    backoff-initial: 1000
+    backoff-max: 30000
+    backoff-multiplier: 2.0
+
+# 품질 검수
+quality:
+  min-score: 70  # 70점 이상만 승인 대기열로
+
+# FFmpeg
+ffmpeg:
+  path: ${FFMPEG_PATH:/usr/bin/ffmpeg}
+  temp-dir: ${FFMPEG_TEMP_DIR:/tmp/ai-crawler}
+
+# yt-dlp
+ytdlp:
+  path: ${YTDLP_PATH:/usr/local/bin/yt-dlp}
+  output-dir: ${YTDLP_OUTPUT_DIR:/tmp/ai-crawler/downloads}
+
+# Logging
+logging:
+  level:
+    root: INFO
+    me.onetwo.growsnap.crawler: DEBUG
+    org.springframework.batch: INFO
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,batch
+  endpoint:
+    health:
+      show-details: always
