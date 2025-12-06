@@ -417,3 +417,79 @@ CREATE TABLE IF NOT EXISTS notification_settings (
 
 CREATE INDEX IF NOT EXISTS idx_notification_settings_user_id ON notification_settings(user_id);
 CREATE INDEX IF NOT EXISTS idx_notification_settings_deleted_at ON notification_settings(deleted_at);
+
+-- Push Tokens Table (푸시 토큰 - 다양한 푸시 제공자 지원)
+CREATE TABLE IF NOT EXISTS push_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL COMMENT '사용자 ID',
+    token VARCHAR(500) NOT NULL COMMENT '푸시 토큰 (FCM, APNs, Expo 등)',
+    device_id VARCHAR(255) NOT NULL COMMENT '디바이스 고유 ID',
+    device_type VARCHAR(20) NOT NULL DEFAULT 'UNKNOWN' COMMENT '디바이스 타입 (IOS, ANDROID, WEB, UNKNOWN)',
+    provider VARCHAR(20) NOT NULL DEFAULT 'EXPO' COMMENT '푸시 제공자 (EXPO, FCM, APNS)',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_push_user_device UNIQUE (user_id, device_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_tokens_user_id ON push_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_token ON push_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_device_id ON push_tokens(device_id);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_provider ON push_tokens(provider);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_deleted_at ON push_tokens(deleted_at);
+
+-- Notifications Table (알림)
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL COMMENT '알림 수신자 ID',
+    type VARCHAR(30) NOT NULL COMMENT '알림 유형 (LIKE, COMMENT, REPLY, FOLLOW)',
+    title VARCHAR(200) NOT NULL COMMENT '알림 제목',
+    body VARCHAR(500) NOT NULL COMMENT '알림 본문',
+    data JSON NULL COMMENT '추가 데이터 (클릭 시 이동 정보 등)',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE COMMENT '읽음 여부',
+    delivery_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '발송 상태 (PENDING, SENT, DELIVERED, FAILED, SKIPPED)',
+    actor_id CHAR(36) NULL COMMENT '알림 발생 주체 (좋아요/팔로우한 사용자)',
+    target_type VARCHAR(30) NULL COMMENT '타겟 타입 (CONTENT, COMMENT)',
+    target_id CHAR(36) NULL COMMENT '타겟 ID (콘텐츠 ID, 댓글 ID 등)',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_deleted_at ON notifications(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_delivery_status ON notifications(delivery_status);
+
+-- Push Notification Logs Table (푸시 발송 로그 - Append Only)
+CREATE TABLE IF NOT EXISTS push_notification_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    notification_id BIGINT NOT NULL COMMENT '연관 알림 ID',
+    push_token_id BIGINT NULL COMMENT '사용된 푸시 토큰 ID',
+    provider VARCHAR(20) NOT NULL COMMENT '푸시 제공자 (EXPO, FCM, APNS)',
+    status VARCHAR(20) NOT NULL COMMENT '발송 상태 (SENT, DELIVERED, FAILED, EXPIRED)',
+    provider_message_id VARCHAR(255) NULL COMMENT '프로바이더 응답 ID (Expo ticket ID 등)',
+    error_code VARCHAR(50) NULL COMMENT '에러 코드',
+    error_message VARCHAR(500) NULL COMMENT '에러 메시지',
+    attempt_count INT NOT NULL DEFAULT 1 COMMENT '시도 횟수',
+    sent_at DATETIME(6) NOT NULL COMMENT '발송 시각',
+    delivered_at DATETIME(6) NULL COMMENT '도착 확인 시각',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE CASCADE,
+    FOREIGN KEY (push_token_id) REFERENCES push_tokens(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_logs_notification_id ON push_notification_logs(notification_id);
+CREATE INDEX IF NOT EXISTS idx_push_logs_push_token_id ON push_notification_logs(push_token_id);
+CREATE INDEX IF NOT EXISTS idx_push_logs_status ON push_notification_logs(status);
+CREATE INDEX IF NOT EXISTS idx_push_logs_sent_at ON push_notification_logs(sent_at);
+CREATE INDEX IF NOT EXISTS idx_push_logs_provider ON push_notification_logs(provider);

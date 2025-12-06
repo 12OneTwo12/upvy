@@ -1,0 +1,21 @@
+[[notification-delete]]
+=== 알림 삭제
+
+개별 알림을 삭제합니다.
+
+==== Request
+
+include::{snippets}/notification-delete/http-request.adoc[]
+include::{snippets}/notification-delete/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/notification-delete/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X DELETE http://localhost:8080/api/v1/notifications/1 \
+  -H "Authorization: Bearer {access_token}"
+----

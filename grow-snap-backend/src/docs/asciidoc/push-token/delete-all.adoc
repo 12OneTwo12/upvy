@@ -1,0 +1,20 @@
+[[push-token-delete-all]]
+=== 모든 푸시 토큰 삭제
+
+사용자의 모든 디바이스에 등록된 푸시 토큰을 삭제합니다. 로그아웃 시 사용됩니다.
+
+==== Request
+
+include::{snippets}/push-token-delete-all/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/push-token-delete-all/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X DELETE http://localhost:8080/api/v1/push-tokens \
+  -H "Authorization: Bearer {access_token}"
+----
