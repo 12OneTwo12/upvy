@@ -146,8 +146,8 @@ CREATE TABLE IF NOT EXISTS backoffice_users (
 
 -- -----------------------------------------------------
 -- 4. 기본 관리자 계정 생성
--- 비밀번호: admin123 (BCrypt 해시)
+-- 비밀번호: password123 (BCrypt 해시)
 -- -----------------------------------------------------
 INSERT INTO backoffice_users (username, password, name, role)
-VALUES ('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGQqjLpZ8BqZq3l5lFP5C1OjLJHy', '관리자', 'ADMIN')
+VALUES ('admin', '$2a$10$cGkFIfp7ByGHtiGTWpU8Jea6.wZpmDmhl9aIazE3/INB3kP3vUtYO', '관리자', 'ADMIN')
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
