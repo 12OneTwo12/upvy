@@ -253,10 +253,12 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     console.log('🖼️ generateThumbnails called - uri:', uri, 'range:', startSec, '-', endSec);
     setIsGeneratingThumbnails(true);
     try {
-      // 트리밍 범위 내에서 3개의 타임스탬프 생성
+      // 트리밍 범위 내에서 5개의 타임스탬프 생성
       const times = [
         startSec + rangeDuration * 0.1,   // 트리밍 범위의 10%
+        startSec + rangeDuration * 0.3,   // 트리밍 범위의 30%
         startSec + rangeDuration * 0.5,   // 트리밍 범위의 50%
+        startSec + rangeDuration * 0.7,   // 트리밍 범위의 70%
         startSec + Math.min(rangeDuration * 0.9, rangeDuration - 0.5),  // 트리밍 범위의 90%
       ];
 
