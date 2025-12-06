@@ -22,7 +22,7 @@ INSERT INTO user_profiles (user_id, nickname, profile_image_url, bio, follower_c
 VALUES (
     '00000000-0000-0000-0000-000000000001',
     'GrowSnap AI',
-    'https://cdn.growsnap.app/system/ai-avatar.png',  -- TODO: 실제 이미지 업로드 후 URL 교체
+    'https://grow-snap-images.s3.amazonaws.com/profile-images/8a8ea321-9fe3-4e52-af4e-aa6711a87ef2/profile_8a8ea321-9fe3-4e52-af4e-aa6711a87ef2_1764745438868.jpg',
     'AI가 큐레이션한 교육 숏폼 콘텐츠를 제공합니다. 🎓',
     0,
     0,
