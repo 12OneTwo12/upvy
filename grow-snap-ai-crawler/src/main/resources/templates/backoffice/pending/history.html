@@ -33,6 +33,7 @@
                                 <th style="width: 150px">Reviewed By</th>
                                 <th style="width: 150px">Reviewed At</th>
                                 <th th:if="${status == 'rejected'}" style="width: 200px">Reason</th>
+                                <th style="width: 100px">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -55,9 +56,14 @@
                                     <span class="text-truncate d-inline-block" style="max-width: 200px;"
                                           th:text="${content.rejectionReason}" th:title="${content.rejectionReason}">Reason</span>
                                 </td>
+                                <td>
+                                    <a th:href="@{/backoffice/pending/{id}(id=${content.id})}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
                             </tr>
                             <tr th:if="${contents.content.isEmpty()}">
-                                <td colspan="6" class="text-center py-5 text-muted">
+                                <td colspan="7" class="text-center py-5 text-muted">
                                     <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                                     No contents found
                                 </td>

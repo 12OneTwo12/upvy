@@ -11,18 +11,50 @@
     <div layout:fragment="content">
         <!-- Header Actions -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <a href="/backoffice/pending" class="btn btn-outline-secondary">
+            <a th:href="${content.status.name() == 'APPROVED'} ? '/backoffice/pending/approved' : (${content.status.name() == 'REJECTED'} ? '/backoffice/pending/rejected' : '/backoffice/pending')"
+               class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Back to List
             </a>
-            <div>
-                <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                    <i class="bi bi-x-circle"></i> Reject
-                </button>
-                <form th:action="@{/backoffice/pending/{id}/approve(id=${content.id})}" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle"></i> Approve
+            <!-- 상태 배지 표시 -->
+            <div class="d-flex align-items-center gap-3">
+                <span th:if="${content.status.name() == 'APPROVED'}" class="badge bg-success fs-6">
+                    <i class="bi bi-check-circle"></i> Approved
+                </span>
+                <span th:if="${content.status.name() == 'REJECTED'}" class="badge bg-danger fs-6">
+                    <i class="bi bi-x-circle"></i> Rejected
+                </span>
+                <!-- PENDING_REVIEW 상태일 때만 승인/거절 버튼 표시 -->
+                <th:block th:if="${content.status.name() == 'PENDING_REVIEW'}">
+                    <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        <i class="bi bi-x-circle"></i> Reject
                     </button>
-                </form>
+                    <form th:action="@{/backoffice/pending/{id}/approve(id=${content.id})}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Approve
+                        </button>
+                    </form>
+                </th:block>
+            </div>
+        </div>
+
+        <!-- 승인/거절 정보 표시 (APPROVED 또는 REJECTED 상태일 때) -->
+        <div th:if="${content.status.name() == 'APPROVED' or content.status.name() == 'REJECTED'}" class="alert"
+             th:classappend="${content.status.name() == 'APPROVED'} ? 'alert-success' : 'alert-danger'">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Reviewed By:</strong> <span th:text="${content.reviewedBy}">admin</span>
+                </div>
+                <div class="col-md-4">
+                    <strong>Reviewed At:</strong>
+                    <span th:text="${content.reviewedAt != null} ? ${#temporals.format(content.reviewedAt, 'yyyy-MM-dd HH:mm')} : '-'">2024-01-01</span>
+                </div>
+                <div class="col-md-4" th:if="${content.status.name() == 'APPROVED' and content.publishedContentId != null}">
+                    <strong>Published ID:</strong>
+                    <code th:text="${content.publishedContentId}">uuid</code>
+                </div>
+                <div class="col-12 mt-2" th:if="${content.status.name() == 'REJECTED' and content.rejectionReason != null}">
+                    <strong>Rejection Reason:</strong> <span th:text="${content.rejectionReason}">reason</span>
+                </div>
             </div>
         </div>
 
@@ -88,14 +120,16 @@
                 </div>
             </div>
 
-            <!-- Metadata Edit -->
+            <!-- Metadata Edit/View -->
             <div class="col-lg-7">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">Metadata</h5>
                     </div>
                     <div class="card-body">
-                        <form th:action="@{/backoffice/pending/{id}/update(id=${content.id})}" method="post">
+                        <!-- 편집 가능한 상태 (PENDING_REVIEW) -->
+                        <form th:if="${content.status.name() == 'PENDING_REVIEW'}"
+                              th:action="@{/backoffice/pending/{id}/update(id=${content.id})}" method="post">
                             <div class="mb-3">
                                 <label for="title" class="form-label">Title</label>
                                 <input type="text" class="form-control" id="title" name="title"
@@ -141,6 +175,31 @@
                                 <i class="bi bi-save"></i> Save Changes
                             </button>
                         </form>
+
+                        <!-- 읽기 전용 상태 (APPROVED, REJECTED) -->
+                        <div th:if="${content.status.name() != 'PENDING_REVIEW'}">
+                            <dl class="row">
+                                <dt class="col-sm-3">Title</dt>
+                                <dd class="col-sm-9" th:text="${content.title}">Title</dd>
+
+                                <dt class="col-sm-3">Description</dt>
+                                <dd class="col-sm-9" th:text="${content.description} ?: '-'">Description</dd>
+
+                                <dt class="col-sm-3">Category</dt>
+                                <dd class="col-sm-9">
+                                    <span class="badge bg-secondary" th:text="${content.category.displayName}">Category</span>
+                                </dd>
+
+                                <dt class="col-sm-3">Difficulty</dt>
+                                <dd class="col-sm-9" th:text="${content.difficulty?.displayName} ?: 'Not specified'">Difficulty</dd>
+
+                                <dt class="col-sm-3">Tags</dt>
+                                <dd class="col-sm-9">
+                                    <span th:if="${#lists.isEmpty(tags)}" class="text-muted">No tags</span>
+                                    <span th:each="tag : ${tags}" class="badge bg-primary me-1" th:text="${tag}">tag</span>
+                                </dd>
+                            </dl>
+                        </div>
                     </div>
                 </div>
             </div>
