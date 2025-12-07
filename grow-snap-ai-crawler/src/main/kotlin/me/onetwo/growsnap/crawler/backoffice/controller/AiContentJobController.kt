@@ -132,4 +132,114 @@ class AiContentJobController(
 
         return "redirect:/backoffice/ai-jobs"
     }
+
+    // ========== 직접 실행 엔드포인트 ==========
+
+    /**
+     * Transcribe 단계 직접 실행
+     */
+    @PostMapping("/{id}/execute/transcribe")
+    fun executeTranscribe(
+        @PathVariable id: Long,
+        principal: Principal,
+        redirectAttributes: RedirectAttributes
+    ): String {
+        logger.info("Transcribe 직접 실행 요청: jobId={}, by={}", id, principal.name)
+
+        val result = aiContentJobService.executeTranscribe(id, principal.name)
+
+        if (result != null && result.status == JobStatus.TRANSCRIBED) {
+            redirectAttributes.addFlashAttribute("successMessage",
+                "Transcribe 완료! 상태: ${result.status.name}")
+        } else if (result != null) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                "Transcribe 실패: ${result.errorMessage ?: "알 수 없는 오류"}")
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                "Transcribe 실행 불가. 현재 상태가 CRAWLED인지 확인하세요.")
+        }
+
+        return "redirect:/backoffice/ai-jobs/$id"
+    }
+
+    /**
+     * Analyze 단계 직접 실행
+     */
+    @PostMapping("/{id}/execute/analyze")
+    fun executeAnalyze(
+        @PathVariable id: Long,
+        principal: Principal,
+        redirectAttributes: RedirectAttributes
+    ): String {
+        logger.info("Analyze 직접 실행 요청: jobId={}, by={}", id, principal.name)
+
+        val result = aiContentJobService.executeAnalyze(id, principal.name)
+
+        if (result != null && result.status == JobStatus.ANALYZED) {
+            redirectAttributes.addFlashAttribute("successMessage",
+                "Analyze 완료! 상태: ${result.status.name}")
+        } else if (result != null) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                "Analyze 실패: ${result.errorMessage ?: "알 수 없는 오류"}")
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                "Analyze 실행 불가. 현재 상태가 TRANSCRIBED인지 확인하세요.")
+        }
+
+        return "redirect:/backoffice/ai-jobs/$id"
+    }
+
+    /**
+     * Edit 단계 직접 실행
+     */
+    @PostMapping("/{id}/execute/edit")
+    fun executeEdit(
+        @PathVariable id: Long,
+        principal: Principal,
+        redirectAttributes: RedirectAttributes
+    ): String {
+        logger.info("Edit 직접 실행 요청: jobId={}, by={}", id, principal.name)
+
+        val result = aiContentJobService.executeEdit(id, principal.name)
+
+        if (result != null && result.status == JobStatus.EDITED) {
+            redirectAttributes.addFlashAttribute("successMessage",
+                "Edit 완료! 상태: ${result.status.name}")
+        } else if (result != null) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                "Edit 실패: ${result.errorMessage ?: "알 수 없는 오류"}")
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                "Edit 실행 불가. 현재 상태가 ANALYZED인지 확인하세요.")
+        }
+
+        return "redirect:/backoffice/ai-jobs/$id"
+    }
+
+    /**
+     * Review 단계 직접 실행
+     */
+    @PostMapping("/{id}/execute/review")
+    fun executeReview(
+        @PathVariable id: Long,
+        principal: Principal,
+        redirectAttributes: RedirectAttributes
+    ): String {
+        logger.info("Review 직접 실행 요청: jobId={}, by={}", id, principal.name)
+
+        val result = aiContentJobService.executeReview(id, principal.name)
+
+        if (result != null && (result.status == JobStatus.PENDING_APPROVAL || result.status == JobStatus.REJECTED)) {
+            redirectAttributes.addFlashAttribute("successMessage",
+                "Review 완료! 상태: ${result.status.name}, 점수: ${result.qualityScore}")
+        } else if (result != null) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                "Review 실패: ${result.errorMessage ?: "알 수 없는 오류"}")
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                "Review 실행 불가. 현재 상태가 EDITED인지 확인하세요.")
+        }
+
+        return "redirect:/backoffice/ai-jobs/$id"
+    }
 }

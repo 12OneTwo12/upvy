@@ -1,5 +1,9 @@
 package me.onetwo.growsnap.crawler.backoffice.service
 
+import me.onetwo.growsnap.crawler.batch.step.analyze.AnalyzeProcessor
+import me.onetwo.growsnap.crawler.batch.step.edit.EditProcessor
+import me.onetwo.growsnap.crawler.batch.step.review.ReviewProcessor
+import me.onetwo.growsnap.crawler.batch.step.transcribe.TranscribeProcessor
 import me.onetwo.growsnap.crawler.domain.AiContentJob
 import me.onetwo.growsnap.crawler.domain.AiContentJobRepository
 import me.onetwo.growsnap.crawler.domain.JobStatus
@@ -16,7 +20,11 @@ import java.time.Instant
  */
 @Service
 class AiContentJobService(
-    private val aiContentJobRepository: AiContentJobRepository
+    private val aiContentJobRepository: AiContentJobRepository,
+    private val transcribeProcessor: TranscribeProcessor,
+    private val analyzeProcessor: AnalyzeProcessor,
+    private val editProcessor: EditProcessor,
+    private val reviewProcessor: ReviewProcessor
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AiContentJobService::class.java)
@@ -107,6 +115,176 @@ class AiContentJobService(
     fun getStatusStats(): Map<JobStatus, Long> {
         return JobStatus.entries.associateWith { status ->
             aiContentJobRepository.findByStatus(status).size.toLong()
+        }
+    }
+
+    // ========== 직접 실행 메서드 ==========
+
+    /**
+     * Transcribe 단계 직접 실행
+     * CRAWLED 상태의 Job만 실행 가능
+     */
+    @Transactional
+    fun executeTranscribe(id: Long, executedBy: String): AiContentJob? {
+        val job = aiContentJobRepository.findById(id).orElse(null) ?: return null
+
+        if (job.status != JobStatus.CRAWLED) {
+            logger.warn("Transcribe 실행 불가: jobId={}, 현재상태={}", id, job.status)
+            return null
+        }
+
+        logger.info("Transcribe 직접 실행 시작: jobId={}, by={}", id, executedBy)
+
+        return try {
+            val result = transcribeProcessor.process(job)
+            if (result != null) {
+                val saved = aiContentJobRepository.save(result.copy(updatedBy = executedBy))
+                logger.info("Transcribe 완료: jobId={}", id)
+                saved
+            } else {
+                val failed = job.copy(
+                    status = JobStatus.FAILED,
+                    errorMessage = "Transcribe 처리 실패",
+                    updatedAt = Instant.now(),
+                    updatedBy = executedBy
+                )
+                aiContentJobRepository.save(failed)
+            }
+        } catch (e: Exception) {
+            logger.error("Transcribe 실행 오류: jobId={}, error={}", id, e.message, e)
+            val failed = job.copy(
+                status = JobStatus.FAILED,
+                errorMessage = "Transcribe 오류: ${e.message}",
+                updatedAt = Instant.now(),
+                updatedBy = executedBy
+            )
+            aiContentJobRepository.save(failed)
+        }
+    }
+
+    /**
+     * Analyze 단계 직접 실행
+     * TRANSCRIBED 상태의 Job만 실행 가능
+     */
+    @Transactional
+    fun executeAnalyze(id: Long, executedBy: String): AiContentJob? {
+        val job = aiContentJobRepository.findById(id).orElse(null) ?: return null
+
+        if (job.status != JobStatus.TRANSCRIBED) {
+            logger.warn("Analyze 실행 불가: jobId={}, 현재상태={}", id, job.status)
+            return null
+        }
+
+        logger.info("Analyze 직접 실행 시작: jobId={}, by={}", id, executedBy)
+
+        return try {
+            val result = analyzeProcessor.process(job)
+            if (result != null) {
+                val saved = aiContentJobRepository.save(result.copy(updatedBy = executedBy))
+                logger.info("Analyze 완료: jobId={}", id)
+                saved
+            } else {
+                val failed = job.copy(
+                    status = JobStatus.FAILED,
+                    errorMessage = "Analyze 처리 실패",
+                    updatedAt = Instant.now(),
+                    updatedBy = executedBy
+                )
+                aiContentJobRepository.save(failed)
+            }
+        } catch (e: Exception) {
+            logger.error("Analyze 실행 오류: jobId={}, error={}", id, e.message, e)
+            val failed = job.copy(
+                status = JobStatus.FAILED,
+                errorMessage = "Analyze 오류: ${e.message}",
+                updatedAt = Instant.now(),
+                updatedBy = executedBy
+            )
+            aiContentJobRepository.save(failed)
+        }
+    }
+
+    /**
+     * Edit 단계 직접 실행
+     * ANALYZED 상태의 Job만 실행 가능
+     */
+    @Transactional
+    fun executeEdit(id: Long, executedBy: String): AiContentJob? {
+        val job = aiContentJobRepository.findById(id).orElse(null) ?: return null
+
+        if (job.status != JobStatus.ANALYZED) {
+            logger.warn("Edit 실행 불가: jobId={}, 현재상태={}", id, job.status)
+            return null
+        }
+
+        logger.info("Edit 직접 실행 시작: jobId={}, by={}", id, executedBy)
+
+        return try {
+            val result = editProcessor.process(job)
+            if (result != null) {
+                val saved = aiContentJobRepository.save(result.copy(updatedBy = executedBy))
+                logger.info("Edit 완료: jobId={}", id)
+                saved
+            } else {
+                val failed = job.copy(
+                    status = JobStatus.FAILED,
+                    errorMessage = "Edit 처리 실패",
+                    updatedAt = Instant.now(),
+                    updatedBy = executedBy
+                )
+                aiContentJobRepository.save(failed)
+            }
+        } catch (e: Exception) {
+            logger.error("Edit 실행 오류: jobId={}, error={}", id, e.message, e)
+            val failed = job.copy(
+                status = JobStatus.FAILED,
+                errorMessage = "Edit 오류: ${e.message}",
+                updatedAt = Instant.now(),
+                updatedBy = executedBy
+            )
+            aiContentJobRepository.save(failed)
+        }
+    }
+
+    /**
+     * Review 단계 직접 실행
+     * EDITED 상태의 Job만 실행 가능
+     */
+    @Transactional
+    fun executeReview(id: Long, executedBy: String): AiContentJob? {
+        val job = aiContentJobRepository.findById(id).orElse(null) ?: return null
+
+        if (job.status != JobStatus.EDITED) {
+            logger.warn("Review 실행 불가: jobId={}, 현재상태={}", id, job.status)
+            return null
+        }
+
+        logger.info("Review 직접 실행 시작: jobId={}, by={}", id, executedBy)
+
+        return try {
+            val result = reviewProcessor.process(job)
+            if (result != null) {
+                val saved = aiContentJobRepository.save(result.copy(updatedBy = executedBy))
+                logger.info("Review 완료: jobId={}", id)
+                saved
+            } else {
+                val failed = job.copy(
+                    status = JobStatus.FAILED,
+                    errorMessage = "Review 처리 실패",
+                    updatedAt = Instant.now(),
+                    updatedBy = executedBy
+                )
+                aiContentJobRepository.save(failed)
+            }
+        } catch (e: Exception) {
+            logger.error("Review 실행 오류: jobId={}, error={}", id, e.message, e)
+            val failed = job.copy(
+                status = JobStatus.FAILED,
+                errorMessage = "Review 오류: ${e.message}",
+                updatedAt = Instant.now(),
+                updatedBy = executedBy
+            )
+            aiContentJobRepository.save(failed)
         }
     }
 }
