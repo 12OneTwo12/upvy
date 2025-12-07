@@ -112,6 +112,7 @@ class FeedControllerTest {
                             fieldWithPath("content[].creator.nickname").description("크리에이터 닉네임"),
                             fieldWithPath("content[].creator.profileImageUrl").description("크리에이터 프로필 이미지 URL").optional(),
                             fieldWithPath("content[].creator.followerCount").description("크리에이터 팔로워 수"),
+                            fieldWithPath("content[].creator.isFollowing").description("현재 사용자가 크리에이터를 팔로우 중인지 여부"),
                             fieldWithPath("content[].interactions").description("인터랙션 정보"),
                             fieldWithPath("content[].interactions.likeCount").description("좋아요 수"),
                             fieldWithPath("content[].interactions.commentCount").description("댓글 수"),
@@ -280,6 +281,7 @@ class FeedControllerTest {
                             fieldWithPath("content[].creator.nickname").description("크리에이터 닉네임"),
                             fieldWithPath("content[].creator.profileImageUrl").description("크리에이터 프로필 이미지 URL").optional(),
                             fieldWithPath("content[].creator.followerCount").description("크리에이터 팔로워 수"),
+                            fieldWithPath("content[].creator.isFollowing").description("현재 사용자가 크리에이터를 팔로우 중인지 여부"),
                             fieldWithPath("content[].interactions").description("인터랙션 정보"),
                             fieldWithPath("content[].interactions.likeCount").description("좋아요 수"),
                             fieldWithPath("content[].interactions.commentCount").description("댓글 수"),
@@ -516,6 +518,7 @@ class FeedControllerTest {
                             fieldWithPath("content[].creator.nickname").description("크리에이터 닉네임"),
                             fieldWithPath("content[].creator.profileImageUrl").description("크리에이터 프로필 이미지 URL").optional(),
                             fieldWithPath("content[].creator.followerCount").description("크리에이터 팔로워 수"),
+                            fieldWithPath("content[].creator.isFollowing").description("현재 사용자가 크리에이터를 팔로우 중인지 여부"),
                             fieldWithPath("content[].interactions").description("인터랙션 정보"),
                             fieldWithPath("content[].interactions.likeCount").description("좋아요 수"),
                             fieldWithPath("content[].interactions.commentCount").description("댓글 수"),
@@ -653,7 +656,8 @@ class FeedControllerTest {
                     userId = UUID.randomUUID(),
                     nickname = "Creator $it",
                     profileImageUrl = "https://example.com/profile$it.jpg",
-                    followerCount = 1000
+                    followerCount = 1000,
+                    isFollowing = false
                 ),
                 interactions = InteractionInfoResponse(
                     likeCount = 100,
@@ -690,7 +694,8 @@ class FeedControllerTest {
                 userId = UUID.randomUUID(),
                 nickname = "Photo Creator",
                 profileImageUrl = "https://example.com/photo-profile.jpg",
-                followerCount = 1500
+                followerCount = 1500,
+                isFollowing = false
             ),
             interactions = InteractionInfoResponse(
                 likeCount = 200,

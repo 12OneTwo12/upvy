@@ -469,7 +469,8 @@ class FeedServiceImplTest {
                 userId = UUID.randomUUID(),
                 nickname = "테스터",
                 profileImageUrl = "https://example.com/profile.jpg",
-                followerCount = 100
+                followerCount = 100,
+                isFollowing = false
             ),
             interactions = InteractionInfoResponse(
                 likeCount = 100,
@@ -505,7 +506,8 @@ class FeedServiceImplTest {
                 userId = UUID.randomUUID(),
                 nickname = "사진작가",
                 profileImageUrl = "https://example.com/profile.jpg",
-                followerCount = 200
+                followerCount = 200,
+                isFollowing = false
             ),
             interactions = InteractionInfoResponse(
                 likeCount = 150,

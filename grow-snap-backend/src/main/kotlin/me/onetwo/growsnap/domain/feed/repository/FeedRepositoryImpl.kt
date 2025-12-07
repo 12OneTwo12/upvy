@@ -93,7 +93,9 @@ class FeedRepositoryImpl(
                     USER_PROFILES.FOLLOWER_COUNT,
                     // USER_LIKES, USER_SAVES (사용자별 상태)
                     DSL.field(USER_LIKES.ID.isNotNull).`as`("IS_LIKED"),
-                    DSL.field(USER_SAVES.ID.isNotNull).`as`("IS_SAVED")
+                    DSL.field(USER_SAVES.ID.isNotNull).`as`("IS_SAVED"),
+                    // 팔로잉 피드는 팔로우한 크리에이터의 콘텐츠이므로 isFollowing = true
+                    DSL.inline(true).`as`("IS_FOLLOWING")
                 )
                 .from(CONTENTS)
                 .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
@@ -236,7 +238,8 @@ class FeedRepositoryImpl(
                 userId = UUID.fromString(record.get(USERS.ID)!!),
                 nickname = record.get(USER_PROFILES.NICKNAME)!!,
                 profileImageUrl = record.get(USER_PROFILES.PROFILE_IMAGE_URL),
-                followerCount = record.get(USER_PROFILES.FOLLOWER_COUNT)!!
+                followerCount = record.get(USER_PROFILES.FOLLOWER_COUNT)!!,
+                isFollowing = record.get("IS_FOLLOWING", Boolean::class.java) ?: false
             ),
             interactions = InteractionInfoResponse(
                 likeCount = record.get(CONTENT_INTERACTIONS.LIKE_COUNT)!!,
@@ -525,7 +528,9 @@ class FeedRepositoryImpl(
                 USER_PROFILES.FOLLOWER_COUNT,
                 // 사용자별 좋아요/저장 상태
                 DSL.field(USER_LIKES.ID.isNotNull).`as`("IS_LIKED"),
-                DSL.field(USER_SAVES.ID.isNotNull).`as`("IS_SAVED")
+                DSL.field(USER_SAVES.ID.isNotNull).`as`("IS_SAVED"),
+                // 사용자별 팔로우 상태 (크리에이터를 팔로우하고 있는지)
+                DSL.field(FOLLOWS.ID.isNotNull).`as`("IS_FOLLOWING")
             )
             .from(CONTENTS)
             .join(CONTENT_METADATA).on(CONTENT_METADATA.CONTENT_ID.eq(CONTENTS.ID))
@@ -541,6 +546,11 @@ class FeedRepositoryImpl(
                 USER_SAVES.CONTENT_ID.eq(CONTENTS.ID)
                     .and(USER_SAVES.USER_ID.eq(userId.toString()))
                     .and(USER_SAVES.DELETED_AT.isNull)
+            )
+            .leftJoin(FOLLOWS).on(
+                FOLLOWS.FOLLOWER_ID.eq(userId.toString())
+                    .and(FOLLOWS.FOLLOWING_ID.eq(CONTENTS.CREATOR_ID))
+                    .and(FOLLOWS.DELETED_AT.isNull)
             )
             .where(CONTENTS.ID.`in`(contentIds.map { it.toString() }))
             .and(CONTENTS.STATUS.eq("PUBLISHED"))
