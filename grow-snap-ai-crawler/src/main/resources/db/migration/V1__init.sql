@@ -26,11 +26,13 @@ CREATE TABLE IF NOT EXISTS ai_content_job (
 
     -- STT 결과
     transcript TEXT,
+    transcript_segments JSON COMMENT 'STT 타임스탬프 세그먼트 목록 (startTimeMs, endTimeMs, text)',
 
     -- LLM 생성 메타데이터
     generated_title VARCHAR(200),
     generated_description TEXT,
     generated_tags JSON,
+    segments JSON COMMENT 'LLM이 추출한 핵심 구간 목록 (startTimeMs, endTimeMs, title, description, keywords)',
     category VARCHAR(50),
     difficulty VARCHAR(20),
 

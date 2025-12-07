@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.crawler.batch.step.transcribe
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import kotlinx.coroutines.runBlocking
 import me.onetwo.growsnap.crawler.client.SttClient
 import me.onetwo.growsnap.crawler.domain.AiContentJob
@@ -28,6 +29,7 @@ class TranscribeProcessor(
 
     companion object {
         private val logger = LoggerFactory.getLogger(TranscribeProcessor::class.java)
+        private val objectMapper = jacksonObjectMapper()
     }
 
     override fun process(job: AiContentJob): AiContentJob? {
@@ -58,15 +60,24 @@ class TranscribeProcessor(
             val transcriptResult = runBlocking {
                 sttClient.transcribe(audioPresignedUrl.toString())
             }
-            logger.info("STT 변환 완료: jobId={}, textLength={}", job.id, transcriptResult.text.length)
+            logger.info("STT 변환 완료: jobId={}, textLength={}, segmentsCount={}",
+                job.id, transcriptResult.text.length, transcriptResult.segments.size)
 
-            // 5. 임시 파일 정리
+            // 5. 세그먼트를 JSON으로 변환 (LLM에게 전달할 타임스탬프 정보)
+            val transcriptSegmentsJson = if (transcriptResult.segments.isNotEmpty()) {
+                objectMapper.writeValueAsString(transcriptResult.segments)
+            } else {
+                null
+            }
+
+            // 6. 임시 파일 정리
             cleanupTempFiles(audioPath, audioS3Key)
 
-            // 6. Job 업데이트
+            // 7. Job 업데이트
             val now = Instant.now()
             return job.copy(
                 transcript = transcriptResult.text,
+                transcriptSegments = transcriptSegmentsJson,  // 타임스탬프 정보 저장
                 sttProvider = sttProvider,
                 status = JobStatus.TRANSCRIBED,
                 updatedAt = now,

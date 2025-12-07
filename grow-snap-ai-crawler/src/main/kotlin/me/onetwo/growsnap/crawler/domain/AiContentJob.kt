@@ -50,6 +50,9 @@ data class AiContentJob(
     @Column(columnDefinition = "TEXT")
     val transcript: String? = null,
 
+    @Column(name = "transcript_segments", columnDefinition = "JSON")
+    val transcriptSegments: String? = null,  // JSON: List<TranscriptSegment> - STT 타임스탬프 정보
+
     @Column(name = "generated_title", length = 200)
     val generatedTitle: String? = null,
 
@@ -58,6 +61,9 @@ data class AiContentJob(
 
     @Column(name = "generated_tags", columnDefinition = "JSON")
     val generatedTags: String? = null,  // JSON 문자열로 저장
+
+    @Column(name = "segments", columnDefinition = "JSON")
+    val segments: String? = null,  // JSON 문자열: List<Segment> - LLM이 추출한 핵심 구간
 
     @Column(length = 50)
     val category: String? = null,

@@ -1,8 +1,11 @@
 package me.onetwo.growsnap.crawler.batch.step.edit
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import me.onetwo.growsnap.crawler.client.video.FFmpegWrapper
 import me.onetwo.growsnap.crawler.domain.AiContentJob
 import me.onetwo.growsnap.crawler.domain.JobStatus
+import me.onetwo.growsnap.crawler.domain.Segment
 import me.onetwo.growsnap.crawler.service.S3Service
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.ItemProcessor
@@ -28,8 +31,11 @@ class EditProcessor(
 
     companion object {
         private val logger = LoggerFactory.getLogger(EditProcessor::class.java)
-        private const val DEFAULT_CLIP_START_MS = 30000L   // 30초부터 시작
-        private const val DEFAULT_CLIP_DURATION_MS = 60000L // 60초 클립
+        private val objectMapper = jacksonObjectMapper()
+        private const val DEFAULT_CLIP_START_MS = 30000L   // 30초부터 시작 (fallback)
+        private const val DEFAULT_CLIP_DURATION_MS = 60000L // 60초 클립 (fallback)
+        private const val MAX_CLIP_DURATION_MS = 180000L   // 최대 3분
+        private const val MIN_CLIP_DURATION_MS = 30000L    // 최소 30초
     }
 
     override fun process(job: AiContentJob): AiContentJob? {
@@ -51,8 +57,11 @@ class EditProcessor(
             logger.debug("비디오 정보: duration={}ms, width={}, height={}",
                 videoInfo.durationMs, videoInfo.width, videoInfo.height)
 
-            // 3. 클리핑 시작/종료 시간 계산
-            val (startMs, endMs) = calculateClipRange(videoInfo.durationMs)
+            // 3. 세그먼트 파싱 및 클리핑 시작/종료 시간 계산
+            val segments = parseSegments(job.segments)
+            val (startMs, endMs) = calculateClipRange(videoInfo.durationMs, segments)
+            logger.info("클리핑 범위 결정: jobId={}, start={}ms, end={}ms, duration={}ms",
+                job.id, startMs, endMs, endMs - startMs)
 
             // 4. 비디오 클리핑
             val clippedPath = "${tempDir}/clip_${job.id}.mp4"
@@ -99,15 +108,63 @@ class EditProcessor(
     }
 
     /**
-     * 클립 범위 계산
+     * 세그먼트 JSON 파싱
      */
-    private fun calculateClipRange(totalDurationMs: Long): Pair<Long, Long> {
+    private fun parseSegments(segmentsJson: String?): List<Segment> {
+        if (segmentsJson.isNullOrBlank()) {
+            logger.debug("세그먼트 정보 없음, 기본값 사용")
+            return emptyList()
+        }
+
+        return try {
+            objectMapper.readValue<List<Segment>>(segmentsJson)
+        } catch (e: Exception) {
+            logger.warn("세그먼트 파싱 실패: {}", e.message)
+            emptyList()
+        }
+    }
+
+    /**
+     * 클립 범위 계산 - LLM 분석 세그먼트 기반
+     */
+    private fun calculateClipRange(totalDurationMs: Long, segments: List<Segment>): Pair<Long, Long> {
         // 비디오가 짧으면 전체 사용
-        if (totalDurationMs <= DEFAULT_CLIP_DURATION_MS) {
+        if (totalDurationMs <= MIN_CLIP_DURATION_MS) {
+            logger.info("비디오가 짧아 전체 사용: {}ms", totalDurationMs)
             return Pair(0L, totalDurationMs)
         }
 
-        // 기본: 30초부터 90초까지 (60초 클립)
+        // 세그먼트가 있으면 첫 번째 (가장 좋은) 세그먼트 사용
+        if (segments.isNotEmpty()) {
+            val bestSegment = segments.first()
+            logger.info("LLM 분석 세그먼트 사용: title={}, {}ms ~ {}ms",
+                bestSegment.title, bestSegment.startTimeMs, bestSegment.endTimeMs)
+
+            // 세그먼트 범위 검증 및 조정
+            val startMs = bestSegment.startTimeMs.coerceIn(0L, totalDurationMs)
+            var endMs = bestSegment.endTimeMs.coerceIn(startMs, totalDurationMs)
+
+            // 세그먼트가 너무 길면 최대 길이로 제한
+            if (endMs - startMs > MAX_CLIP_DURATION_MS) {
+                endMs = startMs + MAX_CLIP_DURATION_MS
+                logger.info("세그먼트가 너무 길어 {}ms로 제한", MAX_CLIP_DURATION_MS)
+            }
+
+            // 세그먼트가 너무 짧으면 확장
+            if (endMs - startMs < MIN_CLIP_DURATION_MS) {
+                val extension = (MIN_CLIP_DURATION_MS - (endMs - startMs)) / 2
+                val newStartMs = (startMs - extension).coerceAtLeast(0L)
+                val newEndMs = (endMs + extension).coerceAtMost(totalDurationMs)
+                logger.info("세그먼트가 짧아 확장: {}ms ~ {}ms -> {}ms ~ {}ms",
+                    startMs, endMs, newStartMs, newEndMs)
+                return Pair(newStartMs, newEndMs)
+            }
+
+            return Pair(startMs, endMs)
+        }
+
+        // 세그먼트가 없으면 기본값 사용 (fallback)
+        logger.warn("세그먼트 없음, 기본값 사용 (30초~90초)")
         val startMs = DEFAULT_CLIP_START_MS.coerceAtMost(totalDurationMs - DEFAULT_CLIP_DURATION_MS)
         val endMs = (startMs + DEFAULT_CLIP_DURATION_MS).coerceAtMost(totalDurationMs)
 
