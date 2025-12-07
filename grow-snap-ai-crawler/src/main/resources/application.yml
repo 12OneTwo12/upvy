@@ -32,8 +32,8 @@ ai:
   llm:
     provider: ${AI_LLM_PROVIDER:vertex-ai}  # vertex-ai 또는 mock
     project-id: ${GCP_PROJECT_ID:}
-    location: ${GCP_LOCATION:us-central1}
-    model: ${AI_LLM_MODEL:gemini-1.5-pro}
+    location: ${GCP_LOCATION:asia-northeast3}
+    model: ${AI_LLM_MODEL:gemini-2.5-flash}
   stt:
     provider: ${AI_STT_PROVIDER:vertex-ai}  # vertex-ai 또는 mock
     language-code: ${AI_STT_LANGUAGE:ko-KR}
@@ -47,7 +47,7 @@ openai:
 
 # YouTube Data API
 youtube:
-  api-key: ${YOUTUBE_API_KEY:}
+    api-key: ${YOUTUBE_API_KEY:}
   daily-quota: 10000
 
 # AWS S3
