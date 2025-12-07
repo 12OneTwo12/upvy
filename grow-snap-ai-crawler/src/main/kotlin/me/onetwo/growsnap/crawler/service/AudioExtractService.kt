@@ -55,16 +55,17 @@ class AudioExtractServiceImpl(
             throw AudioExtractException("Video file not found: $videoPath")
         }
 
-        val audioPath = "${tempDir}/${videoFile.nameWithoutExtension}.flac"
+        val audioPath = "${tempDir}/${videoFile.nameWithoutExtension}.ogg"
         logger.info("오디오 추출 시작: video={}, audio={}", videoPath, audioPath)
 
         val command = listOf(
             ffmpegPath,
             "-i", videoPath,
             "-vn",                    // 비디오 제거
-            "-acodec", "flac",        // FLAC 코덱 (무손실, STT 권장)
+            "-acodec", "libopus",     // Opus 코덱 (음성에 최적화, 작은 파일 크기)
             "-ar", "16000",           // 샘플레이트 16kHz (STT 최적화)
             "-ac", "1",               // 모노
+            "-b:a", "32k",            // 비트레이트 (음성에 충분)
             "-y",                     // 덮어쓰기
             audioPath
         )
@@ -82,9 +83,10 @@ class AudioExtractServiceImpl(
             ffmpegPath,
             "-i", s3Url,
             "-vn",
-            "-acodec", "flac",        // FLAC 코덱 (무손실, STT 권장)
+            "-acodec", "libopus",     // Opus 코덱 (음성에 최적화, 작은 파일 크기)
             "-ar", "16000",
             "-ac", "1",
+            "-b:a", "32k",            // 비트레이트 (음성에 충분)
             "-y",
             outputPath
         )

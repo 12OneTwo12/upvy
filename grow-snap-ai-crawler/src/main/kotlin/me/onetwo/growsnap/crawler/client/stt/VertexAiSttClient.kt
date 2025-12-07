@@ -190,7 +190,7 @@ class VertexAiSttClient(
 
     private fun buildRecognitionConfig(): RecognitionConfig {
         return RecognitionConfig.newBuilder()
-            .setEncoding(AudioEncoding.FLAC)  // FLAC 무손실 압축 사용
+            .setEncoding(AudioEncoding.OGG_OPUS)  // Opus 코덱 (음성에 최적화, 작은 파일)
             .setSampleRateHertz(sampleRateHertz)
             .setLanguageCode(languageCode)
             .setEnableWordTimeOffsets(enableWordTimeOffsets)
