@@ -7,12 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, LayoutChangeEvent, LayoutAnimation, Platform, UIManager } from 'react-native';
-
-// Android에서 LayoutAnimation 활성화
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -277,10 +272,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                   </ScrollView>
                   <TouchableOpacity
                     style={styles.lessButton}
-                    onPress={() => {
-                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                      setIsExpanded(false);
-                    }}
+                    onPress={() => setIsExpanded(false)}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.lessText}>{t('actions.less', '접기')}</Text>
@@ -289,12 +281,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
               ) : (
                 // 축소된 상태
                 <TouchableOpacity
-                  onPress={() => {
-                    if (shouldShowMore) {
-                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                      setIsExpanded(true);
-                    }
-                  }}
+                  onPress={() => shouldShowMore && setIsExpanded(true)}
                   activeOpacity={0.9}
                   disabled={!shouldShowMore}
                 >

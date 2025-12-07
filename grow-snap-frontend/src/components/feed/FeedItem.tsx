@@ -5,7 +5,12 @@
  */
 
 import React, { useState, useRef, useCallback, useContext } from 'react';
-import { View, Dimensions, Animated, PanResponder, Platform } from 'react-native';
+import { View, Dimensions, Animated, PanResponder, Platform, LayoutAnimation, UIManager } from 'react-native';
+
+// Android에서 LayoutAnimation 활성화
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
@@ -70,10 +75,16 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
 
+  // 확장/축소 상태 변경 (항상 부드러운 애니메이션 적용)
+  const handleSetIsExpanded = useCallback((expanded: boolean) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsExpanded(expanded);
+  }, []);
+
   // 컨텐츠 탭 시 더보기 닫기
   const handleContentTap = () => {
     if (isExpanded) {
-      setIsExpanded(false);
+      handleSetIsExpanded(false);
       return true;
     }
     return false;
@@ -205,7 +216,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         onBlockSuccess={onBlockSuccess}
         onDeleteSuccess={onDeleteSuccess}
         isExpanded={isExpanded}
-        setIsExpanded={setIsExpanded}
+        setIsExpanded={handleSetIsExpanded}
         tabBarHeight={tabBarHeight}
       />
 
