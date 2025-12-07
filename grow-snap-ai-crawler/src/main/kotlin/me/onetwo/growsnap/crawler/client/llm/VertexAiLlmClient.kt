@@ -333,26 +333,22 @@ class VertexAiLlmClient(
     }
 
     private fun buildVideoEvaluationPrompt(candidates: List<VideoCandidate>): String {
-        // JSON 문자열 이스케이핑 함수
-        fun escapeJson(str: String): String = str
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", " ")
-            .replace("\r", " ")
-            .replace("\t", " ")
-
-        val videosJson = candidates.mapIndexed { index, video ->
-            val title = escapeJson(video.title)
-            val description = escapeJson(video.description?.take(200) ?: "")
-            val channelTitle = escapeJson(video.channelTitle ?: "")
-            """{"index": $index, "title": "$title", "description": "$description", "channelTitle": "$channelTitle", "viewCount": ${video.viewCount ?: 0}}"""
-        }.joinToString(",\n")
+        // objectMapper를 사용하여 안전하게 JSON 생성 (특수 문자 자동 이스케이핑)
+        val videosJson = objectMapper.writeValueAsString(candidates.mapIndexed { index, video ->
+            mapOf(
+                "index" to index,
+                "title" to video.title,
+                "description" to (video.description?.take(200) ?: ""),
+                "channelTitle" to (video.channelTitle ?: ""),
+                "viewCount" to (video.viewCount ?: 0)
+            )
+        })
 
         return """
             |당신은 교육 콘텐츠 품질 평가 전문가입니다. 다음 YouTube 비디오들의 교육적 가치를 평가해주세요.
             |
             |비디오 목록:
-            |[$videosJson]
+            |$videosJson
             |
             |각 비디오에 대해 다음 기준으로 평가해주세요:
             |1. relevanceScore (0-100): 교육 플랫폼과의 관련성

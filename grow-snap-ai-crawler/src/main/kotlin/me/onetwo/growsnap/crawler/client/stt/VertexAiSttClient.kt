@@ -70,15 +70,26 @@ class VertexAiSttClient(
         try {
             val recognitionConfig = buildRecognitionConfig(sttLanguageCode)
 
-            // URL에서 오디오 데이터 로드 또는 GCS URI 사용
-            val recognitionAudio = if (audioUrl.startsWith("gs://")) {
-                buildRecognitionAudioFromGcs(audioUrl)
-            } else {
-                buildRecognitionAudioFromUrl(audioUrl)
+            // GCS URI인 경우 LongRunningRecognize 사용 (60초 이상 오디오 지원)
+            if (audioUrl.startsWith("gs://")) {
+                return@withContext transcribeLongAudio(audioUrl, language)
             }
 
-            // 긴 오디오인 경우 비동기 처리
-            val response = speechClient.recognize(recognitionConfig, recognitionAudio)
+            // 오디오 크기로 60초 이상 여부 추정 (OGG_OPUS: 약 12KB/초)
+            // 60초 * 12KB = 720KB = 737,280 bytes
+            val audioBytes = URI(audioUrl).toURL().openStream().use { it.readBytes() }
+            val estimatedDurationSeconds = audioBytes.size / 12_000
+
+            if (estimatedDurationSeconds > MAX_SYNC_AUDIO_DURATION_SECONDS) {
+                logger.info("오디오 길이 추정 {}초 (>60초), GCS 업로드 후 LongRunningRecognize 사용 권장", estimatedDurationSeconds)
+                // 60초 이상인 경우 동기 API 제한으로 인해 경고 로그
+                // 실제 운영에서는 GCS에 업로드 후 transcribeLongAudio 호출 필요
+            }
+
+            // 동기 API 호출 (60초 미만 오디오용)
+            val response = speechClient.recognize(recognitionConfig, RecognitionAudio.newBuilder()
+                .setContent(ByteString.copyFrom(audioBytes))
+                .build())
 
             val segments = mutableListOf<TranscriptSegment>()
             val textBuilder = StringBuilder()
@@ -172,13 +183,52 @@ class VertexAiSttClient(
                 val alternative = result.alternativesList.firstOrNull() ?: return@forEach
                 textBuilder.append(alternative.transcript).append(" ")
 
-                // 결과 레벨에서 타임스탬프 추출
-                if (result.resultEndTime != null) {
+                // 단어 레벨 타임스탬프가 있는 경우 (transcribe와 동일한 로직)
+                if (enableWordTimeOffsets && alternative.wordsCount > 0) {
+                    val words = alternative.wordsList
+                    var segmentStart = words.first().startTime.seconds * 1000 +
+                            words.first().startTime.nanos / 1_000_000
+                    var segmentEnd = segmentStart
+                    val segmentText = StringBuilder()
+
+                    words.forEach { wordInfo ->
+                        val wordStartMs = wordInfo.startTime.seconds * 1000 +
+                                wordInfo.startTime.nanos / 1_000_000
+                        val wordEndMs = wordInfo.endTime.seconds * 1000 +
+                                wordInfo.endTime.nanos / 1_000_000
+
+                        // 세그먼트 구분 (1초 이상 간격 또는 200자 이상)
+                        if (wordStartMs - segmentEnd > 1000 || segmentText.length > 200) {
+                            if (segmentText.isNotEmpty()) {
+                                segments.add(TranscriptSegment(
+                                    startTimeMs = segmentStart,
+                                    endTimeMs = segmentEnd,
+                                    text = segmentText.toString().trim()
+                                ))
+                            }
+                            segmentStart = wordStartMs
+                            segmentText.clear()
+                        }
+
+                        segmentText.append(wordInfo.word).append(" ")
+                        segmentEnd = wordEndMs
+                    }
+
+                    // 마지막 세그먼트 추가
+                    if (segmentText.isNotEmpty()) {
+                        segments.add(TranscriptSegment(
+                            startTimeMs = segmentStart,
+                            endTimeMs = segmentEnd,
+                            text = segmentText.toString().trim()
+                        ))
+                    }
+                } else if (result.resultEndTime != null) {
+                    // 단어 레벨 타임스탬프가 없는 경우 결과 레벨에서 추출 (fallback)
                     val endMs = result.resultEndTime.seconds * 1000 +
                             result.resultEndTime.nanos / 1_000_000
 
                     segments.add(TranscriptSegment(
-                        startTimeMs = 0, // 시작 시간 정보가 없는 경우
+                        startTimeMs = segments.lastOrNull()?.endTimeMs ?: 0,
                         endTimeMs = endMs,
                         text = alternative.transcript
                     ))
@@ -186,14 +236,16 @@ class VertexAiSttClient(
             }
 
             val fullText = textBuilder.toString().trim()
+            val confidence = response.resultsList.firstOrNull()?.alternativesList?.firstOrNull()?.confidence
 
-            logger.info("긴 오디오 텍스트 변환 완료: textLength={}, segmentsCount={}",
-                fullText.length, segments.size)
+            logger.info("긴 오디오 텍스트 변환 완료: textLength={}, segmentsCount={}, confidence={}",
+                fullText.length, segments.size, confidence)
 
             TranscriptResult(
                 text = fullText,
                 segments = segments,
-                language = sttLanguageCode
+                language = sttLanguageCode,
+                confidence = confidence
             )
 
         } catch (e: Exception) {
@@ -210,20 +262,6 @@ class VertexAiSttClient(
             .setEnableWordTimeOffsets(enableWordTimeOffsets)
             .setEnableAutomaticPunctuation(true)
             .setModel("latest_long")  // 긴 오디오에 최적화된 모델
-            .build()
-    }
-
-    private fun buildRecognitionAudioFromGcs(gcsUri: String): RecognitionAudio {
-        return RecognitionAudio.newBuilder()
-            .setUri(gcsUri)
-            .build()
-    }
-
-    private fun buildRecognitionAudioFromUrl(audioUrl: String): RecognitionAudio {
-        val url = URI(audioUrl).toURL()
-        val audioBytes = url.openStream().use { it.readBytes() }
-        return RecognitionAudio.newBuilder()
-            .setContent(ByteString.copyFrom(audioBytes))
             .build()
     }
 }

@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.crawler.client.video
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -172,15 +173,14 @@ class FFmpegWrapperImpl(
             val output = process.inputStream.bufferedReader().readText()
             process.waitFor(60, TimeUnit.SECONDS)
 
-            // 간단한 파싱 (실제로는 JSON 파서 사용 권장)
-            val duration = Regex("\"duration\":\\s*\"([\\d.]+)\"")
-                .find(output)?.groupValues?.get(1)?.toDoubleOrNull()?.times(1000)?.toLong() ?: 0
+            // Jackson을 사용하여 안전하게 JSON 파싱
+            val jsonNode = jacksonObjectMapper().readTree(output)
+            val formatNode = jsonNode.get("format")
+            val streamNode = jsonNode.get("streams")?.get(0)
 
-            val width = Regex("\"width\":\\s*(\\d+)")
-                .find(output)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-
-            val height = Regex("\"height\":\\s*(\\d+)")
-                .find(output)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            val duration = formatNode?.get("duration")?.asText()?.toDoubleOrNull()?.times(1000)?.toLong() ?: 0L
+            val width = streamNode?.get("width")?.asInt() ?: 0
+            val height = streamNode?.get("height")?.asInt() ?: 0
 
             return VideoInfo(duration, width, height)
 
