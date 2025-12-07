@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, Easing } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -97,12 +97,44 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   // 하단 패딩 = 탭바 높이 + 재생바 영역 + 여유 공간
   const bottomPadding = tabBarHeight + PROGRESS_BAR_AREA + 16;
 
+  // 높이 애니메이션 상수
+  const COLLAPSED_HEIGHT = 44; // 약 2줄 (13px font * 18px line-height * 2 + margin)
+  const EXPANDED_MAX_HEIGHT = MAX_EXPAND_HEIGHT + 50; // 전체 콘텐츠 + 태그 + 여유
+  const ANIMATION_DURATION = 280; // 자연스러운 속도
+
+  // 축소 콘텐츠 높이 애니메이션 (COLLAPSED_HEIGHT → 0)
+  const collapsedHeight = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [COLLAPSED_HEIGHT, 0],
+  });
+
+  // 확장 콘텐츠 높이 애니메이션 (0 → EXPANDED_MAX_HEIGHT)
+  const expandedMaxHeight = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, EXPANDED_MAX_HEIGHT],
+  });
+
+  // 축소 상태 opacity (0~30% 구간에서 빠르게 사라짐)
+  const collapsedOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.3],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  // 확장 상태 opacity (70~100% 구간에서 빠르게 나타남)
+  const expandedOpacity = expandAnim.interpolate({
+    inputRange: [0.7, 1],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   // 확장/축소 애니메이션 - isExpanded 변경 시 Animated.timing 실행
   useEffect(() => {
     Animated.timing(expandAnim, {
       toValue: isExpanded ? 1 : 0,
-      duration: 250,
-      useNativeDriver: false, // height 애니메이션은 useNativeDriver: false 필요
+      duration: ANIMATION_DURATION,
+      easing: Easing.out(Easing.cubic), // 부드러운 감속
+      useNativeDriver: false, // height 애니메이션은 native driver 불가
     }).start();
   }, [isExpanded, expandAnim]);
 
@@ -224,7 +256,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
               </TouchableOpacity>
             )}
 
-            {/* 콘텐츠 설명 - Animated API로 부드러운 전환 */}
+            {/* 콘텐츠 설명 - 높이 애니메이션 + opacity 크로스페이드 */}
             <View style={styles.descriptionContainer}>
               {isLoading ? (
                 // 스켈레톤 UI
@@ -233,45 +265,28 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                   <View style={[styles.skeletonText, { width: '70%' }]} />
                 </>
               ) : (
-                <View>
-                  {/* 축소된 상태 */}
+                <>
+                  {/* 축소 콘텐츠 - 높이가 줄어들면서 위로 밀림 */}
                   <Animated.View
                     style={{
-                      opacity: expandAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 0],
-                      }),
-                      maxHeight: expandAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [100, 0],
-                      }),
+                      height: collapsedHeight,
+                      overflow: 'hidden',
+                      opacity: collapsedOpacity,
                     }}
                     pointerEvents={isExpanded ? 'none' : 'auto'}
                   >
-                    <TouchableOpacity
-                      onPress={() => shouldShowMore && setIsExpanded(true)}
-                      activeOpacity={0.9}
-                      disabled={!shouldShowMore}
-                    >
-                      <Text style={styles.description} numberOfLines={2}>
-                        <Text style={styles.titleText}>{title}</Text>
-                        {description && `\n${description}`}
-                      </Text>
-                      {shouldShowMore && (
-                        <Text style={styles.moreText}>{t('actions.more')}</Text>
-                      )}
-                    </TouchableOpacity>
+                    <Text style={styles.description} numberOfLines={2}>
+                      <Text style={styles.titleText}>{title}</Text>
+                      {description && `\n${description}`}
+                    </Text>
                   </Animated.View>
 
-                  {/* 확장된 상태 */}
+                  {/* 확장 콘텐츠 - 높이가 늘어나면서 위로 확장 */}
                   <Animated.View
                     style={{
-                      opacity: expandAnim,
-                      maxHeight: expandAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, MAX_EXPAND_HEIGHT + 40],
-                      }),
+                      maxHeight: expandedMaxHeight,
                       overflow: 'hidden',
+                      opacity: expandedOpacity,
                     }}
                     pointerEvents={isExpanded ? 'auto' : 'none'}
                   >
@@ -280,9 +295,9 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                       contentContainerStyle={styles.expandedScrollContent}
                       showsVerticalScrollIndicator={true}
                       nestedScrollEnabled
-                      scrollEnabled={true}
+                      scrollEnabled={isExpanded}
                     >
-                      <Text style={styles.expandedInlineDescription}>
+                      <Text style={styles.description}>
                         <Text style={styles.titleText}>{title}</Text>
                         {description && `\n${description}`}
                       </Text>
@@ -292,26 +307,34 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                         </Text>
                       )}
                     </ScrollView>
+                  </Animated.View>
+
+                  {/* 더보기/접기 버튼 - 내용이 길 때만 표시 */}
+                  {shouldShowMore && (
                     <TouchableOpacity
-                      style={styles.lessButton}
-                      onPress={() => setIsExpanded(false)}
+                      style={styles.moreButton}
+                      onPress={() => setIsExpanded(!isExpanded)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.lessText}>{t('actions.less', '접기')}</Text>
+                      <Text style={styles.moreText}>
+                        {isExpanded ? t('actions.less', '접기') : t('actions.more')}
+                      </Text>
                     </TouchableOpacity>
-                  </Animated.View>
-                </View>
+                  )}
+
+                  {/* 태그 - 축소 상태에서 별도로 표시 (확장 시 fade out) */}
+                  {tags && tags.length > 0 && (
+                    <Animated.View style={{ opacity: collapsedOpacity }}>
+                      <View style={styles.tagsContainer}>
+                        <Text style={styles.tagsText} numberOfLines={1}>
+                          {tags.map((tag) => `#${tag}`).join(' ')}
+                        </Text>
+                      </View>
+                    </Animated.View>
+                  )}
+                </>
               )}
             </View>
-
-            {/* 태그 - 축소 상태에서만 표시 */}
-            {!isLoading && !isExpanded && tags && tags.length > 0 && (
-              <View style={styles.tagsContainer}>
-                <Text style={styles.tagsText} numberOfLines={1}>
-                  {tags.map((tag) => `#${tag}`).join(' ')}
-                </Text>
-              </View>
-            )}
           </View>
 
           {/* 우측: 인터랙션 버튼 */}
@@ -537,10 +560,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textAlign: 'center',
   },
+  moreButton: {
+    paddingVertical: 4,
+  },
   moreText: {
     fontSize: 13,
     color: '#888888',
-    marginTop: 4,
   },
   lessText: {
     fontSize: 13,
