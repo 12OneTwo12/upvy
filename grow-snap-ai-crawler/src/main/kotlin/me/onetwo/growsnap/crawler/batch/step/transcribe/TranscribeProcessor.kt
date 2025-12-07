@@ -44,12 +44,12 @@ class TranscribeProcessor(
             logger.debug("Presigned URL 생성 완료: jobId={}", job.id)
 
             // 2. 오디오 추출
-            val audioPath = "${System.getProperty("java.io.tmpdir")}/audio_${job.id}.mp3"
+            val audioPath = "${System.getProperty("java.io.tmpdir")}/audio_${job.id}.flac"
             audioExtractService.extractAudioFromUrl(presignedUrl.toString(), audioPath)
             logger.debug("오디오 추출 완료: jobId={}, audioPath={}", job.id, audioPath)
 
             // 3. 오디오를 S3에 업로드 (STT가 URL 기반인 경우)
-            val audioS3Key = "temp/audio/${job.youtubeVideoId}.mp3"
+            val audioS3Key = "temp/audio/${job.youtubeVideoId}.flac"
             s3Service.upload(audioPath, audioS3Key)
             val audioPresignedUrl = s3Service.generatePresignedUrl(audioS3Key)
             logger.debug("오디오 S3 업로드 완료: jobId={}, s3Key={}", job.id, audioS3Key)

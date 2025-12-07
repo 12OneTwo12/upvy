@@ -190,7 +190,7 @@ class VertexAiSttClient(
 
     private fun buildRecognitionConfig(): RecognitionConfig {
         return RecognitionConfig.newBuilder()
-            .setEncoding(AudioEncoding.LINEAR16)
+            .setEncoding(AudioEncoding.FLAC)  // FLAC 무손실 압축 사용
             .setSampleRateHertz(sampleRateHertz)
             .setLanguageCode(languageCode)
             .setEnableWordTimeOffsets(enableWordTimeOffsets)
