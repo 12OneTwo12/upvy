@@ -53,6 +53,7 @@ data class EvaluatedVideo(
     val candidate: VideoCandidate,
     val relevanceScore: Int,
     val educationalValue: Int,
+    val shortFormSuitability: Int,  // 숏폼 적합성 (0-100): 빠른 템포, 편집 밀도, 콘텐츠 압축도
     val predictedQuality: Int,
     val recommendation: Recommendation,
     val reasoning: String
@@ -128,7 +129,8 @@ data class ContentMetadata(
     val description: String,
     val tags: List<String>,
     val category: String,
-    val difficulty: Difficulty
+    val difficulty: Difficulty,
+    val sourceAttribution: String? = null  // 출처 표기 (유튜브 원본 정보)
 )
 
 /**

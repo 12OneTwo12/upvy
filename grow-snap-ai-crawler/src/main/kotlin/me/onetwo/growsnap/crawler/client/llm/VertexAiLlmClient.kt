@@ -217,7 +217,7 @@ class VertexAiLlmClient(
     // ========== Prompt Builders ==========
 
     private fun buildSegmentExtractionPrompt(transcript: String): String = """
-        |당신은 교육 콘텐츠 전문가입니다. 다음 영상 자막에서 학습 가치가 높은 핵심 구간을 추출해주세요.
+        |당신은 교육 숏폼 콘텐츠 전문가입니다. 다음 영상 자막에서 숏폼 콘텐츠로 가장 적합한 핵심 구간을 추출해주세요.
         |
         |자막:
         |$transcript
@@ -227,6 +227,20 @@ class VertexAiLlmClient(
         |2. 완결된 개념이나 주제를 다루는 구간
         |3. 시청자가 쉽게 이해할 수 있는 설명이 포함된 구간
         |4. 최대 5개의 핵심 구간을 추출
+        |
+        |숏폼 적합성 기준 (중요!):
+        |- 빠른 템포와 밀도 있는 설명 (루즈하거나 늘어지지 않는 구간)
+        |- 화자의 에너지가 높고 말하는 속도가 적당히 빠른 부분
+        |- 핵심 내용이 압축적으로 전달되는 구간
+        |- 시각적/청각적 변화가 있어 지루하지 않은 부분
+        |- 30초~1분 내에 하나의 완결된 인사이트를 전달하는 구간
+        |
+        |피해야 할 구간:
+        |- 인트로/아웃트로 (구독 요청, 인사 등)
+        |- 장황한 설명이나 반복적인 내용
+        |- 맥락 없이는 이해하기 어려운 부분
+        |
+        |가장 숏폼에 적합한 구간부터 순서대로 정렬해주세요.
         |
         |JSON 형식으로만 응답해주세요:
         |[
@@ -308,9 +322,15 @@ class VertexAiLlmClient(
             |각 비디오에 대해 다음 기준으로 평가해주세요:
             |1. relevanceScore (0-100): 교육 플랫폼과의 관련성
             |2. educationalValue (0-100): 학습 가치
-            |3. predictedQuality (0-100): 예상 품질
-            |4. recommendation: HIGHLY_RECOMMENDED, RECOMMENDED, MAYBE, SKIP
-            |5. reasoning: 평가 이유 (한 문장)
+            |3. shortFormSuitability (0-100): 숏폼 콘텐츠 적합성
+            |   - 빠른 템포와 밀도 있는 편집 (루즈하지 않은지)
+            |   - 핵심 내용이 압축적으로 전달되는지
+            |   - 시각적 변화가 빈번하고 역동적인지
+            |   - 화자의 말하는 속도와 에너지
+            |   - 30초~3분 클립으로 잘라도 완결성이 있는 구조인지
+            |4. predictedQuality (0-100): 예상 품질
+            |5. recommendation: HIGHLY_RECOMMENDED, RECOMMENDED, MAYBE, SKIP
+            |6. reasoning: 평가 이유 (한 문장)
             |
             |JSON 형식으로 응답해주세요:
             |[
@@ -318,6 +338,7 @@ class VertexAiLlmClient(
             |    "index": 0,
             |    "relevanceScore": 85,
             |    "educationalValue": 80,
+            |    "shortFormSuitability": 75,
             |    "predictedQuality": 82,
             |    "recommendation": "RECOMMENDED",
             |    "reasoning": "평가 이유"
@@ -408,6 +429,7 @@ class VertexAiLlmClient(
                     candidate = candidate,
                     relevanceScore = (eval["relevanceScore"] as Number).toInt(),
                     educationalValue = (eval["educationalValue"] as Number).toInt(),
+                    shortFormSuitability = (eval["shortFormSuitability"] as? Number)?.toInt() ?: 50,
                     predictedQuality = (eval["predictedQuality"] as Number).toInt(),
                     recommendation = Recommendation.valueOf(eval["recommendation"] as String),
                     reasoning = eval["reasoning"] as String
@@ -421,6 +443,7 @@ class VertexAiLlmClient(
                     candidate = candidate,
                     relevanceScore = 50,
                     educationalValue = 50,
+                    shortFormSuitability = 50,
                     predictedQuality = 50,
                     recommendation = Recommendation.MAYBE,
                     reasoning = "평가 파싱 실패로 기본값 사용"

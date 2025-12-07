@@ -70,11 +70,19 @@ class AnalyzeProcessor(
             // 4. 세그먼트를 JSON 문자열로 변환
             val segmentsJson = objectMapper.writeValueAsString(segments)
 
-            // 5. Job 업데이트
+            // 5. 출처 표기 추가 (CC 라이선스 원본 정보)
+            val sourceAttribution = buildSourceAttribution(job)
+            val descriptionWithSource = if (sourceAttribution != null) {
+                "${metadata.description}\n\n$sourceAttribution"
+            } else {
+                metadata.description
+            }
+
+            // 6. Job 업데이트
             val now = Instant.now()
             return job.copy(
                 generatedTitle = metadata.title,
-                generatedDescription = metadata.description,
+                generatedDescription = descriptionWithSource,
                 generatedTags = tagsJson,
                 segments = segmentsJson,  // 세그먼트 저장
                 category = metadata.category,
@@ -139,5 +147,32 @@ class AnalyzeProcessor(
         val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
         return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    /**
+     * 출처 표기 문자열 생성
+     *
+     * CC 라이선스 원본 YouTube 영상의 정보를 포함합니다.
+     */
+    private fun buildSourceAttribution(job: AiContentJob): String? {
+        if (job.youtubeVideoId.isBlank()) {
+            return null
+        }
+
+        val videoUrl = "https://www.youtube.com/watch?v=${job.youtubeVideoId}"
+        val channelInfo = job.youtubeChannelId?.let { "채널: $it" } ?: ""
+        val titleInfo = job.youtubeTitle?.let { "\"$it\"" } ?: ""
+
+        return buildString {
+            append("---\n")
+            append("📌 출처: 이 콘텐츠는 Creative Commons 라이선스로 공개된 YouTube 영상을 기반으로 제작되었습니다.\n")
+            if (titleInfo.isNotBlank()) {
+                append("원본 제목: $titleInfo\n")
+            }
+            append("원본 링크: $videoUrl\n")
+            if (channelInfo.isNotBlank()) {
+                append(channelInfo)
+            }
+        }.trim()
     }
 }

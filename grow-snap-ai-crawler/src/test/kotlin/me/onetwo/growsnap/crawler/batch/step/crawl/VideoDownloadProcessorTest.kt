@@ -51,6 +51,7 @@ class VideoDownloadProcessorTest {
                 candidate = candidate,
                 relevanceScore = 85,
                 educationalValue = 80,
+                shortFormSuitability = 75,
                 predictedQuality = 82,
                 recommendation = Recommendation.RECOMMENDED,
                 reasoning = "Good educational content"
@@ -90,6 +91,7 @@ class VideoDownloadProcessorTest {
                 candidate = candidate,
                 relevanceScore = 50,
                 educationalValue = 50,
+                shortFormSuitability = 50,
                 predictedQuality = 50,
                 recommendation = Recommendation.MAYBE,
                 reasoning = "Average content"
@@ -117,6 +119,7 @@ class VideoDownloadProcessorTest {
                 candidate = candidate,
                 relevanceScore = 80,
                 educationalValue = 75,
+                shortFormSuitability = 70,
                 predictedQuality = 78,
                 recommendation = Recommendation.RECOMMENDED,
                 reasoning = "Good content"

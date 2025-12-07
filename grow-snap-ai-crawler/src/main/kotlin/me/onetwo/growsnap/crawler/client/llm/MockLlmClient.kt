@@ -90,6 +90,7 @@ class MockLlmClient : LlmClient {
                 candidate = candidate,
                 relevanceScore = 85,
                 educationalValue = 80,
+                shortFormSuitability = 75,
                 predictedQuality = 82,
                 recommendation = Recommendation.RECOMMENDED,
                 reasoning = "Mock evaluation: Good educational content"
