@@ -40,13 +40,13 @@ class SearchContextCollectorImpl(
         private val APP_CATEGORIES = listOf(
             "언어", "과학", "역사", "수학", "예술",
             "스타트업", "마케팅", "프로그래밍", "디자인",
-            "생산성", "심리학", "재테크", "건강",
+            "생산성", "심리학", "재테크", "건강", "동기부여",
             "육아", "요리", "여행", "취미", "트렌드"
         )
 
         // 시즌별 키워드
         private val SEASONAL_KEYWORDS = mapOf(
-            Month.JANUARY to "새해 목표, 계획, 습관 만들기",
+            Month.JANUARY to "새해 목표, 계획, 습관 만들기, 동기부여",
             Month.FEBRUARY to "겨울, 발렌타인, 자기 개발",
             Month.MARCH to "봄, 새 학기, 취업 준비",
             Month.APRIL to "봄, 꽃놀이, 야외 활동",
@@ -57,7 +57,7 @@ class SearchContextCollectorImpl(
             Month.SEPTEMBER to "가을, 새 학기, 취업",
             Month.OCTOBER to "할로윈, 가을 축제, 단풍",
             Month.NOVEMBER to "수능, 연말 준비, 블랙프라이데이",
-            Month.DECEMBER to "크리스마스, 연말 정산, 한 해 마무리"
+            Month.DECEMBER to "크리스마스, 연말 정산, 한 해 마무리, 동기부여"
         )
     }
 

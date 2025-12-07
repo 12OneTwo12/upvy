@@ -47,6 +47,7 @@
     "PSYCHOLOGY": { "name": "Psychology", "desc": "Human psychology, Behavior, etc." },
     "FINANCE": { "name": "Finance", "desc": "Investment, Savings, etc." },
     "HEALTH": { "name": "Health", "desc": "Exercise, Diet, Mental health, etc." },
+    "MOTIVATION": { "name": "Motivation", "desc": "Motivation, Success mindset, Self-improvement, etc." },
     "PARENTING": { "name": "Parenting", "desc": "Child education, Parenting tips, etc." },
     "COOKING": { "name": "Cooking", "desc": "Recipes, Cooking skills, etc." },
     "TRAVEL": { "name": "Travel", "desc": "Destinations, Travel tips, etc." },

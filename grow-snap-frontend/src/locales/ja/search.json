@@ -47,6 +47,7 @@
     "PSYCHOLOGY": { "name": "心理学", "desc": "人間心理、行動など" },
     "FINANCE": { "name": "ファイナンス", "desc": "投資、貯蓄など" },
     "HEALTH": { "name": "健康", "desc": "運動、食事、メンタルヘルスなど" },
+    "MOTIVATION": { "name": "モチベーション", "desc": "モチベーション、成功マインドセット、自己啓発など" },
     "PARENTING": { "name": "育児", "desc": "子育て、育児のコツなど" },
     "COOKING": { "name": "料理", "desc": "レシピ、料理スキルなど" },
     "TRAVEL": { "name": "旅行", "desc": "目的地、旅行のコツなど" },

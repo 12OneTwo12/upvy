@@ -44,6 +44,7 @@ export type Category =
   | 'PSYCHOLOGY'
   | 'FINANCE'
   | 'HEALTH'
+  | 'MOTIVATION'
   // 라이프스타일
   | 'PARENTING'
   | 'COOKING'
@@ -86,6 +87,7 @@ export const CATEGORIES: CategoryInfo[] = [
   { value: 'PSYCHOLOGY', displayName: '심리학', description: '인간 심리, 행동 등' },
   { value: 'FINANCE', displayName: '재테크', description: '투자, 저축 등' },
   { value: 'HEALTH', displayName: '건강', description: '운동, 식단, 정신건강 등' },
+  { value: 'MOTIVATION', displayName: '동기부여', description: '동기부여, 성공 마인드셋, 자기계발 등' },
 
   // 라이프스타일
   { value: 'PARENTING', displayName: '육아', description: '자녀 교육, 육아 팁 등' },

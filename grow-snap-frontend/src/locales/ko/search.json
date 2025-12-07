@@ -47,6 +47,7 @@
     "PSYCHOLOGY": { "name": "심리학", "desc": "인간 심리, 행동 등" },
     "FINANCE": { "name": "재테크", "desc": "투자, 저축 등" },
     "HEALTH": { "name": "건강", "desc": "운동, 식단, 정신건강 등" },
+    "MOTIVATION": { "name": "동기부여", "desc": "동기부여, 성공 마인드셋, 자기계발 등" },
     "PARENTING": { "name": "육아", "desc": "자녀 교육, 육아 팁 등" },
     "COOKING": { "name": "요리", "desc": "레시피, 요리 기술 등" },
     "TRAVEL": { "name": "여행", "desc": "여행지, 여행 팁 등" },

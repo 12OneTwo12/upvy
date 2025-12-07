@@ -134,14 +134,16 @@ class VertexAiSttClientTest {
         @Test
         @DisplayName("빈 결과가 반환되면 빈 텍스트를 반환한다")
         fun transcribe_WithEmptyResult_ReturnsEmptyText() = runBlocking {
-            // Given: 빈 응답
-            val mockResponse = RecognizeResponse.newBuilder().build()
-            every { mockSpeechClient.recognize(any(), any()) } returns mockResponse
+            // Given: 빈 응답 (LongRunningRecognize 사용 - gs:// URI이므로)
+            val mockLongRunningResponse = LongRunningRecognizeResponse.newBuilder().build()
+            val mockFuture = mockk<com.google.api.gax.longrunning.OperationFuture<LongRunningRecognizeResponse, LongRunningRecognizeMetadata>>(relaxed = true)
+            every { mockFuture.get() } returns mockLongRunningResponse
+            every { mockSpeechClient.longRunningRecognizeAsync(any(), any()) } returns mockFuture
 
             client = createClient()
 
-            // When: 음성 변환
-            val result = client.transcribe("gs://test-bucket/empty-audio.wav")
+            // When: 음성 변환 (gs:// URI는 transcribeLongAudio 사용)
+            val result = client.transcribeLongAudio("gs://test-bucket/empty-audio.wav")
 
             // Then: 빈 텍스트
             assertThat(result.text).isEmpty()

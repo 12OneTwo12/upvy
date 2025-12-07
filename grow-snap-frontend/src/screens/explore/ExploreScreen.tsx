@@ -37,6 +37,7 @@ const CATEGORY_ICON_MAP: Record<Category, keyof typeof Ionicons.glyphMap> = {
   PSYCHOLOGY: 'pulse',
   FINANCE: 'wallet',
   HEALTH: 'fitness',
+  MOTIVATION: 'trophy',
   PARENTING: 'people',
   COOKING: 'restaurant',
   TRAVEL: 'airplane',

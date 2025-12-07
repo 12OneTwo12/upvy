@@ -24,6 +24,7 @@ enum class Category(val displayName: String, val description: String) {
     PSYCHOLOGY("심리학", "인간 심리, 행동 등"),
     FINANCE("재테크", "투자, 저축 등"),
     HEALTH("건강", "운동, 식단, 정신건강 등"),
+    MOTIVATION("동기부여", "동기부여, 성공 마인드셋, 자기계발 등"),
 
     // 라이프스타일
     PARENTING("육아", "자녀 교육, 육아 팁 등"),
