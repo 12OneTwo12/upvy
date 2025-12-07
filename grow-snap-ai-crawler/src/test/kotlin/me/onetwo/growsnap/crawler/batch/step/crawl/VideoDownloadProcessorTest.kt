@@ -1,7 +1,6 @@
 package me.onetwo.growsnap.crawler.batch.step.crawl
 
 import io.mockk.every
-import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
@@ -28,8 +27,11 @@ class VideoDownloadProcessorTest {
     @MockK
     private lateinit var s3Service: S3Service
 
-    @InjectMockKs
-    private lateinit var processor: VideoDownloadProcessor
+    private val rawVideosPrefix = "raw"
+
+    private val processor: VideoDownloadProcessor by lazy {
+        VideoDownloadProcessor(ytDlpWrapper, s3Service, rawVideosPrefix)
+    }
 
     @Nested
     @DisplayName("process - 비디오 다운로드 및 S3 업로드")
