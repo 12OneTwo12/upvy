@@ -165,22 +165,53 @@ class VertexAiLlmClient(
 
         logger.info("비디오 평가 시작: candidates count={}", candidates.size)
 
-        val prompt = buildVideoEvaluationPrompt(candidates)
+        // 배치 크기: 토큰 제한을 피하기 위해 10개씩 처리
+        val batchSize = 10
+        val allEvaluations = mutableListOf<EvaluatedVideo>()
 
-        try {
-            val response = model.generateContent(prompt)
-            val responseText = ResponseHandler.getText(response)
-            val jsonResponse = extractJsonFromResponse(responseText.ifEmpty { "[]" })
+        candidates.chunked(batchSize).forEachIndexed { batchIndex, batch ->
+            logger.info("배치 {} 평가 시작: {} ~ {} (총 {}개)",
+                batchIndex + 1,
+                batchIndex * batchSize,
+                batchIndex * batchSize + batch.size - 1,
+                batch.size)
 
-            val evaluations = parseEvaluationsFromJson(jsonResponse, candidates)
+            val prompt = buildVideoEvaluationPrompt(batch)
+            logger.debug("비디오 평가 프롬프트 길이: {} chars", prompt.length)
 
-            logger.info("비디오 평가 완료: count={}", evaluations.size)
-            evaluations
+            try {
+                val response = model.generateContent(prompt)
+                logger.debug("Gemini 응답 수신 완료")
 
-        } catch (e: Exception) {
-            logger.error("비디오 평가 실패", e)
-            throw LlmException("Failed to evaluate videos", e)
+                // 응답 상세 정보 로깅
+                val responseCandidates = response.candidatesList
+                if (responseCandidates.isNotEmpty()) {
+                    val candidate = responseCandidates[0]
+                    logger.debug("finishReason: {}, content parts: {}",
+                        candidate.finishReason,
+                        candidate.content?.partsList?.size ?: 0)
+                }
+
+                val responseText = ResponseHandler.getText(response)
+                logger.debug("Gemini 원본 응답 길이: {} chars", responseText.length)
+
+                if (responseText.isNotEmpty()) {
+                    val jsonResponse = extractJsonFromResponse(responseText)
+                    val evaluations = parseEvaluationsFromJson(jsonResponse, batch)
+                    allEvaluations.addAll(evaluations)
+                    logger.info("배치 {} 평가 완료: {}개 평가됨", batchIndex + 1, evaluations.size)
+                } else {
+                    logger.warn("배치 {} 평가 실패: 빈 응답", batchIndex + 1)
+                }
+
+            } catch (e: Exception) {
+                logger.error("배치 {} 평가 실패", batchIndex + 1, e)
+                // 개별 배치 실패는 무시하고 계속 진행
+            }
         }
+
+        logger.info("비디오 평가 완료: 전체 {}개 중 {}개 평가됨", candidates.size, allEvaluations.size)
+        allEvaluations
     }
 
     // ========== Prompt Builders ==========
@@ -253,8 +284,19 @@ class VertexAiLlmClient(
     """.trimMargin()
 
     private fun buildVideoEvaluationPrompt(candidates: List<VideoCandidate>): String {
+        // JSON 문자열 이스케이핑 함수
+        fun escapeJson(str: String): String = str
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", " ")
+            .replace("\r", " ")
+            .replace("\t", " ")
+
         val videosJson = candidates.mapIndexed { index, video ->
-            """{"index": $index, "title": "${video.title}", "description": "${video.description?.take(200) ?: ""}", "channelTitle": "${video.channelTitle ?: ""}", "viewCount": ${video.viewCount ?: 0}}"""
+            val title = escapeJson(video.title)
+            val description = escapeJson(video.description?.take(200) ?: "")
+            val channelTitle = escapeJson(video.channelTitle ?: "")
+            """{"index": $index, "title": "$title", "description": "$description", "channelTitle": "$channelTitle", "viewCount": ${video.viewCount ?: 0}}"""
         }.joinToString(",\n")
 
         return """
@@ -351,8 +393,13 @@ class VertexAiLlmClient(
     }
 
     private fun parseEvaluationsFromJson(json: String, candidates: List<VideoCandidate>): List<EvaluatedVideo> {
+        logger.debug("평가 JSON 파싱 시작: json length={}, candidates count={}", json.length, candidates.size)
+        logger.debug("평가 JSON 내용: {}", json.take(500))
+
         return try {
             val evaluations: List<Map<String, Any>> = objectMapper.readValue(json)
+            logger.debug("파싱된 평가 수: {}", evaluations.size)
+
             evaluations.mapNotNull { eval ->
                 val index = (eval["index"] as Number).toInt()
                 val candidate = candidates.getOrNull(index) ?: return@mapNotNull null

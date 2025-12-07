@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.crawler.batch.step.crawl
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import me.onetwo.growsnap.crawler.client.LlmClient
 import me.onetwo.growsnap.crawler.client.youtube.YouTubeClient
@@ -33,6 +34,7 @@ class AiPoweredSearchReader(
         private val logger = LoggerFactory.getLogger(AiPoweredSearchReader::class.java)
         private const val MAX_QUERIES_PER_RUN = 5
         private const val MAX_VIDEOS_PER_QUERY = 10
+        private const val YOUTUBE_API_DELAY_MS = 1000L  // Rate Limiting 방지용 딜레이
     }
 
     private var evaluatedVideos: Iterator<EvaluatedVideo>? = null
@@ -71,8 +73,13 @@ class AiPoweredSearchReader(
 
                 // 3. YouTube 검색
                 val allCandidates = mutableListOf<VideoCandidate>()
-                for (query in searchQueries) {
+                for ((index, query) in searchQueries.withIndex()) {
                     try {
+                        // Rate Limiting 방지: 첫 번째 요청 이후부터 딜레이 적용
+                        if (index > 0) {
+                            delay(YOUTUBE_API_DELAY_MS)
+                        }
+
                         val candidates = youTubeClient.searchCcVideos(query.query, MAX_VIDEOS_PER_QUERY)
                         // 이미 처리된 비디오 제외
                         val newCandidates = candidates.filter { candidate ->

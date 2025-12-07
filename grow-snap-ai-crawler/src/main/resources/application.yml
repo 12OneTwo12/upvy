@@ -47,7 +47,7 @@ openai:
 
 # YouTube Data API
 youtube:
-    api-key: ${YOUTUBE_API_KEY:}
+  api-key: ${YOUTUBE_API_KEY:}
   daily-quota: 10000
 
 # AWS S3
