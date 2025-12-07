@@ -69,14 +69,16 @@ CREATE TABLE IF NOT EXISTS follows (
     updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
     deleted_at DATETIME(6) NULL,
+    deleted_at_unix BIGINT NOT NULL DEFAULT 0 COMMENT '0=active, unix_timestamp=deleted',
     FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT unique_follow UNIQUE (follower_id, following_id)
+    CONSTRAINT unique_follow UNIQUE (follower_id, following_id, deleted_at_unix)
 );
 
 CREATE INDEX idx_follower ON follows(follower_id);
 CREATE INDEX idx_following ON follows(following_id);
 CREATE INDEX idx_follow_deleted_at ON follows(deleted_at);
+CREATE INDEX idx_follow_composite ON follows(follower_id, following_id);
 
 -- Contents Table (비디오/사진 콘텐츠)
 CREATE TABLE IF NOT EXISTS contents (
