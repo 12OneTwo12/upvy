@@ -39,9 +39,9 @@ class PendingContentService(
             category = Category.fromString(job.category),
             difficulty = job.difficulty?.let {
                 when (it) {
-                    me.onetwo.growsnap.crawler.domain.Difficulty.BEGINNER -> Difficulty.BEGINNER
-                    me.onetwo.growsnap.crawler.domain.Difficulty.INTERMEDIATE -> Difficulty.INTERMEDIATE
-                    me.onetwo.growsnap.crawler.domain.Difficulty.ADVANCED -> Difficulty.ADVANCED
+                    Difficulty.BEGINNER -> Difficulty.BEGINNER
+                    Difficulty.INTERMEDIATE -> Difficulty.INTERMEDIATE
+                    Difficulty.ADVANCED -> Difficulty.ADVANCED
                 }
             },
             tags = job.generatedTags,

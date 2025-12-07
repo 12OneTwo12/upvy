@@ -25,8 +25,8 @@ class MockS3Service : S3Service {
     private val uploadedFiles = mutableMapOf<String, String>()
     var uploadSuccess: Boolean = true
 
-    override fun upload(localPath: String, s3Key: String, bucket: String?): String {
-        logger.debug("MockS3Service.upload called: localPath={}, s3Key={}", localPath, s3Key)
+    override fun upload(localPath: String, s3Key: String, bucket: String?, publicRead: Boolean): String {
+        logger.debug("MockS3Service.upload called: localPath={}, s3Key={}, publicRead={}", localPath, s3Key, publicRead)
 
         if (!uploadSuccess) {
             throw S3Exception("Mock upload failed: $s3Key")
@@ -60,6 +60,11 @@ class MockS3Service : S3Service {
     override fun exists(s3Key: String, bucket: String?): Boolean {
         logger.debug("MockS3Service.exists called: s3Key={}", s3Key)
         return uploadedFiles.containsKey(s3Key)
+    }
+
+    override fun getPublicUrl(s3Key: String, bucket: String?): String {
+        logger.debug("MockS3Service.getPublicUrl called: s3Key={}", s3Key)
+        return "https://mock-s3.example.com/$s3Key"
     }
 
     /**

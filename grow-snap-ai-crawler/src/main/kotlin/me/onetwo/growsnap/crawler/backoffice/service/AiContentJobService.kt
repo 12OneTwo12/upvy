@@ -7,6 +7,7 @@ import me.onetwo.growsnap.crawler.batch.step.transcribe.TranscribeProcessor
 import me.onetwo.growsnap.crawler.domain.AiContentJob
 import me.onetwo.growsnap.crawler.domain.AiContentJobRepository
 import me.onetwo.growsnap.crawler.domain.JobStatus
+import me.onetwo.growsnap.crawler.service.QualityScoreService
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
@@ -24,7 +25,9 @@ class AiContentJobService(
     private val transcribeProcessor: TranscribeProcessor,
     private val analyzeProcessor: AnalyzeProcessor,
     private val editProcessor: EditProcessor,
-    private val reviewProcessor: ReviewProcessor
+    private val reviewProcessor: ReviewProcessor,
+    private val pendingContentService: PendingContentService,
+    private val qualityScoreService: QualityScoreService
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AiContentJobService::class.java)
@@ -265,7 +268,17 @@ class AiContentJobService(
             val result = reviewProcessor.process(job)
             if (result != null) {
                 val saved = aiContentJobRepository.save(result.copy(updatedBy = executedBy))
-                logger.info("Review 완료: jobId={}", id)
+                logger.info("Review 완료: jobId={}, status={}", id, saved.status)
+
+                // PENDING_APPROVAL이면 pending_contents에도 INSERT
+                if (saved.status == JobStatus.PENDING_APPROVAL) {
+                    val reviewPriority = qualityScoreService.determineReviewPriority(
+                        saved.qualityScore ?: 0
+                    )
+                    pendingContentService.createFromJob(saved, reviewPriority)
+                    logger.info("승인 대기열에 추가: jobId={}, priority={}", id, reviewPriority)
+                }
+
                 saved
             } else {
                 val failed = job.copy(

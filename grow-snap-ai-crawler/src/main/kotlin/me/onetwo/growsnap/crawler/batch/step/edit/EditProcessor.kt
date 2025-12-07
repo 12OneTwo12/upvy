@@ -79,14 +79,14 @@ class EditProcessor(
             ffmpegWrapper.thumbnail(clippedPath, thumbnailPath, thumbnailTimeMs)
             logger.debug("썸네일 추출 완료: jobId={}, path={}", job.id, thumbnailPath)
 
-            // 7. S3 업로드 (단일 버킷 + prefix)
+            // 7. S3 업로드 (단일 버킷 + prefix, public-read ACL)
             val editedS3Key = "$editedVideosPrefix/clips/${job.youtubeVideoId}/${job.id}.mp4"
-            s3Service.upload(resizedPath, editedS3Key)
-            logger.debug("편집 비디오 S3 업로드 완료: jobId={}, s3Key={}", job.id, editedS3Key)
+            s3Service.upload(resizedPath, editedS3Key, publicRead = true)
+            logger.debug("편집 비디오 S3 업로드 완료 (public): jobId={}, s3Key={}", job.id, editedS3Key)
 
             val thumbnailS3Key = "$thumbnailsPrefix/${job.youtubeVideoId}/${job.id}.jpg"
-            s3Service.upload(thumbnailPath, thumbnailS3Key)
-            logger.debug("썸네일 S3 업로드 완료: jobId={}, s3Key={}", job.id, thumbnailS3Key)
+            s3Service.upload(thumbnailPath, thumbnailS3Key, publicRead = true)
+            logger.debug("썸네일 S3 업로드 완료 (public): jobId={}, s3Key={}", job.id, thumbnailS3Key)
 
             // 8. 임시 파일 정리
             cleanupTempFiles(listOf(localVideoPath, clippedPath, resizedPath, thumbnailPath))
