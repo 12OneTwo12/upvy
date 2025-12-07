@@ -24,7 +24,8 @@ data class User(
 enum class OAuthProvider {
     GOOGLE,
     NAVER,
-    KAKAO
+    KAKAO,
+    SYSTEM  // AI 크롤러 등 시스템 계정용
 }
 
 enum class UserRole {
