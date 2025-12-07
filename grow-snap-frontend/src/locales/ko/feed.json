@@ -16,7 +16,8 @@
     "delete": "삭제",
     "follow": "팔로우",
     "following": "팔로잉",
-    "more": "더보기"
+    "more": "더보기",
+    "less": "접기"
   },
   "menu": {
     "report": "신고하기",

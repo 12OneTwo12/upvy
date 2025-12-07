@@ -16,7 +16,8 @@
     "delete": "Delete",
     "follow": "Follow",
     "following": "Following",
-    "more": "More"
+    "more": "More",
+    "less": "Less"
   },
   "menu": {
     "report": "Report",

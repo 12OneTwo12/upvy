@@ -16,7 +16,8 @@
     "delete": "削除",
     "follow": "フォロー",
     "following": "フォロー中",
-    "more": "もっと見る"
+    "more": "もっと見る",
+    "less": "閉じる"
   },
   "menu": {
     "report": "報告",

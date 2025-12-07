@@ -112,7 +112,7 @@
     },
     "funCategoryGuideline": {
       "title": "FUN Category Guidelines",
-      "message": "This category is for break time content to reduce learning fatigue.\n\n✅ Suitable content:\n• Pure entertainment unrelated to studying\n• Memes, comedy, humor videos\n• Animal/cute videos\n• Daily vlogs, challenges\n• Dance, music, cooking, travel\n• Positive motivation\n\n❌ Unsuitable content:\n• Profanity, hate speech\n• Sexual/violent content\n• Advertising/spam content"
+      "message": "This category is for break time content to reduce learning fatigue.\n\n⚠️ Algorithm Exposure Notice:\nFUN content has lower recommendation algorithm exposure compared to study content. Since GrowSnap is a learning-focused platform, study-related content is prioritized in recommendations.\n\n✅ Suitable content:\n• Pure entertainment unrelated to studying\n• Memes, comedy, humor videos\n• Animal/cute videos\n• Daily vlogs, challenges\n• Dance, music, cooking, travel\n• Positive motivation\n\n❌ Unsuitable content:\n• Profanity, hate speech\n• Sexual/violent content\n• Advertising/spam content"
     }
   },
   "management": {

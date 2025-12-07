@@ -7,7 +7,12 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, LayoutChangeEvent } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, LayoutChangeEvent, LayoutAnimation, Platform, UIManager } from 'react-native';
+
+// Android에서 LayoutAnimation 활성화
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -109,17 +114,16 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
     setExpandedHeight(Math.min(height, MAX_EXPAND_HEIGHT));
   };
 
-  // 확장/축소 애니메이션 - 실제 필요한 높이 차이만큼만 이동
+  // 확장/축소 애니메이션 - 확장 시 컨테이너 이동 없이 내용만 확장
   useEffect(() => {
-    const heightDifference = Math.max(0, expandedHeight - collapsedHeight);
-    const expandDistance = isExpanded ? -(heightDifference + 8) : 0; // 8px 여유공간
+    // 컨테이너 이동 없이 0으로 고정 - 내용 확장만 처리
     Animated.spring(slideAnim, {
-      toValue: expandDistance,
+      toValue: 0,
       useNativeDriver: true,
       damping: 20,
       stiffness: 90,
     }).start();
-  }, [isExpanded, collapsedHeight, expandedHeight, slideAnim]);
+  }, [isExpanded, slideAnim]);
 
   // 제목 + 설명 조합 (설명이 없으면 제목만 표시)
   const fullText = description ? `${title}\n${description}` : title;
@@ -242,32 +246,73 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
             )}
 
             {/* 콘텐츠 설명 */}
-            <TouchableOpacity
-              style={styles.descriptionContainer}
-              onPress={() => shouldShowMore && setIsExpanded(true)}
-              disabled={!shouldShowMore || isLoading}
-            >
+            <View style={styles.descriptionContainer}>
               {isLoading ? (
                 // 스켈레톤 UI
                 <>
                   <View style={[styles.skeletonText, { width: '90%', marginBottom: 6 }]} />
                   <View style={[styles.skeletonText, { width: '70%' }]} />
                 </>
-              ) : (
-                <View onLayout={handleCollapsedLayout}>
-                  <Text style={styles.description} numberOfLines={2}>
-                    <Text style={styles.titleText}>{title}</Text>
-                    {description && `\n${description}`}
-                  </Text>
-                  {shouldShowMore && (
-                    <Text style={styles.moreText}>{t('actions.more')}</Text>
-                  )}
+              ) : isExpanded ? (
+                // 확장된 상태 - 전체 내용 표시
+                <View style={styles.expandedWrapper}>
+                  <ScrollView
+                    style={styles.expandedInlineScrollView}
+                    contentContainerStyle={styles.expandedScrollContent}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled
+                    scrollEnabled={true}
+                  >
+                    <View onLayout={handleExpandedLayout}>
+                      <Text style={styles.expandedInlineDescription}>
+                        <Text style={styles.titleText}>{title}</Text>
+                        {description && `\n${description}`}
+                      </Text>
+                      {tags && tags.length > 0 && (
+                        <Text style={styles.expandedInlineTagsText}>
+                          {tags.map((tag) => `#${tag}`).join(' ')}
+                        </Text>
+                      )}
+                    </View>
+                  </ScrollView>
+                  <TouchableOpacity
+                    style={styles.lessButton}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setIsExpanded(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.lessText}>{t('actions.less', '접기')}</Text>
+                  </TouchableOpacity>
                 </View>
+              ) : (
+                // 축소된 상태
+                <TouchableOpacity
+                  onPress={() => {
+                    if (shouldShowMore) {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setIsExpanded(true);
+                    }
+                  }}
+                  activeOpacity={0.9}
+                  disabled={!shouldShowMore}
+                >
+                  <View onLayout={handleCollapsedLayout}>
+                    <Text style={styles.description} numberOfLines={2}>
+                      <Text style={styles.titleText}>{title}</Text>
+                      {description && `\n${description}`}
+                    </Text>
+                    {shouldShowMore && (
+                      <Text style={styles.moreText}>{t('actions.more')}</Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
 
-            {/* 태그 */}
-            {!isLoading && tags && tags.length > 0 && (
+            {/* 태그 - 축소 상태에서만 표시 */}
+            {!isLoading && !isExpanded && tags && tags.length > 0 && (
               <View style={styles.tagsContainer}>
                 <Text style={styles.tagsText} numberOfLines={1}>
                   {tags.map((tag) => `#${tag}`).join(' ')}
@@ -392,33 +437,6 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           }}
         />
 
-        {/* 확장 시 전체 설명 영역 */}
-        {isExpanded && (
-          <TouchableOpacity
-            style={[styles.expandedDescriptionContainer, { maxHeight: expandedHeight }]}
-            activeOpacity={1}
-            onPress={() => setIsExpanded(false)}
-          >
-            <ScrollView
-              style={styles.expandedScrollView}
-              bounces={false}
-              overScrollMode="never"
-              showsVerticalScrollIndicator={false}
-            >
-              <View onLayout={handleExpandedLayout}>
-                <Text style={styles.expandedDescription}>
-                  <Text style={styles.titleText}>{title}</Text>
-                  {description && `\n${description}`}
-                </Text>
-                {tags && tags.length > 0 && (
-                  <Text style={styles.expandedTagsText}>
-                    {tags.map((tag) => `#${tag}`).join(' ')}
-                  </Text>
-                )}
-              </View>
-            </ScrollView>
-          </TouchableOpacity>
-        )}
       </Animated.View>
     </>
   );
@@ -530,6 +548,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888888',
     marginTop: 4,
+  },
+  lessText: {
+    fontSize: 13,
+    color: '#888888',
+  },
+  lessButton: {
+    paddingVertical: 8,
+  },
+  expandedWrapper: {
+    maxHeight: MAX_EXPAND_HEIGHT + 40,
+  },
+  expandedInlineScrollView: {
+    maxHeight: MAX_EXPAND_HEIGHT,
+  },
+  expandedScrollContent: {
+    paddingRight: 8,
+  },
+  expandedInlineDescription: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    lineHeight: 20,
+  },
+  expandedInlineTagsText: {
+    fontSize: 14,
+    color: '#9BD4FF',
+    lineHeight: 20,
+    marginTop: 8,
   },
   modalOverlay: {
     position: 'absolute',

@@ -262,7 +262,11 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
 
           {/* 카테고리 목록 */}
           {showCategoryPicker && (
-            <View style={styles.categoryList}>
+            <ScrollView
+              style={styles.categoryList}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
               {CATEGORIES.map((category) => (
                 <TouchableOpacity
                   key={category.value}
@@ -272,7 +276,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                   ]}
                   onPress={() => handleCategorySelect(category.value)}
                 >
-                  <View>
+                  <View style={styles.categoryContent}>
                     <Text style={styles.categoryName}>{t(`search:category.${category.value}.name`, category.displayName)}</Text>
                     <Text style={styles.categoryDescription}>
                       {t(`search:category.${category.value}.desc`, category.description)}
@@ -283,7 +287,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                   )}
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           )}
         </View>
 
@@ -502,6 +506,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border.light,
     borderRadius: theme.borderRadius.base,
     maxHeight: 300,
+    overflow: 'hidden',
   },
   categoryItem: {
     flexDirection: 'row',
@@ -513,6 +518,10 @@ const styles = StyleSheet.create({
   },
   categoryItemSelected: {
     backgroundColor: theme.colors.primary[50],
+  },
+  categoryContent: {
+    flex: 1,
+    marginRight: theme.spacing[2],
   },
   categoryName: {
     fontSize: theme.typography.fontSize.base,
