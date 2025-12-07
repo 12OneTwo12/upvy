@@ -85,12 +85,12 @@ crawler:
 
 # FFmpeg
 ffmpeg:
-  path: ${FFMPEG_PATH:/usr/bin/ffmpeg}
+  path: ${FFMPEG_PATH:/opt/homebrew/bin/ffmpeg}
   temp-dir: ${FFMPEG_TEMP_DIR:/tmp/ai-crawler}
 
 # yt-dlp
 ytdlp:
-  path: ${YTDLP_PATH:/usr/local/bin/yt-dlp}
+  path: ${YTDLP_PATH:/opt/homebrew/bin/yt-dlp}
   output-dir: ${YTDLP_OUTPUT_DIR:/tmp/ai-crawler/downloads}
 
 # Logging
