@@ -1,11 +1,9 @@
 package me.onetwo.growsnap.crawler.service
 
-import io.awspring.cloud.s3.ObjectMetadata
 import io.awspring.cloud.s3.S3Template
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import software.amazon.awssdk.services.s3.model.ObjectCannedACL
 import java.io.File
 import java.io.InputStream
 import java.net.URL
@@ -96,8 +94,7 @@ class S3ServiceImpl(
 
     override fun upload(localPath: String, s3Key: String, bucket: String?, publicRead: Boolean): String {
         val targetBucket = bucket ?: this.bucket
-        logger.info("S3 업로드 시작: localPath={}, bucket={}, key={}, publicRead={}",
-            localPath, targetBucket, s3Key, publicRead)
+        logger.info("S3 업로드 시작: localPath={}, bucket={}, key={}", localPath, targetBucket, s3Key)
 
         try {
             val file = File(localPath)
@@ -105,18 +102,12 @@ class S3ServiceImpl(
                 throw S3Exception("Local file not found: $localPath")
             }
 
-            if (publicRead) {
-                // Public ACL로 업로드
-                val metadata = ObjectMetadata.builder()
-                    .acl(ObjectCannedACL.PUBLIC_READ)
-                    .build()
-                s3Template.upload(targetBucket, s3Key, file.inputStream(), metadata)
-            } else {
-                s3Template.upload(targetBucket, s3Key, file.inputStream())
-            }
+            // Bucket Owner Enforced 설정에서는 ACL 사용 불가
+            // 버킷 정책으로 edited-videos/*, thumbnails/* public read 설정됨
+            s3Template.upload(targetBucket, s3Key, file.inputStream())
 
-            logger.info("S3 업로드 완료: bucket={}, key={}, size={}MB, publicRead={}",
-                targetBucket, s3Key, file.length() / (1024 * 1024), publicRead)
+            logger.info("S3 업로드 완료: bucket={}, key={}, size={}MB",
+                targetBucket, s3Key, file.length() / (1024 * 1024))
 
             return s3Key
 
