@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{backoffice/layout/default}">
+<head>
+    <title>Job Detail</title>
+</head>
+<body>
+    <th:block layout:fragment="page-title">
+        Job #<span th:text="${job.id}">1</span> Detail
+    </th:block>
+
+    <div layout:fragment="content">
+        <!-- Alert Messages -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row">
+            <!-- Main Info -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Job Information</h5>
+                        <span class="badge fs-6"
+                              th:classappend="${job.status.name() == 'CRAWLED'} ? 'bg-info' :
+                                             (${job.status.name() == 'TRANSCRIBED'} ? 'bg-primary' :
+                                             (${job.status.name() == 'FAILED'} ? 'bg-danger' :
+                                             (${job.status.name() == 'PUBLISHED'} ? 'bg-success' : 'bg-secondary')))"
+                              th:text="${job.status.name()}">STATUS</span>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th style="width: 150px;">YouTube Title</th>
+                                <td th:text="${job.youtubeTitle ?: '(No title)'}">Title</td>
+                            </tr>
+                            <tr>
+                                <th>Video ID</th>
+                                <td>
+                                    <a th:href="@{'https://www.youtube.com/watch?v=' + ${job.youtubeVideoId}}"
+                                       target="_blank" class="text-decoration-none">
+                                        <code th:text="${job.youtubeVideoId}">abc123</code>
+                                        <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Channel ID</th>
+                                <td th:text="${job.youtubeChannelId ?: '-'}">Channel</td>
+                            </tr>
+                            <tr>
+                                <th>Quality Score</th>
+                                <td>
+                                    <span th:if="${job.qualityScore != null}"
+                                          class="fw-bold fs-5"
+                                          th:classappend="${job.qualityScore >= 85} ? 'text-success' : (${job.qualityScore >= 70} ? 'text-primary' : 'text-warning')"
+                                          th:text="${job.qualityScore}">85</span>
+                                    <span th:if="${job.qualityScore == null}" class="text-muted">-</span>
+                                </td>
+                            </tr>
+                            <tr th:if="${job.errorMessage}">
+                                <th>Error</th>
+                                <td class="text-danger" th:text="${job.errorMessage}">Error message</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- S3 Keys -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">S3 Storage</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th style="width: 150px;">Raw Video</th>
+                                <td><code th:text="${job.rawVideoS3Key ?: '-'}">raw/video.mp4</code></td>
+                            </tr>
+                            <tr>
+                                <th>Edited Video</th>
+                                <td><code th:text="${job.editedVideoS3Key ?: '-'}">edited/video.mp4</code></td>
+                            </tr>
+                            <tr>
+                                <th>Thumbnail</th>
+                                <td><code th:text="${job.thumbnailS3Key ?: '-'}">thumbnails/thumb.jpg</code></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Transcript -->
+                <div class="card mb-4" th:if="${job.transcript != null}">
+                    <div class="card-header">
+                        <h5 class="mb-0">Transcript</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="mb-0" style="white-space: pre-wrap; max-height: 300px; overflow-y: auto;" th:text="${job.transcript}">Transcript text...</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="col-lg-4">
+                <!-- Retry Actions -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Retry Job</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Job 상태를 변경하여 특정 단계부터 재처리할 수 있습니다.
+                            다음 배치 Job 실행 시 처리됩니다.
+                        </p>
+                        <form th:action="@{/backoffice/ai-jobs/{id}/retry(id=${job.id})}" method="post" class="mb-3">
+                            <div class="d-grid gap-2">
+                                <button type="submit" name="fromStatus" value="CRAWLED" class="btn btn-outline-info">
+                                    <i class="bi bi-arrow-repeat"></i> Transcribe부터 재시작
+                                </button>
+                                <button type="submit" name="fromStatus" value="TRANSCRIBED" class="btn btn-outline-primary"
+                                        th:disabled="${job.transcript == null}">
+                                    <i class="bi bi-arrow-repeat"></i> Analyze부터 재시작
+                                </button>
+                                <button type="submit" name="fromStatus" value="ANALYZED" class="btn btn-outline-warning"
+                                        th:disabled="${job.generatedTitle == null}">
+                                    <i class="bi bi-arrow-repeat"></i> Edit부터 재시작
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Direct Status Change -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Change Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/backoffice/ai-jobs/{id}/status(id=${job.id})}" method="post">
+                            <div class="mb-3">
+                                <select name="targetStatus" class="form-select">
+                                    <option th:each="status : ${allStatuses}"
+                                            th:value="${status.name()}"
+                                            th:text="${status.name()}"
+                                            th:selected="${status.name() == job.status.name()}">STATUS</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="bi bi-pencil"></i> Change Status
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Metadata</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <th>Created</th>
+                                <td th:text="${#temporals.format(job.createdAt, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01</td>
+                            </tr>
+                            <tr>
+                                <th>Updated</th>
+                                <td th:text="${#temporals.format(job.updatedAt, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01</td>
+                            </tr>
+                            <tr>
+                                <th>LLM</th>
+                                <td th:text="${job.llmProvider ?: '-'}">vertex-ai</td>
+                            </tr>
+                            <tr>
+                                <th>STT</th>
+                                <td th:text="${job.sttProvider ?: '-'}">vertex-ai</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Back Button -->
+        <div class="mt-4">
+            <a th:href="@{/backoffice/ai-jobs}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{backoffice/layout/default}">
+<head>
+    <title>AI Content Jobs</title>
+</head>
+<body>
+    <th:block layout:fragment="page-title">AI Content Jobs</th:block>
+
+    <div layout:fragment="content">
+        <!-- Alert Messages -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Status Stats -->
+        <div class="row mb-4">
+            <div th:each="entry : ${statusStats}" class="col-auto">
+                <a th:href="@{/backoffice/ai-jobs(status=${entry.key})}"
+                   class="card text-decoration-none"
+                   th:classappend="${selectedStatus != null && selectedStatus.name() == entry.key.name()} ? 'border-primary' : ''">
+                    <div class="card-body py-2 px-3">
+                        <span class="badge me-1"
+                              th:classappend="${entry.key.name() == 'CRAWLED'} ? 'bg-info' :
+                                             (${entry.key.name() == 'TRANSCRIBED'} ? 'bg-primary' :
+                                             (${entry.key.name() == 'FAILED'} ? 'bg-danger' :
+                                             (${entry.key.name() == 'PUBLISHED'} ? 'bg-success' : 'bg-secondary')))"
+                              th:text="${entry.key.name()}">STATUS</span>
+                        <span class="fw-bold" th:text="${entry.value}">0</span>
+                    </div>
+                </a>
+            </div>
+            <div class="col-auto">
+                <a th:href="@{/backoffice/ai-jobs}" class="card text-decoration-none">
+                    <div class="card-body py-2 px-3">
+                        <span class="badge bg-dark me-1">ALL</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Job List -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 60px">ID</th>
+                                <th>YouTube Title</th>
+                                <th style="width: 120px">Video ID</th>
+                                <th style="width: 120px">Status</th>
+                                <th style="width: 80px">Score</th>
+                                <th style="width: 150px">Created</th>
+                                <th style="width: 100px">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="job : ${jobs}">
+                                <td th:text="${job.id}">#1</td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 300px;" th:text="${job.youtubeTitle ?: '(No title)'}">Title</div>
+                                    <small class="text-muted" th:if="${job.errorMessage}" th:text="${job.errorMessage}"></small>
+                                </td>
+                                <td>
+                                    <a th:href="@{'https://www.youtube.com/watch?v=' + ${job.youtubeVideoId}}"
+                                       target="_blank" class="text-decoration-none">
+                                        <code th:text="${job.youtubeVideoId}">abc123</code>
+                                        <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${job.status.name() == 'CRAWLED'} ? 'bg-info' :
+                                                         (${job.status.name() == 'TRANSCRIBED'} ? 'bg-primary' :
+                                                         (${job.status.name() == 'ANALYZED'} ? 'bg-info' :
+                                                         (${job.status.name() == 'EDITED'} ? 'bg-warning' :
+                                                         (${job.status.name() == 'PENDING_APPROVAL'} ? 'bg-warning' :
+                                                         (${job.status.name() == 'APPROVED'} ? 'bg-success' :
+                                                         (${job.status.name() == 'PUBLISHED'} ? 'bg-success' :
+                                                         (${job.status.name() == 'FAILED'} ? 'bg-danger' :
+                                                         (${job.status.name() == 'REJECTED'} ? 'bg-danger' : 'bg-secondary'))))))))"
+                                          th:text="${job.status.name()}">STATUS</span>
+                                </td>
+                                <td>
+                                    <span th:if="${job.qualityScore != null}"
+                                          class="fw-bold"
+                                          th:classappend="${job.qualityScore >= 85} ? 'text-success' : (${job.qualityScore >= 70} ? 'text-primary' : 'text-warning')"
+                                          th:text="${job.qualityScore}">85</span>
+                                    <span th:if="${job.qualityScore == null}" class="text-muted">-</span>
+                                </td>
+                                <td>
+                                    <span th:text="${#temporals.format(job.createdAt, 'yyyy-MM-dd HH:mm')}">2024-01-01</span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/backoffice/ai-jobs/{id}(id=${job.id})}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${jobs.isEmpty()}">
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    No jobs found
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
