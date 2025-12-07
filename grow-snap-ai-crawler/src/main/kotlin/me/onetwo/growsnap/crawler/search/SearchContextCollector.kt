@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.crawler.search
 
 import me.onetwo.growsnap.crawler.domain.AiContentJobRepository
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.JobStatus
 import me.onetwo.growsnap.crawler.domain.SearchContext
 import org.slf4j.LoggerFactory
@@ -88,7 +89,8 @@ class SearchContextCollectorImpl(
             topPerformingTags = topPerformingTags,
             seasonalContext = seasonalContext,
             recentlyPublished = recentlyPublished,
-            underrepresentedCategories = underrepresentedCategories
+            underrepresentedCategories = underrepresentedCategories,
+            targetLanguages = listOf(ContentLanguage.KO, ContentLanguage.EN, ContentLanguage.JA)
         )
 
         logger.info(

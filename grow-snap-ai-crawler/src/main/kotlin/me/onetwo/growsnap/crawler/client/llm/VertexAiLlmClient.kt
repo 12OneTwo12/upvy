@@ -9,6 +9,7 @@ import com.google.cloud.vertexai.generativeai.ResponseHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.onetwo.growsnap.crawler.client.LlmClient
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.ContentMetadata
 import me.onetwo.growsnap.crawler.domain.Difficulty
 import me.onetwo.growsnap.crawler.domain.EvaluatedVideo
@@ -118,10 +119,13 @@ class VertexAiLlmClient(
         }
     }
 
-    override suspend fun generateMetadata(content: String): ContentMetadata = withContext(Dispatchers.IO) {
-        logger.info("메타데이터 생성 시작: content length={}", content.length)
+    override suspend fun generateMetadata(
+        content: String,
+        language: ContentLanguage
+    ): ContentMetadata = withContext(Dispatchers.IO) {
+        logger.info("메타데이터 생성 시작: content length={}, language={}", content.length, language.code)
 
-        val prompt = buildMetadataGenerationPrompt(content)
+        val prompt = buildMetadataGenerationPrompt(content, language)
 
         try {
             val response = model.generateContent(prompt)
@@ -130,11 +134,11 @@ class VertexAiLlmClient(
 
             val metadata = parseMetadataFromJson(jsonResponse)
 
-            logger.info("메타데이터 생성 완료: title={}", metadata.title)
+            logger.info("메타데이터 생성 완료: title={}, language={}", metadata.title, language.code)
             metadata
 
         } catch (e: Exception) {
-            logger.error("메타데이터 생성 실패", e)
+            logger.error("메타데이터 생성 실패: language={}", language.code, e)
             throw LlmException("Failed to generate metadata", e)
         }
     }
@@ -254,24 +258,52 @@ class VertexAiLlmClient(
         |]
     """.trimMargin()
 
-    private fun buildMetadataGenerationPrompt(content: String): String = """
-        |당신은 교육 콘텐츠 메타데이터 생성 전문가입니다. 다음 콘텐츠에 대한 메타데이터를 생성해주세요.
+    private fun buildMetadataGenerationPrompt(content: String, language: ContentLanguage): String {
+        val languageInstruction = when (language) {
+            ContentLanguage.KO -> "한국어로 메타데이터를 생성해주세요."
+            ContentLanguage.EN -> "Generate metadata in English."
+            ContentLanguage.JA -> "日本語でメタデータを生成してください。"
+        }
+
+        val titleExample = when (language) {
+            ContentLanguage.KO -> "코틀린 입문자를 위한 핵심 가이드"
+            ContentLanguage.EN -> "Essential Kotlin Guide for Beginners"
+            ContentLanguage.JA -> "初心者のためのKotlin入門ガイド"
+        }
+
+        return """
+        |당신은 글로벌 교육 콘텐츠 메타데이터 생성 전문가입니다.
         |
-        |콘텐츠:
+        |**중요: $languageInstruction**
+        |타겟 언어: ${language.nativeName} (${language.code})
+        |
+        |다음 콘텐츠에 대한 메타데이터를 생성해주세요:
         |$content
         |
-        |다음 형식의 JSON으로 응답해주세요:
+        |다음 형식의 JSON으로 응답해주세요 (${language.nativeName}로 작성):
         |{
-        |  "title": "매력적이고 명확한 제목 (30자 이내)",
-        |  "description": "SEO에 최적화된 상세 설명 (200자 이내)",
-        |  "tags": ["관련 태그", "최대 10개"],
+        |  "title": "$titleExample (30자/단어 이내)",
+        |  "description": "SEO에 최적화된 상세 설명 (200자/단어 이내)",
+        |  "tags": ["관련 태그", "최대 10개 - ${language.nativeName}로"],
         |  "category": "PROGRAMMING|SCIENCE|LANGUAGE|LIFESTYLE|BUSINESS|HEALTH|ARTS|HISTORY",
         |  "difficulty": "BEGINNER|INTERMEDIATE|ADVANCED"
         |}
     """.trimMargin()
+    }
 
-    private fun buildSearchQueryPrompt(context: SearchContext): String = """
-        |당신은 교육 콘텐츠 큐레이션 전문가입니다. YouTube에서 양질의 CC 라이선스 교육 콘텐츠를 찾기 위한 검색 쿼리를 생성해주세요.
+    private fun buildSearchQueryPrompt(context: SearchContext): String {
+        val languageInfo = context.targetLanguages.joinToString(", ") { "${it.code} (${it.nativeName})" }
+
+        return """
+        |당신은 글로벌 교육 콘텐츠 큐레이션 전문가입니다. YouTube에서 양질의 CC 라이선스 교육 콘텐츠를 찾기 위한 검색 쿼리를 생성해주세요.
+        |
+        |**중요: 다국어 검색 쿼리 생성**
+        |타겟 언어: $languageInfo
+        |각 언어별로 해당 언어에 맞는 자연스러운 검색어를 생성해주세요.
+        |예시:
+        |- 한국어(ko): "코틀린 프로그래밍 입문"
+        |- 영어(en): "kotlin programming beginner tutorial"
+        |- 일본어(ja): "Kotlin プログラミング 入門"
         |
         |현재 앱 카테고리: ${context.appCategories.joinToString(", ")}
         |인기 키워드: ${context.popularKeywords.joinToString(", ")}
@@ -285,17 +317,20 @@ class VertexAiLlmClient(
         |2. CC 라이선스로 배포될 가능성이 높은 채널/콘텐츠
         |3. 짧은 클립으로 편집하기 좋은 콘텐츠
         |4. 부족한 카테고리를 우선적으로 채울 수 있는 쿼리
+        |5. 각 언어별로 균등하게 쿼리 생성 (각 언어당 최소 3개)
         |
-        |JSON 형식으로 5~10개의 검색 쿼리를 생성해주세요:
+        |JSON 형식으로 15~30개의 검색 쿼리를 생성해주세요 (언어당 5~10개):
         |[
         |  {
-        |    "query": "검색어",
+        |    "query": "검색어 (해당 언어로 작성)",
         |    "targetCategory": "카테고리",
         |    "expectedContentType": "tutorial|lecture|explanation|howto",
-        |    "priority": 1-10
+        |    "priority": 1-10,
+        |    "language": "ko|en|ja"
         |  }
         |]
     """.trimMargin()
+    }
 
     private fun buildVideoEvaluationPrompt(candidates: List<VideoCandidate>): String {
         // JSON 문자열 이스케이핑 함수
@@ -400,11 +435,15 @@ class VertexAiLlmClient(
         return try {
             val queries: List<Map<String, Any>> = objectMapper.readValue(json)
             queries.map { q ->
+                val languageCode = q["language"] as? String ?: "ko"
+                val language = ContentLanguage.fromCode(languageCode) ?: ContentLanguage.KO
+
                 SearchQuery(
                     query = q["query"] as String,
                     targetCategory = q["targetCategory"] as String,
                     expectedContentType = q["expectedContentType"] as String,
-                    priority = (q["priority"] as Number).toInt()
+                    priority = (q["priority"] as Number).toInt(),
+                    language = language
                 )
             }
         } catch (e: Exception) {

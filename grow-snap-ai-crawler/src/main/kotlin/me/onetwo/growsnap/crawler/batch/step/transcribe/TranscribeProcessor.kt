@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import kotlinx.coroutines.runBlocking
 import me.onetwo.growsnap.crawler.client.SttClient
 import me.onetwo.growsnap.crawler.domain.AiContentJob
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.JobStatus
 import me.onetwo.growsnap.crawler.service.AudioExtractService
 import me.onetwo.growsnap.crawler.service.S3Service
@@ -56,12 +57,13 @@ class TranscribeProcessor(
             val audioPresignedUrl = s3Service.generatePresignedUrl(audioS3Key)
             logger.debug("오디오 S3 업로드 완료: jobId={}, s3Key={}", job.id, audioS3Key)
 
-            // 4. STT 변환
+            // 4. STT 변환 (콘텐츠 언어를 전달)
+            val contentLanguage = job.language?.let { ContentLanguage.fromCode(it) } ?: ContentLanguage.KO
             val transcriptResult = runBlocking {
-                sttClient.transcribe(audioPresignedUrl.toString())
+                sttClient.transcribe(audioPresignedUrl.toString(), contentLanguage)
             }
-            logger.info("STT 변환 완료: jobId={}, textLength={}, segmentsCount={}",
-                job.id, transcriptResult.text.length, transcriptResult.segments.size)
+            logger.info("STT 변환 완료: jobId={}, language={}, textLength={}, segmentsCount={}",
+                job.id, contentLanguage.code, transcriptResult.text.length, transcriptResult.segments.size)
 
             // 5. 세그먼트를 JSON으로 변환 (LLM에게 전달할 타임스탬프 정보)
             val transcriptSegmentsJson = if (transcriptResult.segments.isNotEmpty()) {

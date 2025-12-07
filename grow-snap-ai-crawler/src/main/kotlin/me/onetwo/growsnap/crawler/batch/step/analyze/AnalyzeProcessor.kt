@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.runBlocking
 import me.onetwo.growsnap.crawler.client.LlmClient
 import me.onetwo.growsnap.crawler.domain.AiContentJob
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.JobStatus
 import me.onetwo.growsnap.crawler.domain.TranscriptSegment
 import org.slf4j.LoggerFactory
@@ -55,13 +56,14 @@ class AnalyzeProcessor(
                     index + 1, seg.startTimeMs, seg.endTimeMs, seg.title)
             }
 
-            // 2. 메타데이터 생성
+            // 2. 메타데이터 생성 (콘텐츠 언어로)
+            val contentLanguage = job.language?.let { ContentLanguage.fromCode(it) } ?: ContentLanguage.KO
             val metadata = runBlocking {
-                llmClient.generateMetadata(job.transcript!!)
+                llmClient.generateMetadata(job.transcript!!, contentLanguage)
             }
             logger.debug(
-                "메타데이터 생성 완료: jobId={}, title={}, category={}",
-                job.id, metadata.title, metadata.category
+                "메타데이터 생성 완료: jobId={}, title={}, category={}, language={}",
+                job.id, metadata.title, metadata.category, contentLanguage.code
             )
 
             // 3. 태그를 JSON 문자열로 변환

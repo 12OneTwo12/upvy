@@ -29,8 +29,29 @@ data class SearchContext(
     val topPerformingTags: List<String>,
     val seasonalContext: String?,
     val recentlyPublished: List<String>,
-    val underrepresentedCategories: List<String>
+    val underrepresentedCategories: List<String>,
+    val targetLanguages: List<ContentLanguage> = listOf(ContentLanguage.KO, ContentLanguage.EN, ContentLanguage.JA)
 )
+
+/**
+ * 콘텐츠 언어
+ *
+ * 글로벌 앱 지원을 위한 언어 구분
+ */
+enum class ContentLanguage(
+    val code: String,           // YouTube API relevanceLanguage
+    val displayName: String,    // 표시명
+    val nativeName: String      // 해당 언어로 된 이름
+) {
+    KO("ko", "Korean", "한국어"),
+    EN("en", "English", "English"),
+    JA("ja", "Japanese", "日本語");
+
+    companion object {
+        fun fromCode(code: String): ContentLanguage? =
+            entries.find { it.code.equals(code, ignoreCase = true) }
+    }
+}
 
 /**
  * AI 생성 검색 쿼리
@@ -41,7 +62,8 @@ data class SearchQuery(
     val query: String,
     val targetCategory: String,
     val expectedContentType: String,
-    val priority: Int
+    val priority: Int,
+    val language: ContentLanguage = ContentLanguage.KO  // 검색어 언어
 )
 
 /**
@@ -56,7 +78,8 @@ data class EvaluatedVideo(
     val shortFormSuitability: Int,  // 숏폼 적합성 (0-100): 빠른 템포, 편집 밀도, 콘텐츠 압축도
     val predictedQuality: Int,
     val recommendation: Recommendation,
-    val reasoning: String
+    val reasoning: String,
+    val language: ContentLanguage = ContentLanguage.KO  // 콘텐츠 언어
 )
 
 /**

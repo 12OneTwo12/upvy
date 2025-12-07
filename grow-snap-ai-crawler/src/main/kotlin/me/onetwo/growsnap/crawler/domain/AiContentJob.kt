@@ -80,6 +80,9 @@ data class AiContentJob(
     @Column(name = "stt_provider", length = 20)
     val sttProvider: String? = null,
 
+    @Column(length = 5)
+    val language: String? = null,  // 콘텐츠 언어 (ko, en, ja)
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     val errorMessage: String? = null,
 

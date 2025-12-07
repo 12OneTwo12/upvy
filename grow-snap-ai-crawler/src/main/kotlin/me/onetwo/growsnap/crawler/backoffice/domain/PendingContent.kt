@@ -65,6 +65,9 @@ class PendingContent(
     @Column(name = "quality_score", nullable = false)
     val qualityScore: Int,
 
+    @Column(length = 5)
+    val language: String = "ko",  // 콘텐츠 언어 (ko, en, ja)
+
     @Column(name = "review_priority", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     val reviewPriority: ReviewPriority,

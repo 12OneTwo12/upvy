@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.crawler.client.llm
 
 import me.onetwo.growsnap.crawler.client.LlmClient
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.ContentMetadata
 import me.onetwo.growsnap.crawler.domain.Difficulty
 import me.onetwo.growsnap.crawler.domain.EvaluatedVideo
@@ -69,9 +70,26 @@ class MockLlmClient : LlmClient {
         return segmentsResponse
     }
 
-    override suspend fun generateMetadata(content: String): ContentMetadata {
-        logger.debug("MockLlmClient.generateMetadata called: content length={}", content.length)
-        return metadataResponse
+    override suspend fun generateMetadata(content: String, language: ContentLanguage): ContentMetadata {
+        logger.debug("MockLlmClient.generateMetadata called: content length={}, language={}",
+            content.length, language.code)
+        return when (language) {
+            ContentLanguage.KO -> metadataResponse
+            ContentLanguage.EN -> ContentMetadata(
+                title = "Mock Title in English",
+                description = "Mock Description for testing purposes in English",
+                tags = listOf("mock", "test", "english"),
+                category = "PROGRAMMING",
+                difficulty = Difficulty.BEGINNER
+            )
+            ContentLanguage.JA -> ContentMetadata(
+                title = "モックタイトル",
+                description = "テスト用のモック説明",
+                tags = listOf("モック", "テスト", "日本語"),
+                category = "PROGRAMMING",
+                difficulty = Difficulty.BEGINNER
+            )
+        }
     }
 
     override suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery> {

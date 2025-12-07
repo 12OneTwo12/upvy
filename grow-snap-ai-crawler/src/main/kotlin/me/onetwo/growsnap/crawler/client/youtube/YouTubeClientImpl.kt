@@ -5,6 +5,7 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.youtube.YouTube
 import com.google.api.services.youtube.model.SearchListResponse
 import com.google.api.services.youtube.model.VideoListResponse
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.VideoCandidate
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -37,8 +38,13 @@ class YouTubeClientImpl(
             .build()
     }
 
-    override suspend fun searchCcVideos(query: String, maxResults: Int): List<VideoCandidate> {
-        logger.info("YouTube CC 비디오 검색 시작: query={}, maxResults={}", query, maxResults)
+    override suspend fun searchCcVideos(
+        query: String,
+        maxResults: Int,
+        language: ContentLanguage
+    ): List<VideoCandidate> {
+        logger.info("YouTube CC 비디오 검색 시작: query={}, maxResults={}, language={}",
+            query, maxResults, language.code)
 
         try {
             val searchRequest = youtube.search().list(listOf("id", "snippet"))
@@ -47,7 +53,7 @@ class YouTubeClientImpl(
             searchRequest.type = listOf("video")
             searchRequest.videoLicense = "creativeCommon"  // CC 라이선스만
             searchRequest.videoDuration = "medium"  // 4-20분 영상
-            searchRequest.relevanceLanguage = "ko"  // 한국어 우선
+            searchRequest.relevanceLanguage = language.code  // 타겟 언어
             searchRequest.maxResults = maxResults.toLong()
 
             val response: SearchListResponse = searchRequest.execute()
@@ -55,18 +61,19 @@ class YouTubeClientImpl(
             val videoIds = response.items?.map { it.id.videoId } ?: emptyList()
 
             if (videoIds.isEmpty()) {
-                logger.info("검색 결과 없음: query={}", query)
+                logger.info("검색 결과 없음: query={}, language={}", query, language.code)
                 return emptyList()
             }
 
             // 상세 정보 조회 (조회수, 좋아요 수 등)
             val candidates = getVideosDetails(videoIds)
 
-            logger.info("검색 완료: query={}, resultCount={}", query, candidates.size)
+            logger.info("검색 완료: query={}, language={}, resultCount={}",
+                query, language.code, candidates.size)
             return candidates
 
         } catch (e: Exception) {
-            logger.error("YouTube 검색 실패: query={}", query, e)
+            logger.error("YouTube 검색 실패: query={}, language={}", query, language.code, e)
             throw YouTubeApiException("Failed to search YouTube videos", e)
         }
     }

@@ -8,6 +8,7 @@ import com.google.protobuf.ByteString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.onetwo.growsnap.crawler.client.SttClient
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.TranscriptResult
 import me.onetwo.growsnap.crawler.domain.TranscriptSegment
 import org.slf4j.LoggerFactory
@@ -36,6 +37,17 @@ class VertexAiSttClient(
     companion object {
         private val logger = LoggerFactory.getLogger(VertexAiSttClient::class.java)
         private const val MAX_SYNC_AUDIO_DURATION_SECONDS = 60
+
+        /**
+         * ContentLanguage -> Google STT languageCode 매핑
+         */
+        private fun toSttLanguageCode(language: ContentLanguage): String {
+            return when (language) {
+                ContentLanguage.KO -> "ko-KR"
+                ContentLanguage.EN -> "en-US"
+                ContentLanguage.JA -> "ja-JP"
+            }
+        }
     }
 
     private lateinit var speechClient: SpeechClient
@@ -51,11 +63,12 @@ class VertexAiSttClient(
         speechClient.close()
     }
 
-    override suspend fun transcribe(audioUrl: String): TranscriptResult = withContext(Dispatchers.IO) {
-        logger.info("음성 텍스트 변환 시작: audioUrl={}", audioUrl)
+    override suspend fun transcribe(audioUrl: String, language: ContentLanguage): TranscriptResult = withContext(Dispatchers.IO) {
+        val sttLanguageCode = toSttLanguageCode(language)
+        logger.info("음성 텍스트 변환 시작: audioUrl={}, language={}", audioUrl, sttLanguageCode)
 
         try {
-            val recognitionConfig = buildRecognitionConfig()
+            val recognitionConfig = buildRecognitionConfig(sttLanguageCode)
 
             // URL에서 오디오 데이터 로드 또는 GCS URI 사용
             val recognitionAudio = if (audioUrl.startsWith("gs://")) {
@@ -126,7 +139,7 @@ class VertexAiSttClient(
             TranscriptResult(
                 text = fullText,
                 segments = segments,
-                language = languageCode,
+                language = sttLanguageCode,
                 confidence = confidence
             )
 
@@ -139,11 +152,12 @@ class VertexAiSttClient(
     /**
      * 긴 오디오 파일 (60초 이상)에 대한 비동기 처리
      */
-    suspend fun transcribeLongAudio(gcsUri: String): TranscriptResult = withContext(Dispatchers.IO) {
-        logger.info("긴 오디오 텍스트 변환 시작 (LongRunningRecognize): gcsUri={}", gcsUri)
+    suspend fun transcribeLongAudio(gcsUri: String, language: ContentLanguage = ContentLanguage.KO): TranscriptResult = withContext(Dispatchers.IO) {
+        val sttLanguageCode = toSttLanguageCode(language)
+        logger.info("긴 오디오 텍스트 변환 시작 (LongRunningRecognize): gcsUri={}, language={}", gcsUri, sttLanguageCode)
 
         try {
-            val recognitionConfig = buildRecognitionConfig()
+            val recognitionConfig = buildRecognitionConfig(sttLanguageCode)
             val audio = RecognitionAudio.newBuilder()
                 .setUri(gcsUri)
                 .build()
@@ -179,7 +193,7 @@ class VertexAiSttClient(
             TranscriptResult(
                 text = fullText,
                 segments = segments,
-                language = languageCode
+                language = sttLanguageCode
             )
 
         } catch (e: Exception) {
@@ -188,11 +202,11 @@ class VertexAiSttClient(
         }
     }
 
-    private fun buildRecognitionConfig(): RecognitionConfig {
+    private fun buildRecognitionConfig(sttLanguageCode: String): RecognitionConfig {
         return RecognitionConfig.newBuilder()
             .setEncoding(AudioEncoding.OGG_OPUS)  // Opus 코덱 (음성에 최적화, 작은 파일)
             .setSampleRateHertz(sampleRateHertz)
-            .setLanguageCode(languageCode)
+            .setLanguageCode(sttLanguageCode)
             .setEnableWordTimeOffsets(enableWordTimeOffsets)
             .setEnableAutomaticPunctuation(true)
             .setModel("latest_long")  // 긴 오디오에 최적화된 모델

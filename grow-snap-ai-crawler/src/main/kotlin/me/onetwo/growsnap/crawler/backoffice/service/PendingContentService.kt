@@ -51,6 +51,7 @@ class PendingContentService(
             youtubeTitle = job.youtubeTitle,
             youtubeChannel = job.youtubeChannelId,
             qualityScore = job.qualityScore ?: 0,
+            language = job.language ?: "ko",  // 콘텐츠 언어
             reviewPriority = reviewPriority
         )
 

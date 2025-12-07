@@ -94,6 +94,7 @@ class ContentPublishService(
             duration = pendingContent.durationSeconds,
             width = pendingContent.width,
             height = pendingContent.height,
+            language = pendingContent.language,  // 콘텐츠 언어
             status = ContentStatus.PUBLISHED,
             createdAt = now,
             createdBy = systemUserId,
@@ -117,7 +118,7 @@ class ContentPublishService(
             category = pendingContent.category.name,
             tags = pendingContent.tags,
             difficultyLevel = pendingContent.difficulty?.name,
-            language = "ko",
+            language = pendingContent.language,  // 콘텐츠 언어
             createdAt = now,
             createdBy = systemUserId,
             updatedAt = now,

@@ -65,6 +65,7 @@ class VideoDownloadProcessor(
                 status = JobStatus.CRAWLED,
                 rawVideoS3Key = s3Key,
                 qualityScore = evaluatedVideo.predictedQuality,
+                language = evaluatedVideo.language.code,  // 콘텐츠 언어
                 createdAt = now,
                 createdBy = "SYSTEM",
                 updatedAt = now,
@@ -72,9 +73,10 @@ class VideoDownloadProcessor(
             )
 
             logger.info(
-                "비디오 처리 완료: videoId={}, jobStatus={}",
+                "비디오 처리 완료: videoId={}, jobStatus={}, language={}",
                 candidate.videoId,
-                job.status
+                job.status,
+                evaluatedVideo.language.code
             )
 
             return job

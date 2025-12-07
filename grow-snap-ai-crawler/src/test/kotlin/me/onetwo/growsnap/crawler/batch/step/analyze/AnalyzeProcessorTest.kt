@@ -4,6 +4,7 @@ import io.mockk.coEvery
 import io.mockk.junit5.MockKExtension
 import me.onetwo.growsnap.crawler.client.LlmClient
 import me.onetwo.growsnap.crawler.domain.AiContentJob
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.ContentMetadata
 import me.onetwo.growsnap.crawler.domain.Difficulty
 import me.onetwo.growsnap.crawler.domain.EvaluatedVideo
@@ -125,7 +126,7 @@ class AnalyzeProcessorTest {
 
         override suspend fun analyze(prompt: String): String = "Test analysis"
         override suspend fun extractKeySegments(transcript: String): List<Segment> = segmentsResponse
-        override suspend fun generateMetadata(content: String): ContentMetadata = metadataResponse
+        override suspend fun generateMetadata(content: String, language: ContentLanguage): ContentMetadata = metadataResponse
         override suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery> = emptyList()
         override suspend fun evaluateVideos(candidates: List<VideoCandidate>): List<EvaluatedVideo> = emptyList()
     }

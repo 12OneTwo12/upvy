@@ -1,6 +1,7 @@
 package me.onetwo.growsnap.crawler.client.stt
 
 import me.onetwo.growsnap.crawler.client.SttClient
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.TranscriptResult
 import me.onetwo.growsnap.crawler.domain.TranscriptSegment
 import org.slf4j.LoggerFactory
@@ -50,8 +51,8 @@ class MockSttClient : SttClient {
         confidence = 0.95f
     )
 
-    override suspend fun transcribe(audioUrl: String): TranscriptResult {
-        logger.debug("MockSttClient.transcribe called: audioUrl={}", audioUrl)
+    override suspend fun transcribe(audioUrl: String, language: ContentLanguage): TranscriptResult {
+        logger.debug("MockSttClient.transcribe called: audioUrl={}, language={}", audioUrl, language)
         return transcribeResponse
     }
 }

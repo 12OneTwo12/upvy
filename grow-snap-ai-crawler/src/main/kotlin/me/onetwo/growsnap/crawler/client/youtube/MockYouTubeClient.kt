@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.crawler.client.youtube
 
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.VideoCandidate
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
@@ -45,8 +46,13 @@ class MockYouTubeClient : YouTubeClient {
         )
     )
 
-    override suspend fun searchCcVideos(query: String, maxResults: Int): List<VideoCandidate> {
-        logger.debug("MockYouTubeClient.searchCcVideos called: query={}, maxResults={}", query, maxResults)
+    override suspend fun searchCcVideos(
+        query: String,
+        maxResults: Int,
+        language: ContentLanguage
+    ): List<VideoCandidate> {
+        logger.debug("MockYouTubeClient.searchCcVideos called: query={}, maxResults={}, language={}",
+            query, maxResults, language.code)
         return searchResponse.take(maxResults)
     }
 

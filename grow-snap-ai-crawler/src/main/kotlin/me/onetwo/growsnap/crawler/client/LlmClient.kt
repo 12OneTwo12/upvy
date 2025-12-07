@@ -1,5 +1,6 @@
 package me.onetwo.growsnap.crawler.client
 
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.ContentMetadata
 import me.onetwo.growsnap.crawler.domain.EvaluatedVideo
 import me.onetwo.growsnap.crawler.domain.SearchContext
@@ -35,9 +36,13 @@ interface LlmClient {
      * 콘텐츠 메타데이터 자동 생성
      *
      * @param content 콘텐츠 내용
+     * @param language 생성할 메타데이터 언어 (기본: 한국어)
      * @return 제목, 설명, 태그, 카테고리, 난이도
      */
-    suspend fun generateMetadata(content: String): ContentMetadata
+    suspend fun generateMetadata(
+        content: String,
+        language: ContentLanguage = ContentLanguage.KO
+    ): ContentMetadata
 
     /**
      * AI 기반 검색 쿼리 생성

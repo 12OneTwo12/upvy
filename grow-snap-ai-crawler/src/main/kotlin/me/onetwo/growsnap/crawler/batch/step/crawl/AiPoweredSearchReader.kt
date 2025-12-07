@@ -5,8 +5,10 @@ import kotlinx.coroutines.runBlocking
 import me.onetwo.growsnap.crawler.client.LlmClient
 import me.onetwo.growsnap.crawler.client.youtube.YouTubeClient
 import me.onetwo.growsnap.crawler.domain.AiContentJobRepository
+import me.onetwo.growsnap.crawler.domain.ContentLanguage
 import me.onetwo.growsnap.crawler.domain.EvaluatedVideo
 import me.onetwo.growsnap.crawler.domain.Recommendation
+import me.onetwo.growsnap.crawler.domain.SearchQuery
 import me.onetwo.growsnap.crawler.domain.VideoCandidate
 import me.onetwo.growsnap.crawler.search.SearchContextCollector
 import org.slf4j.LoggerFactory
@@ -71,8 +73,11 @@ class AiPoweredSearchReader(
                     .take(MAX_QUERIES_PER_RUN)
                 logger.info("검색 쿼리 생성 완료: count={}", searchQueries.size)
 
-                // 3. YouTube 검색
+                // 3. YouTube 검색 (언어별로 검색)
+                // 비디오 ID -> 언어 매핑 (같은 비디오가 여러 언어로 검색될 수 있음)
+                val videoLanguageMap = mutableMapOf<String, ContentLanguage>()
                 val allCandidates = mutableListOf<VideoCandidate>()
+
                 for ((index, query) in searchQueries.withIndex()) {
                     try {
                         // Rate Limiting 방지: 첫 번째 요청 이후부터 딜레이 적용
@@ -80,16 +85,28 @@ class AiPoweredSearchReader(
                             delay(YOUTUBE_API_DELAY_MS)
                         }
 
-                        val candidates = youTubeClient.searchCcVideos(query.query, MAX_VIDEOS_PER_QUERY)
+                        val candidates = youTubeClient.searchCcVideos(
+                            query = query.query,
+                            maxResults = MAX_VIDEOS_PER_QUERY,
+                            language = query.language
+                        )
                         // 이미 처리된 비디오 제외
                         val newCandidates = candidates.filter { candidate ->
                             aiContentJobRepository.findByYoutubeVideoId(candidate.videoId) == null
                         }
+
+                        // 비디오-언어 매핑 저장 (첫 번째 검색 결과의 언어 우선)
+                        newCandidates.forEach { candidate ->
+                            if (!videoLanguageMap.containsKey(candidate.videoId)) {
+                                videoLanguageMap[candidate.videoId] = query.language
+                            }
+                        }
+
                         allCandidates.addAll(newCandidates)
-                        logger.debug("검색 완료: query={}, results={}, new={}",
-                            query.query, candidates.size, newCandidates.size)
+                        logger.debug("검색 완료: query={}, language={}, results={}, new={}",
+                            query.query, query.language.code, candidates.size, newCandidates.size)
                     } catch (e: Exception) {
-                        logger.warn("검색 실패: query={}", query.query, e)
+                        logger.warn("검색 실패: query={}, language={}", query.query, query.language.code, e)
                     }
                 }
 
@@ -105,6 +122,11 @@ class AiPoweredSearchReader(
 
                 // 4. LLM으로 비디오 품질 사전 평가
                 val evaluated = llmClient.evaluateVideos(uniqueCandidates)
+                    .map { video ->
+                        // 언어 정보 추가
+                        val language = videoLanguageMap[video.candidate.videoId] ?: ContentLanguage.KO
+                        video.copy(language = language)
+                    }
                 logger.info("비디오 평가 완료: count={}", evaluated.size)
 
                 // 5. 추천 등급이 RECOMMENDED 이상인 비디오만 필터링
