@@ -94,7 +94,6 @@ class ContentPublishService(
             duration = pendingContent.durationSeconds,
             width = pendingContent.width,
             height = pendingContent.height,
-            language = pendingContent.language,  // 콘텐츠 언어
             status = ContentStatus.PUBLISHED,
             createdAt = now,
             createdBy = systemUserId,
