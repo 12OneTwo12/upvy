@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, LayoutChangeEvent } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -84,41 +84,27 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const isLoading = isLoadingState(creator);
   const isOwnPost = !isLoading && currentUser && currentUser.id === creator.userId;
   const shouldShowFollowButton = !isLoading && currentUser && currentUser.id !== creator.userId;
-  const [collapsedHeight, setCollapsedHeight] = useState(0);
-  const [expandedHeight, setExpandedHeight] = useState(0);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [blockType, setBlockType] = useState<BlockType>('content');
-  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // 확장/축소 애니메이션 값 (0 = 축소, 1 = 확장)
+  const expandAnim = useRef(new Animated.Value(0)).current;
 
   // 하단 패딩 = 탭바 높이 + 재생바 영역 + 여유 공간
   const bottomPadding = tabBarHeight + PROGRESS_BAR_AREA + 16;
 
-  // 축소된 상태의 설명 높이 측정
-  const handleCollapsedLayout = (event: LayoutChangeEvent) => {
-    const { height } = event.nativeEvent.layout;
-    setCollapsedHeight(height);
-  };
-
-  // 확장된 상태의 설명 높이 측정
-  const handleExpandedLayout = (event: LayoutChangeEvent) => {
-    const { height } = event.nativeEvent.layout;
-    setExpandedHeight(Math.min(height, MAX_EXPAND_HEIGHT));
-  };
-
-  // 확장/축소 애니메이션 - 확장 시 컨테이너 이동 없이 내용만 확장
+  // 확장/축소 애니메이션 - isExpanded 변경 시 Animated.timing 실행
   useEffect(() => {
-    // 컨테이너 이동 없이 0으로 고정 - 내용 확장만 처리
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      damping: 20,
-      stiffness: 90,
+    Animated.timing(expandAnim, {
+      toValue: isExpanded ? 1 : 0,
+      duration: 250,
+      useNativeDriver: false, // height 애니메이션은 useNativeDriver: false 필요
     }).start();
-  }, [isExpanded, slideAnim]);
+  }, [isExpanded, expandAnim]);
 
   // 제목 + 설명 조합 (설명이 없으면 제목만 표시)
   const fullText = description ? `${title}\n${description}` : title;
@@ -193,13 +179,11 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
       />
 
       {/* 하단 콘텐츠 - Animated */}
-      <Animated.View
+      <View
         style={[
           styles.container,
           {
             paddingBottom: bottomPadding,
-            transform: [{ translateY: slideAnim }],
-            overflow: 'visible',
           }
         ]}
       >
@@ -240,7 +224,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
               </TouchableOpacity>
             )}
 
-            {/* 콘텐츠 설명 */}
+            {/* 콘텐츠 설명 - Animated API로 부드러운 전환 */}
             <View style={styles.descriptionContainer}>
               {isLoading ? (
                 // 스켈레톤 UI
@@ -248,17 +232,56 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                   <View style={[styles.skeletonText, { width: '90%', marginBottom: 6 }]} />
                   <View style={[styles.skeletonText, { width: '70%' }]} />
                 </>
-              ) : isExpanded ? (
-                // 확장된 상태 - 전체 내용 표시
-                <View style={styles.expandedWrapper}>
-                  <ScrollView
-                    style={styles.expandedInlineScrollView}
-                    contentContainerStyle={styles.expandedScrollContent}
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled
-                    scrollEnabled={true}
+              ) : (
+                <View>
+                  {/* 축소된 상태 */}
+                  <Animated.View
+                    style={{
+                      opacity: expandAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 0],
+                      }),
+                      maxHeight: expandAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [100, 0],
+                      }),
+                    }}
+                    pointerEvents={isExpanded ? 'none' : 'auto'}
                   >
-                    <View onLayout={handleExpandedLayout}>
+                    <TouchableOpacity
+                      onPress={() => shouldShowMore && setIsExpanded(true)}
+                      activeOpacity={0.9}
+                      disabled={!shouldShowMore}
+                    >
+                      <Text style={styles.description} numberOfLines={2}>
+                        <Text style={styles.titleText}>{title}</Text>
+                        {description && `\n${description}`}
+                      </Text>
+                      {shouldShowMore && (
+                        <Text style={styles.moreText}>{t('actions.more')}</Text>
+                      )}
+                    </TouchableOpacity>
+                  </Animated.View>
+
+                  {/* 확장된 상태 */}
+                  <Animated.View
+                    style={{
+                      opacity: expandAnim,
+                      maxHeight: expandAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, MAX_EXPAND_HEIGHT + 40],
+                      }),
+                      overflow: 'hidden',
+                    }}
+                    pointerEvents={isExpanded ? 'auto' : 'none'}
+                  >
+                    <ScrollView
+                      style={styles.expandedInlineScrollView}
+                      contentContainerStyle={styles.expandedScrollContent}
+                      showsVerticalScrollIndicator={true}
+                      nestedScrollEnabled
+                      scrollEnabled={true}
+                    >
                       <Text style={styles.expandedInlineDescription}>
                         <Text style={styles.titleText}>{title}</Text>
                         {description && `\n${description}`}
@@ -268,33 +291,16 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                           {tags.map((tag) => `#${tag}`).join(' ')}
                         </Text>
                       )}
-                    </View>
-                  </ScrollView>
-                  <TouchableOpacity
-                    style={styles.lessButton}
-                    onPress={() => setIsExpanded(false)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.lessText}>{t('actions.less', '접기')}</Text>
-                  </TouchableOpacity>
+                    </ScrollView>
+                    <TouchableOpacity
+                      style={styles.lessButton}
+                      onPress={() => setIsExpanded(false)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.lessText}>{t('actions.less', '접기')}</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
                 </View>
-              ) : (
-                // 축소된 상태
-                <TouchableOpacity
-                  onPress={() => shouldShowMore && setIsExpanded(true)}
-                  activeOpacity={0.9}
-                  disabled={!shouldShowMore}
-                >
-                  <View onLayout={handleCollapsedLayout}>
-                    <Text style={styles.description} numberOfLines={2}>
-                      <Text style={styles.titleText}>{title}</Text>
-                      {description && `\n${description}`}
-                    </Text>
-                    {shouldShowMore && (
-                      <Text style={styles.moreText}>{t('actions.more')}</Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
               )}
             </View>
 
@@ -424,7 +430,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           }}
         />
 
-      </Animated.View>
+      </View>
     </>
   );
 };
