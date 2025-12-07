@@ -109,8 +109,13 @@
                 <span class="nav-link text-white-50 small text-uppercase">System</span>
             </li>
             <li class="nav-item">
+                <a class="nav-link" th:classappend="${currentUri.startsWith('/backoffice/ai-jobs')} ? 'active'" href="/backoffice/ai-jobs">
+                    <i class="bi bi-collection-play"></i> AI Jobs
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" th:classappend="${currentUri.startsWith('/backoffice/jobs')} ? 'active'" href="/backoffice/jobs">
-                    <i class="bi bi-gear"></i> Jobs
+                    <i class="bi bi-gear"></i> Batch Jobs
                 </a>
             </li>
         </ul>
