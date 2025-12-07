@@ -59,10 +59,11 @@ spring.cloud.aws:
     secret-key: ${AWS_SECRET_ACCESS_KEY:}
 
 s3:
-  bucket:
-    raw-videos: ${S3_BUCKET_RAW:grow-snap-raw-videos}
-    edited-videos: ${S3_BUCKET_EDITED:grow-snap-edited-videos}
-    thumbnails: ${S3_BUCKET_THUMBNAILS:grow-snap-thumbnails}
+  bucket: ${S3_BUCKET:grow-snap-ai-media}
+  prefix:
+    raw-videos: raw-videos
+    edited-videos: edited-videos
+    thumbnails: thumbnails
 
 # 배치 스케줄링
 batch:

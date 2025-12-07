@@ -22,8 +22,8 @@ class EditProcessor(
     private val ffmpegWrapper: FFmpegWrapper,
     private val s3Service: S3Service,
     @Value("\${ffmpeg.temp-dir:/tmp/ai-crawler}") private val tempDir: String,
-    @Value("\${s3.bucket.edited-videos}") private val editedVideosBucket: String,
-    @Value("\${s3.bucket.thumbnails}") private val thumbnailsBucket: String
+    @Value("\${s3.prefix.edited-videos}") private val editedVideosPrefix: String,
+    @Value("\${s3.prefix.thumbnails}") private val thumbnailsPrefix: String
 ) : ItemProcessor<AiContentJob, AiContentJob> {
 
     companion object {
@@ -70,13 +70,13 @@ class EditProcessor(
             ffmpegWrapper.thumbnail(clippedPath, thumbnailPath, thumbnailTimeMs)
             logger.debug("썸네일 추출 완료: jobId={}, path={}", job.id, thumbnailPath)
 
-            // 7. S3 업로드
-            val editedS3Key = "clips/${job.youtubeVideoId}/${job.id}.mp4"
-            s3Service.upload(resizedPath, editedS3Key, editedVideosBucket)
+            // 7. S3 업로드 (단일 버킷 + prefix)
+            val editedS3Key = "$editedVideosPrefix/clips/${job.youtubeVideoId}/${job.id}.mp4"
+            s3Service.upload(resizedPath, editedS3Key)
             logger.debug("편집 비디오 S3 업로드 완료: jobId={}, s3Key={}", job.id, editedS3Key)
 
-            val thumbnailS3Key = "thumbnails/${job.youtubeVideoId}/${job.id}.jpg"
-            s3Service.upload(thumbnailPath, thumbnailS3Key, thumbnailsBucket)
+            val thumbnailS3Key = "$thumbnailsPrefix/${job.youtubeVideoId}/${job.id}.jpg"
+            s3Service.upload(thumbnailPath, thumbnailS3Key)
             logger.debug("썸네일 S3 업로드 완료: jobId={}, s3Key={}", job.id, thumbnailS3Key)
 
             // 8. 임시 파일 정리

@@ -7,6 +7,7 @@ import me.onetwo.growsnap.crawler.domain.JobStatus
 import me.onetwo.growsnap.crawler.service.S3Service
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.ItemProcessor
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.io.File
 import java.time.Instant
@@ -20,7 +21,8 @@ import java.time.Instant
 @Component
 class VideoDownloadProcessor(
     private val ytDlpWrapper: YtDlpWrapper,
-    private val s3Service: S3Service
+    private val s3Service: S3Service,
+    @Value("\${s3.prefix.raw-videos}") private val rawVideosPrefix: String
 ) : ItemProcessor<EvaluatedVideo, AiContentJob> {
 
     companion object {
@@ -41,8 +43,8 @@ class VideoDownloadProcessor(
             val localPath = ytDlpWrapper.download(candidate.videoId)
             logger.debug("다운로드 완료: videoId={}, path={}", candidate.videoId, localPath)
 
-            // 2. S3에 업로드
-            val s3Key = "raw/${candidate.videoId}.mp4"
+            // 2. S3에 업로드 (단일 버킷 + prefix)
+            val s3Key = "$rawVideosPrefix/${candidate.videoId}.mp4"
             s3Service.upload(localPath, s3Key)
             logger.debug("S3 업로드 완료: videoId={}, s3Key={}", candidate.videoId, s3Key)
 

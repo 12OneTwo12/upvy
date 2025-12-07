@@ -62,10 +62,11 @@ spring.cloud.aws:
     secret-key: test-secret-key
 
 s3:
-  bucket:
-    raw-videos: test-raw-videos
-    edited-videos: test-edited-videos
-    thumbnails: test-thumbnails
+  bucket: test-grow-snap-media
+  prefix:
+    raw-videos: raw-videos
+    edited-videos: edited-videos
+    thumbnails: thumbnails
 
 # 배치 스케줄링
 batch:

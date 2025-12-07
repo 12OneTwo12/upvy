@@ -71,9 +71,10 @@ interface S3Service {
 @Service
 class S3ServiceImpl(
     private val s3Template: S3Template,
-    @Value("\${s3.bucket.raw-videos}") private val rawVideosBucket: String,
-    @Value("\${s3.bucket.edited-videos}") private val editedVideosBucket: String,
-    @Value("\${s3.bucket.thumbnails}") private val thumbnailsBucket: String
+    @Value("\${s3.bucket}") private val bucket: String,
+    @Value("\${s3.prefix.raw-videos}") private val rawVideosPrefix: String,
+    @Value("\${s3.prefix.edited-videos}") private val editedVideosPrefix: String,
+    @Value("\${s3.prefix.thumbnails}") private val thumbnailsPrefix: String
 ) : S3Service {
 
     companion object {
@@ -81,7 +82,7 @@ class S3ServiceImpl(
     }
 
     override fun upload(localPath: String, s3Key: String, bucket: String?): String {
-        val targetBucket = bucket ?: rawVideosBucket
+        val targetBucket = bucket ?: this.bucket
         logger.info("S3 업로드 시작: localPath={}, bucket={}, key={}", localPath, targetBucket, s3Key)
 
         try {
@@ -106,7 +107,7 @@ class S3ServiceImpl(
     }
 
     override fun upload(inputStream: InputStream, s3Key: String, contentType: String, bucket: String?): String {
-        val targetBucket = bucket ?: rawVideosBucket
+        val targetBucket = bucket ?: this.bucket
         logger.debug("S3 업로드 시작 (InputStream): bucket={}, key={}", targetBucket, s3Key)
 
         try {
@@ -122,7 +123,7 @@ class S3ServiceImpl(
     }
 
     override fun generatePresignedUrl(s3Key: String, bucket: String?, expiration: Duration): URL {
-        val targetBucket = bucket ?: rawVideosBucket
+        val targetBucket = bucket ?: this.bucket
         logger.debug("Presigned URL 생성: bucket={}, key={}", targetBucket, s3Key)
 
         try {
@@ -137,7 +138,7 @@ class S3ServiceImpl(
     }
 
     override fun delete(s3Key: String, bucket: String?) {
-        val targetBucket = bucket ?: rawVideosBucket
+        val targetBucket = bucket ?: this.bucket
         logger.debug("S3 객체 삭제: bucket={}, key={}", targetBucket, s3Key)
 
         try {
@@ -151,7 +152,7 @@ class S3ServiceImpl(
     }
 
     override fun exists(s3Key: String, bucket: String?): Boolean {
-        val targetBucket = bucket ?: rawVideosBucket
+        val targetBucket = bucket ?: this.bucket
 
         return try {
             // S3Template에 objectExists가 없으므로 download 시도로 확인
@@ -164,17 +165,35 @@ class S3ServiceImpl(
     }
 
     /**
-     * 편집된 비디오 버킷에 업로드
+     * 편집된 비디오 업로드 (prefix 자동 적용)
      */
     fun uploadEditedVideo(localPath: String, s3Key: String): String {
-        return upload(localPath, s3Key, editedVideosBucket)
+        val fullKey = "$editedVideosPrefix/$s3Key"
+        return upload(localPath, fullKey, bucket)
     }
 
     /**
-     * 썸네일 버킷에 업로드
+     * 썸네일 업로드 (prefix 자동 적용)
      */
     fun uploadThumbnail(localPath: String, s3Key: String): String {
-        return upload(localPath, s3Key, thumbnailsBucket)
+        val fullKey = "$thumbnailsPrefix/$s3Key"
+        return upload(localPath, fullKey, bucket)
+    }
+
+    /**
+     * 원본 비디오 업로드 (prefix 자동 적용)
+     */
+    fun uploadRawVideo(localPath: String, s3Key: String): String {
+        val fullKey = "$rawVideosPrefix/$s3Key"
+        return upload(localPath, fullKey, bucket)
+    }
+
+    /**
+     * 원본 비디오 Presigned URL 생성 (prefix 자동 적용)
+     */
+    fun generateRawVideoPresignedUrl(s3Key: String, expiration: Duration = Duration.ofHours(1)): URL {
+        val fullKey = "$rawVideosPrefix/$s3Key"
+        return generatePresignedUrl(fullKey, bucket, expiration)
     }
 }
 
