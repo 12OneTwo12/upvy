@@ -61,7 +61,7 @@ export default function LoginScreen() {
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <Image
-                source={require('@/../assets/images/logo.png')}
+                source={require('@/../assets/images/upvy-mascot-noback.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
