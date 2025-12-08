@@ -38,6 +38,11 @@ const GRID_COLUMNS = 4;
 const GRID_IMAGE_SIZE = SCREEN_WIDTH / GRID_COLUMNS;
 const PREVIEW_HEIGHT = SCREEN_HEIGHT * 0.5;
 
+// iOS URI에서 메타데이터 해시 제거 (expo-av가 처리하지 못함)
+const cleanIOSVideoUri = (uri: string): string => {
+  return uri.replace(/#YnBsaXN0[A-Za-z0-9+/=]*$/, '');
+};
+
 export default function UploadMainScreen({ navigation }: Props) {
   const { t } = useTranslation(['upload', 'common']);
   const [hasPermission, setHasPermission] = useState<boolean>(false);
@@ -173,16 +178,67 @@ export default function UploadMainScreen({ navigation }: Props) {
           console.log('📹 Getting localUri for video asset...');
           const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
 
-          if (assetInfo.localUri) {
-            console.log('✅ Got localUri:', assetInfo.localUri);
+          // localUri가 있어도 /var/mobile/Media/ 경로는 실기기에서 접근 불가
+          // ImagePicker를 통해 접근 가능한 임시 파일을 얻어야 함
+          const needsImagePicker = !assetInfo.localUri ||
+            !assetInfo.localUri.startsWith('file://') ||
+            assetInfo.localUri.includes('/var/mobile/Media/');
+
+          if (!needsImagePicker) {
+            const cleanUri = cleanIOSVideoUri(assetInfo.localUri!);
+            console.log('✅ Got accessible localUri:', cleanUri);
             assetWithLocalUri = {
               ...asset,
-              uri: assetInfo.localUri, // localUri로 교체
+              uri: cleanUri,
             };
+          } else {
+            // localUri가 없거나 file://로 시작하지 않으면 ImagePicker로 폴백
+            console.log('⚠️ localUri not available, using ImagePicker fallback');
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: 'videos' as any,
+              allowsEditing: false,
+              quality: 1,
+            });
+
+            if (result.canceled) {
+              return; // 사용자가 취소함
+            }
+
+            if (result.assets[0]) {
+              const cleanUri = cleanIOSVideoUri(result.assets[0].uri);
+              assetWithLocalUri = {
+                ...asset,
+                uri: cleanUri, // ImagePicker에서 얻은 file:// URI 사용 (iOS 메타데이터 제거)
+              };
+              console.log('✅ Got URI from ImagePicker:', cleanUri);
+            }
           }
         } catch (error) {
           console.error('Failed to get localUri:', error);
-          // 실패해도 계속 진행 (VideoEditScreen에서 재시도)
+          // ImagePicker로 폴백
+          try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: 'videos' as any,
+              allowsEditing: false,
+              quality: 1,
+            });
+
+            if (result.canceled) {
+              return;
+            }
+
+            if (result.assets[0]) {
+              const cleanUri = cleanIOSVideoUri(result.assets[0].uri);
+              assetWithLocalUri = {
+                ...asset,
+                uri: cleanUri,
+              };
+            }
+          } catch (pickerError) {
+            console.error('ImagePicker fallback failed:', pickerError);
+            Alert.alert(t('common:label.error', 'Error'), t('upload:main.videoAccessError', '비디오에 접근할 수 없습니다.'));
+            return;
+          }
         }
       }
 

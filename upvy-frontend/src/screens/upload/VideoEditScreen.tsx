@@ -43,6 +43,12 @@ const VIDEO_HEIGHT = SCREEN_HEIGHT * 0.6;
 // 최대 비디오 길이 (초)
 const MAX_VIDEO_DURATION = 60;
 
+// iOS URI에서 메타데이터 해시 제거 (expo-av가 처리하지 못함)
+// iOS plist 메타데이터는 '#YnBsaXN0'(base64 시그니처)로 시작함
+const cleanIOSVideoUri = (uri: string): string => {
+  return uri.replace(/#YnBsaXN0[A-Za-z0-9+/=]*$/, '');
+};
+
 export default function VideoEditScreen({ navigation, route }: Props) {
   const { t } = useTranslation(['upload', 'common']);
   const { asset } = route.params;
@@ -121,8 +127,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
         // asset.uri가 이미 file:// 형식이면 그대로 사용 (카메라로 촬영한 경우)
         if (asset.uri && asset.uri.startsWith('file://')) {
-          console.log('📹 Using direct URI (camera capture):', asset.uri);
-          setVideoUri(asset.uri);
+          const cleanUri = cleanIOSVideoUri(asset.uri);
+          console.log('📹 Using direct URI (camera capture):', cleanUri);
+          setVideoUri(cleanUri);
           setIsLoadingVideo(false);
           return;
         }
@@ -138,53 +145,42 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
             // localUri가 있으면 사용 (이게 가장 좋은 경우)
             if (assetInfo.localUri && assetInfo.localUri.startsWith('file://')) {
-              console.log('✅ Found localUri:', assetInfo.localUri);
-              setVideoUri(assetInfo.localUri);
+              const cleanUri = cleanIOSVideoUri(assetInfo.localUri);
+              console.log('✅ Found localUri:', cleanUri);
+              setVideoUri(cleanUri);
               setIsLoadingVideo(false);
               return;
             }
 
-            // localUri가 없으면 MediaLibrary에서 asset을 export해야 함
-            // iOS에서는 ph:// URI를 직접 읽을 수 없으므로
-            // createAssetAsync의 역방향인 asset export가 필요
-            console.log('📹 No localUri found, exporting asset to file...');
+            // localUri가 없으면 ImagePicker를 사용해서 비디오에 접근
+            console.log('📹 No localUri found, using ImagePicker fallback...');
 
-            const cacheDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
-            if (!cacheDir) {
-              throw new Error('Could not get cache directory');
+            // ImagePicker를 사용하면 file:// URI를 얻을 수 있음
+            const ImagePicker = require('expo-image-picker');
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: 'videos',
+              allowsEditing: false,
+              quality: 1,
+            });
+
+            if (result.canceled) {
+              throw new Error('Video selection cancelled');
             }
 
-            // 임시 파일명 생성
-            const filename = `temp_video_${Date.now()}.mp4`;
-            const tempUri = `${cacheDir}${filename}`;
+            if (result.assets[0]?.uri) {
+              const cleanUri = cleanIOSVideoUri(result.assets[0].uri);
+              console.log('✅ Got URI from ImagePicker:', cleanUri);
+              setVideoUri(cleanUri);
+              setIsLoadingVideo(false);
+              return;
+            }
 
-            console.log('📹 Temp file path:', tempUri);
-
-            // iOS에서 PHAsset을 파일로 export하는 방법
-            // expo-media-library는 직접적인 export API가 없으므로
-            // Image Picker를 통해 이미 선택된 asset의 localUri를 얻어야 함
-
-            // 대안: React Native에서 PHAsset을 읽는 네이티브 브릿지 필요
-            // 하지만 expo-media-library만으로는 불가능
-
-            // 최종 해결책: expo-image-picker로 다시 선택
-            // 또는 UploadMainScreen에서 이미 localUri를 가져왔어야 함
-
-            console.warn('⚠️ Cannot convert ph:// URI without localUri');
-            console.warn('⚠️ This is a limitation of expo-media-library');
-
-            // 임시 방편: ph:// URI를 그대로 사용 시도
-            // (expo-av Video가 내부적으로 처리할 수도 있음)
-            console.log('📹 Trying ph:// URI directly (may not work)...');
-            setVideoUri(assetInfo.uri);
-            setIsLoadingVideo(false);
+            throw new Error('Could not get video URI from ImagePicker');
 
           } catch (error) {
             console.error('❌ Failed to process ph:// URI:', error);
             throw error;
           }
-
-          return;
         }
 
         // 기타 경우
@@ -193,8 +189,9 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           throw new Error('Could not get video URI from asset');
         }
 
-        console.log('📹 Video URI loaded successfully:', uri);
-        setVideoUri(uri);
+        const cleanUri = cleanIOSVideoUri(uri);
+        console.log('📹 Video URI loaded successfully:', cleanUri);
+        setVideoUri(cleanUri);
         setIsLoadingVideo(false);
       } catch (error) {
         console.error('❌ Failed to load video URI:', error);
