@@ -79,10 +79,10 @@ export const uploadFileToS3 = async (
     });
 
     xhr.open('PUT', uploadUrl);
-    // Presigned URL 서명 검증을 위해 백엔드와 동일한 헤더 설정
+    // Presigned URL 서명 검증을 위해 Content-Type만 설정
+    // Content-Length는 브라우저/앱이 자동 설정
+    // x-amz-acl은 버킷이 ACL을 비활성화했으므로 제거
     xhr.setRequestHeader('Content-Type', file.type);
-    xhr.setRequestHeader('Content-Length', file.size.toString());
-    xhr.setRequestHeader('x-amz-acl', 'public-read');
     xhr.send(file);
   });
 };
