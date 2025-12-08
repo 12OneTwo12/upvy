@@ -4,144 +4,245 @@
 
 ## 프로젝트 소개
 
-Upvy는 **"시간을 녹이는" 숏폼의 재미와 중독성은 그대로, 하지만 그 시간이 성장으로 이어지는 플랫폼**입니다.
+Upvy는 **"시간을 녹이는" 숏폼의 재미와 중독성은 그대로, 하지만 그 시간이 성장으로 이어지는 교육 숏폼 플랫폼**입니다.
 
-TikTok, 인스타그램 숏츠처럼 재미있지만, 스크롤하다 보면 어느새 새로운 것을 배우게 되는 - 그런 경험을 제공하기 위해 노력합니다.
+TikTok, 인스타그램 릴스, 유튜브 숏츠처럼 재미있지만, 스크롤하다 보면 어느새 새로운 것을 배우게 되는 경험을 제공합니다.
 
 ### 핵심 철학
 - 재미있으면서도 의미있게
-- 부담스러운 학습이 아닌, 자연스러운 성
+- 부담스러운 학습이 아닌, 자연스러운 성장
 - 딱딱한 교육이 아닌, 흥미로운 인사이트
 
----
-
-## 목표
-
+### 프로젝트 목표
 - **죄책감 없는 스크롤**: 놀면서도 뭔가 얻어가는 기분
-- **자연스러운 성장**: 공부한다는 느낌 없이 자연스레 배우는
+- **자연스러운 성장**: 공부한다는 느낌 없이 자연스레 배우기
 - **일상 속 학습**: 출퇴근, 쉬는 시간에 부담없이
 - **의미있는 시간**: "또 시간 낭비했다" → "오, 이거 몰랐는데!"
 
 ---
 
-## 주요 기능
+## 프로젝트 구조
 
-### 콘텐츠 소비 (모든 사용자)
-- **스마트 피드**: 개인화된 숏폼 피드 (커서 기반 무한 스크롤)
-- **소셜 인터랙션**: 좋아요, 댓글, 저장, 공유
-- **다중 전략 추천 알고리즘**:
-  - 인기 콘텐츠 (30%): 가중치 기반 인기도 계산
-  - 신규 콘텐츠 (10%): 최신 업로드 순
-  - 랜덤 콘텐츠 (20%): 다양성 확보
-  - 협업 필터링 (40%): 사용자 행동 기반 개인화 추천
-- **관심분야 분석**: 좋아요, 체류 시간 등 행동 데이터 기반 학습
-
-### 콘텐츠 제작 (모든 사용자)
-- **비디오/이미지 업로드**: S3 기반 Presigned URL 업로드
-- **애널리틱스**: 조회수, 좋아요, 댓글, 저장, 공유 등 성과 분석
-- **콘텐츠 관리**: 메타데이터 편집, 카테고리 설정
+```
+upvy/
+├── upvy-backend/       # Kotlin + Spring WebFlux 백엔드
+├── upvy-frontend/      # React Native + Expo 프론트엔드
+├── upvy-ai-crawler/    # AI 콘텐츠 생성 파이프라인
+├── manifest-ops/       # Kubernetes 배포 매니페스트
+└── docs/               # 프로젝트 문서
+```
 
 ---
 
-## AI와의 협업
+## 구현된 기능 (v1.0.0)
 
->Upvy는 AI와 개발자의 협업 방식을 실험하고 최적화하는 것을 주요 목표 중 하나로 삼기 위해 AI 개발 보조 도구(Claude Code, Gemini 등)를 실제 프로젝트에 적극 도입하였습니다.
-단순히 도구 사용법을 익히는 것을 넘어, AI와 함께 개발하는 효율적인 프로세스와 역할 분담 방식을 탐구하기 위한 목적도 가지고 있습니다.
+### 인증 및 사용자 관리
+- Google OAuth 2.0 소셜 로그인 (Custom Tabs 기반)
+- JWT 기반 인증 시스템 (Access Token 1시간, Refresh Token 14일)
+- 프로필 관리 (프로필 사진, 자기소개, 닉네임 수정)
+- 회원 탈퇴 및 계정 복원 (Soft Delete)
+- 앱 설정 (로그아웃, 약관, 지원)
 
-### 인간-AI 협업 모델
+### 스마트 피드 시스템
+- TikTok/Instagram/Youtube Reels 스타일 세로 스크롤 피드 UI
+- Item-based Collaborative Filtering 추천 알고리즘
+- Redis 기반 피드 캐싱 시스템
+- 카테고리별 피드 (PROGRAMMING, DESIGN, LANGUAGE, BUSINESS, FUN, MOTIVATION)
+- 사용자 언어 설정 기반 콘텐츠 가중치 적용
+- Pull-to-refresh 및 무한 스크롤 (커서 기반)
 
-인간-AI 협업 모델
+### 콘텐츠 관리
+- 크리에이터 스튜디오 (비디오/사진 업로드)
+- AWS S3 Presigned URL 기반 업로드 시스템
+- 비디오 트리밍 편집 기능
+- 사진 갤러리 (인스타그램 스타일 스와이프)
+- 콘텐츠 삭제/수정 기능
+- 썸네일 선택 (5개 옵션)
 
-- AI-in-the-Loop (AITL)
-- Human-in-the-Loop (HITL)
-- Human-on-the-Loop (HOTL)
+### 소셜 인터랙션
+- 좋아요/저장/공유 기능 (Optimistic Update 적용)
+- 댓글 시스템 (대댓글, 좋아요, 인기순/최신순 정렬)
+- 팔로우/언팔로우 시스템
+- 콘텐츠/사용자 신고 기능
+- 콘텐츠/사용자 차단 기능 (피드 필터링 연동)
 
-Upvy는 HITL과 HOTL 모델을 적극 채택했으며, 주요 아키텍처 설계 및 구현 단계에서는 AITL 모델을 중심으로 협업을 진행했습니다.
-AI의 자동화 능력과 인간의 판단력을 균형 있게 결합하여, 효율성과 통제력을 모두 확보하는 데 주요 초점을 맞추었습니다.
+### 탐색 및 검색
+- Manticore Search 통합 검색 엔진
+- 콘텐츠/크리에이터 검색 (Failover 전략 적용)
+- 카테고리 탐색 탭 (Explore)
+- 검색 결과 Masonry 그리드 UI
 
-### AI 코딩 스펙트럼
+### 알림 시스템
+- FCM 기반 푸시 알림
+- 알림 센터 UI (읽음 처리, 삭제)
+- 카테고리별 알림 설정 (좋아요, 댓글, 팔로우 등)
+- 푸시 토큰 관리 API
 
-레벨 0: 정적 도구(Static Tooling)
-레벨 1: 토큰 수준 완성(Token-Level Completion)
-레벨 2: 블록 수준 완성(Block-Level Completion)
-레벨 3: 의도 기반 채팅 에이전트(Intent-Based Chat Agent)
-레벨 4: 로컬 자율 에이전트(Local Autonomous Agent)
-레벨 5: 완전 자율 개발 에이전트(Fully Autonomous Dev Agent)
+### 다국어 지원
+- 한국어, 영어, 일본어 지원
+- 앱 전체 i18n 시스템 구축
+- 콘텐츠 언어 선택 및 필터링
 
-Upvy는 주요 아키텍처·설계를 제외한 작업에서 레벨 4 수준의 AI 코딩 스펙트럼을 목표로 설정하고, 주요 아키텍처·설계 단계에서는 레벨 2~3 수준의 AI 협업을 적용했습니다.
+### AI 콘텐츠 크롤링 및 편집기 (upvy-ai-crawler)
+- Vertex AI (Gemini) 기반 콘텐츠 검색 및 분석
+- YouTube 롱폼 → 숏폼 자동 편집 파이프라인
+- Google Cloud STT (Chirp) 타임스탬프 기반 세그먼트 추출
+- Thymeleaf 백오피스 관리 시스템
+- 콘텐츠 승인/거절 워크플로우
 
-### TDD 워크플로우 적극 도입
-
-- AI와의 협업의 효율성을 극대화하기 위해 TDD(테스트 주도 개발) 워크플로우를 적극 도입했습니다.
-- 시나리오 기반 테스트 케이스 작성 → 기능 작성 → 코드 리뷰 및 수정 → 리팩토링 → 테스트 통과 확인
-- 이 과정을 통해 AI가 생성한 코드의 품질과 신뢰성을 높이고, 개발 속도를 향상시켰습니다.
-- TDD 워크플로우는 AI와 개발자 간의 원활한 협업을 촉진하고, 코드의 일관성과 유지보수성을 강화하는 데 기여했습니다.
+### 크리에이터 애널리틱스
+- 콘텐츠별 조회수, 좋아요, 댓글, 저장, 공유 통계
 
 ---
 
 ## 기술 스택
 
-### 백엔드
-- **Kotlin** (JDK 17)
-- **Spring Boot 3.x** (WebFlux) - 반응형 프로그래밍
-- **MySQL**
-- **Apache Kafka**
-- **AWS** (S3, CloudFront)
-- **JOOQ** (타입 안전 SQL 빌더)
-- **Redis** (캐싱, Refresh Token 관리)
-- **OAuth 2.0**
-- **JWT** (인증)
-- **Spring Security**
+### 백엔드 (upvy-backend)
+| 구분 | 기술 |
+|------|------|
+| 언어 | Kotlin 1.9.x (JDK 17) |
+| 프레임워크 | Spring Boot 3.5.x + WebFlux (반응형) |
+| 데이터베이스 | MySQL + R2DBC (Reactive) |
+| 쿼리 빌더 | JOOQ (타입 안전 SQL) |
+| 캐싱 | Redis (Reactive) |
+| 스토리지 | AWS S3 + CloudFront (CDN) |
+| 인증 | OAuth 2.0, JWT |
+| 검색 | Manticore Search |
+| 문서화 | Spring REST Docs |
+| 테스트 | JUnit 5, MockK, Testcontainers, ArchUnit |
+| 정적 분석 | Detekt, Ktlint |
 
-### 프론트엔드
-- **React Native** (웹/앱 크로스 플랫폼)
-- TypeScript
-- Redux Toolkit, React Query
-- React Native Reanimated
+### 프론트엔드 (upvy-frontend)
+| 구분 | 기술 |
+|------|------|
+| 플랫폼 | React Native 0.81.x + Expo 54 |
+| 언어 | TypeScript 5.9.x |
+| 상태 관리 | Zustand (클라이언트), React Query (서버) |
+| 네비게이션 | React Navigation 7.x |
+| 스타일링 | NativeWind (Tailwind CSS) |
+| 폼 관리 | React Hook Form + Zod |
+| 다국어 | i18next + react-i18next |
+| 테스트 | Jest + React Native Testing Library |
+
+### AI 크롤러 (upvy-ai-crawler)
+| 구분 | 기술 |
+|------|------|
+| 언어 | Kotlin 1.9.x |
+| 프레임워크 | Spring Boot 3.x + Spring Batch 5.x |
+| AI (LLM) | Vertex AI Gemini |
+| AI (STT) | Google Cloud STT (Chirp) |
+| 비디오 처리 | yt-dlp + FFmpeg |
+| 저장소 | MySQL (JPA) + AWS S3 |
+| 백오피스 | Thymeleaf + Bootstrap 5 |
+
+### 인프라 및 DevOps
+| 구분 | 기술 |
+|------|------|
+| 컨테이너 | Docker |
+| 오케스트레이션 | Kubernetes |
+| CI/CD | GitHub Actions |
+| 이미지 레지스트리 | Docker Hub |
+| 모니터링 | OpenTelemetry Collector |
+| 테스트 커버리지 | JaCoCo |
+| 코드 리뷰 | ReviewDog |
 
 ---
 
-## 개발 계획
+## 시작하기
 
-### 초기 콘텐츠 확보
-- YouTube CC 라이선스 콘텐츠 활용 (AI 자동 편집 파이프라인)
-- 출처 명시 및 법적 준수 철저
-- 점진적으로 크리에이터 생태계 전환
+### 사전 요구사항
+- JDK 17+
+- Node.js 18+
+- Docker & Docker Compose
+- MySQL 8.0+
+- Redis 7.0+
 
----
-
-## 📖 API 문서
-
-상세 API 문서는 `build/docs/asciidoc/index.html`에서 확인할 수 있습니다.
-
----
-
-## 💡 시작하기
-
+### 백엔드 실행
 ```bash
-# 업데이트 예정
+cd upvy-backend
+./gradlew bootRun
+```
+
+### 프론트엔드 실행
+```bash
+cd upvy-frontend
+npm install
+npm start
+```
+
+### AI 크롤러 실행
+```bash
+cd upvy-ai-crawler
+./gradlew bootRun
 ```
 
 ---
 
-## 📚 문서
+## AI와의 협업
+
+Upvy는 AI와 개발자의 협업 방식을 실험하고 최적화하는 것을 주요 목표 중 하나로 삼고 있습니다. Claude Code, Gemini 등 AI 개발 보조 도구를 적극 도입하여 효율적인 개발 프로세스를 탐구합니다.
+
+### 인간-AI 협업 모델
+
+- **AI-in-the-Loop (AITL)**: 주요 아키텍처 설계 및 구현 단계
+- **Human-in-the-Loop (HITL)**: 핵심 의사결정 및 코드 리뷰
+- **Human-on-the-Loop (HOTL)**: 자동화된 작업 모니터링
+
+### AI 코딩 스펙트럼
+
+Upvy는 주요 아키텍처·설계를 제외한 작업에서 **레벨 4 (로컬 자율 에이전트)** 수준의 AI 협업을 목표로 하고, 주요 아키텍처·설계 단계에서는 **레벨 2~3 (블록 수준 완성 ~ 의도 기반 채팅 에이전트)** 수준의 AI 협업을 적용했습니다.
+
+### TDD 워크플로우
+
+AI와의 협업 효율성을 극대화하기 위해 TDD(테스트 주도 개발)를 적극 도입했습니다:
+1. 시나리오 기반 테스트 케이스 작성
+2. 기능 구현
+3. 코드 리뷰 및 수정
+4. 리팩토링
+5. 테스트 통과 확인
+
+---
+
+## 문서
 
 - [요구사항 명세서](docs/요구사항명세서.md)
-- [Git Convention](docs/GIT_CONVENTION.md) - 커밋 메시지 및 브랜치 네이밍 규칙
+- [백엔드 개발 가이드](docs/BACKEND_DEVELOPMENT_GUIDE.md)
+- [Git Convention](docs/GIT_CONVENTION.md)
+- [AI Crawler README](upvy-ai-crawler/README.md)
+
+### API 문서
+
+백엔드 빌드 후 `build/docs/asciidoc/index.html`에서 Spring REST Docs 기반 API 문서를 확인할 수 있습니다.
 
 ---
 
-## 📄 라이선스
+## 개발 통계 (v1.0.0)
 
-MIT License (예정)
-
----
-
-## 👥 팀
-
-Upvy Team
-@12OneTwo12
+- **772개 파일** 변경
+- **132,919줄** 코드 추가
+- **약 280개 커밋**
+- **50개 이상 이슈** 해결
+- **테스트 커버리지**: 79.33%
 
 ---
 
-**Upvy - 스크롤 시간을 성장 시간으로** 🌱
+## 라이선스
+
+이 프로젝트는 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) 하에 배포됩니다.
+
+### 주요 조건
+- 소스 코드를 자유롭게 열람, 수정, 배포할 수 있습니다.
+- 이 코드를 사용하여 네트워크 서비스를 제공할 경우, **수정된 전체 소스 코드를 동일한 라이선스로 공개**해야 합니다.
+- 상업적 사용 시에도 위 조건이 적용됩니다.
+
+자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+
+---
+
+## 팀
+
+Upvy Team - [@12OneTwo12](https://github.com/12OneTwo12)
+
+---
+
+**Upvy - 스크롤 시간을 성장 시간으로**
