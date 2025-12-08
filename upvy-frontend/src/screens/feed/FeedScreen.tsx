@@ -183,6 +183,9 @@ export default function FeedScreen() {
               fontSize: 17,
               fontWeight: currentTab === 'following' ? '700' : '400',
               color: currentTab === 'following' ? '#FFFFFF' : '#888888',
+              textShadowColor: 'rgba(0, 0, 0, 0.75)',
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 3,
             }}
           >
             {t('tabs.following')}
@@ -207,6 +210,9 @@ export default function FeedScreen() {
               fontSize: 17,
               fontWeight: currentTab === 'recommended' ? '700' : '400',
               color: currentTab === 'recommended' ? '#FFFFFF' : '#888888',
+              textShadowColor: 'rgba(0, 0, 0, 0.75)',
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 3,
             }}
           >
             {t('tabs.forYou')}

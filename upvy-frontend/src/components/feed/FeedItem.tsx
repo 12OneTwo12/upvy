@@ -29,6 +29,7 @@ const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const PROGRESS_BAR_HEIGHT_NORMAL = 3;
 const PROGRESS_BAR_HEIGHT_DRAGGING = 7;
 const PROGRESS_BAR_BOTTOM_OFFSET = 8.2;
+const PROGRESS_BAR_DEFAULT_BOTTOM = 24; // 탭바가 없을 때 하단 여백
 
 interface FeedItemProps {
   item: FeedItemType;
@@ -215,7 +216,9 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           {...panResponder.panHandlers}
           style={{
             position: 'absolute',
-            bottom: tabBarHeight - PROGRESS_BAR_BOTTOM_OFFSET,
+            bottom: tabBarHeight > 0
+              ? tabBarHeight - PROGRESS_BAR_BOTTOM_OFFSET
+              : PROGRESS_BAR_DEFAULT_BOTTOM,
             left: 0,
             right: 0,
             height: 20,

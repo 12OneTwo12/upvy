@@ -54,6 +54,7 @@ const isLoadingState = (creator: CreatorInfo) => {
 
 // 재생바 영역 높이
 const PROGRESS_BAR_AREA = 20;
+const DEFAULT_BOTTOM_MARGIN = 24; // 탭바가 없을 때 하단 여백
 
 export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   creator,
@@ -94,8 +95,9 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   // 확장/축소 애니메이션 값 (0 = 축소, 1 = 확장)
   const expandAnim = useRef(new Animated.Value(0)).current;
 
-  // 하단 패딩 = 탭바 높이 + 재생바 영역 + 여유 공간
-  const bottomPadding = tabBarHeight + PROGRESS_BAR_AREA + 16;
+  // 하단 패딩 = 탭바 높이 + 재생바 영역 + 여유 공간 (탭바가 없으면 기본 여백 사용)
+  const effectiveTabBarHeight = tabBarHeight > 0 ? tabBarHeight : DEFAULT_BOTTOM_MARGIN;
+  const bottomPadding = effectiveTabBarHeight + PROGRESS_BAR_AREA + 16;
 
   // 높이 애니메이션 상수
   const COLLAPSED_HEIGHT = 44; // 약 2줄 (13px font * 18px line-height * 2 + margin)
@@ -345,6 +347,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                 name={interactions.isLiked ? "heart" : "heart-outline"}
                 size={32}
                 color={interactions.isLiked ? "#FF0000" : "#FFFFFF"}
+                style={styles.iconShadow}
               />
               <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
                 {isLoading ? '0' : formatCount(interactions.likeCount)}
@@ -353,7 +356,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 
             {/* 댓글 */}
             <TouchableOpacity onPress={onComment} style={styles.actionButton}>
-              <Ionicons name="chatbubble-outline" size={30} color="#FFFFFF" />
+              <Ionicons name="chatbubble-outline" size={30} color="#FFFFFF" style={styles.iconShadow} />
               <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
                 {isLoading ? '0' : formatCount(interactions.commentCount)}
               </Text>
@@ -365,6 +368,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                 name={interactions.isSaved ? "bookmark" : "bookmark-outline"}
                 size={30}
                 color="#FFFFFF"
+                style={styles.iconShadow}
               />
               <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
                 {isLoading ? '0' : formatCount(interactions.saveCount)}
@@ -373,7 +377,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 
             {/* 공유 */}
             <TouchableOpacity onPress={onShare} style={styles.actionButton}>
-              <Ionicons name="paper-plane-outline" size={30} color="#FFFFFF" />
+              <Ionicons name="paper-plane-outline" size={30} color="#FFFFFF" style={styles.iconShadow} />
               <Text style={[styles.actionCount, isLoading && { opacity: 0 }]}>
                 {isLoading ? '0' : formatCount(interactions.shareCount)}
               </Text>
@@ -384,7 +388,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
               style={styles.actionButton}
               onPress={() => setShowActionSheet(true)}
             >
-              <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
+              <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" style={styles.iconShadow} />
             </TouchableOpacity>
           </View>
         </View>
@@ -519,6 +523,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     marginLeft: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   followButton: {
     marginLeft: 10,
@@ -532,6 +539,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   descriptionContainer: {
     marginBottom: 0,
@@ -540,6 +550,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FFFFFF',
     lineHeight: 18,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   rightSection: {
     position: 'absolute',
@@ -553,12 +566,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 48,
   },
+  iconShadow: {
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
   actionCount: {
     fontSize: 11,
     fontWeight: '600',
     color: '#FFFFFF',
     marginTop: 2,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   moreButton: {
     paddingVertical: 4,
@@ -593,6 +614,9 @@ const styles = StyleSheet.create({
     color: '#9BD4FF',
     lineHeight: 20,
     marginTop: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   modalOverlay: {
     position: 'absolute',
@@ -678,11 +702,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9BD4FF',
     lineHeight: 18,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   expandedTagsText: {
     fontSize: 14,
     color: '#9BD4FF',
     lineHeight: 20,
     marginTop: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });

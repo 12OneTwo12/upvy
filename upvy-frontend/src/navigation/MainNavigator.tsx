@@ -25,8 +25,8 @@ export default function MainNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          height: 60,
-          paddingBottom: 8,
+          height: 68,
+          paddingBottom: 16,
         },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
