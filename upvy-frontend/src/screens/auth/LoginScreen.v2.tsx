@@ -110,19 +110,6 @@ const useStyles = createStyleSheet({
     color: theme.colors.primary[600],
     textDecorationLine: 'underline',
   },
-
-  // Dev Notice
-  devNotice: {
-    padding: theme.spacing[3],
-    backgroundColor: '#fef3c7',
-    borderRadius: theme.borderRadius.base,
-  },
-
-  devNoticeText: {
-    fontSize: theme.typography.fontSize.xs,
-    color: '#92400e',
-    textAlign: 'center',
-  },
 });
 
 /**
@@ -217,14 +204,6 @@ export default function LoginScreen() {
             것으로 간주됩니다.
           </Text>
 
-          {/* 개발 모드 표시 */}
-          {__DEV__ && (
-            <View style={styles.devNotice}>
-              <Text style={styles.devNoticeText}>
-                ⚠️ 개발 모드: Google OAuth 설정이 필요합니다
-              </Text>
-            </View>
-          )}
         </View>
       </ScrollView>
     </SafeAreaView>

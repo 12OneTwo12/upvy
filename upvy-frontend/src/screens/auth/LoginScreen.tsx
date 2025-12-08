@@ -113,26 +113,6 @@ export default function LoginScreen() {
             />
           </Text>
 
-          {/* 개발 모드 표시 */}
-          {__DEV__ && (
-            <View style={styles.devNotice}>
-              <Text style={styles.devNoticeText}>
-                {t('login.devMode')}
-              </Text>
-              <Button
-                variant="outline"
-                size="sm"
-                onPress={async () => {
-                  const { logout } = useAuthStore.getState();
-                  await logout();
-                  showErrorAlert(t('login.devModeResetSuccess'), t('login.devModeResetTitle'));
-                }}
-                style={{ marginTop: theme.spacing[2] }}
-              >
-                {t('login.devModeReset')}
-              </Button>
-            </View>
-          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -272,22 +252,6 @@ const useStyles = createStyleSheet({
 
   termsLink: {
     color: theme.colors.text.secondary,
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-
-  // Dev Notice
-  devNotice: {
-    padding: theme.spacing[3],
-    backgroundColor: theme.colors.gray[100],
-    borderRadius: theme.borderRadius.base,
-    borderWidth: 1,
-    borderColor: theme.colors.gray[200],
-  },
-
-  devNoticeText: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
     fontWeight: theme.typography.fontWeight.medium,
   },
 });
