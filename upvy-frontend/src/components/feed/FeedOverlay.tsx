@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
+import { theme } from '@/theme';
 import { ReportModal } from '@/components/report/ReportModal';
 import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
 import { BlockConfirmModal } from '@/components/block/BlockConfirmModal';
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: theme.colors.primary[500],
   },
   profilePlaceholder: {
     width: 38,
@@ -505,7 +506,7 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     backgroundColor: '#444444',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
   },
