@@ -3,12 +3,12 @@ import Constants from 'expo-constants';
 
 /**
  * API Base URL
- * Development: 10.0.2.2:8080 (Android Emulator) or localhost:8080
- * Production: api.upvy.com
+ * Development: localhost:8080
+ * Production: api.upvy.org
  */
 export const API_HOST =
   Constants.expoConfig?.extra?.apiUrl ||
-  (__DEV__ ? 'http://localhost:8080' : 'https://api.upvy.com');
+  (__DEV__ ? 'http://localhost:8080' : 'https://api.upvy.org');
 
 export const API_BASE_URL = `${API_HOST}/api/v1`;
 
