@@ -35,7 +35,7 @@ spec:
               mountPath: /otel
       containers:
         - name: upvy-backend-prod
-          image: upvy/upvy-backend:ba380be3cde4262d000728dc3ae543c4c6ab8e87
+          image: upvy/upvy-backend:6908e73d7418c9fc0171ed879c9e9a04ea62493c
           envFrom:
             - secretRef:
                 name: upvy-backend-secrets
