@@ -13,7 +13,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
@@ -275,6 +275,34 @@ export default function SearchScreen() {
     loadTrendingKeywords();
     loadSearchHistory();
   }, []);
+
+  // 검색 탭 재클릭 시 초기 상태로 리셋 (최근 검색어 화면)
+  useEffect(() => {
+    // 부모 탭 네비게이터에서 tabPress 이벤트 리스닝
+    const parent = navigation.getParent();
+    if (!parent) return;
+
+    const unsubscribe = parent.addListener('tabPress', (e: any) => {
+      // 이미 Search 탭에 있는 경우에만 리셋
+      const state = parent.getState();
+      const currentRoute = state.routes[state.index];
+      if (currentRoute.name === 'Search') {
+        // 검색 상태 초기화
+        setSearchQuery('');
+        setShowSuggestions(false);
+        setHasSearched(false);
+        setContentResults([]);
+        setUserResults([]);
+        setActiveTab('creators');
+        Keyboard.dismiss();
+        // 검색 기록 및 인기 검색어 새로고침
+        loadTrendingKeywords();
+        loadSearchHistory();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, loadTrendingKeywords, loadSearchHistory]);
 
   // 자동완성 debounce
   useEffect(() => {
@@ -974,14 +1002,16 @@ const useStyles = createStyleSheet({
     paddingTop: theme.spacing[3],
   },
 
-  // 사용자 결과 (Instagram 스타일 - 컴팩트)
+  // 사용자 결과 (Instagram 스타일)
   userResultItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[2.5],
+    paddingVertical: theme.spacing[3],
     gap: theme.spacing[3],
     backgroundColor: theme.colors.background.primary,
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.border.light,
   },
 
   userAvatar: {

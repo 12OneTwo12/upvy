@@ -133,6 +133,7 @@ export default function UserProfileScreen() {
   const queryClient = useQueryClient();
 
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followStatusLoading, setFollowStatusLoading] = useState(true); // 팔로우 상태 로딩 중
   const [refreshing, setRefreshing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [showActionSheet, setShowActionSheet] = useState(false);
@@ -165,6 +166,7 @@ export default function UserProfileScreen() {
   const loadFollowStatus = async () => {
     // 본인이 아닐 때만 팔로우 상태 확인
     if (currentUser?.id !== userId && profile) {
+      setFollowStatusLoading(true);
       const followResult = await withErrorHandling(
         async () => await checkFollowing(userId),
         {
@@ -176,6 +178,9 @@ export default function UserProfileScreen() {
       if (followResult) {
         setIsFollowing(followResult.isFollowing);
       }
+      setFollowStatusLoading(false);
+    } else {
+      setFollowStatusLoading(false);
     }
   };
 
@@ -322,7 +327,7 @@ export default function UserProfileScreen() {
             <FollowButton
               isFollowing={isFollowing}
               onPress={handleFollowToggle}
-              loading={followLoading}
+              loading={followLoading || followStatusLoading}
             />
             <TouchableOpacity
               onPress={handleMessage}

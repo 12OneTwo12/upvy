@@ -9,6 +9,7 @@ import { Platform, Alert, AppState, Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { registerPushToken, deleteAllPushTokens } from '@/api/notification.api';
@@ -57,17 +58,40 @@ function getDeviceType(): DeviceType {
   return 'UNKNOWN';
 }
 
+const DEVICE_ID_STORAGE_KEY = '@upvy/device_id';
+
 /**
- * 고유 디바이스 ID 생성
+ * 고유 디바이스 ID 생성 또는 조회
+ *
+ * AsyncStorage에 저장된 ID가 있으면 재사용하고,
+ * 없으면 새로 생성하여 저장합니다.
+ * (앱 재설치 시에만 새로운 ID 생성)
  */
 async function getDeviceId(): Promise<string> {
-  // expo-device에서 고유 ID를 가져오거나 생성
-  const deviceName = Device.deviceName || 'unknown';
-  const osName = Device.osName || Platform.OS;
-  const osVersion = Device.osVersion || '';
+  try {
+    // 저장된 deviceId가 있는지 확인
+    const storedDeviceId = await AsyncStorage.getItem(DEVICE_ID_STORAGE_KEY);
+    if (storedDeviceId) {
+      return storedDeviceId;
+    }
 
-  // 고유한 디바이스 식별자 생성
-  return `${osName}-${osVersion}-${deviceName}-${Date.now()}`;
+    // 새로운 deviceId 생성
+    const deviceName = Device.deviceName || 'unknown';
+    const osName = Device.osName || Platform.OS;
+    const osVersion = Device.osVersion || '';
+    const uniqueId = Math.random().toString(36).substring(2, 15);
+    const newDeviceId = `${osName}-${osVersion}-${deviceName}-${uniqueId}`;
+
+    // AsyncStorage에 저장
+    await AsyncStorage.setItem(DEVICE_ID_STORAGE_KEY, newDeviceId);
+    console.log('New device ID generated:', newDeviceId);
+
+    return newDeviceId;
+  } catch (error) {
+    console.error('Failed to get/set device ID:', error);
+    // 에러 시 임시 ID 반환 (저장 실패해도 동작은 함)
+    return `${Platform.OS}-${Date.now()}`;
+  }
 }
 
 /**

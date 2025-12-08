@@ -25,8 +25,8 @@ export default function MainNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          height: 60,
-          paddingBottom: 8,
+          height: 68,
+          paddingBottom: 16,
         },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
@@ -60,6 +60,17 @@ export default function MainNavigator() {
         name="Search"
         component={SearchNavigator}
         options={{ tabBarLabel: t('navigation.search') }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // 이미 Search 탭에 있을 때 탭을 다시 누르면 스택 리셋
+            const state = navigation.getState();
+            const currentRoute = state.routes[state.index];
+            if (currentRoute.name === 'Search') {
+              // 스택의 첫 화면으로 이동 (SearchMain)
+              navigation.navigate('Search', { screen: 'SearchMain' });
+            }
+          },
+        })}
       />
       <Tab.Screen
         name="Feed"
