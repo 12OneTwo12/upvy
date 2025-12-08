@@ -1,4 +1,4 @@
-# GrowSnap Backend 개발 가이드
+# Upvy Backend 개발 가이드
 
 > 개발자를 위한 컨벤션 및 개발 가이드
 
@@ -355,7 +355,7 @@ val userId = UUID.randomUUID()
 const val MAX_VIDEO_SIZE = 100_000_000
 
 // 패키지: lowercase
-package me.onetwo.growsnap.domain.video
+package me.onetwo.upvy.domain.video
 ```
 
 ### Kotlin 특성 활용

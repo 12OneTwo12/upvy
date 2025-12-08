@@ -1,0 +1,113 @@
+spring:
+  application:
+    name: upvy-ai-crawler
+
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false  # 스케줄러로 실행
+
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:upvy}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none  # Flyway가 스키마 관리
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+# AI 설정
+ai:
+  llm:
+    provider: ${AI_LLM_PROVIDER:vertex-ai}  # vertex-ai 또는 mock
+    project-id: ${GCP_PROJECT_ID:}
+    location: ${GCP_LOCATION:asia-northeast3}
+    model: ${AI_LLM_MODEL:gemini-2.5-flash}
+  stt:
+    provider: ${AI_STT_PROVIDER:vertex-ai}  # vertex-ai 또는 mock
+    language-code: ${AI_STT_LANGUAGE:ko-KR}
+    sample-rate-hertz: ${AI_STT_SAMPLE_RATE:16000}
+    enable-word-time-offsets: true
+
+# OpenAI (대안)
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  model: ${OPENAI_MODEL:gpt-4o}
+
+# YouTube Data API
+youtube:
+  api-key: ${YOUTUBE_API_KEY:}
+  daily-quota: 10000
+
+# AWS S3
+spring.cloud.aws:
+  s3:
+    region: ${AWS_REGION:ap-northeast-2}
+  credentials:
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
+
+s3:
+  bucket: ${S3_BUCKET:upvy-ai-media}
+  region: ${AWS_REGION:ap-northeast-2}
+  prefix:
+    raw-videos: raw-videos
+    edited-videos: edited-videos
+    thumbnails: thumbnails
+
+# 배치 스케줄링
+batch:
+  schedule:
+    cron: "0 0 3 * * *"  # 매일 새벽 3시
+  chunk-size: 5
+  retry:
+    max-attempts: 3
+    backoff-initial: 1000
+    backoff-max: 30000
+    backoff-multiplier: 2.0
+
+# 품질 검수
+quality:
+  min-score: 70  # 70점 이상만 승인 대기열로
+
+# 크롤러 설정
+crawler:
+  system-user-id: ${SYSTEM_USER_ID:00000000-0000-0000-0000-000000000001}
+
+# FFmpeg
+ffmpeg:
+  path: ${FFMPEG_PATH:/opt/homebrew/bin/ffmpeg}
+  temp-dir: ${FFMPEG_TEMP_DIR:/tmp/ai-crawler}
+
+# yt-dlp
+ytdlp:
+  path: ${YTDLP_PATH:/opt/homebrew/bin/yt-dlp}
+  output-dir: ${YTDLP_OUTPUT_DIR:/tmp/ai-crawler/downloads}
+
+# Logging
+logging:
+  level:
+    root: INFO
+    me.onetwo.upvy.crawler: DEBUG
+    org.springframework.batch: INFO
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,batch
+  endpoint:
+    health:
+      show-details: always

@@ -1,0 +1,79 @@
+{
+  "tabs": {
+    "myContent": "내 콘텐츠",
+    "saved": "저장됨"
+  },
+  "stats": {
+    "content": "콘텐츠",
+    "posts": "게시물",
+    "followers": "팔로워",
+    "following": "팔로잉"
+  },
+  "buttons": {
+    "follow": "팔로우",
+    "following": "팔로잉",
+    "unfollow": "언팔로우",
+    "editProfile": "프로필 수정",
+    "message": "메시지",
+    "share": "공유",
+    "check": "확인"
+  },
+  "edit": {
+    "title": "프로필 수정",
+    "nicknameLabel": "닉네임",
+    "nicknamePlaceholder": "닉네임을 입력하세요",
+    "bio": "자기소개",
+    "bioPlaceholder": "자기소개를 입력하세요",
+    "bioLength": "{{length}}/150자",
+    "website": "웹사이트",
+    "websitePlaceholder": "웹사이트 URL 입력",
+    "changePhoto": "프로필 사진 변경",
+    "removePhoto": "사진 제거",
+    "uploading": "업로드 중...",
+    "info": "프로필 정보는 Upvy을 사용하는 모든 사용자에게 공개됩니다.",
+    "imageOptions": {
+      "title": "프로필 이미지 변경",
+      "message": "이미지를 어떻게 선택하시겠습니까?",
+      "camera": "카메라로 촬영",
+      "gallery": "갤러리에서 선택"
+    },
+    "nickname": {
+      "available": "사용가능",
+      "duplicated": "중복됨",
+      "minLength": "닉네임은 2자 이상이어야 합니다.",
+      "checkRequired": "닉네임을 입력하고 중복 확인을 해주세요."
+    },
+    "success": {
+      "title": "성공",
+      "message": "프로필이 수정되었습니다."
+    },
+    "error": {
+      "uploadFailed": "이미지 업로드 실패",
+      "checkFailed": "닉네임 확인 실패",
+      "saveFailed": "프로필 수정 실패",
+      "permissionDenied": "권한 필요",
+      "permissionMessage": "{{type}} 접근 권한이 필요합니다.",
+      "imagePickerError": "이미지를 선택하는 중 오류가 발생했습니다.",
+      "duplicatedNickname": "이미 사용 중인 닉네임입니다."
+    }
+  },
+  "follow": {
+    "followers": "팔로워",
+    "following": "팔로잉",
+    "followList": "팔로우 목록",
+    "noFollowers": "아직 팔로워가 없습니다",
+    "noFollowing": "아직 팔로잉하는 사용자가 없습니다"
+  },
+  "content": {
+    "noPosts": "아직 업로드한 콘텐츠가 없습니다",
+    "noPostsSubtitle": "첫 콘텐츠를 업로드해보세요!",
+    "noSaved": "저장한 콘텐츠가 없습니다",
+    "noSavedSubtitle": "마음에 드는 콘텐츠를 저장해보세요"
+  },
+  "message": {
+    "comingSoon": "메시지 기능은 추후 구현 예정입니다."
+  },
+  "report": {
+    "action": "신고하기"
+  }
+}

@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [ main, dev ]
     paths:
-      - 'grow-snap-backend/**'
+      - 'upvy-backend/**'
 
 permissions:
   pull-requests: write
@@ -35,22 +35,22 @@ jobs:
           echo "Redis image ready"
 
       - name: Grant execute permission for gradlew
-        run: chmod +x grow-snap-backend/gradlew
+        run: chmod +x upvy-backend/gradlew
 
       - name: Run tests with Gradle
-        run: cd grow-snap-backend && ./gradlew test
+        run: cd upvy-backend && ./gradlew test
         env:
           TESTCONTAINERS_RYUK_DISABLED: false
           TESTCONTAINERS_CHECKS_DISABLE: false
 
       - name: Verify Jacoco Test Reports
         run: |
-          echo "Checking grow-snap Jacoco Test Report:"
-          if [ -f grow-snap-backend/build/reports/jacoco/test/jacocoTestReport.xml ]; then
-            echo "grow-snap Jacoco Test Report exists"
-            ls -l grow-snap-backend/build/reports/jacoco/test/
+          echo "Checking upvy Jacoco Test Report:"
+          if [ -f upvy-backend/build/reports/jacoco/test/jacocoTestReport.xml ]; then
+            echo "upvy Jacoco Test Report exists"
+            ls -l upvy-backend/build/reports/jacoco/test/
           else
-            echo "grow-snap Jacoco Test Report does not exist"
+            echo "upvy Jacoco Test Report does not exist"
             exit 1
           fi
       - name: Store error reports
@@ -72,7 +72,7 @@ jobs:
         uses: madrapps/jacoco-report@v1.6.1
         with:
           paths: |
-            grow-snap-backend/build/reports/jacoco/test/jacocoTestReport.xml
+            upvy-backend/build/reports/jacoco/test/jacocoTestReport.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 30
           min-coverage-changed-files: 50
