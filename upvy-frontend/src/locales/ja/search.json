@@ -1,0 +1,59 @@
+{
+  "title": "検索",
+  "placeholder": "ユーザー、タグ、コンテンツを検索...",
+  "tabs": {
+    "all": "すべて",
+    "users": "ユーザー",
+    "tags": "タグ",
+    "content": "コンテンツ"
+  },
+  "recent": {
+    "title": "最近の検索",
+    "clear": "すべてクリア",
+    "empty": "最近の検索履歴がありません"
+  },
+  "trending": {
+    "title": "トレンド",
+    "tags": "トレンドタグ",
+    "users": "トレンドユーザー"
+  },
+  "results": {
+    "noResults": "結果が見つかりませんでした",
+    "tryDifferent": "別の検索キーワードをお試しください",
+    "follower": "フォロワー"
+  },
+  "explore": {
+    "title": "探索",
+    "categories": "カテゴリー",
+    "trending": "トレンド",
+    "recommended": "おすすめ",
+    "selectCategory": "興味のあるカテゴリーを選択",
+    "noContent": "まだコンテンツがありません",
+    "noContentDescription": "カテゴリーに素晴らしいコンテンツが近日登場！",
+    "pullToRefresh": "引っ張って更新",
+    "releaseToRefresh": "離して更新"
+  },
+  "category": {
+    "LANGUAGE": { "name": "語学", "desc": "外国語、日本語など" },
+    "SCIENCE": { "name": "科学", "desc": "物理、化学、生物学など" },
+    "HISTORY": { "name": "歴史", "desc": "世界史、日本史など" },
+    "MATHEMATICS": { "name": "数学", "desc": "数学、統計など" },
+    "ART": { "name": "芸術", "desc": "美術、音楽、文学など" },
+    "STARTUP": { "name": "スタートアップ", "desc": "起業、ビジネスなど" },
+    "MARKETING": { "name": "マーケティング", "desc": "デジタルマーケティング、ブランディングなど" },
+    "PROGRAMMING": { "name": "プログラミング", "desc": "開発、コーディングなど" },
+    "DESIGN": { "name": "デザイン", "desc": "UI/UX、グラフィックデザインなど" },
+    "PRODUCTIVITY": { "name": "生産性", "desc": "時間管理、業務効率など" },
+    "PSYCHOLOGY": { "name": "心理学", "desc": "人間心理、行動など" },
+    "FINANCE": { "name": "ファイナンス", "desc": "投資、貯蓄など" },
+    "HEALTH": { "name": "健康", "desc": "運動、食事、メンタルヘルスなど" },
+    "MOTIVATION": { "name": "モチベーション", "desc": "モチベーション、成功マインドセット、自己啓発など" },
+    "PARENTING": { "name": "育児", "desc": "子育て、育児のコツなど" },
+    "COOKING": { "name": "料理", "desc": "レシピ、料理スキルなど" },
+    "TRAVEL": { "name": "旅行", "desc": "目的地、旅行のコツなど" },
+    "HOBBY": { "name": "趣味", "desc": "読書、音楽、スポーツなど" },
+    "TREND": { "name": "トレンド", "desc": "最新トレンド、インサイトなど" },
+    "OTHER": { "name": "その他", "desc": "その他のカテゴリー" },
+    "FUN": { "name": "お楽しみ", "desc": "楽しくて軽いエンターテイメントコンテンツ" }
+  }
+}

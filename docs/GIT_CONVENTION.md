@@ -2,7 +2,7 @@
 
 > **Version 1.0** | Last Updated: 2025-10-21
 
-GrowSnap 프로젝트의 Git 사용 규칙입니다. 일관성 있는 커밋 메시지와 브랜치 관리를 위해 모든 팀원이 준수해야 합니다.
+Upvy 프로젝트의 Git 사용 규칙입니다. 일관성 있는 커밋 메시지와 브랜치 관리를 위해 모든 팀원이 준수해야 합니다.
 
 ---
 
@@ -243,9 +243,131 @@ Closes #13
 
 ---
 
-## 5. 기타 규칙
+## 5. 커밋 단위 가이드
 
-### 5.1 금지 사항
+### 5.1 좋은 커밋의 기준
+
+✅ **좋은 커밋**:
+- **하나의 논리적 변경만 포함**: 한 가지 목적만 달성
+- **독립적으로 빌드 가능**: 커밋 단계마다 프로젝트가 빌드되고 테스트가 통과
+- **원자적(Atomic)**: 더 이상 나눌 수 없는 최소 단위
+- **의미 있는 메시지**: 커밋 메시지만 보고 변경 내용 파악 가능
+
+### 5.2 커밋 단위 예시
+
+#### ✅ 올바른 커밋 단위
+
+**예시 1: 기능 추가**
+```bash
+# 좋은 예: 각 단계를 별도 커밋
+git commit -m "feat(auth): Google OAuth 설정 추가"
+git commit -m "feat(auth): Google 로그인 API 엔드포인트 구현"
+git commit -m "test(auth): Google 로그인 테스트 추가"
+git commit -m "docs(auth): Google 로그인 API 문서 작성"
+```
+
+**예시 2: 버그 수정**
+```bash
+# 좋은 예: 버그 수정과 테스트를 하나의 커밋으로
+git commit -m "fix(feed): 무한 스크롤 중복 로드 오류 수정
+
+- IntersectionObserver 중복 호출 방지
+- 로딩 상태 관리 개선
+- 엣지 케이스 테스트 추가
+
+Fixes #42"
+```
+
+**예시 3: 리팩토링**
+```bash
+# 좋은 예: 리팩토링과 테스트 수정을 하나의 커밋으로
+git commit -m "refactor(api): UserService 레이어 분리
+
+- UserServiceImpl을 UserService와 UserProfileService로 분리
+- 단일 책임 원칙(SRP) 적용
+- 관련 테스트 수정"
+```
+
+#### ❌ 잘못된 커밋 단위
+
+**예시 1: 너무 큰 커밋**
+```bash
+# 나쁜 예: 여러 기능을 하나의 커밋에
+git commit -m "feat: 로그인, 회원가입, 프로필 수정 기능 추가"
+
+# 좋은 방법: 각 기능을 별도 커밋으로 분리
+git commit -m "feat(auth): 로그인 기능 추가"
+git commit -m "feat(auth): 회원가입 기능 추가"
+git commit -m "feat(profile): 프로필 수정 기능 추가"
+```
+
+**예시 2: 너무 작은 커밋**
+```bash
+# 나쁜 예: 논리적으로 하나의 작업을 불필요하게 분리
+git commit -m "feat(auth): User 엔티티 추가"
+git commit -m "feat(auth): UserRepository 추가"
+git commit -m "feat(auth): UserService 추가"
+git commit -m "feat(auth): UserController 추가"
+
+# 좋은 방법: 논리적으로 묶기
+git commit -m "feat(auth): 사용자 인증 기능 구현
+
+- User 엔티티, Repository, Service, Controller 추가
+- 로그인/로그아웃 API 구현
+- 테스트 코드 추가"
+```
+
+**예시 3: 관련 없는 변경 혼합**
+```bash
+# 나쁜 예: 서로 관련 없는 변경사항 혼합
+git commit -m "fix: 버그 수정 및 새 기능 추가"
+
+# 좋은 방법: 각각 별도 커밋
+git commit -m "fix(feed): 비디오 자동재생 오류 수정"
+git commit -m "feat(analytics): 조회수 집계 기능 추가"
+```
+
+### 5.3 커밋 단위 판단 기준
+
+다음 질문에 "예"라고 답할 수 있다면 좋은 커밋 단위입니다:
+
+1. **이 커밋만으로 빌드와 테스트가 통과하는가?**
+2. **커밋 메시지가 변경 내용을 명확히 설명하는가?**
+3. **이 커밋을 되돌려도 다른 기능에 영향이 없는가?**
+4. **코드 리뷰어가 이 커밋만 보고 변경 내용을 이해할 수 있는가?**
+
+### 5.4 커밋 시점
+
+#### ✅ 커밋해야 할 때
+- 하나의 논리적 작업이 완료되었을 때
+- 테스트가 모두 통과할 때
+- 의미 있는 중간 단계에 도달했을 때
+
+#### ❌ 커밋하지 말아야 할 때
+- 빌드가 실패할 때
+- 테스트가 실패할 때
+- 작업이 중간에 끊긴 상태일 때 (WIP 커밋 제외)
+
+### 5.5 WIP (Work In Progress) 커밋
+
+진행 중인 작업을 임시로 커밋해야 할 때:
+
+```bash
+# WIP 커밋 (하루 작업 마무리 등)
+git commit -m "wip(auth): 로그인 기능 구현 중"
+
+# 작업 완료 후 WIP 커밋들을 정리 (squash)
+git rebase -i HEAD~3  # 최근 3개 커밋을 하나로 합치기
+git commit -m "feat(auth): 로그인 기능 추가"
+```
+
+**주의**: WIP 커밋은 PR에 포함하기 전에 반드시 정리(squash)해야 합니다.
+
+---
+
+## 6. 기타 규칙
+
+### 6.1 금지 사항
 
 ❌ **절대 하지 말아야 할 것들**:
 - `main` 브랜치에 직접 커밋
@@ -253,7 +375,7 @@ Closes #13
 - 민감한 정보 커밋 (API 키, 비밀번호 등)
 - 의미 없는 커밋 메시지 (예: "수정", "테스트", "asdf")
 
-### 5.2 권장 사항
+### 6.2 권장 사항
 
 ✅ **권장하는 것들**:
 - 작고 의미 있는 커밋 단위
@@ -263,7 +385,7 @@ Closes #13
 
 ---
 
-## 6. 참고 자료
+## 7. 참고 자료
 
 - [Conventional Commits](https://www.conventionalcommits.org/)
 - [Git Flow](https://nvie.com/posts/a-successful-git-branching-model/)
@@ -271,7 +393,7 @@ Closes #13
 
 ---
 
-## 7. 변경 이력
+## 8. 변경 이력
 
 | 버전 | 날짜 | 변경 사항 |
 |------|------|-----------|

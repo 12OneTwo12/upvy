@@ -1,0 +1,32 @@
+[[report-validation-error]]
+=== 입력 검증 오류
+
+필수 필드가 누락되거나 유효하지 않은 값이 전달되었을 때 발생하는 오류입니다.
+
+==== Request (필수 필드 누락)
+
+include::{snippets}/report-validation-error/http-request.adoc[]
+include::{snippets}/report-validation-error/path-parameters.adoc[]
+
+==== Response (400 Bad Request)
+
+include::{snippets}/report-validation-error/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# reportType 누락 예시
+curl -X POST http://localhost:8080/api/v1/reports/content/{targetId} \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "설명만 있는 요청"
+  }'
+----
+
+==== Notes
+
+* reportType은 필수 필드입니다
+* description은 최대 500자까지 입력 가능합니다
+* HTTP 상태 코드 400 Bad Request가 반환됩니다

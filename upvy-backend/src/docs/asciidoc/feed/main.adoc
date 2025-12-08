@@ -1,0 +1,36 @@
+[[feed-main]]
+=== 메인 피드 조회
+
+추천 알고리즘 기반으로 사용자에게 맞춤화된 피드를 제공합니다.
+
+최근 본 콘텐츠는 자동으로 제외되며, 사용자의 관심사와 인터랙션 이력을 기반으로 추천합니다.
+
+==== Request
+
+include::{snippets}/feed-main/http-request.adoc[]
+include::{snippets}/feed-main/query-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/feed-main/http-response.adoc[]
+include::{snippets}/feed-main/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# 첫 페이지 조회
+curl -X GET "http://localhost:8080/api/v1/feed?limit=20" \
+  -H "Authorization: Bearer {access_token}"
+
+# 다음 페이지 조회 (cursor 사용)
+curl -X GET "http://localhost:8080/api/v1/feed?cursor={contentId}&limit=20" \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 커서 기반 페이지네이션을 사용하여 무한 스크롤을 지원합니다
+* 최근 본 콘텐츠는 자동으로 제외됩니다
+* 추천 알고리즘은 사용자의 관심사, 인터랙션 이력, 팔로잉 크리에이터를 기반으로 동작합니다
+* Redis 캐싱을 통해 빠른 응답 속도를 보장합니다

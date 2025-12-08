@@ -1,0 +1,26 @@
+[[profile-check-nickname]]
+=== 닉네임 중복 확인
+
+닉네임 사용 가능 여부를 확인합니다.
+
+==== Request
+
+include::{snippets}/profile-check-nickname/http-request.adoc[]
+include::{snippets}/profile-check-nickname/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/profile-check-nickname/http-response.adoc[]
+include::{snippets}/profile-check-nickname/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/profiles/check/nickname/{nickname}
+----
+
+==== Response Values
+
+* `isDuplicated: true` - 이미 사용 중인 닉네임
+* `isDuplicated: false` - 사용 가능한 닉네임

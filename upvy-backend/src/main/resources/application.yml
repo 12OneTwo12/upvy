@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: upvy-backend
+
+  # R2DBC Configuration for Reactive Database Access
+  r2dbc:
+    url: r2dbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:upvy}?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
+    pool:
+      enabled: true
+      initial-size: 10
+      max-size: 20
+      max-idle-time: 10m
+      max-acquire-time: 30s
+      max-life-time: 30m
+      validation-query: SELECT 1
+
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  # Spring Session Configuration (for OAuth2 authorization request storage)
+  session:
+    store-type: redis
+    redis:
+      namespace: spring:session
+    timeout: 1800  # 30분 (초 단위)
+
+  # Security OAuth2 Configuration
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+  # AWS S3 Configuration
+  cloud:
+    aws:
+      s3:
+        region: ${AWS_REGION:ap-northeast-2}
+        bucket: ${AWS_S3_BUCKET:upvy-images}
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID}
+        secret-key: ${AWS_SECRET_ACCESS_KEY}
+      region:
+        static: ${AWS_REGION:ap-northeast-2}
+
+# Application Configuration
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  mobile-deeplink-url: ${MOBILE_DEEPLINK_URL:upvy://oauth/callback}
+  upload:
+    max-file-size: 5242880  # 5MB (바이트)
+    allowed-image-types:
+      - image/jpeg
+      - image/jpg
+      - image/png
+      - image/webp
+    profile-image:
+      max-width: 500
+      max-height: 500
+      quality: 0.85
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: 3600000  # 1시간 (밀리초)
+  refresh-token-expiration: 1209600000  # 14일 (밀리초)
+
+# Logging
+logging:
+  level:
+    root: INFO
+    me.onetwo.upvy: DEBUG
+    org.springframework.security: DEBUG
+    org.jooq: DEBUG
+
+# Manticore Search Configuration
+manticore:
+  search:
+    base-url: ${MANTICORE_BASE_URL:http://localhost:9308}
+    timeout: 5000
+    index:
+      content: content_index
+      user: user_index
+      autocomplete: autocomplete_index
+
+# Server Configuration
+server:
+  port: 8080

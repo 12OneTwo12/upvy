@@ -1,0 +1,20 @@
+[[notification-mark-all-read]]
+=== 모든 알림 읽음 처리
+
+사용자의 모든 읽지 않은 알림을 읽음으로 표시합니다.
+
+==== Request
+
+include::{snippets}/notification-mark-all-read/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/notification-mark-all-read/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X PATCH http://localhost:8080/api/v1/notifications/read-all \
+  -H "Authorization: Bearer {access_token}"
+----

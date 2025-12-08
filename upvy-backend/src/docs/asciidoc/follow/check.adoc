@@ -1,0 +1,27 @@
+[[follow-check]]
+=== 팔로우 관계 확인
+
+특정 사용자를 팔로우하고 있는지 확인합니다.
+
+==== Request
+
+include::{snippets}/follow-check/http-request.adoc[]
+include::{snippets}/follow-check/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/follow-check/http-response.adoc[]
+include::{snippets}/follow-check/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/follows/check/{followingId} \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Response Values
+
+* `isFollowing: true` - 팔로우 중
+* `isFollowing: false` - 팔로우하지 않음

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{backoffice/layout/default}">
+<head>
+    <title th:text="${status == 'approved'} ? 'Approved Contents' : 'Rejected Contents'">History</title>
+</head>
+<body>
+    <th:block layout:fragment="page-title" th:text="${status == 'approved'} ? 'Approved Contents' : 'Rejected Contents'">History</th:block>
+
+    <div layout:fragment="content">
+        <!-- Stats -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">
+                        Total <strong th:text="${contents.totalElements}">0</strong> items
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content List -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Title</th>
+                                <th style="width: 120px">Category</th>
+                                <th style="width: 80px">Score</th>
+                                <th style="width: 150px">Reviewed By</th>
+                                <th style="width: 150px">Reviewed At</th>
+                                <th th:if="${status == 'rejected'}" style="width: 200px">Reason</th>
+                                <th style="width: 100px">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="content : ${contents.content}">
+                                <td>
+                                    <div class="fw-semibold" th:text="${content.title}">Title</div>
+                                    <small class="text-muted" th:text="${content.youtubeChannel}">Channel</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary" th:text="${content.category.displayName}">Category</span>
+                                </td>
+                                <td>
+                                    <span class="fw-bold" th:text="${content.qualityScore}">85</span>
+                                </td>
+                                <td th:text="${content.reviewedBy}">admin</td>
+                                <td>
+                                    <span th:text="${content.reviewedAt != null} ? ${#temporals.format(content.reviewedAt, 'yyyy-MM-dd HH:mm')} : '-'">2024-01-01</span>
+                                </td>
+                                <td th:if="${status == 'rejected'}">
+                                    <span class="text-truncate d-inline-block" style="max-width: 200px;"
+                                          th:text="${content.rejectionReason}" th:title="${content.rejectionReason}">Reason</span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/backoffice/pending/{id}(id=${content.id})}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${contents.content.isEmpty()}">
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    No contents found
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <nav th:if="${contents.totalPages > 1}" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" th:classappend="${contents.first} ? 'disabled'">
+                    <a class="page-link" th:href="@{/backoffice/pending/{status}(status=${status}, page=${currentPage - 1})}">Previous</a>
+                </li>
+                <li th:each="i : ${#numbers.sequence(0, contents.totalPages - 1)}"
+                    class="page-item"
+                    th:classappend="${i == currentPage} ? 'active'">
+                    <a class="page-link" th:href="@{/backoffice/pending/{status}(status=${status}, page=${i})}" th:text="${i + 1}">1</a>
+                </li>
+                <li class="page-item" th:classappend="${contents.last} ? 'disabled'">
+                    <a class="page-link" th:href="@{/backoffice/pending/{status}(status=${status}, page=${currentPage + 1})}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</body>
+</html>

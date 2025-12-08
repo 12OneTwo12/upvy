@@ -1,0 +1,21 @@
+[[follow-stats-get-me]]
+=== 내 팔로우 통계 조회
+
+인증된 사용자의 팔로워/팔로잉 통계를 조회합니다.
+
+==== Request
+
+include::{snippets}/follow-stats-get-me/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/follow-stats-get-me/http-response.adoc[]
+include::{snippets}/follow-stats-get-me/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/follows/stats/me \
+  -H "Authorization: Bearer {access_token}"
+----

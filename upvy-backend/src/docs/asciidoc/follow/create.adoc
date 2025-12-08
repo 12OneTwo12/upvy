@@ -1,0 +1,28 @@
+[[follow-create]]
+=== 팔로우
+
+특정 사용자를 팔로우합니다.
+
+==== Request
+
+include::{snippets}/follow-create/http-request.adoc[]
+include::{snippets}/follow-create/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/follow-create/http-response.adoc[]
+include::{snippets}/follow-create/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/follows/{followingId} \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 자기 자신을 팔로우할 수 없습니다
+* 이미 팔로우 중인 사용자는 다시 팔로우할 수 없습니다
+* 팔로우 성공 시 양쪽 사용자의 팔로워/팔로잉 수가 자동으로 증가합니다

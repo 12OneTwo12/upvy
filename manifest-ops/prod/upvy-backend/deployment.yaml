@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upvy-backend-prod
+  labels:
+    app: upvy-backend-prod
+spec:
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: upvy-backend-prod
+  template:
+    metadata:
+      labels:
+        app: upvy-backend-prod
+    spec:
+      imagePullSecrets:
+        - name: dockerhub-secret
+      nodeSelector:
+        node-pool: default
+      serviceAccountName: otel-collector
+      securityContext:
+        runAsUser: 2000
+        runAsNonRoot: true
+        fsGroup: 2000
+      initContainers:
+        - name: otel-agent-downloader
+          image: curlimages/curl:8.7.1
+          command:
+            - sh
+            - -c
+            - curl -sSL -o /otel/opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.20.1/opentelemetry-javaagent.jar
+          volumeMounts:
+            - name: otel-agent
+              mountPath: /otel
+      containers:
+        - name: upvy-backend-prod
+          image: image-example:tag-example
+          envFrom:
+            - secretRef:
+                name: upvy-backend-secrets
+          env:
+            - name: SPRING_APPLICATION_JSON
+              value: '{ "server.port": 8080, "spring.profiles.active": "prod" }'
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://localhost:4317
+            - name: OTEL_SERVICE_NAME
+              value: upvy-service
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment=prod
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:MinRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0 -XX:+AlwaysPreTouch -javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.enabled=true -Dotel.metrics.exporter=otlp -Dotel.traces.exporter=otlp -Dotel.logs.exporter=otlp -Dotel.exporter.otlp.endpoint=http://localhost:4317 -Dotel.exporter.otlp.protocol=grpc -Dotel.exporter.otlp.metrics.temporality.preference=CUMULATIVE -Dotel.instrumentation.logging.auto-attributes.enabled=true -Dotel.instrumentation.logback-appender.enabled=true -Dotel.instrumentation.log4j-appender.enabled=true -Dotel.instrumentation.log4j-context-data.enabled=true -Dotel.instrumentation.logback-mdc.enabled=true -Dotel.instrumentation.micrometer.enabled=true -Dotel.instrumentation.spring-boot-actuator.enabled=true -Dotel.instrumentation.jdbc.enabled=true -Dotel.instrumentation.kafka.enabled=true -Dotel.instrumentation.redis.enabled=true -Dotel.instrumentation.mongodb.enabled=true -Dotel.instrumentation.spring-webmvc.enabled=true -Dotel.instrumentation.spring-webflux.enabled=true -Dotel.instrumentation.tomcat.enabled=true -Dotel.instrumentation.runtime-telemetry.enabled=true -Dotel.instrumentation.process.experimental.enabled=true -Dotel.instrumentation.common.default-enabled=true
+          volumeMounts:
+            - name: otel-agent
+              mountPath: /otel
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+            timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 200m
+              memory: 300Mi
+            limits:
+              cpu: 400m
+              memory: 600Mi
+          securityContext:
+            runAsUser: 2000
+            runAsNonRoot: true
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.98.0
+          args:
+            - "--config=/etc/otel/config.yaml"
+          ports:
+            - containerPort: 4317
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: otel-config
+              mountPath: /etc/otel
+      volumes:
+        - name: otel-agent
+          emptyDir: {}
+        - name: otel-config
+          configMap:
+            name: otel-collector-config

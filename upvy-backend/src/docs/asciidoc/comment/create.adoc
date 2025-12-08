@@ -1,0 +1,34 @@
+[[comment-create]]
+=== 댓글 작성
+
+콘텐츠에 댓글을 작성합니다.
+
+==== Request
+
+include::{snippets}/comment-create/http-request.adoc[]
+include::{snippets}/comment-create/path-parameters.adoc[]
+include::{snippets}/comment-create/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/comment-create/http-response.adoc[]
+include::{snippets}/comment-create/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/videos/{videoId}/comments \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "좋은 영상입니다!",
+    "parentCommentId": null
+  }'
+----
+
+==== Notes
+
+* 댓글 내용은 필수이며 비어있을 수 없습니다
+* parentCommentId를 지정하면 대댓글(답글)로 작성됩니다
+* 인증된 사용자만 댓글을 작성할 수 있습니다

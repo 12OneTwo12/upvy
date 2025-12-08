@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{backoffice/layout/default}">
+<head>
+    <title>Content Detail</title>
+</head>
+<body>
+    <th:block layout:fragment="page-title">Content Detail</th:block>
+
+    <div layout:fragment="content">
+        <!-- Header Actions -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <a th:href="${content.status.name() == 'APPROVED'} ? '/backoffice/pending/approved' : (${content.status.name() == 'REJECTED'} ? '/backoffice/pending/rejected' : '/backoffice/pending')"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+            <!-- 상태 배지 표시 -->
+            <div class="d-flex align-items-center gap-3">
+                <span th:if="${content.status.name() == 'APPROVED'}" class="badge bg-success fs-6">
+                    <i class="bi bi-check-circle"></i> Approved
+                </span>
+                <span th:if="${content.status.name() == 'REJECTED'}" class="badge bg-danger fs-6">
+                    <i class="bi bi-x-circle"></i> Rejected
+                </span>
+                <!-- PENDING_REVIEW 상태일 때만 승인/거절 버튼 표시 -->
+                <th:block th:if="${content.status.name() == 'PENDING_REVIEW'}">
+                    <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        <i class="bi bi-x-circle"></i> Reject
+                    </button>
+                    <form th:action="@{/backoffice/pending/{id}/approve(id=${content.id})}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Approve
+                        </button>
+                    </form>
+                </th:block>
+            </div>
+        </div>
+
+        <!-- 승인/거절 정보 표시 (APPROVED 또는 REJECTED 상태일 때) -->
+        <div th:if="${content.status.name() == 'APPROVED' or content.status.name() == 'REJECTED'}" class="alert"
+             th:classappend="${content.status.name() == 'APPROVED'} ? 'alert-success' : 'alert-danger'">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Reviewed By:</strong> <span th:text="${content.reviewedBy}">admin</span>
+                </div>
+                <div class="col-md-4">
+                    <strong>Reviewed At:</strong>
+                    <span th:text="${content.reviewedAt != null} ? ${#temporals.format(content.reviewedAt, 'yyyy-MM-dd HH:mm')} : '-'">2024-01-01</span>
+                </div>
+                <div class="col-md-4" th:if="${content.status.name() == 'APPROVED' and content.publishedContentId != null}">
+                    <strong>Published ID:</strong>
+                    <code th:text="${content.publishedContentId}">uuid</code>
+                </div>
+                <div class="col-12 mt-2" th:if="${content.status.name() == 'REJECTED' and content.rejectionReason != null}">
+                    <strong>Rejection Reason:</strong> <span th:text="${content.rejectionReason}">reason</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Video Preview -->
+            <div class="col-lg-5 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Video Preview</h5>
+                    </div>
+                    <div class="card-body">
+                        <video controls class="w-100 rounded" style="max-height: 400px; background: #000;">
+                            <source th:src="${videoUrl}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+
+                <!-- Quality Info -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Quality Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Quality Score</label>
+                                    <div class="fs-2 fw-bold"
+                                         th:classappend="${content.qualityScore >= 85} ? 'text-success' : (${content.qualityScore >= 70} ? 'text-primary' : 'text-warning')"
+                                         th:text="${content.qualityScore + '/100'}">85/100</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Priority</label>
+                                    <div>
+                                        <span class="badge fs-6"
+                                              th:classappend="${content.reviewPriority.name() == 'HIGH'} ? 'badge-priority-high' : (${content.reviewPriority.name() == 'NORMAL'} ? 'badge-priority-normal' : 'badge-priority-low')"
+                                              th:text="${content.reviewPriority.name()}">HIGH</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- YouTube Info -->
+                <div class="card mt-4" th:if="${content.youtubeVideoId}">
+                    <div class="card-header">
+                        <h5 class="mb-0">Source (YouTube)</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-4">Video ID</dt>
+                            <dd class="col-8" th:text="${content.youtubeVideoId}">abc123</dd>
+                            <dt class="col-4">Title</dt>
+                            <dd class="col-8" th:text="${content.youtubeTitle}">Original Title</dd>
+                            <dt class="col-4">Channel</dt>
+                            <dd class="col-8" th:text="${content.youtubeChannel}">Channel Name</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metadata Edit/View -->
+            <div class="col-lg-7">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Metadata</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 편집 가능한 상태 (PENDING_REVIEW) -->
+                        <form th:if="${content.status.name() == 'PENDING_REVIEW'}"
+                              th:action="@{/backoffice/pending/{id}/update(id=${content.id})}" method="post">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Title</label>
+                                <input type="text" class="form-control" id="title" name="title"
+                                       th:value="${content.title}" required maxlength="200">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description"
+                                          rows="4" th:text="${content.description}"></textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="category" class="form-label">Category</label>
+                                    <select class="form-select" id="category" name="category" required>
+                                        <option th:each="cat : ${categories}"
+                                                th:value="${cat.name()}"
+                                                th:text="${cat.displayName}"
+                                                th:selected="${cat == content.category}">Category</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="difficulty" class="form-label">Difficulty</label>
+                                    <select class="form-select" id="difficulty" name="difficulty">
+                                        <option value="">Not specified</option>
+                                        <option th:each="diff : ${difficulties}"
+                                                th:value="${diff.name()}"
+                                                th:text="${diff.displayName}"
+                                                th:selected="${diff == content.difficulty}">Difficulty</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="tags" class="form-label">Tags (comma separated)</label>
+                                <input type="text" class="form-control" id="tags" name="tags"
+                                       th:value="${#strings.listJoin(tags, ', ')}"
+                                       placeholder="kotlin, android, tutorial">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Save Changes
+                            </button>
+                        </form>
+
+                        <!-- 읽기 전용 상태 (APPROVED, REJECTED) -->
+                        <div th:if="${content.status.name() != 'PENDING_REVIEW'}">
+                            <dl class="row">
+                                <dt class="col-sm-3">Title</dt>
+                                <dd class="col-sm-9" th:text="${content.title}">Title</dd>
+
+                                <dt class="col-sm-3">Description</dt>
+                                <dd class="col-sm-9" th:text="${content.description} ?: '-'">Description</dd>
+
+                                <dt class="col-sm-3">Category</dt>
+                                <dd class="col-sm-9">
+                                    <span class="badge bg-secondary" th:text="${content.category.displayName}">Category</span>
+                                </dd>
+
+                                <dt class="col-sm-3">Difficulty</dt>
+                                <dd class="col-sm-9" th:text="${content.difficulty?.displayName} ?: 'Not specified'">Difficulty</dd>
+
+                                <dt class="col-sm-3">Tags</dt>
+                                <dd class="col-sm-9">
+                                    <span th:if="${#lists.isEmpty(tags)}" class="text-muted">No tags</span>
+                                    <span th:each="tag : ${tags}" class="badge bg-primary me-1" th:text="${tag}">tag</span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reject Modal -->
+        <div class="modal fade" id="rejectModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form th:action="@{/backoffice/pending/{id}/reject(id=${content.id})}" method="post">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Reject Content</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Rejection Reason</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="reasonType" id="reason1" value="quality" onchange="setReason('Quality is below standards')">
+                                    <label class="form-check-label" for="reason1">Quality is below standards</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="reasonType" id="reason2" value="inappropriate" onchange="setReason('Inappropriate content')">
+                                    <label class="form-check-label" for="reason2">Inappropriate content</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="reasonType" id="reason3" value="copyright" onchange="setReason('Copyright concerns')">
+                                    <label class="form-check-label" for="reason3">Copyright concerns</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="reasonType" id="reason4" value="category" onchange="setReason('Wrong category or topic')">
+                                    <label class="form-check-label" for="reason4">Wrong category or topic</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="reasonType" id="reason5" value="other" onchange="document.getElementById('reason').focus()">
+                                    <label class="form-check-label" for="reason5">Other</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="reason" class="form-label">Details</label>
+                                <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger">Reject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="scripts">
+        <script>
+            function setReason(text) {
+                document.getElementById('reason').value = text;
+            }
+        </script>
+    </th:block>
+</body>
+</html>

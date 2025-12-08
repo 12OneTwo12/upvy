@@ -1,0 +1,36 @@
+[[search-users]]
+=== 사용자 검색
+
+사용자 닉네임으로 검색합니다.
+
+==== Request
+
+include::{snippets}/search-users/http-request.adoc[]
+include::{snippets}/search-users/query-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/search-users/http-response.adoc[]
+include::{snippets}/search-users/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# 기본 검색
+curl -X GET "http://localhost:8080/api/v1/search/users?q=홍길동&limit=20"
+
+# 인증된 사용자 검색 (팔로우 여부 포함)
+curl -X GET "http://localhost:8080/api/v1/search/users?q=홍길동&limit=20" \
+  -H "Authorization: Bearer {access_token}"
+
+# 커서 기반 페이지네이션
+curl -X GET "http://localhost:8080/api/v1/search/users?q=홍길동&cursor=eyJuaWNrbmFtZSI6Iuq5gOuPmeq5gCJ9&limit=20"
+----
+
+==== Notes
+
+* 검색 키워드는 최소 2글자 이상이어야 합니다
+* 인증 없이도 검색 가능합니다
+* 인증된 사용자의 경우 `isFollowing` 필드에 팔로우 여부가 포함됩니다
+* 커서 기반 페이지네이션으로 무한 스크롤을 지원합니다

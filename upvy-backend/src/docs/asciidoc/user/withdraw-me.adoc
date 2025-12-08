@@ -1,0 +1,22 @@
+[[user-withdraw-me]]
+=== 회원 탈퇴
+
+인증된 사용자를 탈퇴 처리합니다 (Soft Delete).
+
+사용자, 프로필, 팔로우 관계가 모두 삭제됩니다.
+
+==== Request
+
+include::{snippets}/user-withdraw-me/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/user-withdraw-me/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X DELETE http://localhost:8080/api/v1/users/me \
+  -H "Authorization: Bearer {access_token}"
+----

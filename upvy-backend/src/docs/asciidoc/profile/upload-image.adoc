@@ -1,0 +1,29 @@
+[[profile-upload-image]]
+=== 프로필 이미지 업로드
+
+사용자의 프로필 이미지를 업로드합니다.
+
+==== Request
+
+include::{snippets}/profile-upload-image/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/profile-upload-image/http-response.adoc[]
+include::{snippets}/profile-upload-image/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/profiles/image \
+  -H "Authorization: Bearer {access_token}" \
+  -F "file=@profile.jpg"
+----
+
+==== Notes
+
+* 지원 이미지 형식: JPEG, PNG, WebP
+* 최대 파일 크기: 5MB
+* 이미지는 자동으로 리사이징되어 S3에 저장됩니다
+* 업로드 성공 시 이전 프로필 이미지는 삭제됩니다

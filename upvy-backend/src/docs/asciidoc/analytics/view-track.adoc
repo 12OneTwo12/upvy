@@ -1,0 +1,36 @@
+[[analytics-view-track]]
+=== 시청 이벤트 기록
+
+사용자의 콘텐츠 시청 이벤트를 기록합니다.
+
+==== Request
+
+include::{snippets}/analytics-view-track/http-request.adoc[]
+include::{snippets}/analytics-view-track/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/analytics-view-track/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/analytics/views \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contentId": "550e8400-e29b-41d4-a716-446655440000",
+    "watchedDuration": 120,
+    "completionRate": 85,
+    "skipped": false
+  }'
+----
+
+==== Notes
+
+* watchedDuration은 초 단위로 기록됩니다
+* completionRate는 0~100 사이의 값이어야 합니다
+* skipped가 true인 경우 3초 이내에 건너뛴 것으로 간주됩니다
+* 시청 이벤트는 콘텐츠 추천 알고리즘에 활용됩니다
+* 인증된 사용자만 시청 이벤트를 기록할 수 있습니다

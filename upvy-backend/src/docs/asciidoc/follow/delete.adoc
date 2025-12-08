@@ -1,0 +1,26 @@
+[[follow-delete]]
+=== 언팔로우
+
+특정 사용자를 언팔로우합니다.
+
+==== Request
+
+include::{snippets}/follow-delete/http-request.adoc[]
+include::{snippets}/follow-delete/path-parameters.adoc[]
+
+==== Response
+
+성공 시 `204 No Content` 응답을 반환합니다.
+
+==== Example
+
+[source,bash]
+----
+curl -X DELETE http://localhost:8080/api/v1/follows/{followingId} \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 팔로우하지 않은 사용자는 언팔로우할 수 없습니다
+* 언팔로우 성공 시 양쪽 사용자의 팔로워/팔로잉 수가 자동으로 감소합니다

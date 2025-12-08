@@ -1,0 +1,21 @@
+[[profile-get-me]]
+=== 내 프로필 조회
+
+인증된 사용자의 프로필을 조회합니다.
+
+==== Request
+
+include::{snippets}/profile-get-me/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/profile-get-me/http-response.adoc[]
+include::{snippets}/profile-get-me/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/profiles/me \
+  -H "Authorization: Bearer {access_token}"
+----

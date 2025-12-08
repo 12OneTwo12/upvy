@@ -1,0 +1,36 @@
+[[search-history-delete-keyword]]
+=== 특정 검색어 삭제
+
+사용자의 검색 기록에서 특정 키워드를 삭제합니다.
+
+==== Request
+
+include::{snippets}/search-history-delete-keyword/http-request.adoc[]
+include::{snippets}/search-history-delete-keyword/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/search-history-delete-keyword/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# 영문 키워드 삭제
+curl -X DELETE "http://localhost:8080/api/v1/search/history/Java" \
+  -H "Authorization: Bearer {access_token}"
+
+# 한글 키워드 삭제 (URL 인코딩 필요)
+curl -X DELETE "http://localhost:8080/api/v1/search/history/%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D" \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* **인증 필수**: 로그인한 사용자만 자신의 검색 기록을 삭제할 수 있습니다
+* 해당 키워드와 정확히 일치하는 모든 검색 기록이 삭제됩니다
+* 소프트 삭제 방식으로 처리됩니다 (deleted_at 필드 업데이트)
+* 존재하지 않는 키워드를 삭제해도 204 No Content를 반환합니다
+* 한글, 영문, 숫자, 특수문자 등 모든 유니코드 문자를 지원합니다
+* URL 경로에 포함되므로, 특수문자는 URL 인코딩이 필요합니다
+* 성공 시 응답 본문 없이 204 No Content를 반환합니다

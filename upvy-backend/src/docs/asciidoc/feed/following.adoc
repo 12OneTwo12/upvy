@@ -1,0 +1,36 @@
+[[feed-following]]
+=== 팔로잉 피드 조회
+
+사용자가 팔로우한 크리에이터의 최신 콘텐츠를 제공합니다.
+
+최신 콘텐츠가 우선적으로 정렬되어 표시됩니다.
+
+==== Request
+
+include::{snippets}/feed-following/http-request.adoc[]
+include::{snippets}/feed-following/query-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/feed-following/http-response.adoc[]
+include::{snippets}/feed-following/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# 첫 페이지 조회
+curl -X GET "http://localhost:8080/api/v1/feed/following?limit=20" \
+  -H "Authorization: Bearer {access_token}"
+
+# 다음 페이지 조회 (cursor 사용)
+curl -X GET "http://localhost:8080/api/v1/feed/following?cursor={contentId}&limit=20" \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 팔로우한 크리에이터의 콘텐츠만 표시됩니다
+* 최신 콘텐츠가 우선적으로 정렬됩니다
+* 커서 기반 페이지네이션을 사용하여 무한 스크롤을 지원합니다
+* 팔로우한 크리에이터가 없는 경우 빈 목록이 반환됩니다

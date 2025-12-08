@@ -1,0 +1,28 @@
+[[like-status-check]]
+=== 좋아요 상태 조회
+
+특정 콘텐츠에 대한 사용자의 좋아요 상태를 확인합니다.
+
+==== Request
+
+include::{snippets}/like-status-check/http-request.adoc[]
+include::{snippets}/like-status-check/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/like-status-check/http-response.adoc[]
+include::{snippets}/like-status-check/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/videos/{videoId}/like/status \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 인증된 사용자만 조회할 수 있습니다
+* 사용자가 해당 콘텐츠에 좋아요를 눌렀는지 여부를 반환합니다
+* 실시간으로 현재 상태를 확인합니다

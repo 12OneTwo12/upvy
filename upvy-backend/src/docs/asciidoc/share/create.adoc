@@ -1,0 +1,29 @@
+[[share-create]]
+=== 콘텐츠 공유
+
+콘텐츠를 공유하고 공유 수를 증가시킵니다.
+
+==== Request
+
+include::{snippets}/share-create/http-request.adoc[]
+include::{snippets}/share-create/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/share-create/http-response.adoc[]
+include::{snippets}/share-create/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/videos/{videoId}/share \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 공유 시 콘텐츠의 공유 수가 자동으로 증가합니다
+* 중복 공유도 카운트에 포함됩니다
+* 공유 링크는 별도 API로 조회할 수 있습니다
+* 인증된 사용자만 콘텐츠를 공유할 수 있습니다

@@ -1,0 +1,21 @@
+[[profile-get-by-userid]]
+=== 사용자 ID로 프로필 조회
+
+특정 사용자의 프로필을 ID로 조회합니다.
+
+==== Request
+
+include::{snippets}/profile-get-by-userid/http-request.adoc[]
+include::{snippets}/profile-get-by-userid/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/profile-get-by-userid/http-response.adoc[]
+include::{snippets}/profile-get-by-userid/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/profiles/{targetUserId}
+----

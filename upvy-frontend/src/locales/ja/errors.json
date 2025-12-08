@@ -1,0 +1,23 @@
+{
+  "network": {
+    "title": "ネットワークエラー",
+    "message": "インターネット接続を確認してください",
+    "offline": "現在オフラインです"
+  },
+  "auth": {
+    "loginFailed": "ログインに失敗しました",
+    "unauthorized": "権限がありません",
+    "sessionExpired": "セッションが期限切れです。再度ログインしてください"
+  },
+  "validation": {
+    "required": "この項目は必須です",
+    "invalidFormat": "形式が正しくありません",
+    "tooShort": "短すぎます",
+    "tooLong": "長すぎます"
+  },
+  "general": {
+    "title": "エラー",
+    "message": "エラーが発生しました",
+    "tryAgain": "もう一度お試しください"
+  }
+}

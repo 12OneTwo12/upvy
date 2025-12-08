@@ -1,0 +1,27 @@
+[[like-count-get]]
+=== 좋아요 수 조회
+
+콘텐츠의 좋아요 수를 조회합니다.
+
+==== Request
+
+include::{snippets}/like-count-get/http-request.adoc[]
+include::{snippets}/like-count-get/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/like-count-get/http-response.adoc[]
+include::{snippets}/like-count-get/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/videos/{videoId}/likes \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 인증된 사용자만 조회할 수 있습니다
+* 삭제된 콘텐츠의 좋아요 수는 조회할 수 없습니다

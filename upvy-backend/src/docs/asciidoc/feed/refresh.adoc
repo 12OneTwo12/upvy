@@ -1,0 +1,29 @@
+[[feed-refresh]]
+=== 피드 새로고침
+
+사용자의 추천 피드 캐시를 삭제하여 다음 조회 시 최신 추천을 제공합니다.
+
+TikTok/Instagram Reels의 "Pull to Refresh" 기능과 동일합니다.
+
+==== Request
+
+include::{snippets}/feed-refresh/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/feed-refresh/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/feed/refresh \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* Redis에서 사용자의 모든 추천 배치를 삭제합니다
+* 다음 GET /api/v1/feed 호출 시 새로운 추천 알고리즘이 실행됩니다
+* 새로운 250개 배치가 자동으로 생성됩니다
+* 인증된 사용자만 호출할 수 있습니다

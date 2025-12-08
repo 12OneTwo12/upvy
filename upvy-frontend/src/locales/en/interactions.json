@@ -1,0 +1,133 @@
+{
+  "report": {
+    "title": "Report",
+    "subtitle": "Why are you reporting this?",
+    "targetInfo": {
+      "content": "Content",
+      "user": "User"
+    },
+    "reasons": {
+      "OFF_TOPIC": {
+        "label": "Off Topic",
+        "description": "Content that is not related to studying or the main topic"
+      },
+      "SPAM": {
+        "label": "Spam",
+        "description": "Advertising, promotion, or repetitive meaningless content"
+      },
+      "INAPPROPRIATE_CONTENT": {
+        "label": "Inappropriate Content",
+        "description": "Violent or sexual content"
+      },
+      "HARASSMENT": {
+        "label": "Harassment",
+        "description": "Harassment or defamation targeting specific individuals"
+      },
+      "HATE_SPEECH": {
+        "label": "Hate Speech",
+        "description": "Discrimination or hateful expressions towards specific groups"
+      },
+      "MISINFORMATION": {
+        "label": "Misinformation",
+        "description": "Content that intentionally spreads false information"
+      },
+      "COPYRIGHT": {
+        "label": "Copyright Violation",
+        "description": "Content using others' work without permission"
+      },
+      "OTHER": {
+        "label": "Other",
+        "description": "Other reasons not covered by the above categories"
+      }
+    },
+    "details": "Additional Details (Optional)",
+    "detailsPlaceholder": "Please provide more information if needed",
+    "characterCount": "{{count}}/500",
+    "submit": "Submit Report",
+    "selectReason": "Please select a reason.",
+    "successTitle": "Thank you for reporting",
+    "successMessage": "We'll review it quickly!",
+    "alreadyReportedTitle": "Already reported",
+    "alreadyReportedMessage": "We're reviewing it. Please wait!",
+    "errorTitle": "Oops, something went wrong",
+    "errorMessage": "Please try again later.",
+    "funCategoryAlert": {
+      "title": "This is Fun Content",
+      "message": "This content is for break time.\n\nThe Fun category allows entertainment content unrelated to studying, and is intentionally provided to reduce learning fatigue.\n\nReporting just because it's off-topic may be dismissed after review.\n\nDo you still want to report?",
+      "confirm": "Report"
+    }
+  },
+  "block": {
+    "user": {
+      "title": "Block {{name}}?",
+      "description": "All content from this user will not be shown in your feed, and mutual follows will be removed.",
+      "confirmButton": "Block",
+      "successTitle": "User blocked",
+      "successMessage": "You won't see their content anymore."
+    },
+    "content": {
+      "title": "Hide this content?",
+      "description": "This content will no longer appear in your feed.",
+      "confirmButton": "Hide",
+      "successTitle": "Content hidden",
+      "successMessage": "You won't see this content anymore."
+    },
+    "alreadyBlockedTitle": "Already blocked",
+    "errorTitle": "Cannot block",
+    "unblock": "Unblock",
+    "unblockSuccess": "User unblocked successfully"
+  },
+  "blockManagement": {
+    "title": "Block Management",
+    "tabs": {
+      "users": "Users",
+      "contents": "Content"
+    },
+    "empty": {
+      "users": "No blocked users",
+      "contents": "No blocked content"
+    },
+    "unblock": {
+      "userTitle": "Unblock",
+      "userConfirm": "Unblock {{name}}?",
+      "userSuccess": "User unblocked.",
+      "contentTitle": "Unblock",
+      "contentConfirm": "Show \"{{title}}\" again?",
+      "contentSuccess": "Content will be shown again.",
+      "error": "Failed to unblock."
+    },
+    "error": {
+      "loadTitle": "Error",
+      "loadMessage": "Failed to load block list."
+    }
+  },
+  "comment": {
+    "title": "Comments",
+    "placeholder": "Add a comment...",
+    "reply": "Reply",
+    "replyTo": "Reply to {{name}}",
+    "replyWriting": "Replying to {{name}}",
+    "delete": "Delete Comment",
+    "deleteConfirm": "Delete this comment?",
+    "report": "Report Comment",
+    "like": "Like",
+    "unlike": "Unlike",
+    "viewReplies": "View {{count}} replies",
+    "hideReplies": "Hide replies",
+    "viewMoreReplies": "View more replies",
+    "emptyTitle": "No comments yet",
+    "emptySubtitle": "Be the first to comment!",
+    "errorTitle": "Error",
+    "errorMessage": "Failed to post comment.",
+    "timeJustNow": "Just now",
+    "timeMinutesAgo": "{{count}}m ago",
+    "timeHoursAgo": "{{count}}h ago",
+    "timeDaysAgo": "{{count}}d ago",
+    "timeWeeksAgo": "{{count}}w ago",
+    "timeMonthsAgo": "{{count}}mo ago",
+    "timeYearsAgo": "{{count}}y ago",
+    "replyAdd": "Add reply",
+    "replyHide": "Hide replies",
+    "replyCount": "{{count}} replies"
+  }
+}

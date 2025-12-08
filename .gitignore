@@ -26,4 +26,96 @@ replay_pid*
 # Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
 .kotlin/
 
-.ide
+.idea
+.DS_Store
+
+### Frontend (React Native + Expo) ###
+upvy-frontend/node_modules/
+upvy-frontend/.expo/
+upvy-frontend/.expo-shared/
+upvy-frontend/dist/
+upvy-frontend/npm-debug.*
+upvy-frontend/*.jks
+upvy-frontend/*.p8
+upvy-frontend/*.p12
+upvy-frontend/*.key
+upvy-frontend/*.mobileprovision
+upvy-frontend/*.orig.*
+upvy-frontend/web-build/
+upvy-frontend/coverage/
+upvy-frontend/.env
+upvy-frontend/.env.local
+upvy-frontend/.env.*.local
+
+### iOS ###
+upvy-frontend/ios/Pods/
+upvy-frontend/ios/build/
+upvy-frontend/ios/.xcode.env.local
+
+### Android ###
+upvy-frontend/android/build/
+upvy-frontend/android/app/build/
+upvy-frontend/android/.gradle/
+upvy-frontend/android/local.properties
+upvy-frontend/android/.cxx/
+upvy-frontend/android/app/release/
+
+### macOS ###
+upvy-frontend/*.DS_Store
+upvy-frontend/.AppleDouble
+upvy-frontend/.LSOverride
+
+### Logs ###
+upvy-frontend/logs/
+upvy-frontend/*.log
+upvy-frontend/npm-debug.log*
+upvy-frontend/yarn-debug.log*
+upvy-frontend/yarn-error.log*
+
+### Temporary Files ###
+upvy-frontend/*.tmp
+upvy-frontend/*.temp
+upvy-frontend/*.swp
+upvy-frontend/*.swo
+upvy-frontend/*~
+
+### Test Coverage ###
+upvy-frontend/.nyc_output/
+upvy-frontend/coverage/
+
+### Backend (Spring Boot + Gradle) ###
+upvy-backend/HELP.md
+upvy-backend/.gradle
+upvy-backend/build/
+upvy-backend/out/
+upvy-backend/bin/
+!upvy-backend/gradle/wrapper/gradle-wrapper.jar
+!upvy-backend/**/src/main/**/build/
+!upvy-backend/**/src/test/**/build/
+
+### STS ###
+upvy-backend/.apt_generated
+upvy-backend/.classpath
+upvy-backend/.factorypath
+upvy-backend/.project
+upvy-backend/.settings
+upvy-backend/.springBeans
+upvy-backend/.sts4-cache
+
+### IntelliJ IDEA ###
+*.iws
+*.iml
+*.ipr
+
+### VS Code ###
+.vscode/
+
+### JOOQ Generated Code ###
+upvy-backend/src/main/generated/
+
+### REST Docs Generated HTML ###
+upvy-backend/src/main/resources/static/docs/
+
+### Kubernetes Secrets (실제 값이 채워진 파일) ###
+manifest-ops/**/secret/**/*.yaml
+!manifest-ops/**/secret/**/*.yaml.template

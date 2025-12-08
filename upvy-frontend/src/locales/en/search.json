@@ -1,0 +1,59 @@
+{
+  "title": "Search",
+  "placeholder": "Search users, tags, content...",
+  "tabs": {
+    "all": "All",
+    "users": "Users",
+    "tags": "Tags",
+    "content": "Content"
+  },
+  "recent": {
+    "title": "Recent Searches",
+    "clear": "Clear All",
+    "empty": "No recent searches"
+  },
+  "trending": {
+    "title": "Trending",
+    "tags": "Trending Tags",
+    "users": "Trending Users"
+  },
+  "results": {
+    "noResults": "No results found",
+    "tryDifferent": "Try a different search term",
+    "follower": "Followers"
+  },
+  "explore": {
+    "title": "Explore",
+    "categories": "Categories",
+    "trending": "Trending",
+    "recommended": "Recommended",
+    "selectCategory": "Select a category you're interested in",
+    "noContent": "No content yet",
+    "noContentDescription": "category will have amazing content soon!",
+    "pullToRefresh": "Pull to refresh",
+    "releaseToRefresh": "Release to refresh"
+  },
+  "category": {
+    "LANGUAGE": { "name": "Language", "desc": "Foreign languages, Korean, etc." },
+    "SCIENCE": { "name": "Science", "desc": "Physics, Chemistry, Biology, etc." },
+    "HISTORY": { "name": "History", "desc": "World history, Korean history, etc." },
+    "MATHEMATICS": { "name": "Mathematics", "desc": "Math, Statistics, etc." },
+    "ART": { "name": "Art", "desc": "Fine arts, Music, Literature, etc." },
+    "STARTUP": { "name": "Startup", "desc": "Entrepreneurship, Business, etc." },
+    "MARKETING": { "name": "Marketing", "desc": "Digital marketing, Branding, etc." },
+    "PROGRAMMING": { "name": "Programming", "desc": "Development, Coding, etc." },
+    "DESIGN": { "name": "Design", "desc": "UI/UX, Graphic design, etc." },
+    "PRODUCTIVITY": { "name": "Productivity", "desc": "Time management, Work efficiency, etc." },
+    "PSYCHOLOGY": { "name": "Psychology", "desc": "Human psychology, Behavior, etc." },
+    "FINANCE": { "name": "Finance", "desc": "Investment, Savings, etc." },
+    "HEALTH": { "name": "Health", "desc": "Exercise, Diet, Mental health, etc." },
+    "MOTIVATION": { "name": "Motivation", "desc": "Motivation, Success mindset, Self-improvement, etc." },
+    "PARENTING": { "name": "Parenting", "desc": "Child education, Parenting tips, etc." },
+    "COOKING": { "name": "Cooking", "desc": "Recipes, Cooking skills, etc." },
+    "TRAVEL": { "name": "Travel", "desc": "Destinations, Travel tips, etc." },
+    "HOBBY": { "name": "Hobby", "desc": "Reading, Music, Sports, etc." },
+    "TREND": { "name": "Trend", "desc": "Latest trends, Insights, etc." },
+    "OTHER": { "name": "Other", "desc": "Other categories" },
+    "FUN": { "name": "Fun", "desc": "Fun and light entertainment content" }
+  }
+}

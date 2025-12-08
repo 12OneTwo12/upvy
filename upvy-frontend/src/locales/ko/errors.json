@@ -1,0 +1,23 @@
+{
+  "network": {
+    "title": "네트워크 오류",
+    "message": "인터넷 연결을 확인해주세요",
+    "offline": "현재 오프라인 상태입니다"
+  },
+  "auth": {
+    "loginFailed": "로그인 실패",
+    "unauthorized": "권한이 없습니다",
+    "sessionExpired": "세션이 만료되었습니다. 다시 로그인해주세요"
+  },
+  "validation": {
+    "required": "필수 입력 항목입니다",
+    "invalidFormat": "형식이 올바르지 않습니다",
+    "tooShort": "너무 짧습니다",
+    "tooLong": "너무 깁니다"
+  },
+  "general": {
+    "title": "오류",
+    "message": "오류가 발생했습니다",
+    "tryAgain": "다시 시도해주세요"
+  }
+}

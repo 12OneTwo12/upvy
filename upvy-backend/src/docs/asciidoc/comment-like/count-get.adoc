@@ -1,0 +1,26 @@
+[[comment-like-count-get]]
+=== 댓글 좋아요 수 조회
+
+댓글의 총 좋아요 수를 조회합니다.
+
+==== Request
+
+include::{snippets}/comment-like-count-get/http-request.adoc[]
+include::{snippets}/comment-like-count-get/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/comment-like-count-get/http-response.adoc[]
+include::{snippets}/comment-like-count-get/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/comments/{commentId}/likes/count \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 삭제된 좋아요는 카운트에서 제외됩니다 (Soft Delete)

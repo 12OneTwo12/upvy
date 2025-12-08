@@ -1,0 +1,34 @@
+{
+  "title": "通知",
+  "button": {
+    "markAllRead": "すべて既読にする",
+    "delete": "削除"
+  },
+  "empty": {
+    "title": "通知がありません",
+    "subtitle": "新しいアクティビティはここに表示されます"
+  },
+  "error": {
+    "loadFailed": "通知の読み込みに失敗しました",
+    "deleteFailed": "通知の削除に失敗しました",
+    "markAllFailed": "すべて既読にすることに失敗しました"
+  },
+  "settings": {
+    "title": "通知設定",
+    "sections": {
+      "general": "一般",
+      "types": "通知タイプ"
+    },
+    "allNotifications": "通知",
+    "allNotificationsSubtitle": "すべてのプッシュ通知をオン/オフにする",
+    "likeNotifications": "いいね",
+    "likeNotificationsSubtitle": "誰かがあなたのコンテンツにいいねしたときに通知を受け取る",
+    "commentNotifications": "コメントと返信",
+    "commentNotificationsSubtitle": "誰かがコメントまたは返信したときに通知を受け取る",
+    "followNotifications": "新しいフォロワー",
+    "followNotificationsSubtitle": "誰かがあなたをフォローしたときに通知を受け取る",
+    "permissionWarning": "システム設定で通知がブロックされています",
+    "openSettings": "設定",
+    "info": "通知設定はこのデバイスにのみ適用されます。他のデバイスの設定は異なる場合があります。"
+  }
+}
