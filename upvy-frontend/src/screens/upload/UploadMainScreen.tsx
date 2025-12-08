@@ -568,6 +568,12 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    // 흰 배경에서도 보이도록 그림자 추가
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    elevation: 2,
   },
   indicatorDotActive: {
     backgroundColor: '#fff',
