@@ -126,16 +126,18 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("기존 토큰 업데이트 성공")
+        @DisplayName("기존 토큰 업데이트 성공 (token 기반 upsert)")
         fun updateExistingToken_Success() {
             // Given
+            val existingToken = "ExponentPushToken[existingToken]"
             val (user, _) = createUserWithProfile(userRepository, userProfileRepository, email = "test@example.com")
-            createTestPushToken(user.id!!, deviceId = "existing-device")
+            createTestPushToken(user.id!!, token = existingToken, deviceId = "old-device")
 
+            // 같은 토큰으로 deviceId 변경하여 등록
             val request = RegisterPushTokenRequest(
-                token = "ExponentPushToken[updatedToken]",
-                deviceId = "existing-device",
-                deviceType = DeviceType.IOS,
+                token = existingToken,
+                deviceId = "new-device",
+                deviceType = DeviceType.ANDROID, // deviceType도 변경
                 provider = PushProvider.EXPO
             )
 
@@ -149,8 +151,9 @@ class PushTokenControllerIntegrationTest : AbstractIntegrationTest() {
                 .exchange()
                 .expectStatus().isCreated
                 .expectBody()
-                .jsonPath("$.token").isEqualTo("ExponentPushToken[updatedToken]")
-                .jsonPath("$.deviceId").isEqualTo("existing-device")
+                .jsonPath("$.token").isEqualTo(existingToken)
+                .jsonPath("$.deviceId").isEqualTo("new-device")
+                .jsonPath("$.deviceType").isEqualTo("ANDROID")
         }
 
         @Test

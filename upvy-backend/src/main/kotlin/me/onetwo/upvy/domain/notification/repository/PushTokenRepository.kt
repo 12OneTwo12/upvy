@@ -28,16 +28,19 @@ class PushTokenRepository(
     /**
      * 푸시 토큰 저장 또는 갱신
      *
-     * user_id + device_id 조합이 존재하면 토큰을 갱신하고, 없으면 새로 생성합니다.
+     * token 값이 존재하면 deviceId/deviceType 등을 갱신하고, 없으면 새로 생성합니다.
+     * (Expo 권장: token을 unique key로 사용)
      *
      * @param token 푸시 토큰 정보
      * @return 저장된 푸시 토큰
      */
     fun saveOrUpdate(token: PushToken): Mono<PushToken> {
-        return findByUserIdAndDeviceId(token.userId, token.deviceId)
+        return findByToken(token.token)
             .flatMap { existing ->
+                // 토큰이 존재하면 deviceId, deviceType 등 갱신
                 update(existing.copy(
-                    token = token.token,
+                    userId = token.userId,
+                    deviceId = token.deviceId,
                     deviceType = token.deviceType,
                     provider = token.provider
                 ))
@@ -85,6 +88,20 @@ class PushTokenRepository(
                 .where(PUSH_TOKENS.ID.eq(token.id))
                 .and(PUSH_TOKENS.DELETED_AT.isNull)
         ).then(Mono.just(token.copy(updatedAt = now)))
+    }
+
+    /**
+     * 토큰 값으로 푸시 토큰 조회
+     *
+     * @param token 푸시 토큰 문자열
+     * @return 푸시 토큰 (존재하지 않으면 empty)
+     */
+    fun findByToken(token: String): Mono<PushToken> {
+        return Mono.from(
+            dsl.selectFrom(PUSH_TOKENS)
+                .where(PUSH_TOKENS.TOKEN.eq(token))
+                .and(PUSH_TOKENS.DELETED_AT.isNull)
+        ).map { record -> mapToPushToken(record) }
     }
 
     /**
@@ -184,6 +201,25 @@ class PushTokenRepository(
                 .set(PUSH_TOKENS.UPDATED_AT, now)
                 .set(PUSH_TOKENS.UPDATED_BY, userId.toString())
                 .where(PUSH_TOKENS.USER_ID.eq(userId.toString()))
+                .and(PUSH_TOKENS.DELETED_AT.isNull)
+        ).then()
+    }
+
+    /**
+     * 토큰 값으로 푸시 토큰 삭제 (Soft Delete)
+     *
+     * Expo에서 DeviceNotRegistered 에러 반환 시 호출하여 좀비 토큰 정리
+     *
+     * @param token 푸시 토큰 문자열
+     * @return 완료 신호
+     */
+    fun deleteByToken(token: String): Mono<Void> {
+        val now = Instant.now()
+        return Mono.from(
+            dsl.update(PUSH_TOKENS)
+                .set(PUSH_TOKENS.DELETED_AT, now)
+                .set(PUSH_TOKENS.UPDATED_AT, now)
+                .where(PUSH_TOKENS.TOKEN.eq(token))
                 .and(PUSH_TOKENS.DELETED_AT.isNull)
         ).then()
     }

@@ -289,7 +289,7 @@ class PushNotificationServiceImpl(
 
         return client.sendPushWithResult(tokens.map { it.token }, title, body, data)
             .flatMap { result ->
-                // 각 토큰별로 로그 저장
+                // 각 토큰별로 로그 저장 및 좀비 토큰 삭제
                 val logMonos = tokens.mapIndexed { index, token ->
                     val tokenResult = result.tokenResults.getOrNull(index)
                     val log = PushNotificationLog(
@@ -303,7 +303,15 @@ class PushNotificationServiceImpl(
                         attemptCount = 1,
                         sentAt = sentAt
                     )
-                    pushLogRepository.save(log)
+
+                    // DeviceNotRegistered 에러 시 좀비 토큰 삭제
+                    val saveLog = pushLogRepository.save(log)
+                    if (isInvalidTokenError(tokenResult?.errorCode)) {
+                        logger.info("Deleting invalid push token: token={}, errorCode={}", token.token, tokenResult?.errorCode)
+                        saveLog.then(pushTokenRepository.deleteByToken(token.token))
+                    } else {
+                        saveLog.then()
+                    }
                 }
 
                 Flux.merge(logMonos)
@@ -330,5 +338,18 @@ class PushNotificationServiceImpl(
                     .collectList()
                     .map { false }
             }
+    }
+
+    /**
+     * 유효하지 않은 토큰 에러인지 확인
+     *
+     * Expo Push API 에러 코드:
+     * - DeviceNotRegistered: 디바이스가 더 이상 푸시 알림을 받지 않음 (앱 삭제, 토큰 만료 등)
+     * - InvalidCredentials: 잘못된 푸시 자격 증명
+     *
+     * @see https://docs.expo.dev/push-notifications/sending-notifications/#individual-errors
+     */
+    private fun isInvalidTokenError(errorCode: String?): Boolean {
+        return errorCode in listOf("DeviceNotRegistered", "InvalidCredentials")
     }
 }
