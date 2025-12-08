@@ -105,8 +105,6 @@ const useStyles = createStyleSheet({
     height: 48,
     borderRadius: 24,
     backgroundColor: theme.colors.gray[200],
-    borderWidth: 2,
-    borderColor: theme.colors.primary[600],
   },
   iconBadge: {
     position: 'absolute',

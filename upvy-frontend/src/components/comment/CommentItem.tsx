@@ -354,8 +354,6 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: theme.colors.background.tertiary,
-    borderWidth: 1.5,
-    borderColor: theme.colors.primary[600],
   },
   profileImagePlaceholder: {
     justifyContent: 'center',

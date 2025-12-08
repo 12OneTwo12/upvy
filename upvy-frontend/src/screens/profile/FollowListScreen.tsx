@@ -302,7 +302,6 @@ export default function FollowListScreen() {
             imageUrl={item.profileImageUrl}
             size="medium"
             onPress={() => handleUserPress(item.userId)}
-            showBorder
           />
           <View style={styles.userText}>
             <Text style={styles.nickname}>{item.nickname}</Text>

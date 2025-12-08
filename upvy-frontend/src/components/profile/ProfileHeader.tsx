@@ -91,7 +91,6 @@ export default function ProfileHeader({
           imageUrl={profile.profileImageUrl}
           size="xlarge"
           onPress={onAvatarPress}
-          showBorder
           style={styles.avatar}
         />
         {showStats && (

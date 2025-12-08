@@ -1019,8 +1019,6 @@ const useStyles = createStyleSheet({
     height: 54,
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.gray[100],
-    borderWidth: 2,
-    borderColor: theme.colors.primary[600],
   },
 
   userAvatarPlaceholder: {
