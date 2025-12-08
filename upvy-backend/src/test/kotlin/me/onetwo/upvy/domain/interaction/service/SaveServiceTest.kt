@@ -9,6 +9,7 @@ import io.mockk.verify
 import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
 import me.onetwo.upvy.domain.content.repository.ContentMetadataRepository
+import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.domain.interaction.model.UserSave
 import me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
@@ -43,6 +44,9 @@ class SaveServiceTest {
 
     @MockK
     private lateinit var contentMetadataRepository: ContentMetadataRepository
+
+    @MockK
+    private lateinit var contentService: ContentService
 
     @MockK
     private lateinit var eventPublisher: ReactiveEventPublisher
