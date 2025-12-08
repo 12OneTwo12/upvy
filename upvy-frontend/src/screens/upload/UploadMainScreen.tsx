@@ -27,6 +27,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
+import { cleanIOSVideoUri } from '@/utils/videoUtils';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -38,11 +39,6 @@ const GRID_COLUMNS = 4;
 const GRID_IMAGE_SIZE = SCREEN_WIDTH / GRID_COLUMNS;
 const PREVIEW_HEIGHT = SCREEN_WIDTH; // 정사각형 미리보기
 const PAGE_SIZE = 50; // 한 번에 로드할 미디어 개수
-
-// iOS URI에서 메타데이터 해시 제거 (expo-av가 처리하지 못함)
-const cleanIOSVideoUri = (uri: string): string => {
-  return uri.replace(/#YnBsaXN0[A-Za-z0-9+/=]*$/, '');
-};
 
 export default function UploadMainScreen({ navigation }: Props) {
   const { t } = useTranslation(['upload', 'common']);

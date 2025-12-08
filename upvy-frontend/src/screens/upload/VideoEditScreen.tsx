@@ -30,6 +30,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
+import { cleanIOSVideoUri } from '@/utils/videoUtils';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { generateUploadUrl, uploadFileToS3 } from '@/api/content.api';
@@ -42,12 +43,6 @@ const VIDEO_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 // 최대 비디오 길이 (초)
 const MAX_VIDEO_DURATION = 60;
-
-// iOS URI에서 메타데이터 해시 제거 (expo-av가 처리하지 못함)
-// iOS plist 메타데이터는 '#YnBsaXN0'(base64 시그니처)로 시작함
-const cleanIOSVideoUri = (uri: string): string => {
-  return uri.replace(/#YnBsaXN0[A-Za-z0-9+/=]*$/, '');
-};
 
 export default function VideoEditScreen({ navigation, route }: Props) {
   const { t } = useTranslation(['upload', 'common']);

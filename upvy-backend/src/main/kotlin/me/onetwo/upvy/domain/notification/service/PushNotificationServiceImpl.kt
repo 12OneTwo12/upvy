@@ -305,12 +305,12 @@ class PushNotificationServiceImpl(
                     )
 
                     // DeviceNotRegistered 에러 시 좀비 토큰 삭제
-                    val saveLog = pushLogRepository.save(log)
                     if (isInvalidTokenError(tokenResult?.errorCode)) {
                         logger.info("Deleting invalid push token: token={}, errorCode={}", token.token, tokenResult?.errorCode)
-                        saveLog.then(pushTokenRepository.deleteByToken(token.token))
+                        pushLogRepository.save(log)
+                            .then(pushTokenRepository.deleteByToken(token.token, token.userId))
                     } else {
-                        saveLog.then()
+                        pushLogRepository.save(log).then()
                     }
                 }
 
@@ -350,6 +350,13 @@ class PushNotificationServiceImpl(
      * @see https://docs.expo.dev/push-notifications/sending-notifications/#individual-errors
      */
     private fun isInvalidTokenError(errorCode: String?): Boolean {
-        return errorCode in listOf("DeviceNotRegistered", "InvalidCredentials")
+        return errorCode in INVALID_TOKEN_ERROR_CODES
+    }
+
+    companion object {
+        /**
+         * 유효하지 않은 토큰으로 판단되는 Expo Push API 에러 코드
+         */
+        private val INVALID_TOKEN_ERROR_CODES = setOf("DeviceNotRegistered", "InvalidCredentials")
     }
 }

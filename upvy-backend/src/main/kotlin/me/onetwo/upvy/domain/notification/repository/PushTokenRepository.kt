@@ -211,14 +211,16 @@ class PushTokenRepository(
      * Expo에서 DeviceNotRegistered 에러 반환 시 호출하여 좀비 토큰 정리
      *
      * @param token 푸시 토큰 문자열
+     * @param userId 삭제 요청자 ID (audit trail용)
      * @return 완료 신호
      */
-    fun deleteByToken(token: String): Mono<Void> {
+    fun deleteByToken(token: String, userId: UUID): Mono<Void> {
         val now = Instant.now()
         return Mono.from(
             dsl.update(PUSH_TOKENS)
                 .set(PUSH_TOKENS.DELETED_AT, now)
                 .set(PUSH_TOKENS.UPDATED_AT, now)
+                .set(PUSH_TOKENS.UPDATED_BY, userId.toString())
                 .where(PUSH_TOKENS.TOKEN.eq(token))
                 .and(PUSH_TOKENS.DELETED_AT.isNull)
         ).then()
