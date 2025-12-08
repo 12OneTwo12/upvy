@@ -121,13 +121,8 @@ export const useGoogleAuth = () => {
       // 백엔드 OAuth URL
       const authUrl = `${API_HOST}/oauth2/authorization/google?state=${state}`;
 
-      // Custom Tabs로 OAuth 시작
-      const result = await WebBrowser.openBrowserAsync(authUrl, {
-        // Android에서 Custom Tabs 사용
-        showTitle: true,
-        toolbarColor: '#34C759',
-        enableBarCollapsing: false,
-      });
+      // Custom Tabs로 OAuth 시작 (시스템 기본 스타일 사용)
+      const result = await WebBrowser.openBrowserAsync(authUrl);
 
       // 사용자가 브라우저를 닫은 경우 (딥링크로 돌아오지 않음)
       if (result.type === 'cancel' || result.type === 'dismiss') {
