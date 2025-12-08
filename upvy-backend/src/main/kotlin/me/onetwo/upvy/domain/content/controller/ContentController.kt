@@ -1,0 +1,215 @@
+package me.onetwo.upvy.domain.content.controller
+
+import jakarta.validation.Valid
+import me.onetwo.upvy.domain.content.dto.ContentCreateRequest
+import me.onetwo.upvy.domain.content.dto.ContentPageResponse
+import me.onetwo.upvy.domain.content.dto.ContentResponse
+import me.onetwo.upvy.domain.content.dto.ContentUpdateRequest
+import me.onetwo.upvy.domain.content.dto.ContentUploadUrlRequest
+import me.onetwo.upvy.domain.content.dto.ContentUploadUrlResponse
+import me.onetwo.upvy.domain.content.service.ContentService
+import me.onetwo.upvy.infrastructure.security.util.toUserId
+import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.common.dto.CursorPageRequest
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import reactor.core.publisher.Mono
+import java.security.Principal
+import java.util.UUID
+
+/**
+ * 콘텐츠 컨트롤러
+ *
+ * 크리에이터 스튜디오 API 엔드포인트를 제공합니다.
+ *
+ * @property contentService 콘텐츠 서비스
+ */
+@RestController
+@RequestMapping(ApiPaths.API_V1_CONTENTS)
+class ContentController(
+    private val contentService: ContentService
+) {
+
+    /**
+     * S3 Presigned Upload URL을 생성합니다.
+     *
+     * 클라이언트가 S3에 직접 파일을 업로드할 수 있도록 Presigned URL을 발급합니다.
+     *
+     * ### 처리 흐름
+     * 1. 파일 유효성 검증 (크기, 형식)
+     * 2. S3 Presigned URL 생성
+     * 3. URL 및 contentId 반환
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param request Presigned URL 요청
+     * @return 200 OK - Presigned URL 정보
+     */
+    @PostMapping("/upload-url")
+    fun generateUploadUrl(
+        principal: Mono<Principal>,
+        @Valid @RequestBody request: ContentUploadUrlRequest
+    ): Mono<ResponseEntity<ContentUploadUrlResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                contentService.generateUploadUrl(userId, request)
+            }
+            .map { ResponseEntity.status(HttpStatus.CREATED).body(it) }
+    }
+
+    /**
+     * 콘텐츠를 생성합니다.
+     *
+     * S3 업로드 완료 후 콘텐츠 메타데이터를 등록합니다.
+     *
+     * ### 처리 흐름
+     * 1. 콘텐츠 메타데이터 저장
+     * 2. Content 및 ContentMetadata 엔티티 생성
+     * 3. 생성된 콘텐츠 정보 반환
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param request 콘텐츠 생성 요청
+     * @return 201 Created - 생성된 콘텐츠 정보
+     */
+    @PostMapping
+    fun createContent(
+        principal: Mono<Principal>,
+        @Valid @RequestBody request: ContentCreateRequest
+    ): Mono<ResponseEntity<ContentResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                contentService.createContent(userId, request)
+            }
+            .map { ResponseEntity.status(HttpStatus.CREATED).body(it) }
+    }
+
+    /**
+     * 콘텐츠를 조회합니다.
+     *
+     * 인증된 사용자의 경우 인터랙션 정보에 사용자별 상태 (isLiked, isSaved)가 포함됩니다.
+     * 비인증 사용자의 경우 인터랙션 통계만 반환되며, isLiked와 isSaved는 false로 설정됩니다.
+     *
+     * @param principal 인증된 사용자 Principal (선택)
+     * @param contentId 콘텐츠 ID
+     * @return 200 OK - 콘텐츠 정보 (인터랙션 정보 포함)
+     *         404 Not Found - 콘텐츠가 존재하지 않음
+     */
+    @GetMapping("/{contentId}")
+    fun getContent(
+        principal: Mono<Principal>?,
+        @PathVariable contentId: UUID
+    ): Mono<ResponseEntity<ContentResponse>> {
+        val userIdMono = principal?.toUserId() ?: Mono.empty()
+
+        return userIdMono.flatMap { userId ->
+            contentService.getContent(contentId, userId)
+        }.switchIfEmpty(
+            contentService.getContent(contentId, null)
+        )
+            .map { ResponseEntity.ok(it) }
+            .onErrorResume(NoSuchElementException::class.java) {
+                Mono.just(ResponseEntity.notFound().build())
+            }
+            .defaultIfEmpty(ResponseEntity.notFound().build())
+    }
+
+    /**
+     * 크리에이터의 콘텐츠 목록을 커서 기반 페이징으로 조회합니다.
+     *
+     * 자신의 콘텐츠 목록을 조회하며, 인터랙션 정보에 사용자별 상태 (isLiked, isSaved)가 포함됩니다.
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param cursor 이전 페이지의 마지막 콘텐츠 ID (null이면 첫 페이지)
+     * @param limit 페이지당 항목 수 (기본값: 20, 최대: 100)
+     * @return 200 OK - 콘텐츠 페이지 응답 (인터랙션 정보 포함)
+     */
+    @GetMapping("/me")
+    fun getMyContents(
+        principal: Mono<Principal>,
+        @RequestParam(required = false) cursor: String?,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): Mono<ResponseEntity<ContentPageResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
+                contentService.getContentsByCreatorWithCursor(userId, userId, pageRequest)
+            }
+            .map { ResponseEntity.ok(it) }
+    }
+
+    /**
+     * 콘텐츠를 수정합니다.
+     *
+     * 콘텐츠 작성자만 수정할 수 있습니다.
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param contentId 콘텐츠 ID
+     * @param request 수정 요청
+     * @return 200 OK - 수정된 콘텐츠 정보
+     *         403 Forbidden - 권한 없음
+     *         404 Not Found - 콘텐츠가 존재하지 않음
+     */
+    @PatchMapping("/{contentId}")
+    fun updateContent(
+        principal: Mono<Principal>,
+        @PathVariable contentId: UUID,
+        @Valid @RequestBody request: ContentUpdateRequest
+    ): Mono<ResponseEntity<ContentResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                contentService.updateContent(userId, contentId, request)
+            }
+            .map { ResponseEntity.ok(it) }
+            .onErrorResume { error ->
+                when (error) {
+                    is NoSuchElementException -> Mono.just(ResponseEntity.notFound().build())
+                    is IllegalAccessException -> Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build())
+                    else -> Mono.error(error)
+                }
+            }
+    }
+
+    /**
+     * 콘텐츠를 삭제합니다 (Soft Delete).
+     *
+     * 콘텐츠 작성자만 삭제할 수 있습니다.
+     *
+     * @param principal 인증된 사용자 Principal
+     * @param contentId 콘텐츠 ID
+     * @return 204 No Content - 삭제 성공
+     *         403 Forbidden - 권한 없음
+     *         404 Not Found - 콘텐츠가 존재하지 않음
+     */
+    @DeleteMapping("/{contentId}")
+    fun deleteContent(
+        principal: Mono<Principal>,
+        @PathVariable contentId: UUID
+    ): Mono<ResponseEntity<Void>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                contentService.deleteContent(userId, contentId)
+            }
+            .then(Mono.just(ResponseEntity.noContent().build<Void>()))
+            .onErrorResume { error ->
+                when (error) {
+                    is NoSuchElementException -> Mono.just(ResponseEntity.notFound().build())
+                    is IllegalAccessException -> Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build())
+                    else -> Mono.error(error)
+                }
+            }
+    }
+}

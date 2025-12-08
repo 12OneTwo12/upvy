@@ -1,0 +1,227 @@
+package me.onetwo.upvy.crawler.client.video
+
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
+import java.io.File
+import java.util.concurrent.TimeUnit
+
+/**
+ * FFmpeg 래퍼 인터페이스
+ *
+ * 비디오 클리핑, 썸네일 추출 등의 기능을 제공합니다.
+ */
+interface FFmpegWrapper {
+
+    /**
+     * 비디오 클리핑
+     *
+     * @param inputPath 입력 비디오 경로
+     * @param outputPath 출력 비디오 경로
+     * @param startMs 시작 시간 (밀리초)
+     * @param endMs 종료 시간 (밀리초)
+     * @return 출력 파일 경로
+     */
+    fun clip(inputPath: String, outputPath: String, startMs: Long, endMs: Long): String
+
+    /**
+     * 썸네일 추출
+     *
+     * @param inputPath 입력 비디오 경로
+     * @param outputPath 출력 이미지 경로
+     * @param timeMs 추출할 시간 (밀리초)
+     * @return 출력 파일 경로
+     */
+    fun thumbnail(inputPath: String, outputPath: String, timeMs: Long): String
+
+    /**
+     * 세로 리사이징 (9:16 쇼츠 포맷)
+     *
+     * @param inputPath 입력 비디오 경로
+     * @param outputPath 출력 비디오 경로
+     * @return 출력 파일 경로
+     */
+    fun resizeVertical(inputPath: String, outputPath: String): String
+
+    /**
+     * 비디오 정보 조회
+     *
+     * @param inputPath 입력 비디오 경로
+     * @return 비디오 정보 (duration, width, height 등)
+     */
+    fun getVideoInfo(inputPath: String): VideoInfo
+}
+
+/**
+ * 비디오 정보
+ */
+data class VideoInfo(
+    val durationMs: Long,
+    val width: Int,
+    val height: Int,
+    val codec: String? = null
+)
+
+/**
+ * FFmpeg 래퍼 구현체
+ */
+@Component
+class FFmpegWrapperImpl(
+    @Value("\${ffmpeg.path:/usr/bin/ffmpeg}") private val ffmpegPath: String,
+    @Value("\${ffmpeg.temp-dir:/tmp/ai-crawler}") private val tempDir: String
+) : FFmpegWrapper {
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(FFmpegWrapperImpl::class.java)
+        private const val PROCESS_TIMEOUT_MINUTES = 30L
+    }
+
+    init {
+        File(tempDir).mkdirs()
+    }
+
+    override fun clip(inputPath: String, outputPath: String, startMs: Long, endMs: Long): String {
+        logger.info("비디오 클리핑 시작: input={}, start={}ms, end={}ms", inputPath, startMs, endMs)
+
+        val startSeconds = startMs / 1000.0
+        val durationSeconds = (endMs - startMs) / 1000.0
+
+        val command = listOf(
+            ffmpegPath,
+            "-ss", String.format("%.3f", startSeconds),
+            "-i", inputPath,
+            "-t", String.format("%.3f", durationSeconds),
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "23",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-y",
+            outputPath
+        )
+
+        executeCommand(command, "Video clipping")
+
+        logger.info("비디오 클리핑 완료: output={}", outputPath)
+        return outputPath
+    }
+
+    override fun thumbnail(inputPath: String, outputPath: String, timeMs: Long): String {
+        logger.info("썸네일 추출 시작: input={}, time={}ms", inputPath, timeMs)
+
+        val timeSeconds = timeMs / 1000.0
+
+        val command = listOf(
+            ffmpegPath,
+            "-ss", String.format("%.3f", timeSeconds),
+            "-i", inputPath,
+            "-vframes", "1",
+            "-q:v", "2",
+            "-y",
+            outputPath
+        )
+
+        executeCommand(command, "Thumbnail extraction")
+
+        logger.info("썸네일 추출 완료: output={}", outputPath)
+        return outputPath
+    }
+
+    override fun resizeVertical(inputPath: String, outputPath: String): String {
+        logger.info("세로 리사이징 시작: input={}", inputPath)
+
+        // 9:16 비율 (1080x1920)
+        val command = listOf(
+            ffmpegPath,
+            "-i", inputPath,
+            "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "23",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-y",
+            outputPath
+        )
+
+        executeCommand(command, "Vertical resizing")
+
+        logger.info("세로 리사이징 완료: output={}", outputPath)
+        return outputPath
+    }
+
+    override fun getVideoInfo(inputPath: String): VideoInfo {
+        logger.debug("비디오 정보 조회: input={}", inputPath)
+
+        val ffprobePath = ffmpegPath.replace("ffmpeg", "ffprobe")
+
+        val command = listOf(
+            ffprobePath,
+            "-v", "quiet",
+            "-print_format", "json",
+            "-show_streams",
+            "-show_format",
+            inputPath
+        )
+
+        try {
+            val process = ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start()
+
+            val output = process.inputStream.bufferedReader().readText()
+            process.waitFor(60, TimeUnit.SECONDS)
+
+            // Jackson을 사용하여 안전하게 JSON 파싱
+            val jsonNode = jacksonObjectMapper().readTree(output)
+            val formatNode = jsonNode.get("format")
+            val streamNode = jsonNode.get("streams")?.get(0)
+
+            val duration = formatNode?.get("duration")?.asText()?.toDoubleOrNull()?.times(1000)?.toLong() ?: 0L
+            val width = streamNode?.get("width")?.asInt() ?: 0
+            val height = streamNode?.get("height")?.asInt() ?: 0
+
+            return VideoInfo(duration, width, height)
+
+        } catch (e: Exception) {
+            logger.warn("비디오 정보 조회 실패: input={}", inputPath, e)
+            return VideoInfo(0, 0, 0)
+        }
+    }
+
+    private fun executeCommand(command: List<String>, operation: String) {
+        logger.debug("FFmpeg 명령어: {}", command.joinToString(" "))
+
+        try {
+            val process = ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start()
+
+            val completed = process.waitFor(PROCESS_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+
+            if (!completed) {
+                process.destroyForcibly()
+                throw FFmpegException("$operation timeout after $PROCESS_TIMEOUT_MINUTES minutes")
+            }
+
+            val exitCode = process.exitValue()
+            if (exitCode != 0) {
+                val errorOutput = process.inputStream.bufferedReader().readText()
+                logger.error("FFmpeg 실패: exitCode={}, output={}", exitCode, errorOutput)
+                throw FFmpegException("$operation failed with exit code $exitCode")
+            }
+
+        } catch (e: FFmpegException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error("FFmpeg 실행 실패", e)
+            throw FFmpegException("$operation failed", e)
+        }
+    }
+}
+
+/**
+ * FFmpeg 예외
+ */
+class FFmpegException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)

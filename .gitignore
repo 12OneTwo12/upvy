@@ -30,77 +30,77 @@ replay_pid*
 .DS_Store
 
 ### Frontend (React Native + Expo) ###
-grow-snap-frontend/node_modules/
-grow-snap-frontend/.expo/
-grow-snap-frontend/.expo-shared/
-grow-snap-frontend/dist/
-grow-snap-frontend/npm-debug.*
-grow-snap-frontend/*.jks
-grow-snap-frontend/*.p8
-grow-snap-frontend/*.p12
-grow-snap-frontend/*.key
-grow-snap-frontend/*.mobileprovision
-grow-snap-frontend/*.orig.*
-grow-snap-frontend/web-build/
-grow-snap-frontend/coverage/
-grow-snap-frontend/.env
-grow-snap-frontend/.env.local
-grow-snap-frontend/.env.*.local
+upvy-frontend/node_modules/
+upvy-frontend/.expo/
+upvy-frontend/.expo-shared/
+upvy-frontend/dist/
+upvy-frontend/npm-debug.*
+upvy-frontend/*.jks
+upvy-frontend/*.p8
+upvy-frontend/*.p12
+upvy-frontend/*.key
+upvy-frontend/*.mobileprovision
+upvy-frontend/*.orig.*
+upvy-frontend/web-build/
+upvy-frontend/coverage/
+upvy-frontend/.env
+upvy-frontend/.env.local
+upvy-frontend/.env.*.local
 
 ### iOS ###
-grow-snap-frontend/ios/Pods/
-grow-snap-frontend/ios/build/
-grow-snap-frontend/ios/.xcode.env.local
+upvy-frontend/ios/Pods/
+upvy-frontend/ios/build/
+upvy-frontend/ios/.xcode.env.local
 
 ### Android ###
-grow-snap-frontend/android/build/
-grow-snap-frontend/android/app/build/
-grow-snap-frontend/android/.gradle/
-grow-snap-frontend/android/local.properties
-grow-snap-frontend/android/.cxx/
-grow-snap-frontend/android/app/release/
+upvy-frontend/android/build/
+upvy-frontend/android/app/build/
+upvy-frontend/android/.gradle/
+upvy-frontend/android/local.properties
+upvy-frontend/android/.cxx/
+upvy-frontend/android/app/release/
 
 ### macOS ###
-grow-snap-frontend/*.DS_Store
-grow-snap-frontend/.AppleDouble
-grow-snap-frontend/.LSOverride
+upvy-frontend/*.DS_Store
+upvy-frontend/.AppleDouble
+upvy-frontend/.LSOverride
 
 ### Logs ###
-grow-snap-frontend/logs/
-grow-snap-frontend/*.log
-grow-snap-frontend/npm-debug.log*
-grow-snap-frontend/yarn-debug.log*
-grow-snap-frontend/yarn-error.log*
+upvy-frontend/logs/
+upvy-frontend/*.log
+upvy-frontend/npm-debug.log*
+upvy-frontend/yarn-debug.log*
+upvy-frontend/yarn-error.log*
 
 ### Temporary Files ###
-grow-snap-frontend/*.tmp
-grow-snap-frontend/*.temp
-grow-snap-frontend/*.swp
-grow-snap-frontend/*.swo
-grow-snap-frontend/*~
+upvy-frontend/*.tmp
+upvy-frontend/*.temp
+upvy-frontend/*.swp
+upvy-frontend/*.swo
+upvy-frontend/*~
 
 ### Test Coverage ###
-grow-snap-frontend/.nyc_output/
-grow-snap-frontend/coverage/
+upvy-frontend/.nyc_output/
+upvy-frontend/coverage/
 
 ### Backend (Spring Boot + Gradle) ###
-grow-snap-backend/HELP.md
-grow-snap-backend/.gradle
-grow-snap-backend/build/
-grow-snap-backend/out/
-grow-snap-backend/bin/
-!grow-snap-backend/gradle/wrapper/gradle-wrapper.jar
-!grow-snap-backend/**/src/main/**/build/
-!grow-snap-backend/**/src/test/**/build/
+upvy-backend/HELP.md
+upvy-backend/.gradle
+upvy-backend/build/
+upvy-backend/out/
+upvy-backend/bin/
+!upvy-backend/gradle/wrapper/gradle-wrapper.jar
+!upvy-backend/**/src/main/**/build/
+!upvy-backend/**/src/test/**/build/
 
 ### STS ###
-grow-snap-backend/.apt_generated
-grow-snap-backend/.classpath
-grow-snap-backend/.factorypath
-grow-snap-backend/.project
-grow-snap-backend/.settings
-grow-snap-backend/.springBeans
-grow-snap-backend/.sts4-cache
+upvy-backend/.apt_generated
+upvy-backend/.classpath
+upvy-backend/.factorypath
+upvy-backend/.project
+upvy-backend/.settings
+upvy-backend/.springBeans
+upvy-backend/.sts4-cache
 
 ### IntelliJ IDEA ###
 *.iws
@@ -111,7 +111,7 @@ grow-snap-backend/.sts4-cache
 .vscode/
 
 ### JOOQ Generated Code ###
-grow-snap-backend/src/main/generated/
+upvy-backend/src/main/generated/
 
 ### REST Docs Generated HTML ###
-grow-snap-backend/src/main/resources/static/docs/
+upvy-backend/src/main/resources/static/docs/
