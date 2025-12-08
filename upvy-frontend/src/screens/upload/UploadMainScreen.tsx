@@ -130,7 +130,8 @@ export default function UploadMainScreen({ navigation }: Props) {
 
   const handleAssetSelect = (asset: MediaAsset) => {
     if (contentType === 'video') {
-      // 비디오는 단일 선택
+      // 비디오는 단일 선택 - 원본 asset 그대로 전달
+      // VideoEditScreen에서 MediaLibrary.getAssetInfoAsync로 localUri를 가져옴
       setSelectedAssets([asset]);
       setCurrentPreviewIndex(0);
     } else {
@@ -154,7 +155,7 @@ export default function UploadMainScreen({ navigation }: Props) {
     }
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (selectedAssets.length === 0) {
       Alert.alert(t('common:label.notice', 'Notice'), t('upload:main.selectMediaMessage'));
       return;
@@ -171,79 +172,9 @@ export default function UploadMainScreen({ navigation }: Props) {
         );
       }
 
-      // ph:// URI인 경우 localUri를 미리 가져오기
-      let assetWithLocalUri = asset;
-      if (asset.uri && asset.uri.startsWith('ph://')) {
-        try {
-          console.log('📹 Getting localUri for video asset...');
-          const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-
-          // localUri가 있어도 /var/mobile/Media/ 경로는 실기기에서 접근 불가
-          // ImagePicker를 통해 접근 가능한 임시 파일을 얻어야 함
-          const needsImagePicker = !assetInfo.localUri ||
-            !assetInfo.localUri.startsWith('file://') ||
-            assetInfo.localUri.includes('/var/mobile/Media/');
-
-          if (!needsImagePicker) {
-            const cleanUri = cleanIOSVideoUri(assetInfo.localUri!);
-            console.log('✅ Got accessible localUri:', cleanUri);
-            assetWithLocalUri = {
-              ...asset,
-              uri: cleanUri,
-            };
-          } else {
-            // localUri가 없거나 file://로 시작하지 않으면 ImagePicker로 폴백
-            console.log('⚠️ localUri not available, using ImagePicker fallback');
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: 'videos' as any,
-              allowsEditing: false,
-              quality: 1,
-            });
-
-            if (result.canceled) {
-              return; // 사용자가 취소함
-            }
-
-            if (result.assets[0]) {
-              const cleanUri = cleanIOSVideoUri(result.assets[0].uri);
-              assetWithLocalUri = {
-                ...asset,
-                uri: cleanUri, // ImagePicker에서 얻은 file:// URI 사용 (iOS 메타데이터 제거)
-              };
-              console.log('✅ Got URI from ImagePicker:', cleanUri);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to get localUri:', error);
-          // ImagePicker로 폴백
-          try {
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: 'videos' as any,
-              allowsEditing: false,
-              quality: 1,
-            });
-
-            if (result.canceled) {
-              return;
-            }
-
-            if (result.assets[0]) {
-              const cleanUri = cleanIOSVideoUri(result.assets[0].uri);
-              assetWithLocalUri = {
-                ...asset,
-                uri: cleanUri,
-              };
-            }
-          } catch (pickerError) {
-            console.error('ImagePicker fallback failed:', pickerError);
-            Alert.alert(t('common:label.error', 'Error'), t('upload:main.videoAccessError', '비디오에 접근할 수 없습니다.'));
-            return;
-          }
-        }
-      }
-
+      // handleAssetSelect에서 이미 file:// URI를 확보했으므로 바로 이동
       navigation.navigate('VideoEdit', {
-        asset: assetWithLocalUri,
+        asset: asset,
         type: 'video',
       });
     } else {
