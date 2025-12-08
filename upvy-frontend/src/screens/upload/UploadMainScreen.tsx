@@ -36,7 +36,8 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const GRID_COLUMNS = 4;
 const GRID_IMAGE_SIZE = SCREEN_WIDTH / GRID_COLUMNS;
-const PREVIEW_HEIGHT = SCREEN_HEIGHT * 0.5;
+const PREVIEW_HEIGHT = SCREEN_WIDTH; // 정사각형 미리보기
+const PAGE_SIZE = 50; // 한 번에 로드할 미디어 개수
 
 // iOS URI에서 메타데이터 해시 제거 (expo-av가 처리하지 못함)
 const cleanIOSVideoUri = (uri: string): string => {
@@ -52,6 +53,9 @@ export default function UploadMainScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const [endCursor, setEndCursor] = useState<string | undefined>(undefined);
   const isInitialFocus = useRef(true);
 
   useEffect(() => {
@@ -95,11 +99,16 @@ export default function UploadMainScreen({ navigation }: Props) {
     }
   };
 
-  const loadMediaAssets = async () => {
+  const loadMediaAssets = async (isRefresh = false) => {
     try {
+      if (isRefresh) {
+        setEndCursor(undefined);
+        setHasNextPage(true);
+      }
       setIsLoading(true);
-      const { assets } = await MediaLibrary.getAssetsAsync({
-        first: 100,
+
+      const { assets, hasNextPage: hasNext, endCursor: cursor } = await MediaLibrary.getAssetsAsync({
+        first: PAGE_SIZE,
         mediaType: contentType === 'photo' ? 'photo' : 'video',
         sortBy: [[MediaLibrary.SortBy.creationTime, false]],
       });
@@ -115,6 +124,8 @@ export default function UploadMainScreen({ navigation }: Props) {
       }));
 
       setMediaAssets(formattedAssets);
+      setHasNextPage(hasNext);
+      setEndCursor(cursor);
 
       // 첫 번째 아이템 자동 선택
       if (formattedAssets.length > 0 && selectedAssets.length === 0) {
@@ -125,6 +136,40 @@ export default function UploadMainScreen({ navigation }: Props) {
       Alert.alert(t('common:label.error', 'Error'), t('upload:main.loadError'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 더 많은 미디어 로드 (무한 스크롤)
+  const loadMoreAssets = async () => {
+    if (!hasNextPage || isLoadingMore || !endCursor) return;
+
+    try {
+      setIsLoadingMore(true);
+
+      const { assets, hasNextPage: hasNext, endCursor: cursor } = await MediaLibrary.getAssetsAsync({
+        first: PAGE_SIZE,
+        after: endCursor,
+        mediaType: contentType === 'photo' ? 'photo' : 'video',
+        sortBy: [[MediaLibrary.SortBy.creationTime, false]],
+      });
+
+      const formattedAssets: MediaAsset[] = assets.map((asset: any) => ({
+        id: asset.id,
+        uri: asset.uri,
+        mediaType: asset.mediaType === 'video' ? 'video' : 'photo',
+        duration: asset.duration || 0,
+        width: asset.width,
+        height: asset.height,
+        filename: asset.filename,
+      }));
+
+      setMediaAssets((prev) => [...prev, ...formattedAssets]);
+      setHasNextPage(hasNext);
+      setEndCursor(cursor);
+    } catch (error) {
+      console.error('Failed to load more assets:', error);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -187,7 +232,7 @@ export default function UploadMainScreen({ navigation }: Props) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadMediaAssets();
+    await loadMediaAssets(true);
     setRefreshing(false);
   };
 
@@ -284,8 +329,6 @@ export default function UploadMainScreen({ navigation }: Props) {
     );
   };
 
-  const currentPreview = selectedAssets[currentPreviewIndex];
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* 헤더 */}
@@ -345,50 +388,7 @@ export default function UploadMainScreen({ navigation }: Props) {
         )}
       </View>
 
-      {/* 선택된 미디어 큰 미리보기 - 스와이프 가능 */}
-      {selectedAssets.length > 0 && (
-        <View style={styles.previewContainer}>
-          <FlatList
-            data={selectedAssets}
-            renderItem={({ item }) => (
-              <Image
-                source={{ uri: item.uri }}
-                style={styles.previewImage}
-                resizeMode="cover"
-              />
-            )}
-            keyExtractor={(item) => item.id}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onViewableItemsChanged={({ viewableItems }) => {
-              if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-                setCurrentPreviewIndex(viewableItems[0].index);
-              }
-            }}
-            viewabilityConfig={{
-              itemVisiblePercentThreshold: 50,
-            }}
-          />
-
-          {/* 여러 개 선택 시 인디케이터 */}
-          {selectedAssets.length > 1 && (
-            <View style={styles.previewIndicator}>
-              {selectedAssets.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.indicatorDot,
-                    index === currentPreviewIndex && styles.indicatorDotActive,
-                  ]}
-                />
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* 갤러리 그리드 */}
+      {/* 갤러리 그리드 (미리보기 포함 - 스크롤 시 같이 올라감) */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary[500]} />
@@ -409,14 +409,68 @@ export default function UploadMainScreen({ navigation }: Props) {
               colors={[theme.colors.primary[500]]}
             />
           }
+          onEndReached={loadMoreAssets}
+          onEndReachedThreshold={0.5}
           ListHeaderComponent={
-            // 카메라 버튼을 첫 번째 아이템으로
-            <TouchableOpacity style={styles.gridItem} onPress={handleCameraCapture}>
-              <View style={styles.cameraButton}>
-                <Ionicons name="camera" size={32} color={theme.colors.text.secondary} />
-                <Text style={styles.cameraButtonText}>{t('upload:main.camera')}</Text>
+            <>
+              {/* 선택된 미디어 큰 미리보기 - 스와이프 가능 */}
+              {selectedAssets.length > 0 && (
+                <View style={styles.previewContainer}>
+                  <FlatList
+                    data={selectedAssets}
+                    renderItem={({ item }) => (
+                      <Image
+                        source={{ uri: item.uri }}
+                        style={styles.previewImage}
+                        resizeMode="cover"
+                      />
+                    )}
+                    keyExtractor={(item) => `preview-${item.id}`}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onViewableItemsChanged={({ viewableItems }) => {
+                      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+                        setCurrentPreviewIndex(viewableItems[0].index);
+                      }
+                    }}
+                    viewabilityConfig={{
+                      itemVisiblePercentThreshold: 50,
+                    }}
+                  />
+
+                  {/* 여러 개 선택 시 인디케이터 */}
+                  {selectedAssets.length > 1 && (
+                    <View style={styles.previewIndicator}>
+                      {selectedAssets.map((_, index) => (
+                        <View
+                          key={index}
+                          style={[
+                            styles.indicatorDot,
+                            index === currentPreviewIndex && styles.indicatorDotActive,
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* 카메라 버튼 */}
+              <TouchableOpacity style={styles.gridItem} onPress={handleCameraCapture}>
+                <View style={styles.cameraButton}>
+                  <Ionicons name="camera" size={32} color={theme.colors.text.secondary} />
+                  <Text style={styles.cameraButtonText}>{t('upload:main.camera')}</Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          }
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator size="small" color={theme.colors.primary[500]} />
               </View>
-            </TouchableOpacity>
+            ) : null
           }
         />
       )}
@@ -583,5 +637,10 @@ const styles = StyleSheet.create({
     color: theme.colors.text.inverse,
     fontSize: 12,
     fontWeight: theme.typography.fontWeight.bold,
+  },
+  loadingMore: {
+    paddingVertical: theme.spacing[4],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
