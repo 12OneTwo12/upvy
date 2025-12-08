@@ -34,7 +34,11 @@
       "expo-dev-client"
     ],
     "extra": {
-      "apiUrl": "http://localhost:8080"
-    }
+      "apiUrl": "http://localhost:8080",
+      "eas": {
+        "projectId": "4eeab4c9-332d-496a-a23d-f63e4726f221"
+      }
+    },
+    "owner": "grow-snap"
   }
 }
