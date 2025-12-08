@@ -9,7 +9,6 @@ import reactor.core.scheduler.Schedulers
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
-import software.amazon.awssdk.services.s3.model.ObjectCannedACL
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import java.util.UUID
 
@@ -156,7 +155,6 @@ class ImageUploadServiceImpl(
             .key(key)
             .contentType(contentType)
             .contentLength(data.size.toLong())
-            .acl(ObjectCannedACL.PUBLIC_READ)
             .build()
 
         s3Client.putObject(putRequest, RequestBody.fromBytes(data))
