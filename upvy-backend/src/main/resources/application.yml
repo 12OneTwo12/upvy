@@ -4,7 +4,7 @@ spring:
 
   # R2DBC Configuration for Reactive Database Access
   r2dbc:
-    url: r2dbc:mysql://localhost:3306/upvy?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: r2dbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:upvy}?useSSL=false&characterEncoding=UTF-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
     pool:

@@ -15,7 +15,7 @@ spec:
         app: upvy-backend-prod
     spec:
       imagePullSecrets:
-        - name: bootalk-gcp-docker-secret
+        - name: dockerhub-secret
       nodeSelector:
         node-pool: default
       serviceAccountName: otel-collector
@@ -36,6 +36,9 @@ spec:
       containers:
         - name: upvy-backend-prod
           image: image-example:tag-example
+          envFrom:
+            - secretRef:
+                name: upvy-backend-secrets
           env:
             - name: SPRING_APPLICATION_JSON
               value: '{ "server.port": 8080, "spring.profiles.active": "prod" }'
