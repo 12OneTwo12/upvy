@@ -974,14 +974,16 @@ const useStyles = createStyleSheet({
     paddingTop: theme.spacing[3],
   },
 
-  // 사용자 결과 (Instagram 스타일 - 컴팩트)
+  // 사용자 결과 (Instagram 스타일)
   userResultItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[2.5],
+    paddingVertical: theme.spacing[3],
     gap: theme.spacing[3],
     backgroundColor: theme.colors.background.primary,
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.border.light,
   },
 
   userAvatar: {
