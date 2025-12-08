@@ -1,0 +1,186 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+data:
+  config.yaml: |
+    receivers:
+      # OTLP receiver for traces, metrics, and logs from Java agents
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    
+    processors:
+      # Batch processor for performance optimization
+      batch:
+        timeout: 1s
+        send_batch_size: 1024
+        send_batch_max_size: 2048
+
+      # Memory limiter to prevent OOM
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+
+      # Transform logs to set indexed labels
+      transform/logs:
+        error_mode: ignore
+        log_statements:
+          - context: log
+            statements:
+              # Forward log level to resource attributes for Loki indexing
+              - set(resource.attributes["severity.text"], severity_text)
+              - set(resource.attributes["severity.number"], severity_number)
+
+      # K8s attributes extraction
+      k8sattributes:
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.deployment.name
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.node.name
+            - k8s.container.name
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.ip
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.uid
+          - sources:
+              - from: connection
+      attributes:
+        actions:
+          # Add trace context to logs for correlation
+          - key: "trace_id"
+            from_context: "trace_id"
+            action: "insert"
+          - key: "span_id"
+            from_context: "span_id"
+            action: "insert"
+          # Add severity_text as indexed label for Loki
+          - key: "severity_text"
+            from_attribute: "severity_text"
+            action: "upsert"
+      resource:
+        attributes:
+          # Ensure service.name is preserved from OTEL agent
+          - key: service.name
+            from_attribute: service.name
+            action: upsert
+          - key: service.namespace
+            value: "default"
+            action: upsert
+          # Common labels for correlation across metrics, traces, and logs
+          - key: environment
+            value: "prod"
+            action: upsert
+          - key: deployment.environment
+            value: "prod"
+            action: upsert
+          - key: deployment.environment.name
+            value: "prod"
+            action: upsert
+          - key: namespace
+            value: "default"
+            action: upsert
+          - key: service.instance.id
+            from_attribute: service.instance.id
+            action: upsert
+          - key: pod
+            from_attribute: host.name
+            action: upsert
+          - key: container
+            value: "app"
+            action: upsert
+          - key: k8s.namespace.name
+            value: "default"
+            action: upsert
+          - key: k8s.pod.name
+            from_attribute: host.name
+            action: upsert
+    
+    exporters:
+      otlp/tempo:
+        endpoint: "http://tempo-prod-svc.monitoring.svc.cluster.local:4317"
+        tls:
+          insecure: true
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
+      prometheusremotewrite:
+        endpoint: "http://prometheus-prod-svc.monitoring.svc.cluster.local:9090/prometheus/api/v1/write"
+        tls:
+          insecure: true
+        resource_to_telemetry_conversion:
+          enabled: true
+        target_info:
+          enabled: true
+        add_metric_suffixes: true
+        send_metadata: true
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
+      otlphttp/loki:
+        endpoint: "http://loki-prod-svc.monitoring.svc.cluster.local:3100/otlp"
+        headers:
+          "X-Scope-OrgID": "default"
+        tls:
+          insecure: true
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
+      # Debug exporter for troubleshooting
+      debug:
+        verbosity: detailed
+        sampling_initial: 5
+        sampling_thereafter: 200
+
+    extensions:
+      # Health check extension
+      health_check:
+        endpoint: 0.0.0.0:13133
+      # Performance profiling extension
+      pprof:
+        endpoint: 0.0.0.0:1777
+      # zPages extension for debugging
+      zpages:
+        endpoint: 0.0.0.0:55679
+
+    service:
+      extensions: [health_check, pprof, zpages]
+
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, k8sattributes, batch]
+          exporters: [otlp/tempo, debug]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, k8sattributes, batch]
+          exporters: [prometheusremotewrite, debug]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, k8sattributes, attributes, transform/logs, batch]
+          exporters: [otlphttp/loki, debug]
+
+      telemetry:
+        logs:
+          level: info
+          initial_fields:
+            service: "otel-collector"
+        metrics:
+          level: detailed
+          address: 0.0.0.0:8888
