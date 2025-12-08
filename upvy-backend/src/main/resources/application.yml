@@ -83,14 +83,6 @@ jwt:
   access-token-expiration: 3600000  # 1시간 (밀리초)
   refresh-token-expiration: 1209600000  # 14일 (밀리초)
 
-# Logging
-logging:
-  level:
-    root: INFO
-    me.onetwo.upvy: DEBUG
-    org.springframework.security: DEBUG
-    org.jooq: DEBUG
-
 # Manticore Search Configuration
 manticore:
   search:
