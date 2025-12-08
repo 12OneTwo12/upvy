@@ -115,3 +115,7 @@ upvy-backend/src/main/generated/
 
 ### REST Docs Generated HTML ###
 upvy-backend/src/main/resources/static/docs/
+
+### Kubernetes Secrets (실제 값이 채워진 파일) ###
+manifest-ops/**/secret/**/*.yaml
+!manifest-ops/**/secret/**/*.yaml.template
