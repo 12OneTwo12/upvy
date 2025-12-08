@@ -72,8 +72,8 @@ class AnalyzeProcessor(
             // 4. 세그먼트를 JSON 문자열로 변환
             val segmentsJson = objectMapper.writeValueAsString(segments)
 
-            // 5. 출처 표기 추가 (CC 라이선스 원본 정보)
-            val sourceAttribution = buildSourceAttribution(job)
+            // 5. 출처 표기 추가 (CC 라이선스 원본 정보) - 콘텐츠 언어에 맞게
+            val sourceAttribution = buildSourceAttribution(job, contentLanguage)
             val descriptionWithSource = if (sourceAttribution != null) {
                 "${metadata.description}\n\n$sourceAttribution"
             } else {
@@ -154,27 +154,64 @@ class AnalyzeProcessor(
     /**
      * 출처 표기 문자열 생성
      *
-     * CC 라이선스 원본 YouTube 영상의 정보를 포함합니다.
+     * CC 라이선스 원본 YouTube 영상의 정보를 콘텐츠 언어에 맞게 포함합니다.
      */
-    private fun buildSourceAttribution(job: AiContentJob): String? {
+    private fun buildSourceAttribution(job: AiContentJob, language: ContentLanguage): String? {
         if (job.youtubeVideoId.isBlank()) {
             return null
         }
 
         val videoUrl = "https://www.youtube.com/watch?v=${job.youtubeVideoId}"
-        val channelInfo = job.youtubeChannelId?.let { "채널: $it" } ?: ""
         val titleInfo = job.youtubeTitle?.let { "\"$it\"" } ?: ""
+
+        // 언어별 출처 문자열
+        val (sourceLabel, ccDescription, originalTitleLabel, originalLinkLabel, channelLabel) = when (language) {
+            ContentLanguage.KO -> SourceLabels(
+                sourceLabel = "📌 출처",
+                ccDescription = "이 콘텐츠는 Creative Commons 라이선스로 공개된 YouTube 영상을 기반으로 AI에 의해 제작되었습니다.",
+                originalTitleLabel = "원본 제목",
+                originalLinkLabel = "원본 링크",
+                channelLabel = "채널"
+            )
+            ContentLanguage.EN -> SourceLabels(
+                sourceLabel = "📌 Source",
+                ccDescription = "This content was created by AI based on a YouTube video published under a Creative Commons license.",
+                originalTitleLabel = "Original Title",
+                originalLinkLabel = "Original Link",
+                channelLabel = "Channel"
+            )
+            ContentLanguage.JA -> SourceLabels(
+                sourceLabel = "📌 出典",
+                ccDescription = "このコンテンツはCreative Commonsライセンスで公開されたYouTube動画を基にAIによって制作されました。",
+                originalTitleLabel = "元のタイトル",
+                originalLinkLabel = "元のリンク",
+                channelLabel = "チャンネル"
+            )
+        }
+
+        val channelInfo = job.youtubeChannelId?.let { "$channelLabel: $it" } ?: ""
 
         return buildString {
             append("---\n")
-            append("📌 출처: 이 콘텐츠는 Creative Commons 라이선스로 공개된 YouTube 영상을 기반으로 제작되었습니다.\n")
+            append("$sourceLabel: $ccDescription\n")
             if (titleInfo.isNotBlank()) {
-                append("원본 제목: $titleInfo\n")
+                append("$originalTitleLabel: $titleInfo\n")
             }
-            append("원본 링크: $videoUrl\n")
+            append("$originalLinkLabel: $videoUrl\n")
             if (channelInfo.isNotBlank()) {
                 append(channelInfo)
             }
         }.trim()
     }
+
+    /**
+     * 출처 표기용 라벨 데이터 클래스
+     */
+    private data class SourceLabels(
+        val sourceLabel: String,
+        val ccDescription: String,
+        val originalTitleLabel: String,
+        val originalLinkLabel: String,
+        val channelLabel: String
+    )
 }
