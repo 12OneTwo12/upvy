@@ -24,6 +24,8 @@ export type RootStackParamList = {
  */
 export type AuthStackParamList = {
   Login: undefined;
+  TermsOfService: undefined;
+  PrivacyPolicy: undefined;
 };
 
 /**

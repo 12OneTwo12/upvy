@@ -6,8 +6,11 @@ import {
   ScrollView,
   Dimensions,
   Image,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation, Trans } from 'react-i18next';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAuthStore } from '@/stores/authStore';
@@ -16,6 +19,9 @@ import { theme } from '@/theme';
 import { showErrorAlert, logError } from '@/utils/errorHandler';
 import { responsive, isSmallDevice } from '@/utils/responsive';
 import { createStyleSheet } from '@/utils/styles';
+import type { AuthStackParamList } from '@/types/navigation.types';
+
+type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +33,7 @@ export default function LoginScreen() {
   const { t } = useTranslation('auth');
   const styles = useStyles();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavigationProp>();
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
   // const { checkAuth } = useAuthStore(); // MVP: Auto-login disabled
 
@@ -107,8 +114,18 @@ export default function LoginScreen() {
               i18nKey="login.termsAgree"
               t={t}
               components={{
-                terms: <Text style={styles.termsLink} />,
-                policy: <Text style={styles.termsLink} />,
+                terms: (
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('TermsOfService')}
+                  />
+                ),
+                policy: (
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('PrivacyPolicy')}
+                  />
+                ),
               }}
             />
           </Text>
@@ -251,7 +268,8 @@ const useStyles = createStyleSheet({
   },
 
   termsLink: {
-    color: theme.colors.text.secondary,
+    color: theme.colors.primary[500],
     fontWeight: theme.typography.fontWeight.medium,
+    textDecorationLine: 'underline',
   },
 });
