@@ -28,6 +28,9 @@ data class AiContentJob(
     @Column(name = "youtube_channel_id", length = 50)
     val youtubeChannelId: String? = null,
 
+    @Column(name = "youtube_channel_title", length = 200)
+    val youtubeChannelTitle: String? = null,
+
     @Column(name = "youtube_title", length = 500)
     val youtubeTitle: String? = null,
 

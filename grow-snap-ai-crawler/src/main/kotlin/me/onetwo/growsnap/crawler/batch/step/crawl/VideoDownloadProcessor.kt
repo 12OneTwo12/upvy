@@ -61,6 +61,7 @@ class VideoDownloadProcessor(
             val job = AiContentJob(
                 youtubeVideoId = candidate.videoId,
                 youtubeChannelId = candidate.channelId,
+                youtubeChannelTitle = candidate.channelTitle,
                 youtubeTitle = candidate.title,
                 status = JobStatus.CRAWLED,
                 rawVideoS3Key = s3Key,

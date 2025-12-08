@@ -189,7 +189,9 @@ class AnalyzeProcessor(
             )
         }
 
-        val channelInfo = job.youtubeChannelId?.let { "$channelLabel: $it" } ?: ""
+        // 채널명이 있으면 채널명 사용, 없으면 채널 ID 사용
+        val channelName = job.youtubeChannelTitle ?: job.youtubeChannelId
+        val channelInfo = channelName?.let { "$channelLabel: $it" } ?: ""
 
         return buildString {
             append("---\n")
