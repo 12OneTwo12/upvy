@@ -2,7 +2,6 @@ package me.onetwo.upvy.domain.user.controller
 
 import jakarta.validation.Valid
 import me.onetwo.upvy.domain.content.dto.ContentPageResponse
-import me.onetwo.upvy.domain.content.dto.ContentResponse
 import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.domain.user.dto.ImageUploadResponse
 import me.onetwo.upvy.domain.user.dto.NicknameCheckResponse

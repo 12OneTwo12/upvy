@@ -8,13 +8,9 @@ import me.onetwo.upvy.domain.user.repository.UserProfileRepository
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_BLOCKS
-import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_INTERACTIONS
-import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_METADATA
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENTS
 import me.onetwo.upvy.jooq.generated.tables.references.FOLLOWS
 import me.onetwo.upvy.jooq.generated.tables.references.USER_BLOCKS
-import me.onetwo.upvy.jooq.generated.tables.references.USER_PROFILES
-import me.onetwo.upvy.jooq.generated.tables.references.USERS
 import me.onetwo.upvy.util.createContent
 import me.onetwo.upvy.util.createUserWithProfile
 import org.junit.jupiter.api.BeforeEach

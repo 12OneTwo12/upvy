@@ -9,7 +9,6 @@ import io.mockk.verify
 import me.onetwo.upvy.domain.content.dto.ContentCreateRequest
 import me.onetwo.upvy.domain.content.dto.ContentUpdateRequest
 import me.onetwo.upvy.domain.content.dto.ContentUploadUrlRequest
-import me.onetwo.upvy.domain.content.event.ContentCreatedEvent
 import me.onetwo.upvy.domain.content.exception.FileNotUploadedException
 import me.onetwo.upvy.domain.content.exception.UploadSessionNotFoundException
 import me.onetwo.upvy.domain.content.exception.UploadSessionUnauthorizedException

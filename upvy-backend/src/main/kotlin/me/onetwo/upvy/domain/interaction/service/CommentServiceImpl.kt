@@ -2,7 +2,6 @@ package me.onetwo.upvy.domain.interaction.service
 
 import me.onetwo.upvy.domain.analytics.dto.InteractionType
 import me.onetwo.upvy.domain.analytics.event.UserInteractionEvent
-import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
 import me.onetwo.upvy.domain.interaction.dto.CommentListResponse
 import me.onetwo.upvy.domain.interaction.dto.CommentRequest

@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Size
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
-import me.onetwo.upvy.domain.content.model.DifficultyLevel
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import java.time.Instant

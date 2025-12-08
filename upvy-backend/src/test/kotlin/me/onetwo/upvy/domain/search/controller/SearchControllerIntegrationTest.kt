@@ -4,8 +4,6 @@ import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import me.onetwo.upvy.domain.content.model.Category
-import me.onetwo.upvy.domain.user.model.OAuthProvider
-import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.repository.UserProfileRepository
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.infrastructure.manticore.ManticoreSearchClient

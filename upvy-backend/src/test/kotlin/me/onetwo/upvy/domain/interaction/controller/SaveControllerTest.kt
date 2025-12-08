@@ -6,7 +6,6 @@ import io.mockk.verify
 import me.onetwo.upvy.config.TestSecurityConfig
 import me.onetwo.upvy.domain.interaction.dto.SaveResponse
 import me.onetwo.upvy.domain.interaction.dto.SaveStatusResponse
-import me.onetwo.upvy.domain.interaction.dto.SavedContentResponse
 import me.onetwo.upvy.domain.interaction.service.SaveService
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.util.mockUser

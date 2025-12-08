@@ -4,7 +4,6 @@ import me.onetwo.upvy.domain.analytics.dto.InteractionType
 import me.onetwo.upvy.domain.analytics.event.UserInteractionEvent
 import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
-import me.onetwo.upvy.domain.content.dto.ContentResponse
 import me.onetwo.upvy.domain.content.repository.ContentMetadataRepository
 import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.domain.interaction.dto.SaveResponse

@@ -6,7 +6,6 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
 import io.mockk.verify
-import me.onetwo.upvy.domain.analytics.dto.InteractionType
 import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher

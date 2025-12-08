@@ -5,7 +5,6 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
 import me.onetwo.upvy.domain.content.model.Category
-import me.onetwo.upvy.domain.content.model.DifficultyLevel
 import me.onetwo.upvy.domain.feed.repository.FeedRepository
 import me.onetwo.upvy.domain.search.dto.AutocompleteRequest
 import me.onetwo.upvy.domain.search.dto.AutocompleteSuggestion

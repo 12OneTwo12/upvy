@@ -1,7 +1,6 @@
 package me.onetwo.upvy.infrastructure.security.oauth2
 
 import me.onetwo.upvy.domain.user.model.OAuthProvider
-import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.service.UserService
 import org.slf4j.LoggerFactory
 import org.springframework.security.oauth2.client.userinfo.DefaultReactiveOAuth2UserService

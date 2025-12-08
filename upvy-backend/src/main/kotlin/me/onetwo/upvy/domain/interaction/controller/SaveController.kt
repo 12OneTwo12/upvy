@@ -3,7 +3,6 @@ package me.onetwo.upvy.domain.interaction.controller
 import me.onetwo.upvy.domain.interaction.dto.SaveResponse
 import me.onetwo.upvy.domain.interaction.dto.SaveStatusResponse
 import me.onetwo.upvy.domain.interaction.dto.SavedContentPageResponse
-import me.onetwo.upvy.domain.interaction.dto.SavedContentResponse
 import me.onetwo.upvy.domain.interaction.service.SaveService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageRequest

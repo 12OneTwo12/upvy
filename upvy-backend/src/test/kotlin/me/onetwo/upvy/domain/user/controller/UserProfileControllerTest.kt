@@ -13,7 +13,6 @@ import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.upvy.domain.user.dto.UpdateProfileRequest
-import me.onetwo.upvy.domain.user.exception.DuplicateNicknameException
 import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.service.UserProfileService

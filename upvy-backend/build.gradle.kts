@@ -157,7 +157,7 @@ extensions.configure<JacocoPluginExtension> {
 }
 
 val excludedClasses = listOf(
-    "**/UpvyApplication.class",
+    "**/UpvyBackendApplication.class",
     "**/filter/**",
     "**/dto/**",
     "**/exception/**",
