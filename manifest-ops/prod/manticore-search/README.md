@@ -11,13 +11,13 @@ upvy 플랫폼의 콘텐츠/사용자 검색을 위한 Manticore Search Kubernet
 
 ## 인덱스 구성
 
-### content_search
+### content_index
 콘텐츠(비디오/사진) 검색 인덱스
 - **검색 대상 필드**: title, description
 - **필터 필드**: category, language, content_type, status
 - **정렬 필드**: created_at_unix
 
-### user_search
+### user_index
 사용자 검색 인덱스
 - **검색 대상 필드**: nickname, bio
 - **필터 필드**: follower_count, following_count
@@ -118,8 +118,8 @@ kubectl get svc upvy-manticore-search-prod-svc
 이 프로젝트는 cron을 사용하여 매시간 다음 명령을 자동으로 실행합니다:
 
 ```bash
-indexer content_search --config /etc/manticoresearch/manticore.conf --rotate
-indexer user_search --config /etc/manticoresearch/manticore.conf --rotate
+indexer content_index --config /etc/manticoresearch/manticore.conf --rotate
+indexer user_index --config /etc/manticoresearch/manticore.conf --rotate
 mysql -h 127.0.0.1 -P9306 -e "RELOAD INDEXES;"
 ```
 
@@ -179,8 +179,8 @@ kubectl exec -it deployment/upvy-manticore-search-prod -- bash
 service cron status
 
 # 수동으로 인덱싱 명령 실행
-indexer content_search --config /etc/manticoresearch/manticore.conf --rotate
-indexer user_search --config /etc/manticoresearch/manticore.conf --rotate
+indexer content_index --config /etc/manticoresearch/manticore.conf --rotate
+indexer user_index --config /etc/manticoresearch/manticore.conf --rotate
 mysql -h 127.0.0.1 -P9306 -e "RELOAD INDEXES;"
 ```
 
