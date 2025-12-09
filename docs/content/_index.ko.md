@@ -47,7 +47,7 @@ layout: hextra-home
 .mascot-container {
   position: absolute;
   top: 0;
-  right: 2rem;
+  right: 6rem;
   width: 320px;
   display: flex;
   justify-content: center;
