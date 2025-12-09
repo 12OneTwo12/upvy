@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import * as Updates from 'expo-updates';
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
 import { useLanguageStore } from '@/stores/languageStore';
@@ -152,11 +155,15 @@ export default function SettingsScreen() {
   const styles = useStyles();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation('settings');
-  const { logout } = useAuthStore();
+  const { logout} = useAuthStore();
   const { currentLanguage } = useLanguageStore();
 
   // 백엔드 API 준비 후 실제 값으로 대체될 임시 상태
   const [privateAccount, setPrivateAccount] = useState(false);
+
+  // 버전 터치 카운트 (디버그용)
+  const versionTapCount = useRef(0);
+  const versionTapTimer = useRef<NodeJS.Timeout | null>(null);
 
   // 현재 선택된 언어 표시 텍스트 가져오기
   const currentLanguageDisplay = supportedLanguages.find(
@@ -261,6 +268,78 @@ export default function SettingsScreen() {
    */
   const handleLanguageSelector = () => {
     navigation.navigate('LanguageSelector');
+  };
+
+  /**
+   * 버전 정보 터치 핸들러 (5번 터치 시 디버그 정보 표시)
+   */
+  const handleVersionTap = () => {
+    // 타이머 초기화
+    if (versionTapTimer.current) {
+      clearTimeout(versionTapTimer.current);
+    }
+
+    // 터치 카운트 증가
+    versionTapCount.current += 1;
+
+    // 5번 터치 시 디버그 정보 표시
+    if (versionTapCount.current >= 5) {
+      versionTapCount.current = 0;
+      showDebugInfo();
+      return;
+    }
+
+    // 2초 후 카운트 리셋
+    versionTapTimer.current = setTimeout(() => {
+      versionTapCount.current = 0;
+    }, 2000);
+  };
+
+  /**
+   * 디버그 정보 표시 (EAS Update 정보 포함)
+   */
+  const showDebugInfo = async () => {
+    try {
+      const otaVersion = Constants.expoConfig?.extra?.otaVersion || 'N/A';
+
+      const updateInfo = Updates.updateId
+        ? `Update ID: ${Updates.updateId}\nChannel: ${Updates.channel || 'N/A'}\nRuntime Version: ${Updates.runtimeVersion || 'N/A'}`
+        : 'No OTA updates applied (running embedded bundle)';
+
+      const debugMessage = `
+App Version: ${Application.nativeApplicationVersion || '1.0.0'}
+Build Number: ${Application.nativeBuildVersion || '1'}
+OTA Version: ${otaVersion}
+
+EAS Update Info:
+${updateInfo}
+
+Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
+      `.trim();
+
+      Alert.alert('Debug Info', debugMessage, [
+        { text: 'Close', style: 'cancel' },
+        {
+          text: 'Check for Updates',
+          onPress: async () => {
+            try {
+              const update = await Updates.checkForUpdateAsync();
+              if (update.isAvailable) {
+                Alert.alert('Update Available', 'A new update is available. Fetching...');
+                await Updates.fetchUpdateAsync();
+                Alert.alert('Update Ready', 'Restart the app to apply the update.');
+              } else {
+                Alert.alert('No Updates', 'You are running the latest version.');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to check for updates');
+            }
+          },
+        },
+      ]);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to fetch debug info');
+    }
   };
 
   return (
@@ -493,7 +572,7 @@ export default function SettingsScreen() {
             />
           </TouchableOpacity>
 
-          <View style={styles.settingRow}>
+          <TouchableOpacity style={styles.settingRow} onPress={handleVersionTap} activeOpacity={0.6}>
             <View style={styles.settingLeft}>
               <Ionicons
                 name="information-circle-outline"
@@ -503,10 +582,12 @@ export default function SettingsScreen() {
               />
               <View style={styles.settingContent}>
                 <Text style={styles.settingLabel}>{t('general.version')}</Text>
-                <Text style={styles.settingSubtitle}>v1.0.0</Text>
+                <Text style={styles.settingSubtitle}>
+                  {Constants.expoConfig?.extra?.otaVersion || Application.nativeApplicationVersion || '1.0.0'}
+                </Text>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.divider} />
