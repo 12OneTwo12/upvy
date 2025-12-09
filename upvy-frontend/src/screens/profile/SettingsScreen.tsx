@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import * as Updates from 'expo-updates';
 import * as Application from 'expo-application';
+import Constants from 'expo-constants';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
 import { useLanguageStore } from '@/stores/languageStore';
@@ -299,6 +300,8 @@ export default function SettingsScreen() {
    */
   const showDebugInfo = async () => {
     try {
+      const otaVersion = Constants.expoConfig?.extra?.otaVersion || 'N/A';
+
       const updateInfo = Updates.updateId
         ? `Update ID: ${Updates.updateId}\nChannel: ${Updates.channel || 'N/A'}\nRuntime Version: ${Updates.runtimeVersion || 'N/A'}`
         : 'No OTA updates applied (running embedded bundle)';
@@ -306,6 +309,7 @@ export default function SettingsScreen() {
       const debugMessage = `
 App Version: ${Application.nativeApplicationVersion || '1.0.0'}
 Build Number: ${Application.nativeBuildVersion || '1'}
+OTA Version: ${otaVersion}
 
 EAS Update Info:
 ${updateInfo}
@@ -579,7 +583,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <View style={styles.settingContent}>
                 <Text style={styles.settingLabel}>{t('general.version')}</Text>
                 <Text style={styles.settingSubtitle}>
-                  {Application.nativeApplicationVersion || '1.0.0'}
+                  {Constants.expoConfig?.extra?.otaVersion || Application.nativeApplicationVersion || '1.0.0'}
                 </Text>
               </View>
             </View>
