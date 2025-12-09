@@ -64,7 +64,18 @@ class ManticoreSearchClientImpl(
                 )
             }
             .doOnError { error ->
-                logger.error("Manticore search failed: index={}", request.index, error)
+                val errorMessage = if (error is org.springframework.web.reactive.function.client.WebClientResponseException) {
+                    "status=${error.statusCode}, body=${error.responseBodyAsString}"
+                } else {
+                    error.message ?: "Unknown error"
+                }
+                logger.error(
+                    "Manticore search failed: index={}, query={}, error={}",
+                    request.index,
+                    request.query,
+                    errorMessage,
+                    error
+                )
             }
             // 에러를 상위 레이어로 전파하여 failover 처리가 작동하도록 함
     }
