@@ -5,8 +5,6 @@ sidebar:
   open: true
 ---
 
-# Privacy Policy
-
 **Last Updated: November 10, 2025**
 
 ---

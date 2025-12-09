@@ -5,8 +5,6 @@ sidebar:
   open: true
 ---
 
-# Terms of Service
-
 **Last Updated: November 10, 2025**
 
 ---

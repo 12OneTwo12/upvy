@@ -23,17 +23,19 @@ layout: hextra-home
 {{< /hextra/hero-subtitle >}}
 </div>
 
-<div class="hx:mb-6">
-{{< hextra/hero-button text="Download on App Store" link="https://apps.apple.com/app/upvy" >}}
-{{< hextra/hero-button text="Get it on Google Play" link="https://play.google.com/store/apps/details?id=com.upvy" >}}
-</div>
-
-<div class="hx:mt-6">
-<p class="hx:text-sm hx:text-gray-500">iOS 14.0+ | Android 8.0+</p>
-</div>
-
-<div style="margin-top: 3rem; margin-bottom: 3rem; text-align: center;">
-<img src="/images/mascot.png" alt="Upvy Mascot" style="max-width: 300px; margin: 0 auto; border-radius: 20px;" />
+<div class="hx:grid hx:grid-cols-1 md:hx:grid-cols-2 hx:gap-8 hx:items-center hx:mb-12">
+  <div>
+    <div class="hx:mb-6 hx:flex hx:flex-col hx:gap-3">
+      {{< hextra/hero-button text="Download on App Store" link="https://apps.apple.com/app/upvy" >}}
+      {{< hextra/hero-button text="Get it on Google Play" link="https://play.google.com/store/apps/details?id=com.upvy" >}}
+    </div>
+    <div class="hx:mt-4">
+      <p class="hx:text-sm hx:text-gray-500">iOS 14.0+ | Android 8.0+</p>
+    </div>
+  </div>
+  <div class="hx:flex hx:justify-center">
+    <img src="/images/mascot.png" alt="Upvy Mascot" style="max-width: 280px; border-radius: 20px;" />
+  </div>
 </div>
 
 <div class="hx:mt-16 hx:mb-6">
@@ -77,51 +79,28 @@ layout: hextra-home
 <h2 class="hx:text-2xl hx:font-bold">Why Upvy?</h2>
 </div>
 
-<div class="hx:grid hx:grid-cols-1 md:hx:grid-cols-2 hx:gap-6">
-
-<div class="hx:p-6 hx:rounded-lg hx:border hx:border-gray-200 dark:hx:border-gray-800">
-<h3 class="hx:text-xl hx:font-semibold hx:mb-3">Guilt-Free Scrolling</h3>
-<p class="hx:text-gray-600 dark:hx:text-gray-400">
-Enjoy scrolling while gaining something valuable. As fun as TikTok, but you'll find yourself learning something new before you know it.
-</p>
-</div>
-
-<div class="hx:p-6 hx:rounded-lg hx:border hx:border-gray-200 dark:hx:border-gray-800">
-<h3 class="hx:text-xl hx:font-semibold hx:mb-3">Natural Growth</h3>
-<p class="hx:text-gray-600 dark:hx:text-gray-400">
-Learn naturally without feeling like you're studying. Interesting insights, not rigid education.
-</p>
-</div>
-
-<div class="hx:p-6 hx:rounded-lg hx:border hx:border-gray-200 dark:hx:border-gray-800">
-<h3 class="hx:text-xl hx:font-semibold hx:mb-3">Learning in Daily Life</h3>
-<p class="hx:text-gray-600 dark:hx:text-gray-400">
-During commutes and breaks, without pressure. Meaningful learning is possible even in short time periods.
-</p>
-</div>
-
-<div class="hx:p-6 hx:rounded-lg hx:border hx:border-gray-200 dark:hx:border-gray-800">
-<h3 class="hx:text-xl hx:font-semibold hx:mb-3">Meaningful Time</h3>
-<p class="hx:text-gray-600 dark:hx:text-gray-400">
-From "wasted time again" to "oh, I didn't know that!". Not investing time, but utilizing it.
-</p>
-</div>
-
-</div>
-
-<div class="hx:mt-16 hx:mb-6">
-<h2 class="hx:text-2xl hx:font-bold">Open Source</h2>
-</div>
-
-<div class="hx:p-6 hx:rounded-lg hx:bg-gray-50 dark:hx:bg-gray-900">
-<p class="hx:mb-4">
-Upvy is an open source project released under the <strong>AGPL-3.0 license</strong>.
-You can freely view, modify, and distribute the source code.
-</p>
-<a href="https://github.com/12OneTwo12/upvy" class="hx:inline-flex hx:items-center hx:text-primary-500 hover:hx:text-primary-600">
-  View on GitHub →
-</a>
-</div>
+{{< hextra/feature-grid >}}
+  {{< hextra/feature-card
+    title="Guilt-Free Scrolling"
+    subtitle="Enjoy scrolling while gaining something valuable. As fun as TikTok, but you'll find yourself learning something new before you know it."
+    icon="heart"
+  >}}
+  {{< hextra/feature-card
+    title="Natural Growth"
+    subtitle="Learn naturally without feeling like you're studying. Interesting insights, not rigid education."
+    icon="academic-cap"
+  >}}
+  {{< hextra/feature-card
+    title="Learning in Daily Life"
+    subtitle="During commutes and breaks, without pressure. Meaningful learning is possible even in short time periods."
+    icon="clock"
+  >}}
+  {{< hextra/feature-card
+    title="Meaningful Time"
+    subtitle="From \"wasted time again\" to \"oh, I didn't know that!\". Not investing time, but utilizing it."
+    icon="fire"
+  >}}
+{{< /hextra/feature-grid >}}
 
 <div class="hx:mt-16 hx:mb-8 hx:text-center">
 <h2 class="hx:text-2xl hx:font-bold hx:mb-6">Get Started Now</h2>
