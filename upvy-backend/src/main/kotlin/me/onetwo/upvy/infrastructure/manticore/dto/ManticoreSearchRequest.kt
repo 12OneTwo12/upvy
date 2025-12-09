@@ -1,5 +1,6 @@
 package me.onetwo.upvy.infrastructure.manticore.dto
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
@@ -34,6 +35,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
  * @property offset 결과 오프셋
  * @property highlight 하이라이팅 설정
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 data class ManticoreSearchRequest(
     @JsonProperty("index")
     val index: String,
