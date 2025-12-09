@@ -50,6 +50,7 @@ class JobController(
     fun triggerJob(
         @RequestParam(required = false) category: String?,
         @RequestParam(required = false, defaultValue = "5") maxVideos: Int,
+        @RequestParam(required = false, defaultValue = "false") skipCrawl: Boolean,
         principal: Principal,
         redirectAttributes: RedirectAttributes
     ): String {
@@ -64,12 +65,14 @@ class JobController(
                 .addString("triggeredAt", Instant.now().toString())
                 .addString("category", category ?: "ALL")
                 .addLong("maxVideos", maxVideos.toLong())
+                .addString("skipCrawl", skipCrawl.toString())
                 .addLong("timestamp", System.currentTimeMillis()) // 유니크 파라미터
                 .toJobParameters()
 
             val execution = jobLauncher.run(aiContentJob, params)
 
-            logger.info("Job 수동 실행 시작: executionId={}, triggeredBy={}", execution.id, principal.name)
+            logger.info("Job 수동 실행 시작: executionId={}, triggeredBy={}, skipCrawl={}",
+                execution.id, principal.name, skipCrawl)
 
             redirectAttributes.addFlashAttribute("successMessage",
                 "Job이 시작되었습니다. (Execution ID: ${execution.id})")
