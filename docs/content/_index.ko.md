@@ -5,38 +5,45 @@ layout: hextra-home
 
 <main class="home-wrapper" style="padding-left: max(4rem, env(safe-area-inset-left)); padding-right: max(4rem, env(safe-area-inset-right));">
 
-{{< hextra/hero-badge >}}
-  <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>Beta 출시 준비중</span>
-{{< /hextra/hero-badge >}}
-
-<div class="hx:mt-8 hx:mb-2">
-{{< hextra/hero-headline >}}
-  스크롤 시간을&nbsp;<br class="hx:sm:block hx:hidden" />성장 시간으로
-{{< /hextra/hero-headline >}}
-</div>
-
-<div class="hx:mb-12">
-{{< hextra/hero-subtitle >}}
-  재미있게 스크롤하며 자연스럽게 배우는 숏폼 학습 플랫폼.<br />
-  부담스러운 학습이 아닌, 자연스러운 성장을 경험하세요.
-{{< /hextra/hero-subtitle >}}
-</div>
-
-<div class="hx:grid hx:grid-cols-1 md:hx:grid-cols-2 hx:gap-8 hx:items-center hx:mb-12">
+<div style="display: grid; grid-template-columns: 1fr 320px; gap: 4rem; align-items: center; margin-bottom: 3rem;">
   <div>
-    <div class="hx:mb-6 hx:flex hx:flex-col hx:gap-3">
+    {{< hextra/hero-badge >}}
+      <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
+      <span>Beta 출시 준비중</span>
+    {{< /hextra/hero-badge >}}
+
+    <div class="hx:mt-8 hx:mb-2">
+    {{< hextra/hero-headline >}}
+      스크롤 시간을&nbsp;<br class="hx:sm:block hx:hidden" />성장 시간으로
+    {{< /hextra/hero-headline >}}
+    </div>
+
+    <div class="hx:mb-8">
+    {{< hextra/hero-subtitle >}}
+      재미있게 스크롤하며 자연스럽게 배우는 숏폼 학습 플랫폼.<br />
+      부담스러운 학습이 아닌, 자연스러운 성장을 경험하세요.
+    {{< /hextra/hero-subtitle >}}
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; max-width: 400px;">
       {{< hextra/hero-button text="App Store에서 다운로드" link="https://apps.apple.com/app/upvy" >}}
       {{< hextra/hero-button text="Google Play에서 다운로드" link="https://play.google.com/store/apps/details?id=com.upvy" >}}
     </div>
-    <div class="hx:mt-4">
-      <p class="hx:text-sm hx:text-gray-500">iOS 14.0+ | Android 8.0+</p>
-    </div>
+    <p class="hx:text-sm hx:text-gray-500">iOS 14.0+ | Android 8.0+</p>
   </div>
-  <div class="hx:flex hx:justify-center">
-    <img src="/images/mascot.png" alt="Upvy Mascot" style="max-width: 280px; border-radius: 20px;" />
+
+  <div style="display: flex; justify-content: center; align-items: center;">
+    <img src="/images/mascot.png" alt="Upvy Mascot" style="width: 100%; max-width: 300px; border-radius: 20px;" />
   </div>
 </div>
+
+<style>
+@media (max-width: 768px) {
+  div[style*="grid-template-columns: 1fr 320px"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
 
 <div class="hx:mt-16 hx:mb-6">
 <h2 class="hx:text-2xl hx:font-bold">핵심 기능</h2>
