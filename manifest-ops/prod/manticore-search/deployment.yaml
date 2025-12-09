@@ -59,7 +59,7 @@ spec:
               mountPath: /etc/manticoresearch
       containers:
         - name: upvy-manticore-search
-          image: upvy/upvy-manticore-search:latest
+          image: upvy/upvy-manticore-search:v1.1.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: mysql
