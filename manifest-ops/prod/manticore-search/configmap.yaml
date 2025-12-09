@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: upvy-manticore-search-config
+  labels:
+    app: upvy-manticore-search
+data:
+  manticore.conf: |
+    searchd {
+        listen = 9306:mysql41
+        listen = 9308:http
+        pid_file = /var/run/manticore/searchd.pid
+        log = /var/log/manticore/searchd.log
+        query_log = /var/log/manticore/query.log
+        binlog_path = /var/lib/manticore
+    }
+
+    # ============================================
+    # Content Search Index
+    # ============================================
+    source content_src
+    {
+        type            = mysql
+        sql_host        = ${MYSQL_HOST}
+        sql_user        = ${DB_USERNAME}
+        sql_pass        = ${DB_PASSWORD}
+        sql_db          = ${MYSQL_DATABASE}
+        sql_port        = ${MYSQL_PORT}
+        sql_query       = \
+            SELECT \
+                cm.id AS id, \
+                c.id AS content_id, \
+                cm.title, \
+                cm.description, \
+                cm.category, \
+                cm.language, \
+                c.creator_id, \
+                c.thumbnail_url, \
+                c.content_type, \
+                c.status, \
+                UNIX_TIMESTAMP(c.created_at) AS created_at_unix \
+            FROM content_metadata cm \
+            INNER JOIN contents c ON cm.content_id = c.id \
+            WHERE c.deleted_at IS NULL \
+              AND cm.deleted_at IS NULL \
+              AND c.status = 'ACTIVE'
+
+        sql_attr_string   = content_id
+        sql_attr_string   = category
+        sql_attr_string   = language
+        sql_attr_string   = creator_id
+        sql_attr_string   = thumbnail_url
+        sql_attr_string   = content_type
+        sql_attr_string   = status
+        sql_attr_timestamp = created_at_unix
+    }
+
+    index content_search {
+        type = plain
+        source          = content_src
+        path            = /var/lib/manticore/content_search
+
+        docinfo         = extern
+        mlock           = 0
+        charset_table   = 0..9, A..Z->a..z, a..z
+        min_word_len    = 1
+        min_infix_len   = 2
+        infix_fields    = title, description
+        ngram_len       = 2
+        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F
+    }
+
+    # ============================================
+    # User Search Index
+    # ============================================
+    source user_src
+    {
+        type            = mysql
+        sql_host        = ${MYSQL_HOST}
+        sql_user        = ${DB_USERNAME}
+        sql_pass        = ${DB_PASSWORD}
+        sql_db          = ${MYSQL_DATABASE}
+        sql_port        = ${MYSQL_PORT}
+        sql_query       = \
+            SELECT \
+                up.id AS id, \
+                u.id AS user_id, \
+                up.nickname, \
+                up.bio, \
+                up.profile_image_url, \
+                up.follower_count, \
+                up.following_count, \
+                UNIX_TIMESTAMP(up.created_at) AS created_at_unix \
+            FROM user_profiles up \
+            INNER JOIN users u ON up.user_id = u.id \
+            WHERE u.deleted_at IS NULL \
+              AND up.deleted_at IS NULL \
+              AND u.status = 'ACTIVE'
+
+        sql_attr_string   = user_id
+        sql_attr_string   = profile_image_url
+        sql_attr_uint     = follower_count
+        sql_attr_uint     = following_count
+        sql_attr_timestamp = created_at_unix
+    }
+
+    index user_search {
+        type = plain
+        source          = user_src
+        path            = /var/lib/manticore/user_search
+
+        docinfo         = extern
+        mlock           = 0
+        charset_table   = 0..9, A..Z->a..z, a..z
+        min_word_len    = 1
+        min_infix_len   = 2
+        infix_fields    = nickname, bio
+        ngram_len       = 2
+        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F
+    }

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: upvy-manticore-search-prod-svc
+  labels:
+    app: upvy-manticore-search-prod
+spec:
+  selector:
+    app: upvy-manticore-search-prod
+  ports:
+    - name: mysql
+      port: 9306
+      targetPort: 9306
+      protocol: TCP
+    - name: http
+      port: 9308
+      targetPort: 9308
+      protocol: TCP
+  type: ClusterIP
