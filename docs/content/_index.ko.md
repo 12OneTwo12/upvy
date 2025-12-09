@@ -3,7 +3,10 @@ title: Upvy
 layout: hextra-home
 ---
 
-<main class="home-wrapper hero-with-mascot">
+<main class="home-wrapper">
+
+<div class="hero-grid">
+<div class="hero-content">
 
 {{< hextra/hero-badge >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
@@ -32,8 +35,11 @@ layout: hextra-home
 <p class="hx:text-sm hx:text-gray-500">iOS 14.0+ | Android 8.0+</p>
 </div>
 
-<div class="mascot-container">
+</div>
+
+<div class="hero-mascot">
   <img src="/images/mascot.png" alt="Upvy Mascot" />
+</div>
 </div>
 
 <style>
@@ -41,20 +47,22 @@ layout: hextra-home
   padding-left: max(4rem, env(safe-area-inset-left));
   padding-right: max(4rem, env(safe-area-inset-right));
 }
-.hero-with-mascot {
-  position: relative;
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 4rem;
+  align-items: center;
+  margin-bottom: 3rem;
 }
-.mascot-container {
-  position: absolute;
-  top: 0;
-  right: 6rem;
-  width: 320px;
+.hero-content {
+  max-width: 600px;
+}
+.hero-mascot {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  pointer-events: none;
+  align-items: center;
 }
-.mascot-container img {
+.hero-mascot img {
   width: 100%;
   max-width: 280px;
   border-radius: 20px;
@@ -71,11 +79,9 @@ layout: hextra-home
     padding-left: max(1.5rem, env(safe-area-inset-left));
     padding-right: max(1.5rem, env(safe-area-inset-right));
   }
-  .mascot-container {
-    position: static;
-    width: 100%;
-    margin: 2rem 0;
-    pointer-events: auto;
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
 }
 @media (min-width: 769px) and (max-width: 1024px) {
@@ -83,11 +89,9 @@ layout: hextra-home
     padding-left: max(2.5rem, env(safe-area-inset-left));
     padding-right: max(2.5rem, env(safe-area-inset-right));
   }
-  .mascot-container {
-    position: static;
-    width: 100%;
-    margin: 2rem 0;
-    pointer-events: auto;
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
 }
 </style>
