@@ -89,9 +89,9 @@ manticore:
     base-url: ${MANTICORE_BASE_URL:http://localhost:9308}
     timeout: 5000
     index:
-      content: content_index
-      user: user_index
-      autocomplete: autocomplete_index
+      content: content_search
+      user: user_search
+      autocomplete: autocomplete_search
 
 # Server Configuration
 server:

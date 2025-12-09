@@ -118,3 +118,57 @@ data:
         ngram_len       = 2
         ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F
     }
+
+    # ============================================
+    # Autocomplete Index (User + Content 통합)
+    # ============================================
+    source autocomplete_src
+    {
+        type            = mysql
+        sql_host        = ${MYSQL_HOST}
+        sql_user        = ${DB_USERNAME}
+        sql_pass        = ${DB_PASSWORD}
+        sql_db          = ${MYSQL_DATABASE}
+        sql_port        = ${MYSQL_PORT}
+        sql_query       = \
+            SELECT \
+                (@rownum := @rownum + 1) AS id, \
+                text, \
+                type \
+            FROM ( \
+                SELECT \
+                    up.nickname AS text, \
+                    'USER' AS type \
+                FROM user_profiles up \
+                INNER JOIN users u ON up.user_id = u.id \
+                WHERE u.deleted_at IS NULL \
+                  AND up.deleted_at IS NULL \
+                  AND u.status = 'ACTIVE' \
+                UNION ALL \
+                SELECT \
+                    cm.title AS text, \
+                    'CONTENT' AS type \
+                FROM content_metadata cm \
+                INNER JOIN contents c ON cm.content_id = c.id \
+                WHERE c.deleted_at IS NULL \
+                  AND cm.deleted_at IS NULL \
+                  AND c.status = 'ACTIVE' \
+            ) AS combined, (SELECT @rownum := 0) AS r
+
+        sql_attr_string = type
+    }
+
+    index autocomplete_search {
+        type = plain
+        source          = autocomplete_src
+        path            = /var/lib/manticore/autocomplete_search
+
+        docinfo         = extern
+        mlock           = 0
+        charset_table   = 0..9, A..Z->a..z, a..z
+        min_word_len    = 1
+        min_prefix_len  = 1
+        prefix_fields   = text
+        ngram_len       = 2
+        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F
+    }
