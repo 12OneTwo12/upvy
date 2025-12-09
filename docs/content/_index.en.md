@@ -3,44 +3,71 @@ title: Upvy
 layout: hextra-home
 ---
 
-<main class="home-wrapper" style="padding-left: max(4rem, env(safe-area-inset-left)); padding-right: max(4rem, env(safe-area-inset-right));">
+<main class="home-wrapper hero-with-mascot" style="padding-left: max(4rem, env(safe-area-inset-left)); padding-right: max(4rem, env(safe-area-inset-right));">
 
-<div style="display: grid; grid-template-columns: 1fr 320px; gap: 4rem; align-items: center; margin-bottom: 3rem;">
-  <div>
-    {{< hextra/hero-badge >}}
-      <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-      <span>Beta Coming Soon</span>
-    {{< /hextra/hero-badge >}}
+{{< hextra/hero-badge >}}
+  <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
+  <span>Beta Coming Soon</span>
+{{< /hextra/hero-badge >}}
 
-    <div class="hx:mt-8 hx:mb-2">
-    {{< hextra/hero-headline >}}
-      Turn Scroll Time&nbsp;<br class="hx:sm:block hx:hidden" />into Growth Time
-    {{< /hextra/hero-headline >}}
-    </div>
+<div class="hx:mt-8 hx:mb-2">
+{{< hextra/hero-headline >}}
+  Turn Scroll Time&nbsp;<br class="hx:sm:block hx:hidden" />into Growth Time
+{{< /hextra/hero-headline >}}
+</div>
 
-    <div class="hx:mb-8">
-    {{< hextra/hero-subtitle >}}
-      A short-form learning platform where you grow naturally while scrolling.<br />
-      Experience natural growth, not burdensome learning.
-    {{< /hextra/hero-subtitle >}}
-    </div>
+<div class="hx:mb-8">
+{{< hextra/hero-subtitle >}}
+  A short-form learning platform where you grow naturally while scrolling.<br />
+  Experience natural growth, not burdensome learning.
+{{< /hextra/hero-subtitle >}}
+</div>
 
-    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; max-width: 400px;">
-      {{< hextra/hero-button text="Download on App Store" link="https://apps.apple.com/app/upvy" >}}
-      {{< hextra/hero-button text="Get it on Google Play" link="https://play.google.com/store/apps/details?id=com.upvy" >}}
-    </div>
-    <p class="hx:text-sm hx:text-gray-500">iOS 14.0+ | Android 8.0+</p>
-  </div>
+<div class="button-container">
+{{< hextra/hero-button text="Download on App Store" link="https://apps.apple.com/app/upvy" >}}
+{{< hextra/hero-button text="Get it on Google Play" link="https://play.google.com/store/apps/details?id=com.upvy" >}}
+</div>
 
-  <div style="display: flex; justify-content: center; align-items: center;">
-    <img src="/images/mascot.png" alt="Upvy Mascot" style="width: 100%; max-width: 300px; border-radius: 20px;" />
-  </div>
+<div class="hx:mt-4">
+<p class="hx:text-sm hx:text-gray-500">iOS 14.0+ | Android 8.0+</p>
+</div>
+
+<div class="mascot-container">
+  <img src="/images/mascot.png" alt="Upvy Mascot" />
 </div>
 
 <style>
-@media (max-width: 768px) {
-  div[style*="grid-template-columns: 1fr 320px"] {
-    grid-template-columns: 1fr !important;
+.hero-with-mascot {
+  position: relative;
+}
+.mascot-container {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 320px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.mascot-container img {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 20px;
+}
+.button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 400px;
+  margin-bottom: 1rem;
+}
+@media (max-width: 1024px) {
+  .mascot-container {
+    position: static;
+    width: 100%;
+    margin: 2rem 0;
+    pointer-events: auto;
   }
 }
 </style>
