@@ -38,7 +38,7 @@ data:
                 c.thumbnail_url, \
                 c.content_type, \
                 c.status, \
-                UNIX_TIMESTAMP(c.created_at) AS created_at_unix \
+                UNIX_TIMESTAMP(c.created_at) AS created_at \
             FROM content_metadata cm \
             INNER JOIN contents c ON cm.content_id = c.id \
             WHERE c.deleted_at IS NULL \
@@ -52,7 +52,7 @@ data:
         sql_attr_string   = thumbnail_url
         sql_attr_string   = content_type
         sql_attr_string   = status
-        sql_attr_timestamp = created_at_unix
+        sql_attr_timestamp = created_at
     }
 
     index content_index {
@@ -90,7 +90,7 @@ data:
                 up.profile_image_url, \
                 up.follower_count, \
                 up.following_count, \
-                UNIX_TIMESTAMP(up.created_at) AS created_at_unix \
+                UNIX_TIMESTAMP(up.created_at) AS created_at \
             FROM user_profiles up \
             INNER JOIN users u ON up.user_id = u.id \
             WHERE u.deleted_at IS NULL \
@@ -101,7 +101,7 @@ data:
         sql_attr_string   = profile_image_url
         sql_attr_uint     = follower_count
         sql_attr_uint     = following_count
-        sql_attr_timestamp = created_at_unix
+        sql_attr_timestamp = created_at
     }
 
     index user_index {
