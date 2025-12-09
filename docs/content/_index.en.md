@@ -3,7 +3,7 @@ title: Upvy
 layout: hextra-home
 ---
 
-<main class="home-wrapper hero-with-mascot" style="padding-left: max(4rem, env(safe-area-inset-left)); padding-right: max(4rem, env(safe-area-inset-right));">
+<main class="home-wrapper hero-with-mascot">
 
 {{< hextra/hero-badge >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
@@ -37,6 +37,10 @@ layout: hextra-home
 </div>
 
 <style>
+.home-wrapper {
+  padding-left: max(4rem, env(safe-area-inset-left));
+  padding-right: max(4rem, env(safe-area-inset-right));
+}
 .hero-with-mascot {
   position: relative;
 }
@@ -62,7 +66,23 @@ layout: hextra-home
   max-width: 400px;
   margin-bottom: 1rem;
 }
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
+  .home-wrapper {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+  .mascot-container {
+    position: static;
+    width: 100%;
+    margin: 2rem 0;
+    pointer-events: auto;
+  }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+  .home-wrapper {
+    padding-left: max(2.5rem, env(safe-area-inset-left));
+    padding-right: max(2.5rem, env(safe-area-inset-right));
+  }
   .mascot-container {
     position: static;
     width: 100%;
