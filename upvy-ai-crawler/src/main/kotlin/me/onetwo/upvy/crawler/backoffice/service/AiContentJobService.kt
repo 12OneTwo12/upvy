@@ -42,10 +42,11 @@ class AiContentJobService(
     }
 
     /**
-     * 상태별 Job 목록 조회
+     * 상태별 Job 목록 조회 (페이징)
      */
-    fun findByStatus(status: JobStatus): List<AiContentJob> {
-        return aiContentJobRepository.findByStatus(status)
+    fun findByStatus(status: JobStatus, page: Int, size: Int): Page<AiContentJob> {
+        val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+        return aiContentJobRepository.findByStatus(status, pageable)
     }
 
     /**

@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS ai_content_job (
     llm_model VARCHAR(50),
     stt_provider VARCHAR(20),
 
+    -- 다국어 지원
+    language VARCHAR(5) DEFAULT 'ko',
+
     -- 에러 정보
     error_message TEXT,
 
@@ -63,6 +66,7 @@ CREATE TABLE IF NOT EXISTS ai_content_job (
     INDEX idx_job_status (status),
     INDEX idx_job_youtube_video_id (youtube_video_id),
     INDEX idx_job_created_at (created_at DESC),
+    INDEX idx_job_language (language),
     UNIQUE KEY uk_youtube_video_id (youtube_video_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -96,6 +100,7 @@ CREATE TABLE IF NOT EXISTS pending_contents (
 
     -- 품질 정보
     quality_score INT NOT NULL,
+    language VARCHAR(5) DEFAULT 'ko' NOT NULL,
     review_priority VARCHAR(20) NOT NULL,
 
     -- 승인 상태
@@ -121,6 +126,7 @@ CREATE TABLE IF NOT EXISTS pending_contents (
     INDEX idx_pending_review_priority (review_priority),
     INDEX idx_pending_quality_score (quality_score DESC),
     INDEX idx_pending_created_at (created_at DESC),
+    INDEX idx_pending_language (language),
 
     CONSTRAINT fk_pending_ai_content_job
         FOREIGN KEY (ai_content_job_id) REFERENCES ai_content_job(id)

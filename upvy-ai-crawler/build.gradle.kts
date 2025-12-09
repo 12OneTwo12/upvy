@@ -51,6 +51,7 @@ dependencies {
     // Vertex AI (Google)
     implementation("com.google.cloud:google-cloud-vertexai:1.1.0")
     implementation("com.google.cloud:google-cloud-speech:4.23.0")
+    implementation("com.google.cloud:google-cloud-storage:2.36.0")
 
     // OpenAI (대안)
     implementation("com.aallam.openai:openai-client:3.7.0")

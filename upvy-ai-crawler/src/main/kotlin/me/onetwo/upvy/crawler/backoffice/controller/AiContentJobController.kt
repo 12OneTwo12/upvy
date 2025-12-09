@@ -31,19 +31,22 @@ class AiContentJobController(
         @RequestParam(required = false) status: JobStatus?,
         model: Model
     ): String {
-        val jobs = if (status != null) {
-            aiContentJobService.findByStatus(status)
+        val jobsPage = if (status != null) {
+            aiContentJobService.findByStatus(status, page, size)
         } else {
-            aiContentJobService.findAll(page, size).content
+            aiContentJobService.findAll(page, size)
         }
 
         val statusStats = aiContentJobService.getStatusStats()
 
-        model.addAttribute("jobs", jobs)
+        model.addAttribute("jobs", jobsPage.content)
         model.addAttribute("statusStats", statusStats)
         model.addAttribute("selectedStatus", status)
         model.addAttribute("allStatuses", JobStatus.entries)
         model.addAttribute("currentPage", page)
+        model.addAttribute("totalPages", jobsPage.totalPages)
+        model.addAttribute("totalElements", jobsPage.totalElements)
+        model.addAttribute("size", size)
 
         return "backoffice/ai-jobs/list"
     }

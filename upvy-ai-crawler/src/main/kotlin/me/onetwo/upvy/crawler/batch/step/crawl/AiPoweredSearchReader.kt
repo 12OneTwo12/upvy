@@ -14,6 +14,7 @@ import me.onetwo.upvy.crawler.search.SearchContextCollector
 import org.slf4j.LoggerFactory
 import org.springframework.batch.core.configuration.annotation.StepScope
 import org.springframework.batch.item.ItemReader
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 /**
@@ -29,7 +30,10 @@ class AiPoweredSearchReader(
     private val llmClient: LlmClient,
     private val youTubeClient: YouTubeClient,
     private val searchContextCollector: SearchContextCollector,
-    private val aiContentJobRepository: AiContentJobRepository
+    private val aiContentJobRepository: AiContentJobRepository,
+    @Value("#{jobParameters['category']}") private val category: String?,
+    @Value("#{jobParameters['maxVideos']}") private val maxVideos: Long?,
+    @Value("#{jobParameters['skipCrawl']}") private val skipCrawl: String?
 ) : ItemReader<EvaluatedVideo> {
 
     companion object {
@@ -59,7 +63,18 @@ class AiPoweredSearchReader(
      * 초기화: 검색 컨텍스트 수집 -> 검색 쿼리 생성 -> YouTube 검색 -> LLM 평가
      */
     private fun initialize() {
-        logger.info("AI 기반 검색 시작")
+        val shouldSkip = skipCrawl?.toBoolean() ?: false
+
+        if (shouldSkip) {
+            logger.info("크롤링 스킵: skipCrawl=true")
+            evaluatedVideos = emptyList<EvaluatedVideo>().iterator()
+            return
+        }
+
+        val targetCategory = category?.takeIf { it != "ALL" }
+        val maxVideoLimit = maxVideos?.toInt() ?: 5
+
+        logger.info("AI 기반 검색 시작: category={}, maxVideos={}", targetCategory ?: "ALL", maxVideoLimit)
 
         runBlocking {
             try {
@@ -68,9 +83,16 @@ class AiPoweredSearchReader(
                 logger.debug("검색 컨텍스트 수집 완료: {}", context)
 
                 // 2. LLM으로 검색 쿼리 생성
-                val searchQueries = llmClient.generateSearchQueries(context)
+                var searchQueries = llmClient.generateSearchQueries(context)
                     .sortedByDescending { it.priority }
-                    .take(MAX_QUERIES_PER_RUN)
+
+                // 카테고리 필터링
+                if (targetCategory != null) {
+                    searchQueries = searchQueries.filter { it.targetCategory == targetCategory }
+                    logger.info("카테고리 필터링 적용: category={}, filtered={}", targetCategory, searchQueries.size)
+                }
+
+                searchQueries = searchQueries.take(MAX_QUERIES_PER_RUN)
                 logger.info("검색 쿼리 생성 완료: count={}", searchQueries.size)
 
                 // 3. YouTube 검색 (언어별로 검색)
@@ -134,8 +156,9 @@ class AiPoweredSearchReader(
                     video.recommendation == Recommendation.HIGHLY_RECOMMENDED ||
                     video.recommendation == Recommendation.RECOMMENDED
                 }.sortedByDescending { it.predictedQuality }
+                    .take(maxVideoLimit)  // 최대 비디오 수 제한
 
-                logger.info("추천 비디오 수: {}", recommended.size)
+                logger.info("추천 비디오 수: {} (제한: {})", recommended.size, maxVideoLimit)
                 evaluatedVideos = recommended.iterator()
 
             } catch (e: Exception) {
