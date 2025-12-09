@@ -67,7 +67,7 @@ data:
         min_infix_len   = 1
         infix_fields    = title, description
         ngram_len       = 2
-        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F
+        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F, U+3040..U+309F, U+30A0..U+30FF, U+4E00..U+9FFF
     }
 
     # ============================================
@@ -116,7 +116,7 @@ data:
         min_infix_len   = 1
         infix_fields    = nickname, bio
         ngram_len       = 2
-        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F
+        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F, U+3040..U+309F, U+30A0..U+30FF, U+4E00..U+9FFF
     }
 
     # ============================================
@@ -170,5 +170,5 @@ data:
         min_prefix_len  = 1
         prefix_fields   = text
         ngram_len       = 2
-        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F
+        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F, U+3040..U+309F, U+30A0..U+30FF, U+4E00..U+9FFF
     }
