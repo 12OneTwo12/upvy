@@ -43,13 +43,17 @@ menu:
       name: Terms of Service
       pageRef: /terms
       weight: 3
-    - name: GitHub
+    - identifier: developer
+      name: Developer
+      pageRef: /developer
       weight: 4
+    - name: GitHub
+      weight: 5
       url: "https://github.com/12OneTwo12/upvy"
       params:
         icon: github
     - name: Languages
-      weight: 5
+      weight: 6
       params:
         type: language-switch
 

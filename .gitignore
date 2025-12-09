@@ -119,3 +119,8 @@ upvy-backend/src/main/resources/static/docs/
 ### Kubernetes Secrets (실제 값이 채워진 파일) ###
 manifest-ops/**/secret/**/*.yaml
 !manifest-ops/**/secret/**/*.yaml.template
+
+### Hugo (docs/) ###
+docs/public/
+docs/resources/
+docs/.hugo_build.lock
