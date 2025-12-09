@@ -43,11 +43,11 @@ spec:
             - -c
             - |
               cat /etc/manticoresearch-template/manticore.conf | \
-                sed "s/\${MYSQL_HOST}/$MYSQL_HOST/g" | \
-                sed "s/\${MYSQL_PORT}/$MYSQL_PORT/g" | \
-                sed "s/\${MYSQL_DATABASE}/$MYSQL_DATABASE/g" | \
-                sed "s/\${DB_USERNAME}/$DB_USERNAME/g" | \
-                sed "s/\${DB_PASSWORD}/$DB_PASSWORD/g" > /etc/manticoresearch/manticore.conf
+                sed "s#\${MYSQL_HOST}#$MYSQL_HOST#g" | \
+                sed "s#\${MYSQL_PORT}#$MYSQL_PORT#g" | \
+                sed "s#\${MYSQL_DATABASE}#$MYSQL_DATABASE#g" | \
+                sed "s#\${DB_USERNAME}#$DB_USERNAME#g" | \
+                sed "s#\${DB_PASSWORD}#$DB_PASSWORD#g" > /etc/manticoresearch/manticore.conf
               chown 999:999 /etc/manticoresearch/manticore.conf
           envFrom:
             - secretRef:
