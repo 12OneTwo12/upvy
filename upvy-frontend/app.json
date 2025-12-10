@@ -35,7 +35,15 @@
     "plugins": [
       "expo-web-browser",
       "expo-dev-client",
-      "expo-video"
+      "expo-video",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "upvy"
+        }
+      ]
     ],
     "updates": {
       "url": "https://u.expo.dev/4eeab4c9-332d-496a-a23d-f63e4726f221"

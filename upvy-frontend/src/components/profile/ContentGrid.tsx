@@ -56,7 +56,6 @@ const GridItem: React.FC<GridItemProps> = ({ item, width, onPress }) => {
       if (prevRetryCount < MAX_RETRIES) {
         const newRetryCount = prevRetryCount + 1;
         const delay = Math.min(1000 * 2 ** prevRetryCount, 30000);
-        console.log(`[Retry ${newRetryCount}/${MAX_RETRIES}] Retrying thumbnail load after ${delay}ms...`);
 
         retryTimeoutRef.current = setTimeout(() => {
           setImageKey(key => key + 1);

@@ -110,10 +110,8 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
     // 상태 변경 (로딩 완료 등)
     const statusSubscription = player.addListener('statusChange', ({ status }) => {
-      console.log('📹 Player status:', status);
       if (status === 'readyToPlay') {
         const durationSec = player.duration;
-        console.log('📹 Video loaded - duration:', durationSec.toFixed(2), 'seconds');
         setDuration(durationSec);
         setTrimEnd(Math.min(durationSec, MAX_VIDEO_DURATION));
 
@@ -159,7 +157,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     const startDiff = Math.abs(prevTrimRange.current.start - trimStart);
     const endDiff = Math.abs(prevTrimRange.current.end - trimEnd);
     if (startDiff > 0.5 || endDiff > 0.5) {
-      console.log('🖼️ Trim range changed, regenerating thumbnails:', trimStart, '-', trimEnd);
       prevTrimRange.current = { start: trimStart, end: trimEnd };
       // thumbnailUri 사용 (expo-video-thumbnails는 ph:// URI 미지원)
       if (thumbnailUri) {
@@ -175,13 +172,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     const loadVideoUri = async () => {
       try {
         setIsLoadingVideo(true);
-        console.log('📹 Loading video URI for asset:', asset.id);
-        console.log('📹 Asset URI:', asset.uri);
 
         // asset.uri가 file:// 형식이면 바로 사용 (카메라 촬영 등)
         if (asset.uri && asset.uri.startsWith('file://')) {
           const cleanUri = cleanIOSVideoUri(asset.uri);
-          console.log('📹 Using file:// URI:', cleanUri);
           setVideoUri(cleanUri);
           setThumbnailUri(cleanUri); // 썸네일도 같은 URI 사용
           setIsLoadingVideo(false);
@@ -190,7 +184,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
         // ph:// URI인 경우
         if (asset.uri && asset.uri.startsWith('ph://')) {
-          console.log('📹 Using ph:// URI directly for expo-video:', asset.uri);
           setVideoUri(asset.uri); // expo-video는 ph:// 지원
 
           // 썸네일 생성을 위해 localUri 가져오기
@@ -200,14 +193,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
             });
             if (assetInfo.localUri) {
               const cleanLocalUri = cleanIOSVideoUri(assetInfo.localUri);
-              console.log('📹 Got localUri for thumbnails:', cleanLocalUri);
               setThumbnailUri(cleanLocalUri);
             } else {
-              console.log('⚠️ No localUri available for thumbnails');
               setThumbnailUri(''); // 썸네일 생성 불가
             }
           } catch (e) {
-            console.log('⚠️ Failed to get localUri for thumbnails:', e);
             setThumbnailUri('');
           }
 
@@ -218,7 +208,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         // 기타 경우
         if (asset.uri) {
           const cleanUri = cleanIOSVideoUri(asset.uri);
-          console.log('📹 Using original URI:', cleanUri);
           setVideoUri(cleanUri);
           setThumbnailUri(cleanUri);
           setIsLoadingVideo(false);
@@ -242,7 +231,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   // expo-video-thumbnails는 ph:// URI를 지원하지 않으므로 thumbnailUri(localUri) 사용
   React.useEffect(() => {
     if (thumbnailUri && duration > 0 && thumbnails.length === 0) {
-      console.log('🖼️ Generating initial thumbnails - thumbnailUri:', thumbnailUri, 'range: 0 -', duration);
       generateThumbnailsInRange(thumbnailUri, 0, Math.min(duration, MAX_VIDEO_DURATION));
     }
   }, [thumbnailUri, duration]);
@@ -252,7 +240,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   // 트리밍 범위 내에서 썸네일 생성
   const generateThumbnailsInRange = async (uri: string, startSec: number, endSec: number) => {
     const rangeDuration = endSec - startSec;
-    console.log('🖼️ generateThumbnails called - uri:', uri, 'range:', startSec, '-', endSec);
     setIsGeneratingThumbnails(true);
     try {
       // 트리밍 범위 내에서 5개의 타임스탬프 생성
@@ -264,7 +251,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         startSec + Math.min(rangeDuration * 0.9, rangeDuration - 0.5),  // 트리밍 범위의 90%
       ];
 
-      console.log('🖼️ Generating thumbnails at times:', times);
 
       // expo-video-thumbnails로 실제 썸네일 생성
       const thumbnailResults = await Promise.all(
@@ -274,7 +260,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
               time: Math.floor(time * 1000), // 밀리초 단위 (정수로 변환)
               quality: 0.8,
             });
-            console.log('🖼️ Thumbnail generated for time', time.toFixed(2), ':', thumbnailUri);
             return thumbnailUri;
           } catch (err) {
             console.error('Failed to generate thumbnail at time', time, ':', err);
@@ -287,7 +272,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       const validThumbnails = thumbnailResults.filter((uri): uri is string => uri !== null);
 
       if (validThumbnails.length > 0) {
-        console.log('🖼️ Successfully generated', validThumbnails.length, 'thumbnails');
         setThumbnails(validThumbnails);
         setSelectedThumbnail(validThumbnails[0]);
       } else {
@@ -306,7 +290,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
   // 타임라인용 프레임 생성 (10개)
   const generateTimelineFrames = async (uri: string, durationSec: number) => {
-    console.log('🎬 Generating timeline frames');
     setIsGeneratingFrames(true);
     try {
       const frameCount = 10;
@@ -330,7 +313,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       );
 
       const validFrames = frameResults.filter((uri): uri is string => uri !== null);
-      console.log('🎬 Generated', validFrames.length, 'timeline frames');
       setTimelineFrames(validFrames);
     } catch (error) {
       console.error('Failed to generate timeline frames:', error);
@@ -345,14 +327,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   // 따라서 캐시 디렉토리로 복사 후 트리밍
   const trimVideoNative = async (inputUri: string, startTime: number, endTime: number): Promise<string> => {
     try {
-      console.log('✂️ Starting video trim with react-native-video-trim');
-      console.log('✂️ Input URI:', inputUri);
 
       // iOS URI에는 해시(#) 뒤에 메타데이터가 붙어있을 수 있음
       // iOS plist 메타데이터는 '#YnBsaXN0'(base64 시그니처)로 시작함
       // 파일명에 #이 있을 수 있으므로 iOS 메타데이터 패턴만 제거
       const cleanUri = inputUri.replace(/#YnBsaXN0[A-Za-z0-9+/=]*$/, '');
-      console.log('✂️ Clean URI:', cleanUri);
 
       setIsTrimming(true);
       setTrimmingProgress(5);
@@ -361,14 +340,12 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       // /var/mobile/Media/ 경로는 앱 샌드박스 외부라 네이티브 모듈이 직접 접근 불가
       let trimSourceUri = cleanUri;
       if (cleanUri.includes('/var/mobile/Media/') || cleanUri.includes('/PhotoData/')) {
-        console.log('✂️ Copying video to cache for native module access...');
         const cacheVideoPath = `${FileSystem.cacheDirectory}trim_source_${Date.now()}.mp4`;
         await FileSystem.copyAsync({
           from: cleanUri,
           to: cacheVideoPath,
         });
         trimSourceUri = cacheVideoPath;
-        console.log('✂️ Video copied to:', trimSourceUri);
       }
 
       setTrimmingProgress(20);
@@ -380,7 +357,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       }
 
       setTrimmingProgress(30);
-      console.log('✂️ Trim range:', startTime, '-', endTime, 'seconds');
 
       // react-native-video-trim의 trim() 함수 호출
       // startTime, endTime은 밀리초(ms) 단위
@@ -394,9 +370,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       }
 
       setTrimmingProgress(100);
-      console.log('✅ Video trimmed successfully');
-      console.log('✂️ Result path:', result.outputPath);
-      console.log('✂️ Duration:', result.duration, 'ms');
 
       // file:// 접두사 확인 및 추가
       const resultUri = result.outputPath.startsWith('file://')
@@ -421,7 +394,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
     } else {
       // 현재 위치가 트리밍 범위를 벗어났으면 시작 위치로 이동
       if (position >= trimEnd || position < trimStart) {
-        console.log('▶️ Play from:', trimStart.toFixed(2), 'seconds');
         player.currentTime = trimStart;
       }
       player.play();
@@ -477,7 +449,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
       onPanResponderGrant: () => {
-        console.log('🟢 Trim start handle - drag started');
         initialTrimStart.current = trimStartRef.current;
         setIsDraggingStart(true);
 
@@ -506,7 +477,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         }
       },
       onPanResponderRelease: () => {
-        console.log('🟢 Trim start handle - drag released');
         setIsDraggingStart(false);
       },
     })
@@ -525,7 +495,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
       onPanResponderGrant: () => {
-        console.log('🔵 Trim end handle - drag started');
         initialTrimEnd.current = trimEndRef.current;
         setIsDraggingEnd(true);
 
@@ -544,7 +513,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         );
 
         setTrimEnd(newEnd);
-        console.log('🔵 Dragging - dx:', gestureState.dx.toFixed(1), 'newEnd:', newEnd.toFixed(2));
 
         // Throttle: 50ms마다 한 번만 seek
         const now = Date.now();
@@ -558,7 +526,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         }
       },
       onPanResponderRelease: () => {
-        console.log('🔵 Trim end handle - drag released');
         setIsDraggingEnd(false);
       },
     })
@@ -594,13 +561,11 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
       if (needsTrimming) {
         try {
-          console.log('✂️ Trimming needed, starting trim process...');
           setUploadProgress(5);
 
           // 네이티브 모듈로 비디오 트리밍 (file:// URI 사용)
           videoToUpload = await trimVideoNative(thumbnailUri, trimStart, trimEnd);
 
-          console.log('✅ Video trimmed successfully, new URI:', videoToUpload);
           setUploadProgress(20);
         } catch (trimError) {
           console.error('❌ Trim failed:', trimError);
@@ -615,24 +580,20 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           return;
         }
       } else {
-        console.log('ℹ️ No trimming needed, uploading original video');
         setUploadProgress(10);
       }
 
       // 1. 비디오 업로드
-      console.log('📤 Starting video upload...');
       
       // 파일 존재 여부 및 정보 확인
       const fileInfo = await FileSystem.getInfoAsync(videoToUpload);
       if (!fileInfo.exists) {
         throw new Error(`File does not exist at path: ${videoToUpload}`);
       }
-      console.log('📄 File exists, size:', fileInfo.size);
 
       const videoResponse = await fetch(videoToUpload);
       const videoBlob = await videoResponse.blob();
 
-      console.log('📤 Video blob size:', videoBlob.size, 'bytes');
 
       const videoUploadUrlResponse = await generateUploadUrl({
         contentType: 'VIDEO',
@@ -650,10 +611,8 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       );
 
       const videoS3Url = videoUploadUrlResponse.uploadUrl.split('?')[0];
-      console.log('✅ Video uploaded to S3:', videoS3Url);
 
       // 2. 썸네일 업로드
-      console.log('📤 Starting thumbnail upload...');
       const thumbnailResponse = await fetch(selectedThumbnail);
       const thumbnailBlob = await thumbnailResponse.blob();
 
@@ -674,7 +633,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       );
 
       const thumbnailS3Url = thumbnailUploadUrlResponse.uploadUrl.split('?')[0];
-      console.log('✅ Thumbnail uploaded to S3:', thumbnailS3Url);
 
       setUploadProgress(100);
 
@@ -800,7 +758,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
             onLayout={(event) => {
               const { width } = event.nativeEvent.layout;
               setTimelineWidth(width);
-              console.log('📏 Timeline width measured:', width);
             }}
           >
             {/* 진행 바 */}
@@ -964,7 +921,6 @@ export default function VideoEditScreen({ navigation, route }: Props) {
                     selectedThumbnail === thumbnail && styles.thumbnailSelected,
                   ]}
                   onPress={() => {
-                    console.log('📸 Thumbnail selected:', index);
                     setSelectedThumbnail(thumbnail);
                   }}
                 >
