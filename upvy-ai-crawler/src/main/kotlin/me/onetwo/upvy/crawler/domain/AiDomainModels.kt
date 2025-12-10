@@ -174,3 +174,31 @@ data class AiContentSegment(
     val qualityScore: Int? = null,
     val isSelected: Boolean = false
 )
+
+/**
+ * 편집 계획 - LLM이 제시하는 전체 숏폼 편집 전략
+ *
+ * 여러 구간을 어떤 순서로 이어붙여 최적의 숏폼을 만들지 정의합니다.
+ * 단순 세그먼트 추출이 아니라 전체 스토리 플로우와 편집 전략을 포함합니다.
+ */
+data class EditPlan(
+    val clips: List<ClipSegment>,
+    val totalDurationMs: Long,
+    val editingStrategy: String,  // "highlight_compilation", "story_flow", "tutorial_sequence", "problem_solution" 등
+    val transitionStyle: String = "hard_cut"  // 현재는 hard_cut만 지원
+)
+
+/**
+ * 클립 세그먼트 - 편집 계획의 개별 클립
+ *
+ * 원본 영상의 특정 구간을 추출하여 최종 영상에 포함할 클립 정보입니다.
+ * orderIndex를 통해 최종 영상에서의 순서를 명시적으로 지정합니다.
+ */
+data class ClipSegment(
+    val orderIndex: Int,           // 최종 영상에서의 순서 (0부터 시작)
+    val startTimeMs: Long,          // 원본 영상에서의 시작 시간
+    val endTimeMs: Long,            // 원본 영상에서의 종료 시간
+    val title: String,              // 클립 제목 (로깅/디버깅용)
+    val description: String? = null, // 클립 설명 (왜 이 구간을 선택했는지)
+    val keywords: List<String> = emptyList()
+)

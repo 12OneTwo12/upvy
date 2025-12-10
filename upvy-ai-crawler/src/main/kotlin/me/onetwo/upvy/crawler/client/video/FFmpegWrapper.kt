@@ -229,68 +229,81 @@ class FFmpegWrapperImpl(
     ): String {
         logger.info("텍스트 오버레이 추가 시작: input={}, title={}, srtPath={}", inputPath, title, srtPath)
 
-        // 제목이 너무 길면 줄바꿈 추가 (30자 기준)
-        val wrappedTitle = wrapTitle(title, 30)
+        // 제목용 임시 SRT 파일 생성
+        val titleSrtPath = "${inputPath}_title.srt"
+        val titleSrtContent = """
+            1
+            00:00:00,000 --> 99:59:59,999
+            $title
+        """.trimIndent()
 
-        // FFmpeg drawtext 필터용 문자열 이스케이프
-        val escapedTitle = escapeDrawtextString(wrappedTitle)
+        File(titleSrtPath).writeText(titleSrtContent)
+        logger.info("제목 SRT 파일 생성: {}", titleSrtPath)
 
-        // Filter complex 구성
-        val filters = mutableListOf<String>()
+        try {
+            // Filter complex 구성
+            val filters = mutableListOf<String>()
 
-        // 1. 상단 제목 (drawtext) - 크고 선명하게, 자동 줄바꿈
-        filters.add(
-            "drawtext=fontfile='$fontPath':" +
-            "text='$escapedTitle':" +
-            "x=(w-text_w)/2:" +
-            "y=150:" +
-            "fontsize=72:" +
-            "fontcolor=white:" +
-            "borderw=5:" +
-            "bordercolor=black:" +
-            "box=1:" +
-            "boxcolor=black@0.7:" +
-            "boxborderw=25:" +
-            "line_spacing=10:" +
-            "text_align=C"
-        )
-
-        // 2. 하단 자막 (subtitles) - SRT 파일이 있는 경우만
-        if (srtPath != null && File(srtPath).exists()) {
-            // Windows 경로 처리: 콜론과 백슬래시 이스케이프
-            val escapedSrtPath = srtPath.replace("\\", "/").replace(":", "\\\\:")
-
+            // 1. 상단 제목 (subtitles 필터 사용)
+            val escapedTitleSrtPath = titleSrtPath.replace("\\", "/").replace(":", "\\\\:")
             filters.add(
-                "subtitles='$escapedSrtPath':" +
+                "subtitles='$escapedTitleSrtPath':" +
                 "force_style='FontName=Noto Sans KR," +
-                "FontSize=14," +
+                "FontSize=24," +
                 "PrimaryColour=&HFFFFFF," +
                 "OutlineColour=&H000000," +
-                "Outline=1," +
+                "Outline=2," +
+                "BackColour=&H80000000," +  // 반투명 검은 배경
                 "Bold=1," +
-                "Alignment=2," +
-                "MarginV=30'"
+                "Alignment=8," +  // 상단 중앙
+                "MarginV=30'"  // 상단에서 30px 아래 (더 위로)
             )
+
+            // 2. 하단 자막 (subtitles 필터 사용) - SRT 파일이 있는 경우만
+            if (srtPath != null && File(srtPath).exists()) {
+                // STT 단계에서 이미 짧은 세그먼트로 나뉘므로 추가 처리 불필요
+                val escapedSrtPath = srtPath.replace("\\", "/").replace(":", "\\\\:")
+
+                filters.add(
+                    "subtitles='$escapedSrtPath':" +
+                    "force_style='FontName=Noto Sans KR," +
+                    "FontSize=14," +
+                    "PrimaryColour=&HFFFFFF," +
+                    "OutlineColour=&H000000," +
+                    "Outline=1," +
+                    "Bold=1," +
+                    "Alignment=2," +  // 하단 중앙
+                    "MarginV=60'"  // 하단에서 60px 위 (조금 위로)
+                )
+            }
+
+            val vfFilter = filters.joinToString(",")
+
+            val command = listOf(
+                ffmpegPath,
+                "-i", inputPath,
+                "-vf", vfFilter,
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "23",
+                "-c:a", "copy",  // 오디오는 복사 (인코딩 생략)
+                "-y",
+                outputPath
+            )
+
+            executeCommand(command, "Text overlay")
+
+            logger.info("텍스트 오버레이 추가 완료: output={}", outputPath)
+            return outputPath
+        } finally {
+            // 임시 제목 SRT 파일 삭제
+            try {
+                File(titleSrtPath).delete()
+                logger.debug("임시 제목 SRT 파일 삭제: {}", titleSrtPath)
+            } catch (e: Exception) {
+                logger.warn("임시 제목 SRT 파일 삭제 실패: {}", titleSrtPath, e)
+            }
         }
-
-        val vfFilter = filters.joinToString(",")
-
-        val command = listOf(
-            ffmpegPath,
-            "-i", inputPath,
-            "-vf", vfFilter,
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "23",
-            "-c:a", "copy",  // 오디오는 복사 (인코딩 생략)
-            "-y",
-            outputPath
-        )
-
-        executeCommand(command, "Text overlay")
-
-        logger.info("텍스트 오버레이 추가 완료: output={}", outputPath)
-        return outputPath
     }
 
     override fun concat(inputPaths: List<String>, outputPath: String): String {

@@ -144,7 +144,8 @@ class VertexAiSttClient(
                     var segmentStart = words.first().startTime.seconds * 1000 +
                             words.first().startTime.nanos / 1_000_000
                     var segmentEnd = segmentStart
-                    val segmentText = StringBuilder()
+                    val segmentWords = mutableListOf<String>()
+                    var wordCount = 0
 
                     words.forEach { wordInfo ->
                         val wordStartMs = wordInfo.startTime.seconds * 1000 +
@@ -152,30 +153,51 @@ class VertexAiSttClient(
                         val wordEndMs = wordInfo.endTime.seconds * 1000 +
                                 wordInfo.endTime.nanos / 1_000_000
 
-                        // 세그먼트 구분 (5초 간격 또는 문장 끝)
-                        if (wordStartMs - segmentEnd > 1000 || segmentText.length > 200) {
-                            if (segmentText.isNotEmpty()) {
-                                segments.add(TranscriptSegment(
-                                    startTimeMs = segmentStart,
-                                    endTimeMs = segmentEnd,
-                                    text = cleanSttText(segmentText.toString(), sttLanguageCode)
-                                ))
+                        // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
+                        if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
+                            if (segmentWords.isNotEmpty()) {
+                                val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
+                                    .trim()
+
+                                if (cleanedText.isNotEmpty()) {
+                                    segments.add(TranscriptSegment(
+                                        startTimeMs = segmentStart,
+                                        endTimeMs = segmentEnd,
+                                        text = cleanedText
+                                    ))
+                                }
                             }
                             segmentStart = wordStartMs
-                            segmentText.clear()
+                            segmentWords.clear()
+                            wordCount = 0
                         }
 
-                        segmentText.append(wordInfo.word).append(" ")
+                        // 단어 정리 후 추가
+                        val cleanWord = wordInfo.word
+                            .replace("▁", "")
+                            .replace("_", "")
+                            .trim()
+
+                        if (cleanWord.isNotEmpty()) {
+                            segmentWords.add(cleanWord)
+                            wordCount++
+                        }
+
                         segmentEnd = wordEndMs
                     }
 
                     // 마지막 세그먼트 추가
-                    if (segmentText.isNotEmpty()) {
-                        segments.add(TranscriptSegment(
-                            startTimeMs = segmentStart,
-                            endTimeMs = segmentEnd,
-                            text = cleanSttText(segmentText.toString(), sttLanguageCode)
-                        ))
+                    if (segmentWords.isNotEmpty()) {
+                        val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
+                            .trim()
+
+                        if (cleanedText.isNotEmpty()) {
+                            segments.add(TranscriptSegment(
+                                startTimeMs = segmentStart,
+                                endTimeMs = segmentEnd,
+                                text = cleanedText
+                            ))
+                        }
                     }
                 }
             }
@@ -251,7 +273,8 @@ class VertexAiSttClient(
                         val words = alternative.wordsList
                         var segmentStart = 0L
                         var segmentEnd = 0L
-                        val segmentText = StringBuilder()
+                        val segmentWords = mutableListOf<String>()
+                        var wordCount = 0
                         var isFirstWord = true
 
                         words.forEach { wordInfo ->
@@ -267,30 +290,55 @@ class VertexAiSttClient(
                                 isFirstWord = false
                             }
 
-                            // 세그먼트 구분 (1초 이상 간격 또는 200자 이상)
-                            if (wordStartMs - segmentEnd > 1000 || segmentText.length > 200) {
-                                if (segmentText.isNotEmpty()) {
-                                    allSegments.add(TranscriptSegment(
-                                        startTimeMs = segmentStart,
-                                        endTimeMs = segmentEnd,
-                                        text = cleanSttText(segmentText.toString(), sttLanguageCode)
-                                    ))
+                            // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
+                            if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
+                                if (segmentWords.isNotEmpty()) {
+                                    val cleanedText = segmentWords.joinToString("")
+                                        .replace("▁", "")
+                                        .replace("_", "")
+                                        .trim()
+
+                                    if (cleanedText.isNotEmpty()) {
+                                        allSegments.add(TranscriptSegment(
+                                            startTimeMs = segmentStart,
+                                            endTimeMs = segmentEnd,
+                                            text = cleanedText
+                                        ))
+                                    }
                                 }
                                 segmentStart = wordStartMs
-                                segmentText.clear()
+                                segmentWords.clear()
+                                wordCount = 0
                             }
 
-                            segmentText.append(wordInfo.word).append(" ")
+                            // 단어 정리 후 추가
+                            val cleanWord = wordInfo.word
+                                .replace("▁", "")
+                                .replace("_", "")
+                                .trim()
+
+                            if (cleanWord.isNotEmpty()) {
+                                segmentWords.add(cleanWord)
+                                wordCount++
+                            }
+
                             segmentEnd = wordEndMs
                         }
 
                         // 마지막 세그먼트 추가
-                        if (segmentText.isNotEmpty()) {
-                            allSegments.add(TranscriptSegment(
-                                startTimeMs = segmentStart,
-                                endTimeMs = segmentEnd,
-                                text = cleanSttText(segmentText.toString(), sttLanguageCode)
-                            ))
+                        if (segmentWords.isNotEmpty()) {
+                            val cleanedText = segmentWords.joinToString("")
+                                .replace("▁", "")
+                                .replace("_", "")
+                                .trim()
+
+                            if (cleanedText.isNotEmpty()) {
+                                allSegments.add(TranscriptSegment(
+                                    startTimeMs = segmentStart,
+                                    endTimeMs = segmentEnd,
+                                    text = cleanedText
+                                ))
+                            }
                         }
                     }
                 }
@@ -353,7 +401,8 @@ class VertexAiSttClient(
                     var segmentStart = words.first().startTime.seconds * 1000 +
                             words.first().startTime.nanos / 1_000_000
                     var segmentEnd = segmentStart
-                    val segmentText = StringBuilder()
+                    val segmentWords = mutableListOf<String>()
+                    var wordCount = 0
 
                     words.forEach { wordInfo ->
                         val wordStartMs = wordInfo.startTime.seconds * 1000 +
@@ -361,30 +410,51 @@ class VertexAiSttClient(
                         val wordEndMs = wordInfo.endTime.seconds * 1000 +
                                 wordInfo.endTime.nanos / 1_000_000
 
-                        // 세그먼트 구분 (1초 이상 간격 또는 200자 이상)
-                        if (wordStartMs - segmentEnd > 1000 || segmentText.length > 200) {
-                            if (segmentText.isNotEmpty()) {
-                                segments.add(TranscriptSegment(
-                                    startTimeMs = segmentStart,
-                                    endTimeMs = segmentEnd,
-                                    text = segmentText.toString().trim()
-                                ))
+                        // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
+                        if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
+                            if (segmentWords.isNotEmpty()) {
+                                val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
+                                    .trim()
+
+                                if (cleanedText.isNotEmpty()) {
+                                    segments.add(TranscriptSegment(
+                                        startTimeMs = segmentStart,
+                                        endTimeMs = segmentEnd,
+                                        text = cleanedText
+                                    ))
+                                }
                             }
                             segmentStart = wordStartMs
-                            segmentText.clear()
+                            segmentWords.clear()
+                            wordCount = 0
                         }
 
-                        segmentText.append(wordInfo.word).append(" ")
+                        // 단어 정리 후 추가
+                        val cleanWord = wordInfo.word
+                            .replace("▁", "")
+                            .replace("_", "")
+                            .trim()
+
+                        if (cleanWord.isNotEmpty()) {
+                            segmentWords.add(cleanWord)
+                            wordCount++
+                        }
+
                         segmentEnd = wordEndMs
                     }
 
                     // 마지막 세그먼트 추가
-                    if (segmentText.isNotEmpty()) {
-                        segments.add(TranscriptSegment(
-                            startTimeMs = segmentStart,
-                            endTimeMs = segmentEnd,
-                            text = segmentText.toString().trim()
-                        ))
+                    if (segmentWords.isNotEmpty()) {
+                        val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
+                            .trim()
+
+                        if (cleanedText.isNotEmpty()) {
+                            segments.add(TranscriptSegment(
+                                startTimeMs = segmentStart,
+                                endTimeMs = segmentEnd,
+                                text = cleanedText
+                            ))
+                        }
                     }
                 } else if (result.resultEndTime != null) {
                     // 단어 레벨 타임스탬프가 없는 경우 결과 레벨에서 추출 (fallback)
