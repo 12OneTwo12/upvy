@@ -279,7 +279,16 @@ class VertexAiSttClient(
                                     if (isNewSegment) {
                                         segmentStart = wordStartMs
                                     }
-                                    syllableBuffer.add(syllable)  // 누적만
+                                    syllableBuffer.add(syllable)
+
+                                    // 2음절 누적 → 단어 하나 생성
+                                    if (syllableBuffer.size >= 2) {
+                                        val mergedWord = syllableBuffer.joinToString("")
+                                        segmentWords.add(mergedWord)
+                                        syllableBuffer.clear()
+                                        wordCount++
+                                        createSegmentIfNeeded()
+                                    }
                                 } else {
                                     // 정상 단어: 누적된 음절 먼저 처리
                                     if (isNewSegment) {
@@ -446,7 +455,16 @@ class VertexAiSttClient(
                                         if (isNewSegment) {
                                             segmentStart = wordStartMs
                                         }
-                                        syllableBuffer.add(syllable)  // 누적만
+                                        syllableBuffer.add(syllable)
+
+                                        // 2음절 누적 → 단어 하나 생성
+                                        if (syllableBuffer.size >= 2) {
+                                            val mergedWord = syllableBuffer.joinToString("")
+                                            segmentWords.add(mergedWord)
+                                            syllableBuffer.clear()
+                                            wordCount++
+                                            createSegmentIfNeeded()
+                                        }
                                     } else {
                                         // 정상 단어: 누적된 음절 먼저 처리
                                         if (isNewSegment) {
@@ -594,7 +612,16 @@ class VertexAiSttClient(
                                     if (isNewSegment) {
                                         segmentStart = wordStartMs
                                     }
-                                    syllableBuffer.add(syllable)  // 누적만
+                                    syllableBuffer.add(syllable)
+
+                                    // 2음절 누적 → 단어 하나 생성
+                                    if (syllableBuffer.size >= 2) {
+                                        val mergedWord = syllableBuffer.joinToString("")
+                                        segmentWords.add(mergedWord)
+                                        syllableBuffer.clear()
+                                        wordCount++
+                                        createSegmentIfNeeded()
+                                    }
                                 } else {
                                     // 정상 단어: 누적된 음절 먼저 처리
                                     if (isNewSegment) {
