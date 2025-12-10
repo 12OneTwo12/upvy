@@ -464,8 +464,10 @@ class SearchControllerTest {
                         responseFields(
                             fieldWithPath("suggestions[]").description("자동완성 제안 목록"),
                             fieldWithPath("suggestions[].text").description("제안 텍스트"),
-                            fieldWithPath("suggestions[].type").description("제안 타입 (CONTENT, USER)"),
-                            fieldWithPath("suggestions[].highlightedText").description("매칭된 부분 강조 텍스트 (HTML 태그 포함)")
+                            fieldWithPath("suggestions[].type").description("제안 타입 (CONTENT, TAG, USER)"),
+                            fieldWithPath("suggestions[].highlightedText").description("매칭된 부분 강조 텍스트 (HTML 태그 포함)"),
+                            fieldWithPath("suggestions[].userId").description("사용자 ID (USER 타입일 때만 반환)").optional(),
+                            fieldWithPath("suggestions[].profileImageUrl").description("프로필 이미지 URL (USER 타입일 때만 반환)").optional()
                         )
                     )
                 )
