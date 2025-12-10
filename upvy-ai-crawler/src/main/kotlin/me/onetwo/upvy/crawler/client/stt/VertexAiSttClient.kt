@@ -425,56 +425,54 @@ class VertexAiSttClient(
                                 isFirstWord = false
                             }
 
-                            // 800ms 이상 쉴 때: 즉시 세그먼트 생성
-                            if (wordStartMs - segmentEnd > 800) {
-                                flushSyllableBuffer()
-                                createSegmentIfNeeded(force = true)
-                                segmentStart = wordStartMs
-                            }
+                            // 언어별 단어 구분 전략
+                            val isKorean = sttLanguageCode.startsWith("ko")
 
-                            // 단어 정리 (특수문자 제거, 공백 유지)
-                            val cleanedWord = wordInfo.word
-                                .replace("▁", "")
-                                .replace("_", "")
-                                .trim()
+                            if (isKorean) {
+                                // 한글: ▁ = 단어 경계
+                                val hasWordBoundary = wordInfo.word.startsWith("▁")
 
-                            if (cleanedWord.isNotEmpty()) {
-                                // 공백으로 split하여 각 음절 개별 처리
-                                val syllables = cleanedWord.split(" ").filter { it.isNotEmpty() }
-                                logger.debug("[음절 처리] wordInfo.word='{}' → syllables={}, wordStartMs={}",
-                                    wordInfo.word, syllables, wordStartMs)
+                                if (hasWordBoundary && syllableBuffer.isNotEmpty()) {
+                                    // 이전 단어 완성
+                                    flushSyllableBuffer()
+                                    createSegmentIfNeeded()
+                                }
 
-                                syllables.forEach { syllable ->
-                                    // 새 세그먼트 시작 체크 (둘 다 비어있으면 현재 단어가 시작점)
-                                    val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
+                                // 새 세그먼트 시작 체크
+                                if (segmentWords.isEmpty() && syllableBuffer.isEmpty()) {
+                                    segmentStart = wordStartMs
+                                }
 
-                                    // 한글 단일 음절인가?
-                                    if (syllable.length == 1 && syllable[0] in '가'..'힣') {
-                                        if (isNewSegment) {
+                                // 현재 음절 추가 (▁, 공백 제거)
+                                val cleanedWord = wordInfo.word
+                                    .replace("▁", "")
+                                    .replace("_", "")
+                                    .replace(" ", "")
+                                    .trim()
+
+                                if (cleanedWord.isNotEmpty()) {
+                                    syllableBuffer.add(cleanedWord)
+                                }
+                            } else {
+                                // 일본어/영어: 띄어쓰기 = 단어 구분
+                                val cleanedWord = wordInfo.word
+                                    .replace("▁", "")
+                                    .replace("_", "")
+                                    .trim()
+
+                                if (cleanedWord.isNotEmpty()) {
+                                    // 띄어쓰기로 split
+                                    val wordsInEntry = cleanedWord.split(" ").filter { it.isNotEmpty() }
+
+                                    wordsInEntry.forEach { word ->
+                                        // 새 세그먼트 시작 체크
+                                        if (segmentWords.isEmpty()) {
                                             segmentStart = wordStartMs
                                         }
-                                        syllableBuffer.add(syllable)
 
-                                        // 2음절 누적 → 단어 하나 생성
-                                        if (syllableBuffer.size >= 2) {
-                                            val mergedWord = syllableBuffer.joinToString("")
-                                            segmentWords.add(mergedWord)
-                                            syllableBuffer.clear()
-                                            wordCount++
-                                            createSegmentIfNeeded()
-                                        }
-                                    } else {
-                                        // 정상 단어: 누적된 음절 먼저 처리
-                                        if (isNewSegment) {
-                                            segmentStart = wordStartMs
-                                        }
-                                        flushSyllableBuffer()
-
-                                        // 현재 정상 단어 추가
-                                        segmentWords.add(syllable)
+                                        // 단어 직접 추가
+                                        segmentWords.add(word)
                                         wordCount++
-
-                                        // 2단어 도달 체크
                                         createSegmentIfNeeded()
                                     }
                                 }
