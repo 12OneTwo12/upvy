@@ -69,7 +69,8 @@ class RecommendationServiceImpl(
      *
      * **핵심 로직을 하나의 메서드로 추출하여 중복 제거 (DRY 원칙)**
      *
-     * 협업 필터링, 인기, 신규, 랜덤 4가지 전략을 병렬로 실행하고 결과를 합칩니다.
+     * 협업 필터링, 인기, 신규, 랜덤 4가지 전략을 순차적으로 실행하고 결과를 합칩니다.
+     * 각 전략 실행 시 이전 전략에서 선택된 콘텐츠를 제외하여 중복을 방지합니다. (Issue #149)
      * 일반 콘텐츠와 FUN 콘텐츠 모두 이 메서드를 통해 동일한 추천 품질을 보장합니다.
      *
      * @param userId 사용자 ID
@@ -89,43 +90,63 @@ class RecommendationServiceImpl(
         excludeCategory: Category? = null
     ): Mono<List<UUID>> {
         val strategyLimits = RecommendationStrategy.calculateLimits(limit)
+        val accumulatedExcludeIds = excludeContentIds.toMutableSet()
 
-        return Mono.zip(
-            getCollaborativeContentIds(
-                userId,
-                strategyLimits[RecommendationStrategy.COLLABORATIVE]!!,
-                excludeContentIds,
-                preferredLanguage,
-                category,
-                excludeCategory
-            ).collectList(),
-            feedRepository.findPopularContentIds(
-                userId,
-                strategyLimits[RecommendationStrategy.POPULAR]!!,
-                excludeContentIds,
-                category,
-                preferredLanguage,
-                excludeCategory
-            ).collectList(),
-            feedRepository.findNewContentIds(
-                userId,
-                strategyLimits[RecommendationStrategy.NEW]!!,
-                excludeContentIds,
-                category,
-                preferredLanguage,
-                excludeCategory
-            ).collectList(),
-            feedRepository.findRandomContentIds(
-                userId,
-                strategyLimits[RecommendationStrategy.RANDOM]!!,
-                excludeContentIds,
-                category,
-                preferredLanguage,
-                excludeCategory
-            ).collectList()
-        ).map { tuple ->
-            (tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4).shuffled()
-        }
+        // 1. Collaborative Filtering 전략
+        return getCollaborativeContentIds(
+            userId,
+            strategyLimits[RecommendationStrategy.COLLABORATIVE]!!,
+            accumulatedExcludeIds.toList(),
+            preferredLanguage,
+            category,
+            excludeCategory
+        ).collectList()
+            .flatMap { collaborativeIds ->
+                accumulatedExcludeIds.addAll(collaborativeIds)
+
+                // 2. Popular 전략
+                feedRepository.findPopularContentIds(
+                    userId,
+                    strategyLimits[RecommendationStrategy.POPULAR]!!,
+                    accumulatedExcludeIds.toList(),
+                    category,
+                    preferredLanguage,
+                    excludeCategory
+                ).collectList()
+                    .map { popularIds ->
+                        accumulatedExcludeIds.addAll(popularIds)
+                        Pair(collaborativeIds, popularIds)
+                    }
+            }
+            .flatMap { (collaborativeIds, popularIds) ->
+                // 3. New 전략
+                feedRepository.findNewContentIds(
+                    userId,
+                    strategyLimits[RecommendationStrategy.NEW]!!,
+                    accumulatedExcludeIds.toList(),
+                    category,
+                    preferredLanguage,
+                    excludeCategory
+                ).collectList()
+                    .map { newIds ->
+                        accumulatedExcludeIds.addAll(newIds)
+                        Triple(collaborativeIds, popularIds, newIds)
+                    }
+            }
+            .flatMap { (collaborativeIds, popularIds, newIds) ->
+                // 4. Random 전략
+                feedRepository.findRandomContentIds(
+                    userId,
+                    strategyLimits[RecommendationStrategy.RANDOM]!!,
+                    accumulatedExcludeIds.toList(),
+                    category,
+                    preferredLanguage,
+                    excludeCategory
+                ).collectList()
+                    .map { randomIds ->
+                        (collaborativeIds + popularIds + newIds + randomIds).shuffled()
+                    }
+            }
     }
 
     /**
