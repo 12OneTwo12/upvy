@@ -79,6 +79,38 @@ class VertexAiSttClient(
                     .trim()
             }
         }
+
+        /**
+         * 한글 단일 음절 병합
+         *
+         * Google STT가 한글을 음절 단위로 분리하는 경우("개", "발" → "개발")를 처리합니다.
+         * 연속된 단일 한글 음절들을 하나의 단어로 병합하고, 정상 단어("하기", "위해서")는 유지합니다.
+         */
+        private fun mergeKoreanSyllables(words: List<String>): List<String> {
+            val merged = mutableListOf<String>()
+            val tempSyllables = mutableListOf<String>()
+
+            for (word in words) {
+                // 단일 한글 음절인지 확인 (길이 1 + 한글 범위)
+                if (word.length == 1 && word[0] in '가'..'힣') {
+                    tempSyllables.add(word)
+                } else {
+                    // 정상 단어: 누적된 음절 먼저 병합
+                    if (tempSyllables.isNotEmpty()) {
+                        merged.add(tempSyllables.joinToString(""))
+                        tempSyllables.clear()
+                    }
+                    merged.add(word)
+                }
+            }
+
+            // 마지막 누적 음절 처리
+            if (tempSyllables.isNotEmpty()) {
+                merged.add(tempSyllables.joinToString(""))
+            }
+
+            return merged
+        }
     }
 
     private lateinit var speechClient: SpeechClient
@@ -156,7 +188,11 @@ class VertexAiSttClient(
                         // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
                         if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
                             if (segmentWords.isNotEmpty()) {
-                                val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
+                                // 한글 단일 음절 병합 후 텍스트 생성
+                                val mergedWords = mergeKoreanSyllables(segmentWords)
+                                // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
+                                val separator = if (sttLanguageCode.startsWith("ja")) "" else " "
+                                val cleanedText = mergedWords.joinToString(separator)
                                     .trim()
 
                                 if (cleanedText.isNotEmpty()) {
@@ -189,7 +225,11 @@ class VertexAiSttClient(
 
                     // 마지막 세그먼트 추가
                     if (segmentWords.isNotEmpty()) {
-                        val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
+                        // 한글 단일 음절 병합 후 텍스트 생성
+                        val mergedWords = mergeKoreanSyllables(segmentWords)
+                        // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
+                        val separator = if (sttLanguageCode.startsWith("ja")) "" else " "
+                        val cleanedText = mergedWords.joinToString(separator)
                             .trim()
 
                         if (cleanedText.isNotEmpty()) {
@@ -411,7 +451,11 @@ class VertexAiSttClient(
                         // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
                         if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
                             if (segmentWords.isNotEmpty()) {
-                                val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
+                                // 한글 단일 음절 병합 후 텍스트 생성
+                                val mergedWords = mergeKoreanSyllables(segmentWords)
+                                // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
+                                val separator = if (sttLanguageCode.startsWith("ja")) "" else " "
+                                val cleanedText = mergedWords.joinToString(separator)
                                     .trim()
 
                                 if (cleanedText.isNotEmpty()) {
@@ -444,7 +488,11 @@ class VertexAiSttClient(
 
                     // 마지막 세그먼트 추가
                     if (segmentWords.isNotEmpty()) {
-                        val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
+                        // 한글 단일 음절 병합 후 텍스트 생성
+                        val mergedWords = mergeKoreanSyllables(segmentWords)
+                        // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
+                        val separator = if (sttLanguageCode.startsWith("ja")) "" else " "
+                        val cleanedText = mergedWords.joinToString(separator)
                             .trim()
 
                         if (cleanedText.isNotEmpty()) {
