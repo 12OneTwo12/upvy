@@ -89,14 +89,10 @@ class VertexAiSttClient(
          * - 영어: 그대로 (음절 병합 불필요)
          */
         private fun processSegmentWords(words: List<String>, languageCode: String): String {
-            logger.debug("[STT 디버깅] 입력 words: {}, languageCode: {}", words, languageCode)
             val merged = mergeWordsByLanguage(words, languageCode)
-            logger.debug("[STT 디버깅] 병합 후: {}", merged)
             // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
             val separator = if (languageCode.startsWith("ja")) "" else " "
-            val result = merged.joinToString(separator).trim()
-            logger.debug("[STT 디버깅] 최종 결과: '{}'", result)
-            return result
+            return merged.joinToString(separator).trim()
         }
 
         /**
@@ -232,8 +228,6 @@ class VertexAiSttClient(
                         if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
                             val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
                             if (cleanedText.isNotEmpty()) {
-                                logger.debug("[세그먼트 생성] start={}ms, end={}ms, text='{}', wordCount={}",
-                                    segmentStart, segmentEnd, cleanedText, wordCount)
                                 segments.add(TranscriptSegment(
                                     startTimeMs = segmentStart,
                                     endTimeMs = segmentEnd,
@@ -561,8 +555,6 @@ class VertexAiSttClient(
                         if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
                             val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
                             if (cleanedText.isNotEmpty()) {
-                                logger.debug("[세그먼트 생성] start={}ms, end={}ms, text='{}', wordCount={}",
-                                    segmentStart, segmentEnd, cleanedText, wordCount)
                                 segments.add(TranscriptSegment(
                                     startTimeMs = segmentStart,
                                     endTimeMs = segmentEnd,
