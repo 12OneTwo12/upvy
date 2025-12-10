@@ -251,27 +251,30 @@ class VertexAiSttClient(
                         val wordEndMs = wordInfo.endTime.seconds * 1000 +
                                 wordInfo.endTime.nanos / 1_000_000
 
-                        // 800ms 이상 쉴 때: 즉시 세그먼트 생성
-                        if (wordStartMs - segmentEnd > 800) {
+                        // ▁ = 단어 경계 (새 단어 시작)
+                        val hasWordBoundary = wordInfo.word.startsWith("▁")
+
+                        if (hasWordBoundary && syllableBuffer.isNotEmpty()) {
+                            // 이전 단어 완성
                             flushSyllableBuffer()
-                            createSegmentIfNeeded(force = true)
+
+                            // 2단어 도달 체크
+                            createSegmentIfNeeded()
+                        }
+
+                        // 새 세그먼트 시작 체크
+                        if (segmentWords.isEmpty() && syllableBuffer.isEmpty()) {
                             segmentStart = wordStartMs
                         }
 
-                        // 단어 정리 (특수문자 제거만)
+                        // 현재 음절 추가 (▁, 공백 제거)
                         val cleanedWord = wordInfo.word
-                            .replace("▁", " ")  // 밑줄 → 공백 (단어 시작 마커)
+                            .replace("▁", "")
                             .replace("_", "")
+                            .replace(" ", "")
                             .trim()
 
                         if (cleanedWord.isNotEmpty()) {
-                            // 새 세그먼트 시작 체크
-                            val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
-                            if (isNewSegment) {
-                                segmentStart = wordStartMs
-                            }
-
-                            // 모든 음절을 버퍼에 누적 (800ms pause 전까지 = 하나의 단어)
                             syllableBuffer.add(cleanedWord)
                         }
 
@@ -553,27 +556,30 @@ class VertexAiSttClient(
                         val wordEndMs = wordInfo.endTime.seconds * 1000 +
                                 wordInfo.endTime.nanos / 1_000_000
 
-                        // 800ms 이상 쉴 때: 즉시 세그먼트 생성
-                        if (wordStartMs - segmentEnd > 800) {
+                        // ▁ = 단어 경계 (새 단어 시작)
+                        val hasWordBoundary = wordInfo.word.startsWith("▁")
+
+                        if (hasWordBoundary && syllableBuffer.isNotEmpty()) {
+                            // 이전 단어 완성
                             flushSyllableBuffer()
-                            createSegmentIfNeeded(force = true)
+
+                            // 2단어 도달 체크
+                            createSegmentIfNeeded()
+                        }
+
+                        // 새 세그먼트 시작 체크
+                        if (segmentWords.isEmpty() && syllableBuffer.isEmpty()) {
                             segmentStart = wordStartMs
                         }
 
-                        // 단어 정리 (특수문자 제거만)
+                        // 현재 음절 추가 (▁, 공백 제거)
                         val cleanedWord = wordInfo.word
-                            .replace("▁", " ")  // 밑줄 → 공백 (단어 시작 마커)
+                            .replace("▁", "")
                             .replace("_", "")
+                            .replace(" ", "")
                             .trim()
 
                         if (cleanedWord.isNotEmpty()) {
-                            // 새 세그먼트 시작 체크
-                            val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
-                            if (isNewSegment) {
-                                segmentStart = wordStartMs
-                            }
-
-                            // 모든 음절을 버퍼에 누적 (800ms pause 전까지 = 하나의 단어)
                             syllableBuffer.add(cleanedWord)
                         }
 
