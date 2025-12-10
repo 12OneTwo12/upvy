@@ -56,7 +56,17 @@ class PendingContentService(
         )
 
         return pendingContentRepository.save(pendingContent).also {
-            logger.info("승인 대기 콘텐츠 저장 완료: id={}, jobId={}", it.id, job.id)
+            logger.info("승인 대기 콘텐츠 저장 완료: id={}, jobId={}, status={}, deletedAt={}",
+                it.id, job.id, it.status, it.deletedAt)
+
+            // 저장 직후 조회 테스트
+            val retrieved = pendingContentRepository.findById(it.id!!).orElse(null)
+            if (retrieved == null) {
+                logger.error("방금 저장한 콘텐츠를 찾을 수 없음: id={}", it.id)
+            } else {
+                logger.debug("저장 확인: id={}, status={}, deletedAt={}",
+                    retrieved.id, retrieved.status, retrieved.deletedAt)
+            }
         }
     }
 
@@ -64,10 +74,13 @@ class PendingContentService(
      * 승인 대기 콘텐츠 목록 조회
      */
     fun getPendingContents(pageable: Pageable): Page<PendingContent> {
-        return pendingContentRepository.findByStatusOrderByPriority(
+        val result = pendingContentRepository.findByStatusOrderByPriority(
             PendingContentStatus.PENDING_REVIEW,
             pageable
         )
+        logger.debug("승인 대기 콘텐츠 조회: totalElements={}, content size={}, ids={}",
+            result.totalElements, result.content.size, result.content.map { it.id })
+        return result
     }
 
     /**

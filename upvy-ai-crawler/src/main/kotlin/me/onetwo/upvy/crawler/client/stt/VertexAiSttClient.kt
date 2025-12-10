@@ -50,6 +50,35 @@ class VertexAiSttClient(
                 ContentLanguage.JA -> "ja-JP"
             }
         }
+
+        /**
+         * STT 결과 텍스트 정리 (언어별 처리)
+         *
+         * Google Cloud STT는 한글/일본어에서 "▁" (언더스코어 + 공백) 같은
+         * 토큰화 문자를 포함할 수 있습니다. 이를 언어별로 정리합니다.
+         *
+         * - 일본어: 원래 띄어쓰기가 없으므로 "▁"와 공백 모두 제거
+         * - 한글/영어: "▁"를 공백으로 치환하고 불필요한 공백 정리
+         */
+        private fun cleanSttText(text: String, languageCode: String): String {
+            return if (languageCode.startsWith("ja")) {
+                // 일본어: 띄어쓰기 없음
+                text
+                    .replace("▁", "")       // 특수 토큰 제거
+                    .replace(" ", "")       // 모든 공백 제거
+                    .trim()
+            } else {
+                // 한글/영어: 띄어쓰기 유지
+                text
+                    .replace("▁", " ")      // 특수 토큰을 공백으로
+                    .replace("  ", " ")     // 이중 공백 제거
+                    .replace(" ,", ",")     // 쉼표 앞 공백 제거
+                    .replace(" .", ".")     // 마침표 앞 공백 제거
+                    .replace(" ?", "?")     // 물음표 앞 공백 제거
+                    .replace(" !", "!")     // 느낌표 앞 공백 제거
+                    .trim()
+            }
+        }
     }
 
     private lateinit var speechClient: SpeechClient
@@ -84,7 +113,7 @@ class VertexAiSttClient(
             // 60초 이상인 경우 청크로 분할하여 처리
             if (audioDuration > MAX_SYNC_AUDIO_DURATION_SECONDS) {
                 logger.info("오디오 길이 {}초 (>60초), 청크로 분할하여 처리", audioDuration)
-                return@withContext transcribeChunks(audioUrl, language)
+                return@withContext transcribeChunks(audioUrl, sttLanguageCode)
             }
 
             // 동기 API 호출 (60초 미만 오디오용)
@@ -92,6 +121,14 @@ class VertexAiSttClient(
             val response = speechClient.recognize(recognitionConfig, RecognitionAudio.newBuilder()
                 .setContent(ByteString.copyFrom(audioBytes))
                 .build())
+
+            // 디버깅: 응답 상태 로깅
+            logger.debug("STT 응답: resultCount={}, fileSize={}bytes",
+                response.resultsList.size, audioBytes.size)
+
+            if (response.resultsList.isEmpty()) {
+                logger.warn("STT 결과 없음: 오디오에 음성이 없거나 인식 실패")
+            }
 
             val segments = mutableListOf<TranscriptSegment>()
             val textBuilder = StringBuilder()
@@ -121,7 +158,7 @@ class VertexAiSttClient(
                                 segments.add(TranscriptSegment(
                                     startTimeMs = segmentStart,
                                     endTimeMs = segmentEnd,
-                                    text = segmentText.toString().trim()
+                                    text = cleanSttText(segmentText.toString(), sttLanguageCode)
                                 ))
                             }
                             segmentStart = wordStartMs
@@ -137,7 +174,7 @@ class VertexAiSttClient(
                         segments.add(TranscriptSegment(
                             startTimeMs = segmentStart,
                             endTimeMs = segmentEnd,
-                            text = segmentText.toString().trim()
+                            text = cleanSttText(segmentText.toString(), sttLanguageCode)
                         ))
                     }
                 }
@@ -165,8 +202,7 @@ class VertexAiSttClient(
     /**
      * 오디오를 청크로 분할하여 처리
      */
-    private suspend fun transcribeChunks(audioUrl: String, language: ContentLanguage): TranscriptResult = withContext(Dispatchers.IO) {
-        val sttLanguageCode = toSttLanguageCode(language)
+    private suspend fun transcribeChunks(audioUrl: String, sttLanguageCode: String): TranscriptResult = withContext(Dispatchers.IO) {
         logger.info("청크 분할 처리 시작: audioUrl={}, language={}", audioUrl, sttLanguageCode)
 
         try {
@@ -191,6 +227,14 @@ class VertexAiSttClient(
                         .setContent(ByteString.copyFrom(chunkBytes))
                         .build()
                 )
+
+                // 디버깅: 응답 상태 로깅
+                logger.debug("STT 응답: resultCount={}, fileSize={}bytes",
+                    response.resultsList.size, chunkBytes.size)
+
+                if (response.resultsList.isEmpty()) {
+                    logger.warn("STT 결과 없음: chunk={}, 오디오에 음성이 없거나 인식 실패", chunk.filePath)
+                }
 
                 // 결과 처리
                 response.resultsList.forEach { result ->
@@ -229,7 +273,7 @@ class VertexAiSttClient(
                                     allSegments.add(TranscriptSegment(
                                         startTimeMs = segmentStart,
                                         endTimeMs = segmentEnd,
-                                        text = segmentText.toString().trim()
+                                        text = cleanSttText(segmentText.toString(), sttLanguageCode)
                                     ))
                                 }
                                 segmentStart = wordStartMs
@@ -245,7 +289,7 @@ class VertexAiSttClient(
                             allSegments.add(TranscriptSegment(
                                 startTimeMs = segmentStart,
                                 endTimeMs = segmentEnd,
-                                text = segmentText.toString().trim()
+                                text = cleanSttText(segmentText.toString(), sttLanguageCode)
                             ))
                         }
                     }
@@ -375,14 +419,36 @@ class VertexAiSttClient(
     }
 
     private fun buildRecognitionConfig(sttLanguageCode: String): RecognitionConfig {
-        return RecognitionConfig.newBuilder()
+        val builder = RecognitionConfig.newBuilder()
             .setEncoding(AudioEncoding.OGG_OPUS)  // Opus 코덱 (음성에 최적화, 작은 파일)
             .setSampleRateHertz(sampleRateHertz)
             .setLanguageCode(sttLanguageCode)
             .setEnableWordTimeOffsets(enableWordTimeOffsets)
-            .setEnableAutomaticPunctuation(true)
-            .setModel("latest_long")  // 긴 오디오에 최적화된 모델
-            .build()
+
+        // 언어별 설정
+        when {
+            sttLanguageCode.startsWith("ja") -> {
+                // 일본어: latest_long 모델이 인식률이 낮을 수 있음, 기본 모델 사용
+                logger.debug("일본어 STT 설정: 기본 모델 사용")
+                builder.setEnableAutomaticPunctuation(false)  // 일본어는 구두점 자동 추가 비활성화
+            }
+            sttLanguageCode.startsWith("ko") -> {
+                // 한국어: latest_long 모델 사용
+                builder.setModel("latest_long")
+                builder.setEnableAutomaticPunctuation(true)
+            }
+            sttLanguageCode.startsWith("en") -> {
+                // 영어: latest_long 모델 사용
+                builder.setModel("latest_long")
+                builder.setEnableAutomaticPunctuation(true)
+            }
+            else -> {
+                // 기타 언어: 기본 설정
+                builder.setEnableAutomaticPunctuation(true)
+            }
+        }
+
+        return builder.build()
     }
 }
 

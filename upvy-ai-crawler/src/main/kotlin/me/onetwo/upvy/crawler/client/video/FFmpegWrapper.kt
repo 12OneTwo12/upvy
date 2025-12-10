@@ -69,6 +69,18 @@ interface FFmpegWrapper {
         srtPath: String?,
         fontPath: String
     ): String
+
+    /**
+     * 여러 비디오를 하나로 병합 (concat demuxer 사용)
+     *
+     * FFmpeg의 concat demuxer를 사용하여 재인코딩 없이 빠르게 병합합니다.
+     * 모든 클립은 같은 코덱/해상도여야 합니다.
+     *
+     * @param inputPaths 입력 비디오 경로 리스트 (순서대로 이어붙임)
+     * @param outputPath 출력 비디오 경로
+     * @return 출력 파일 경로
+     */
+    fun concat(inputPaths: List<String>, outputPath: String): String
 }
 
 /**
@@ -217,25 +229,30 @@ class FFmpegWrapperImpl(
     ): String {
         logger.info("텍스트 오버레이 추가 시작: input={}, title={}, srtPath={}", inputPath, title, srtPath)
 
+        // 제목이 너무 길면 줄바꿈 추가 (30자 기준)
+        val wrappedTitle = wrapTitle(title, 30)
+
         // FFmpeg drawtext 필터용 문자열 이스케이프
-        val escapedTitle = escapeDrawtextString(title)
+        val escapedTitle = escapeDrawtextString(wrappedTitle)
 
         // Filter complex 구성
         val filters = mutableListOf<String>()
 
-        // 1. 상단 제목 (drawtext)
+        // 1. 상단 제목 (drawtext) - 크고 선명하게, 자동 줄바꿈
         filters.add(
             "drawtext=fontfile='$fontPath':" +
             "text='$escapedTitle':" +
             "x=(w-text_w)/2:" +
-            "y=120:" +
-            "fontsize=48:" +
+            "y=150:" +
+            "fontsize=72:" +
             "fontcolor=white:" +
-            "borderw=3:" +
+            "borderw=5:" +
             "bordercolor=black:" +
             "box=1:" +
-            "boxcolor=black@0.6:" +
-            "boxborderw=20"
+            "boxcolor=black@0.7:" +
+            "boxborderw=25:" +
+            "line_spacing=10:" +
+            "text_align=C"
         )
 
         // 2. 하단 자막 (subtitles) - SRT 파일이 있는 경우만
@@ -246,13 +263,13 @@ class FFmpegWrapperImpl(
             filters.add(
                 "subtitles='$escapedSrtPath':" +
                 "force_style='FontName=Noto Sans KR," +
-                "FontSize=36," +
+                "FontSize=14," +
                 "PrimaryColour=&HFFFFFF," +
                 "OutlineColour=&H000000," +
-                "Outline=2," +
+                "Outline=1," +
                 "Bold=1," +
                 "Alignment=2," +
-                "MarginV=150'"
+                "MarginV=30'"
             )
         }
 
@@ -274,6 +291,94 @@ class FFmpegWrapperImpl(
 
         logger.info("텍스트 오버레이 추가 완료: output={}", outputPath)
         return outputPath
+    }
+
+    override fun concat(inputPaths: List<String>, outputPath: String): String {
+        logger.info("비디오 병합 시작: {} 파일 → {}", inputPaths.size, outputPath)
+
+        require(inputPaths.isNotEmpty()) { "입력 파일이 없습니다" }
+
+        // 단일 파일이면 복사만
+        if (inputPaths.size == 1) {
+            File(inputPaths.first()).copyTo(File(outputPath), overwrite = true)
+            logger.info("단일 파일, 복사 완료: {}", outputPath)
+            return outputPath
+        }
+
+        // FFmpeg concat demuxer용 파일 리스트 생성
+        val concatListPath = "$tempDir/concat_list_${System.currentTimeMillis()}.txt"
+        val concatListContent = inputPaths.joinToString("\n") { path ->
+            // FFmpeg concat demuxer 형식: file '/path/to/file.mp4'
+            // 작은따옴표가 경로에 있을 수 있으므로 이스케이프
+            "file '${path.replace("'", "'\\''")}'"
+        }
+        File(concatListPath).writeText(concatListContent, Charsets.UTF_8)
+
+        logger.debug("Concat 리스트 파일 생성: {}", concatListPath)
+
+        try {
+            // FFmpeg concat demuxer 사용 (re-encoding 없이 빠른 병합)
+            val command = listOf(
+                ffmpegPath,
+                "-f", "concat",       // concat demuxer 지정
+                "-safe", "0",         // 절대 경로 허용
+                "-i", concatListPath, // concat 파일 목록
+                "-c", "copy",         // 코덱 복사 (re-encoding 없음)
+                "-y",                 // 기존 파일 덮어쓰기
+                outputPath
+            )
+
+            executeCommand(command, "Video concatenation")
+
+            logger.info("비디오 병합 완료: {}", outputPath)
+            return outputPath
+
+        } finally {
+            // concat 리스트 파일 정리
+            try {
+                File(concatListPath).delete()
+            } catch (e: Exception) {
+                logger.warn("concat 파일 삭제 실패: {}", concatListPath, e)
+            }
+        }
+    }
+
+    /**
+     * 제목이 너무 길면 자동 줄바꿈 추가
+     *
+     * @param title 원본 제목
+     * @param maxCharsPerLine 한 줄 최대 문자 수
+     * @return 줄바꿈이 추가된 제목
+     */
+    private fun wrapTitle(title: String, maxCharsPerLine: Int): String {
+        if (title.length <= maxCharsPerLine) {
+            return title
+        }
+
+        // 공백을 기준으로 단어 분리
+        val words = title.split(" ")
+        val lines = mutableListOf<String>()
+        var currentLine = ""
+
+        for (word in words) {
+            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+
+            if (testLine.length <= maxCharsPerLine) {
+                currentLine = testLine
+            } else {
+                if (currentLine.isNotEmpty()) {
+                    lines.add(currentLine)
+                }
+                currentLine = word
+            }
+        }
+
+        if (currentLine.isNotEmpty()) {
+            lines.add(currentLine)
+        }
+
+        // 최대 2줄까지만 표시
+        return lines.take(2).joinToString("\n")
     }
 
     /**

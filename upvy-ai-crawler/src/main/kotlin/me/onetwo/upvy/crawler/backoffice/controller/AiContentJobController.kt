@@ -1,5 +1,6 @@
 package me.onetwo.upvy.crawler.backoffice.controller
 
+import me.onetwo.upvy.crawler.backoffice.repository.PendingContentRepository
 import me.onetwo.upvy.crawler.backoffice.service.AiContentJobService
 import me.onetwo.upvy.crawler.domain.JobStatus
 import org.slf4j.LoggerFactory
@@ -15,7 +16,8 @@ import java.security.Principal
 @Controller
 @RequestMapping("/backoffice/ai-jobs")
 class AiContentJobController(
-    private val aiContentJobService: AiContentJobService
+    private val aiContentJobService: AiContentJobService,
+    private val pendingContentRepository: PendingContentRepository
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AiContentJobController::class.java)
@@ -61,6 +63,13 @@ class AiContentJobController(
 
         model.addAttribute("job", job)
         model.addAttribute("allStatuses", JobStatus.entries)
+
+        // PENDING_APPROVAL 상태면 연결된 PendingContent 조회
+        if (job.status == JobStatus.PENDING_APPROVAL) {
+            val pendingContent = pendingContentRepository.findByAiContentJobId(id)
+            model.addAttribute("pendingContent", pendingContent)
+            logger.debug("PendingContent 조회: jobId={}, pendingContentId={}", id, pendingContent?.id)
+        }
 
         return "backoffice/ai-jobs/detail"
     }
