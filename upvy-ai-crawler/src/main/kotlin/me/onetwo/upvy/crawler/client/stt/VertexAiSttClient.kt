@@ -89,10 +89,14 @@ class VertexAiSttClient(
          * - 영어: 그대로 (음절 병합 불필요)
          */
         private fun processSegmentWords(words: List<String>, languageCode: String): String {
+            logger.debug("[STT 디버깅] 입력 words: {}, languageCode: {}", words, languageCode)
             val merged = mergeWordsByLanguage(words, languageCode)
+            logger.debug("[STT 디버깅] 병합 후: {}", merged)
             // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
             val separator = if (languageCode.startsWith("ja")) "" else " "
-            return merged.joinToString(separator).trim()
+            val result = merged.joinToString(separator).trim()
+            logger.debug("[STT 디버깅] 최종 결과: '{}'", result)
+            return result
         }
 
         /**
@@ -213,7 +217,31 @@ class VertexAiSttClient(
                             words.first().startTime.nanos / 1_000_000
                     var segmentEnd = segmentStart
                     val segmentWords = mutableListOf<String>()
+                    val syllableBuffer = mutableListOf<String>()  // 단일 음절 누적
                     var wordCount = 0
+
+                    fun flushSyllableBuffer() {
+                        if (syllableBuffer.isNotEmpty()) {
+                            segmentWords.add(syllableBuffer.joinToString(""))
+                            syllableBuffer.clear()
+                            wordCount++
+                        }
+                    }
+
+                    fun createSegmentIfNeeded(force: Boolean = false) {
+                        if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
+                            val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
+                            if (cleanedText.isNotEmpty()) {
+                                segments.add(TranscriptSegment(
+                                    startTimeMs = segmentStart,
+                                    endTimeMs = segmentEnd,
+                                    text = cleanedText
+                                ))
+                            }
+                            segmentWords.clear()
+                            wordCount = 0
+                        }
+                    }
 
                     words.forEach { wordInfo ->
                         val wordStartMs = wordInfo.startTime.seconds * 1000 +
@@ -221,26 +249,14 @@ class VertexAiSttClient(
                         val wordEndMs = wordInfo.endTime.seconds * 1000 +
                                 wordInfo.endTime.nanos / 1_000_000
 
-                        // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
-                        if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
-                            if (segmentWords.isNotEmpty()) {
-                                // 언어별 단어 처리 전략 적용
-                                val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
-
-                                if (cleanedText.isNotEmpty()) {
-                                    segments.add(TranscriptSegment(
-                                        startTimeMs = segmentStart,
-                                        endTimeMs = segmentEnd,
-                                        text = cleanedText
-                                    ))
-                                }
-                            }
+                        // 800ms 이상 쉴 때: 즉시 세그먼트 생성
+                        if (wordStartMs - segmentEnd > 800) {
+                            flushSyllableBuffer()
+                            createSegmentIfNeeded(force = true)
                             segmentStart = wordStartMs
-                            segmentWords.clear()
-                            wordCount = 0
                         }
 
-                        // 단어 정리 후 추가 (특수문자만 제거, 띄어쓰기는 유지)
+                        // 단어 정리 (특수문자만 제거)
                         val cleanWord = wordInfo.word
                             .replace("▁", "")
                             .replace("_", "")
@@ -248,26 +264,37 @@ class VertexAiSttClient(
                             .trim()
 
                         if (cleanWord.isNotEmpty()) {
-                            segmentWords.add(cleanWord)
-                            wordCount++
+                            // 새 세그먼트 시작 체크 (둘 다 비어있으면 현재 단어가 시작점)
+                            val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
+
+                            // 한글 단일 음절인가?
+                            if (cleanWord.length == 1 && cleanWord[0] in '가'..'힣') {
+                                if (isNewSegment) {
+                                    segmentStart = wordStartMs
+                                }
+                                syllableBuffer.add(cleanWord)  // 누적만
+                            } else {
+                                // 정상 단어: 누적된 음절 먼저 처리
+                                if (isNewSegment) {
+                                    segmentStart = wordStartMs
+                                }
+                                flushSyllableBuffer()
+
+                                // 현재 정상 단어 추가
+                                segmentWords.add(cleanWord)
+                                wordCount++
+
+                                // 2단어 도달 체크
+                                createSegmentIfNeeded()
+                            }
                         }
 
                         segmentEnd = wordEndMs
                     }
 
-                    // 마지막 세그먼트 추가
-                    if (segmentWords.isNotEmpty()) {
-                        // 언어별 단어 처리 전략 적용
-                        val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
-
-                        if (cleanedText.isNotEmpty()) {
-                            segments.add(TranscriptSegment(
-                                startTimeMs = segmentStart,
-                                endTimeMs = segmentEnd,
-                                text = cleanedText
-                            ))
-                        }
-                    }
+                    // 마지막 처리
+                    flushSyllableBuffer()
+                    createSegmentIfNeeded(force = true)
                 }
             }
 
@@ -343,8 +370,32 @@ class VertexAiSttClient(
                         var segmentStart = 0L
                         var segmentEnd = 0L
                         val segmentWords = mutableListOf<String>()
+                        val syllableBuffer = mutableListOf<String>()  // 단일 음절 누적
                         var wordCount = 0
                         var isFirstWord = true
+
+                        fun flushSyllableBuffer() {
+                            if (syllableBuffer.isNotEmpty()) {
+                                segmentWords.add(syllableBuffer.joinToString(""))
+                                syllableBuffer.clear()
+                                wordCount++
+                            }
+                        }
+
+                        fun createSegmentIfNeeded(force: Boolean = false) {
+                            if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
+                                val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
+                                if (cleanedText.isNotEmpty()) {
+                                    allSegments.add(TranscriptSegment(
+                                        startTimeMs = segmentStart,
+                                        endTimeMs = segmentEnd,
+                                        text = cleanedText
+                                    ))
+                                }
+                                segmentWords.clear()
+                                wordCount = 0
+                            }
+                        }
 
                         words.forEach { wordInfo ->
                             val wordStartMs = (wordInfo.startTime.seconds * 1000 +
@@ -359,26 +410,14 @@ class VertexAiSttClient(
                                 isFirstWord = false
                             }
 
-                            // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
-                            if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
-                                if (segmentWords.isNotEmpty()) {
-                                    val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
-                                        .trim()
-
-                                    if (cleanedText.isNotEmpty()) {
-                                        allSegments.add(TranscriptSegment(
-                                            startTimeMs = segmentStart,
-                                            endTimeMs = segmentEnd,
-                                            text = cleanedText
-                                        ))
-                                    }
-                                }
+                            // 800ms 이상 쉴 때: 즉시 세그먼트 생성
+                            if (wordStartMs - segmentEnd > 800) {
+                                flushSyllableBuffer()
+                                createSegmentIfNeeded(force = true)
                                 segmentStart = wordStartMs
-                                segmentWords.clear()
-                                wordCount = 0
                             }
 
-                            // 단어 정리 후 추가 (특수문자만 제거, 띄어쓰기는 유지)
+                            // 단어 정리 (특수문자만 제거)
                             val cleanWord = wordInfo.word
                                 .replace("▁", "")
                                 .replace("_", "")
@@ -386,26 +425,37 @@ class VertexAiSttClient(
                                 .trim()
 
                             if (cleanWord.isNotEmpty()) {
-                                segmentWords.add(cleanWord)
-                                wordCount++
+                                // 새 세그먼트 시작 체크 (비어있으면 현재 단어가 시작점)
+                                val isNewSegment = segmentWords.isEmpty()
+
+                                // 한글 단일 음절인가?
+                                if (cleanWord.length == 1 && cleanWord[0] in '가'..'힣') {
+                                    if (isNewSegment && syllableBuffer.isEmpty()) {
+                                        segmentStart = wordStartMs
+                                    }
+                                    syllableBuffer.add(cleanWord)  // 누적만
+                                } else {
+                                    // 정상 단어: 누적된 음절 먼저 처리
+                                    if (isNewSegment) {
+                                        segmentStart = wordStartMs
+                                    }
+                                    flushSyllableBuffer()
+
+                                    // 현재 정상 단어 추가
+                                    segmentWords.add(cleanWord)
+                                    wordCount++
+
+                                    // 2단어 도달 체크
+                                    createSegmentIfNeeded()
+                                }
                             }
 
                             segmentEnd = wordEndMs
                         }
 
-                        // 마지막 세그먼트 추가
-                        if (segmentWords.isNotEmpty()) {
-                            val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
-                                .trim()
-
-                            if (cleanedText.isNotEmpty()) {
-                                allSegments.add(TranscriptSegment(
-                                    startTimeMs = segmentStart,
-                                    endTimeMs = segmentEnd,
-                                    text = cleanedText
-                                ))
-                            }
-                        }
+                        // 마지막 처리
+                        flushSyllableBuffer()
+                        createSegmentIfNeeded(force = true)
                     }
                 }
 
@@ -468,7 +518,31 @@ class VertexAiSttClient(
                             words.first().startTime.nanos / 1_000_000
                     var segmentEnd = segmentStart
                     val segmentWords = mutableListOf<String>()
+                    val syllableBuffer = mutableListOf<String>()  // 단일 음절 누적
                     var wordCount = 0
+
+                    fun flushSyllableBuffer() {
+                        if (syllableBuffer.isNotEmpty()) {
+                            segmentWords.add(syllableBuffer.joinToString(""))
+                            syllableBuffer.clear()
+                            wordCount++
+                        }
+                    }
+
+                    fun createSegmentIfNeeded(force: Boolean = false) {
+                        if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
+                            val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
+                            if (cleanedText.isNotEmpty()) {
+                                segments.add(TranscriptSegment(
+                                    startTimeMs = segmentStart,
+                                    endTimeMs = segmentEnd,
+                                    text = cleanedText
+                                ))
+                            }
+                            segmentWords.clear()
+                            wordCount = 0
+                        }
+                    }
 
                     words.forEach { wordInfo ->
                         val wordStartMs = wordInfo.startTime.seconds * 1000 +
@@ -476,26 +550,14 @@ class VertexAiSttClient(
                         val wordEndMs = wordInfo.endTime.seconds * 1000 +
                                 wordInfo.endTime.nanos / 1_000_000
 
-                        // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
-                        if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
-                            if (segmentWords.isNotEmpty()) {
-                                // 언어별 단어 처리 전략 적용
-                                val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
-
-                                if (cleanedText.isNotEmpty()) {
-                                    segments.add(TranscriptSegment(
-                                        startTimeMs = segmentStart,
-                                        endTimeMs = segmentEnd,
-                                        text = cleanedText
-                                    ))
-                                }
-                            }
+                        // 800ms 이상 쉴 때: 즉시 세그먼트 생성
+                        if (wordStartMs - segmentEnd > 800) {
+                            flushSyllableBuffer()
+                            createSegmentIfNeeded(force = true)
                             segmentStart = wordStartMs
-                            segmentWords.clear()
-                            wordCount = 0
                         }
 
-                        // 단어 정리 후 추가 (특수문자만 제거, 띄어쓰기는 유지)
+                        // 단어 정리 (특수문자만 제거)
                         val cleanWord = wordInfo.word
                             .replace("▁", "")
                             .replace("_", "")
@@ -503,26 +565,37 @@ class VertexAiSttClient(
                             .trim()
 
                         if (cleanWord.isNotEmpty()) {
-                            segmentWords.add(cleanWord)
-                            wordCount++
+                            // 새 세그먼트 시작 체크 (둘 다 비어있으면 현재 단어가 시작점)
+                            val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
+
+                            // 한글 단일 음절인가?
+                            if (cleanWord.length == 1 && cleanWord[0] in '가'..'힣') {
+                                if (isNewSegment) {
+                                    segmentStart = wordStartMs
+                                }
+                                syllableBuffer.add(cleanWord)  // 누적만
+                            } else {
+                                // 정상 단어: 누적된 음절 먼저 처리
+                                if (isNewSegment) {
+                                    segmentStart = wordStartMs
+                                }
+                                flushSyllableBuffer()
+
+                                // 현재 정상 단어 추가
+                                segmentWords.add(cleanWord)
+                                wordCount++
+
+                                // 2단어 도달 체크
+                                createSegmentIfNeeded()
+                            }
                         }
 
                         segmentEnd = wordEndMs
                     }
 
-                    // 마지막 세그먼트 추가
-                    if (segmentWords.isNotEmpty()) {
-                        // 언어별 단어 처리 전략 적용
-                        val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
-
-                        if (cleanedText.isNotEmpty()) {
-                            segments.add(TranscriptSegment(
-                                startTimeMs = segmentStart,
-                                endTimeMs = segmentEnd,
-                                text = cleanedText
-                            ))
-                        }
-                    }
+                    // 마지막 처리
+                    flushSyllableBuffer()
+                    createSegmentIfNeeded(force = true)
                 } else if (result.resultEndTime != null) {
                     // 단어 레벨 타임스탬프가 없는 경우 결과 레벨에서 추출 (fallback)
                     val endMs = result.resultEndTime.seconds * 1000 +
