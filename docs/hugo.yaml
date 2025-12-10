@@ -28,6 +28,14 @@ languages:
       description: A short-form learning platform where you grow naturally while scrolling
       navbarTitle: "Upvy"
 
+  ja:
+    languageName: 日本語
+    weight: 3
+    title: "Upvy - スクロール時間を成長時間に"
+    params:
+      description: 楽しくスクロールしながら自然に成長するショートフォーム学習プラットフォーム
+      navbarTitle: "Upvy"
+
 # 상단 네비게이션 메뉴
 menu:
   main:
