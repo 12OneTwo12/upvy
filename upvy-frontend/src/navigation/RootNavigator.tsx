@@ -18,6 +18,7 @@ import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
 import { BlockManagementScreen } from '@/screens/settings/BlockManagementScreen';
 import NotificationListScreen from '@/screens/notification/NotificationListScreen';
 import NotificationSettingsScreen from '@/screens/notification/NotificationSettingsScreen';
+import { SentryTestScreen } from '@/screens/dev/SentryTestScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -98,6 +99,15 @@ export default function RootNavigator() {
               name="NotificationSettings"
               component={NotificationSettingsScreen}
             />
+
+            {/* Developer Screens - Only in DEV mode */}
+            {__DEV__ && (
+              <Stack.Screen
+                name="SentryTest"
+                component={SentryTestScreen}
+                options={{ title: 'Sentry 테스트' }}
+              />
+            )}
           </>
         )}
       </Stack.Navigator>

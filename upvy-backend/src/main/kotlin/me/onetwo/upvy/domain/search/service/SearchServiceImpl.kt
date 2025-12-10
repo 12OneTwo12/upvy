@@ -8,6 +8,7 @@ import me.onetwo.upvy.domain.search.dto.ContentSearchRequest
 import me.onetwo.upvy.domain.search.dto.ContentSearchResponse
 import me.onetwo.upvy.domain.search.dto.SearchHistoryItem
 import me.onetwo.upvy.domain.search.dto.SearchHistoryResponse
+import me.onetwo.upvy.domain.search.dto.SuggestionType
 import me.onetwo.upvy.domain.search.dto.TrendingSearchResponse
 import me.onetwo.upvy.domain.search.dto.UserSearchRequest
 import me.onetwo.upvy.domain.search.dto.UserSearchResponse
@@ -175,6 +176,8 @@ class SearchServiceImpl(
     /**
      * 자동완성
      *
+     * USER 타입 자동완성 결과의 경우 프로필 이미지 URL을 함께 반환합니다.
+     *
      * @param request 자동완성 요청
      * @return 자동완성 응답
      */
@@ -187,6 +190,35 @@ class SearchServiceImpl(
             query = request.q,
             limit = request.limit
         )
+            .flatMap { suggestions ->
+                // USER 타입 제안들의 userId 수집
+                val userIds = suggestions
+                    .filter { it.type == SuggestionType.USER }
+                    .mapNotNull { suggestion ->
+                        suggestion.userId?.let { UUID.fromString(it) }
+                    }
+                    .toSet()
+
+                if (userIds.isEmpty()) {
+                    // USER 타입 제안이 없으면 그대로 반환
+                    Mono.just(suggestions)
+                } else {
+                    // 프로필 이미지 조회
+                    userProfileRepository.findUserInfosByUserIds(userIds)
+                        .map { userInfoMap ->
+                            // USER 타입 제안에 프로필 이미지 추가
+                            suggestions.map { suggestion ->
+                                if (suggestion.type == SuggestionType.USER && suggestion.userId != null) {
+                                    val userId = UUID.fromString(suggestion.userId)
+                                    val userInfo = userInfoMap[userId]
+                                    suggestion.copy(profileImageUrl = userInfo?.profileImageUrl)
+                                } else {
+                                    suggestion
+                                }
+                            }
+                        }
+                }
+            }
             .map { suggestions ->
                 AutocompleteResponse(suggestions)
             }

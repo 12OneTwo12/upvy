@@ -45,6 +45,13 @@ class SearchRepositoryImpl(
     /**
      * 콘텐츠 검색
      *
+     * ## Infix 검색 - Wildcard 필수!
+     * - ConfigMap: `min_infix_len = 1, infix_fields = title, description`
+     *   → substring 인덱스를 **생성**만 함
+     * - 코드: `*u*` 형태의 wildcard 쿼리 필요
+     *   → 생성된 인덱스를 **사용**함
+     * - "u" → "*u*" → 제목/설명에 "u" 포함된 콘텐츠 매칭
+     *
      * @param query 검색 키워드
      * @param category 카테고리 필터
      * @param difficulty 난이도 필터
@@ -73,9 +80,10 @@ class SearchRepositoryImpl(
     ): Mono<List<UUID>> {
         logger.debug("Searching contents: query={}, category={}, sortBy={}", query, category, sortBy)
 
-        // Manticore Search 쿼리 구성
+        // Infix 검색: wildcard 추가 (u → *u*)
+        val wildcardQuery = "*$query*"
         val matchQuery = mapOf(
-            "match" to mapOf("*" to query)
+            "match" to mapOf("*" to wildcardQuery)
         )
 
         // 필터 구성 (bool query with must clauses)
@@ -162,6 +170,13 @@ class SearchRepositoryImpl(
      *
      * Manticore Search user_index에서 닉네임으로 검색합니다.
      *
+     * ## Infix 검색 - Wildcard 필수!
+     * - ConfigMap: `min_infix_len = 1, infix_fields = nickname, bio`
+     *   → substring 인덱스를 **생성**만 함
+     * - 코드: `*u*` 형태의 wildcard 쿼리 필요
+     *   → 생성된 인덱스를 **사용**함
+     * - "u" → "*u*" → "upvy", "super" 등 매칭됨
+     *
      * **Note**: 차단된 사용자 필터링은 Service 계층에서 처리됩니다.
      * Manticore Search 결과는 Repository에서 직접 필터링할 수 없으므로,
      * SearchService에서 결과를 받은 후 차단 목록과 비교하여 필터링합니다.
@@ -178,8 +193,10 @@ class SearchRepositoryImpl(
     ): Mono<List<UUID>> {
         logger.debug("Searching users: query={}", query)
 
+        // Infix 검색: wildcard 추가 (u → *u*)
+        val wildcardQuery = "*$query*"
         val matchQuery = mapOf(
-            "match" to mapOf("nickname" to query)
+            "match" to mapOf("nickname" to wildcardQuery)
         )
 
         val request = ManticoreSearchRequest(
@@ -221,6 +238,13 @@ class SearchRepositoryImpl(
      *
      * Manticore Search autocomplete_index에서 자동완성 제안을 조회합니다.
      *
+     * ## Prefix 검색 - Wildcard 필수!
+     * - ConfigMap: `min_prefix_len = 1, prefix_fields = text`
+     *   → substring 인덱스를 **생성**만 함
+     * - 코드: `u*` 형태의 wildcard 쿼리 필요
+     *   → 생성된 인덱스를 **사용**함
+     * - "u" → "u*" → "upvy" 매칭됨
+     *
      * @param query 입력 중인 키워드
      * @param limit 제안 개수
      * @return 자동완성 제안 목록
@@ -231,8 +255,10 @@ class SearchRepositoryImpl(
     ): Mono<List<AutocompleteSuggestion>> {
         logger.debug("Autocomplete: query={}", query)
 
+        // Prefix 검색: wildcard 추가 (u → u*)
+        val wildcardQuery = "$query*"
         val matchQuery = mapOf(
-            "match" to mapOf("text" to query)
+            "match" to mapOf("text" to wildcardQuery)
         )
 
         val request = ManticoreSearchRequest(
@@ -246,12 +272,14 @@ class SearchRepositoryImpl(
                 response.hits.hits.mapNotNull { hit ->
                     val text = hit.source["text"] as? String
                     val type = hit.source["type"] as? String
+                    val userId = hit.source["user_id"] as? String  // USER 타입일 때 user_id 포함
 
                     if (text != null && type != null) {
                         AutocompleteSuggestion(
                             text = text,
                             type = SuggestionType.valueOf(type),
-                            highlightedText = highlightText(text, query)
+                            highlightedText = highlightText(text, query),
+                            userId = userId  // USER 타입이면 userId 포함, 아니면 null
                         )
                     } else {
                         null

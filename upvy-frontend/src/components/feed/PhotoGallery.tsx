@@ -75,7 +75,6 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
     if (currentRetryCount < MAX_RETRIES) {
       // 자동 재시도
       const delay = Math.min(1000 * 2 ** currentRetryCount, 30000);
-      console.log(`[Retry ${currentRetryCount + 1}/${MAX_RETRIES}] Retrying image load after ${delay}ms...`);
 
       const timerId = setTimeout(() => {
         setImageRetryCount((prev) => {

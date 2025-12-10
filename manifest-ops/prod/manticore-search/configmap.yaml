@@ -43,7 +43,7 @@ data:
             INNER JOIN contents c ON cm.content_id = c.id \
             WHERE c.deleted_at IS NULL \
               AND cm.deleted_at IS NULL \
-              AND c.status = 'ACTIVE'
+              AND c.status = 'PUBLISHED'
 
         sql_attr_string   = content_id
         sql_attr_string   = category
@@ -134,11 +134,13 @@ data:
             SELECT \
                 (@rownum := @rownum + 1) AS id, \
                 text, \
-                type \
+                type, \
+                user_id \
             FROM ( \
                 SELECT \
                     up.nickname AS text, \
-                    'USER' AS type \
+                    'USER' AS type, \
+                    u.id AS user_id \
                 FROM user_profiles up \
                 INNER JOIN users u ON up.user_id = u.id \
                 WHERE u.deleted_at IS NULL \
@@ -147,15 +149,17 @@ data:
                 UNION ALL \
                 SELECT \
                     cm.title AS text, \
-                    'CONTENT' AS type \
+                    'CONTENT' AS type, \
+                    NULL AS user_id \
                 FROM content_metadata cm \
                 INNER JOIN contents c ON cm.content_id = c.id \
                 WHERE c.deleted_at IS NULL \
                   AND cm.deleted_at IS NULL \
-                  AND c.status = 'ACTIVE' \
+                  AND c.status = 'PUBLISHED' \
             ) AS combined, (SELECT @rownum := 0) AS r
 
         sql_attr_string = type
+        sql_attr_string = user_id
     }
 
     index autocomplete_index {

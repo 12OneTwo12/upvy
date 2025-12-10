@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
+import { scaleSpacing } from '@/utils/responsive';
 import { createStyleSheet } from '@/utils/styles';
 import {
   autocomplete,
@@ -116,7 +117,6 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
       if (prevRetryCount < MAX_RETRIES) {
         const newRetryCount = prevRetryCount + 1;
         const delay = Math.min(1000 * 2 ** prevRetryCount, 30000);
-        console.log(`[Retry ${newRetryCount}/${MAX_RETRIES}] Retrying thumbnail load after ${delay}ms...`);
 
         retryTimeoutRef.current = setTimeout(() => {
           setMediaKey(key => key + 1); // useEffect를 트리거하여 재시도
@@ -437,26 +437,105 @@ export default function SearchScreen() {
   }, []);
 
   // 자동완성 아이템 렌더
-  const renderSuggestion = ({ item }: { item: AutocompleteSuggestion }) => (
-    <TouchableOpacity
-      style={styles.suggestionItem}
-      onPress={() => handleKeywordPress(item.text)}
-    >
-      <Ionicons
-        name={
-          item.type === 'USER'
-            ? 'person-outline'
-            : item.type === 'TAG'
-            ? 'pricetag-outline'
-            : 'search-outline'
+  const renderSuggestion = ({ item }: { item: AutocompleteSuggestion }) => {
+    // 하이라이트된 텍스트 파싱 (볼드 처리)
+    const renderHighlightedText = () => {
+      // highlightedText가 없으면 일반 텍스트 사용
+      if (!item.highlightedText || item.highlightedText.trim() === '') {
+        return <Text style={styles.suggestionText}>{item.text}</Text>;
+      }
+
+      const parts = item.highlightedText.split(/(<em>|<\/em>)/);
+      const textElements: React.ReactNode[] = [];
+      let isBold = false;
+
+      parts.forEach((part, index) => {
+        if (part === '<em>') {
+          isBold = true;
+        } else if (part === '</em>') {
+          isBold = false;
+        } else if (part && part.trim() !== '') {
+          textElements.push(
+            <Text
+              key={index}
+              style={isBold ? styles.suggestionTextBold : styles.suggestionText}
+            >
+              {part}
+            </Text>
+          );
         }
-        size={20}
-        color={theme.colors.text.tertiary}
-      />
-      <Text style={styles.suggestionText}>{item.text}</Text>
-      <Ionicons name="arrow-up-outline" size={20} color={theme.colors.text.tertiary} />
-    </TouchableOpacity>
-  );
+      });
+
+      // 파싱 결과가 없으면 원본 텍스트 반환
+      if (textElements.length === 0) {
+        return <Text style={styles.suggestionText}>{item.text}</Text>;
+      }
+
+      return <>{textElements}</>;
+    };
+
+    // 타입별 아이콘과 색상
+    const getIconConfig = () => {
+      switch (item.type) {
+        case 'USER':
+          return {
+            name: 'person' as const,
+            backgroundColor: theme.colors.primary[100],
+            iconColor: theme.colors.primary[500],
+          };
+        case 'TAG':
+          return {
+            name: 'pricetag' as const,
+            backgroundColor: '#E0E7FF',
+            iconColor: '#6366F1',
+          };
+        default:
+          return {
+            name: 'search' as const,
+            backgroundColor: theme.colors.gray[100],
+            iconColor: theme.colors.text.tertiary,
+          };
+      }
+    };
+
+    const iconConfig = getIconConfig();
+
+    return (
+      <TouchableOpacity
+        style={styles.suggestionItem}
+        onPress={() => handleKeywordPress(item.text)}
+        activeOpacity={0.6}
+      >
+        {/* 프로필 이미지 또는 아이콘 */}
+        {item.type === 'USER' && item.profileImageUrl ? (
+          /* 사용자 프로필 이미지 */
+          <Image
+            source={{ uri: item.profileImageUrl }}
+            style={styles.suggestionProfileImage}
+          />
+        ) : (
+          /* 아이콘 (원형 배경) */
+          <View style={[styles.suggestionIconContainer, { backgroundColor: iconConfig.backgroundColor }]}>
+            <Ionicons
+              name={iconConfig.name}
+              size={18}
+              color={iconConfig.iconColor}
+            />
+          </View>
+        )}
+
+        {/* 텍스트 (하이라이트 포함) */}
+        <View style={styles.suggestionTextContainer}>
+          <Text>
+            {renderHighlightedText()}
+          </Text>
+        </View>
+
+        {/* 화살표 아이콘 */}
+        <Ionicons name="arrow-up-outline" size={20} color={theme.colors.text.tertiary} />
+      </TouchableOpacity>
+    );
+  };
 
   // 인기 검색어 아이템 렌더
   const renderTrendingKeyword = ({ item }: { item: TrendingKeyword }) => (
@@ -868,14 +947,43 @@ const useStyles = createStyleSheet({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
+    paddingVertical: scaleSpacing(14),
     gap: theme.spacing[3],
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.border.light,
+  },
+
+  suggestionIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  suggestionProfileImage: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.gray[100],
+  },
+
+  suggestionTextContainer: {
+    flex: 1,
   },
 
   suggestionText: {
-    flex: 1,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.normal,
+    lineHeight: theme.typography.fontSize.base * 1.5,
+  },
+
+  suggestionTextBold: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.semibold,
+    lineHeight: theme.typography.fontSize.base * 1.5,
   },
 
   // 섹션
