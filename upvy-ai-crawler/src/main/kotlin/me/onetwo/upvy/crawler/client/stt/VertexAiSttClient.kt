@@ -251,31 +251,57 @@ class VertexAiSttClient(
                         val wordEndMs = wordInfo.endTime.seconds * 1000 +
                                 wordInfo.endTime.nanos / 1_000_000
 
-                        // ▁ = 단어 경계 (새 단어 시작)
-                        val hasWordBoundary = wordInfo.word.startsWith("▁")
+                        // 언어별 단어 구분 전략
+                        val isKorean = sttLanguageCode.startsWith("ko")
 
-                        if (hasWordBoundary && syllableBuffer.isNotEmpty()) {
-                            // 이전 단어 완성
-                            flushSyllableBuffer()
+                        if (isKorean) {
+                            // 한글: ▁ = 단어 경계
+                            val hasWordBoundary = wordInfo.word.startsWith("▁")
 
-                            // 2단어 도달 체크
-                            createSegmentIfNeeded()
-                        }
+                            if (hasWordBoundary && syllableBuffer.isNotEmpty()) {
+                                // 이전 단어 완성
+                                flushSyllableBuffer()
+                                createSegmentIfNeeded()
+                            }
 
-                        // 새 세그먼트 시작 체크
-                        if (segmentWords.isEmpty() && syllableBuffer.isEmpty()) {
-                            segmentStart = wordStartMs
-                        }
+                            // 새 세그먼트 시작 체크
+                            if (segmentWords.isEmpty() && syllableBuffer.isEmpty()) {
+                                segmentStart = wordStartMs
+                            }
 
-                        // 현재 음절 추가 (▁, 공백 제거)
-                        val cleanedWord = wordInfo.word
-                            .replace("▁", "")
-                            .replace("_", "")
-                            .replace(" ", "")
-                            .trim()
+                            // 현재 음절 추가 (▁, 공백 제거)
+                            val cleanedWord = wordInfo.word
+                                .replace("▁", "")
+                                .replace("_", "")
+                                .replace(" ", "")
+                                .trim()
 
-                        if (cleanedWord.isNotEmpty()) {
-                            syllableBuffer.add(cleanedWord)
+                            if (cleanedWord.isNotEmpty()) {
+                                syllableBuffer.add(cleanedWord)
+                            }
+                        } else {
+                            // 일본어/영어: 띄어쓰기 = 단어 구분
+                            val cleanedWord = wordInfo.word
+                                .replace("▁", "")
+                                .replace("_", "")
+                                .trim()
+
+                            if (cleanedWord.isNotEmpty()) {
+                                // 띄어쓰기로 split
+                                val wordsInEntry = cleanedWord.split(" ").filter { it.isNotEmpty() }
+
+                                wordsInEntry.forEach { word ->
+                                    // 새 세그먼트 시작 체크
+                                    if (segmentWords.isEmpty()) {
+                                        segmentStart = wordStartMs
+                                    }
+
+                                    // 단어 직접 추가
+                                    segmentWords.add(word)
+                                    wordCount++
+                                    createSegmentIfNeeded()
+                                }
+                            }
                         }
 
                         segmentEnd = wordEndMs
@@ -556,31 +582,57 @@ class VertexAiSttClient(
                         val wordEndMs = wordInfo.endTime.seconds * 1000 +
                                 wordInfo.endTime.nanos / 1_000_000
 
-                        // ▁ = 단어 경계 (새 단어 시작)
-                        val hasWordBoundary = wordInfo.word.startsWith("▁")
+                        // 언어별 단어 구분 전략
+                        val isKorean = sttLanguageCode.startsWith("ko")
 
-                        if (hasWordBoundary && syllableBuffer.isNotEmpty()) {
-                            // 이전 단어 완성
-                            flushSyllableBuffer()
+                        if (isKorean) {
+                            // 한글: ▁ = 단어 경계
+                            val hasWordBoundary = wordInfo.word.startsWith("▁")
 
-                            // 2단어 도달 체크
-                            createSegmentIfNeeded()
-                        }
+                            if (hasWordBoundary && syllableBuffer.isNotEmpty()) {
+                                // 이전 단어 완성
+                                flushSyllableBuffer()
+                                createSegmentIfNeeded()
+                            }
 
-                        // 새 세그먼트 시작 체크
-                        if (segmentWords.isEmpty() && syllableBuffer.isEmpty()) {
-                            segmentStart = wordStartMs
-                        }
+                            // 새 세그먼트 시작 체크
+                            if (segmentWords.isEmpty() && syllableBuffer.isEmpty()) {
+                                segmentStart = wordStartMs
+                            }
 
-                        // 현재 음절 추가 (▁, 공백 제거)
-                        val cleanedWord = wordInfo.word
-                            .replace("▁", "")
-                            .replace("_", "")
-                            .replace(" ", "")
-                            .trim()
+                            // 현재 음절 추가 (▁, 공백 제거)
+                            val cleanedWord = wordInfo.word
+                                .replace("▁", "")
+                                .replace("_", "")
+                                .replace(" ", "")
+                                .trim()
 
-                        if (cleanedWord.isNotEmpty()) {
-                            syllableBuffer.add(cleanedWord)
+                            if (cleanedWord.isNotEmpty()) {
+                                syllableBuffer.add(cleanedWord)
+                            }
+                        } else {
+                            // 일본어/영어: 띄어쓰기 = 단어 구분
+                            val cleanedWord = wordInfo.word
+                                .replace("▁", "")
+                                .replace("_", "")
+                                .trim()
+
+                            if (cleanedWord.isNotEmpty()) {
+                                // 띄어쓰기로 split
+                                val wordsInEntry = cleanedWord.split(" ").filter { it.isNotEmpty() }
+
+                                wordsInEntry.forEach { word ->
+                                    // 새 세그먼트 시작 체크
+                                    if (segmentWords.isEmpty()) {
+                                        segmentStart = wordStartMs
+                                    }
+
+                                    // 단어 직접 추가
+                                    segmentWords.add(word)
+                                    wordCount++
+                                    createSegmentIfNeeded()
+                                }
+                            }
                         }
 
                         segmentEnd = wordEndMs
