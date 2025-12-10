@@ -232,6 +232,8 @@ class VertexAiSttClient(
                         if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
                             val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
                             if (cleanedText.isNotEmpty()) {
+                                logger.debug("[세그먼트 생성] start={}ms, end={}ms, text='{}', wordCount={}",
+                                    segmentStart, segmentEnd, cleanedText, wordCount)
                                 segments.add(TranscriptSegment(
                                     startTimeMs = segmentStart,
                                     endTimeMs = segmentEnd,
@@ -265,6 +267,8 @@ class VertexAiSttClient(
                         if (cleanedWord.isNotEmpty()) {
                             // 공백으로 split하여 각 음절 개별 처리
                             val syllables = cleanedWord.split(" ").filter { it.isNotEmpty() }
+                            logger.debug("[음절 처리] wordInfo.word='{}' → syllables={}, wordStartMs={}",
+                                wordInfo.word, syllables, wordStartMs)
 
                             syllables.forEach { syllable ->
                                 // 새 세그먼트 시작 체크 (둘 다 비어있으면 현재 단어가 시작점)
@@ -537,6 +541,8 @@ class VertexAiSttClient(
                         if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
                             val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
                             if (cleanedText.isNotEmpty()) {
+                                logger.debug("[세그먼트 생성] start={}ms, end={}ms, text='{}', wordCount={}",
+                                    segmentStart, segmentEnd, cleanedText, wordCount)
                                 segments.add(TranscriptSegment(
                                     startTimeMs = segmentStart,
                                     endTimeMs = segmentEnd,
@@ -570,6 +576,8 @@ class VertexAiSttClient(
                         if (cleanedWord.isNotEmpty()) {
                             // 공백으로 split하여 각 음절 개별 처리
                             val syllables = cleanedWord.split(" ").filter { it.isNotEmpty() }
+                            logger.debug("[음절 처리] wordInfo.word='{}' → syllables={}, wordStartMs={}",
+                                wordInfo.word, syllables, wordStartMs)
 
                             syllables.forEach { syllable ->
                                 // 새 세그먼트 시작 체크 (둘 다 비어있으면 현재 단어가 시작점)
