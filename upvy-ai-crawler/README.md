@@ -214,7 +214,7 @@ crawler:
 
 batch:
   schedule:
-    cron: "0 0 3 * * *"  # 매일 새벽 3시
+    cron: "0 0 1 * * *"  # 매일 새벽 1시
 ```
 
 ## 실행
