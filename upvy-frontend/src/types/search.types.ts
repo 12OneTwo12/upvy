@@ -108,6 +108,7 @@ export interface AutocompleteSuggestion {
   text: string;
   type: SuggestionType;
   highlightedText: string;
+  profileImageUrl?: string; // USER 타입일 때 프로필 이미지 URL (optional)
 }
 
 /**

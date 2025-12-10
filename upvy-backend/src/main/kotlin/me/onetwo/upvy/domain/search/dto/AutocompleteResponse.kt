@@ -26,16 +26,20 @@ data class AutocompleteResponse(
  * ## 제안 타입
  * - CONTENT: 콘텐츠 제목
  * - TAG: 태그
- * - CREATOR: 크리에이터 이름
+ * - USER: 사용자 닉네임
  *
  * @property text 제안 텍스트
- * @property type 제안 타입 (CONTENT, TAG, CREATOR)
+ * @property type 제안 타입 (CONTENT, TAG, USER)
  * @property highlightedText 매칭된 부분 강조 텍스트 (HTML 태그 포함)
+ * @property userId 사용자 ID (USER 타입일 때만 사용, Manticore에서 반환)
+ * @property profileImageUrl 프로필 이미지 URL (USER 타입일 때만 사용, Service에서 조회하여 추가)
  */
 data class AutocompleteSuggestion(
     val text: String,
     val type: SuggestionType,
-    val highlightedText: String
+    val highlightedText: String,
+    val userId: String? = null,
+    val profileImageUrl: String? = null
 )
 
 /**

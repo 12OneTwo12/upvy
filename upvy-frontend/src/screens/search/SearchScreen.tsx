@@ -507,14 +507,23 @@ export default function SearchScreen() {
         onPress={() => handleKeywordPress(item.text)}
         activeOpacity={0.6}
       >
-        {/* 아이콘 (원형 배경) */}
-        <View style={[styles.suggestionIconContainer, { backgroundColor: iconConfig.backgroundColor }]}>
-          <Ionicons
-            name={iconConfig.name}
-            size={18}
-            color={iconConfig.iconColor}
+        {/* 프로필 이미지 또는 아이콘 */}
+        {item.type === 'USER' && item.profileImageUrl ? (
+          /* 사용자 프로필 이미지 */
+          <Image
+            source={{ uri: item.profileImageUrl }}
+            style={styles.suggestionProfileImage}
           />
-        </View>
+        ) : (
+          /* 아이콘 (원형 배경) */
+          <View style={[styles.suggestionIconContainer, { backgroundColor: iconConfig.backgroundColor }]}>
+            <Ionicons
+              name={iconConfig.name}
+              size={18}
+              color={iconConfig.iconColor}
+            />
+          </View>
+        )}
 
         {/* 텍스트 (하이라이트 포함) */}
         <View style={styles.suggestionTextContainer}>
@@ -951,6 +960,13 @@ const useStyles = createStyleSheet({
     borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  suggestionProfileImage: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.gray[100],
   },
 
   suggestionTextContainer: {
