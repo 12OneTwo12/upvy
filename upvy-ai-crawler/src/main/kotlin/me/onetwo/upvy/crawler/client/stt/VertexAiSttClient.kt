@@ -81,21 +81,58 @@ class VertexAiSttClient(
         }
 
         /**
-         * 한글 단일 음절 병합
+         * 언어별 단어 처리 전략
          *
-         * Google STT가 한글을 음절 단위로 분리하는 경우("개", "발" → "개발")를 처리합니다.
-         * 연속된 단일 한글 음절들을 하나의 단어로 병합하고, 정상 단어("하기", "위해서")는 유지합니다.
+         * Google STT가 언어별로 음절 단위로 분리하는 경우를 처리합니다.
+         * - 한글: 단일 음절 병합 ("개", "발" → "개발")
+         * - 일본어: 단일 음절 병합 (히라가나/가타카나)
+         * - 영어: 그대로 (음절 병합 불필요)
+         */
+        private fun processSegmentWords(words: List<String>, languageCode: String): String {
+            val merged = mergeWordsByLanguage(words, languageCode)
+            // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
+            val separator = if (languageCode.startsWith("ja")) "" else " "
+            return merged.joinToString(separator).trim()
+        }
+
+        /**
+         * 언어별 단어 병합 로직
+         */
+        private fun mergeWordsByLanguage(words: List<String>, languageCode: String): List<String> {
+            return when {
+                languageCode.startsWith("ja") -> mergeJapaneseSyllables(words)
+                languageCode.startsWith("ko") -> mergeKoreanSyllables(words)
+                else -> words  // 영어는 그대로
+            }
+        }
+
+        /**
+         * 한글 단일 음절 병합
          */
         private fun mergeKoreanSyllables(words: List<String>): List<String> {
+            return mergeSingleCharacters(words) { it in '가'..'힣' }
+        }
+
+        /**
+         * 일본어 단일 음절 병합 (히라가나 + 가타카나)
+         */
+        private fun mergeJapaneseSyllables(words: List<String>): List<String> {
+            return mergeSingleCharacters(words) {
+                it in 'ぁ'..'ん' || it in 'ァ'..'ヶ'
+            }
+        }
+
+        /**
+         * 공통 단일 문자 병합 로직
+         */
+        private fun mergeSingleCharacters(words: List<String>, isSyllable: (Char) -> Boolean): List<String> {
             val merged = mutableListOf<String>()
             val tempSyllables = mutableListOf<String>()
 
             for (word in words) {
-                // 단일 한글 음절인지 확인 (길이 1 + 한글 범위)
-                if (word.length == 1 && word[0] in '가'..'힣') {
+                if (word.length == 1 && isSyllable(word[0])) {
                     tempSyllables.add(word)
                 } else {
-                    // 정상 단어: 누적된 음절 먼저 병합
                     if (tempSyllables.isNotEmpty()) {
                         merged.add(tempSyllables.joinToString(""))
                         tempSyllables.clear()
@@ -104,7 +141,6 @@ class VertexAiSttClient(
                 }
             }
 
-            // 마지막 누적 음절 처리
             if (tempSyllables.isNotEmpty()) {
                 merged.add(tempSyllables.joinToString(""))
             }
@@ -188,12 +224,8 @@ class VertexAiSttClient(
                         // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
                         if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
                             if (segmentWords.isNotEmpty()) {
-                                // 한글 단일 음절 병합 후 텍스트 생성
-                                val mergedWords = mergeKoreanSyllables(segmentWords)
-                                // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
-                                val separator = if (sttLanguageCode.startsWith("ja")) "" else " "
-                                val cleanedText = mergedWords.joinToString(separator)
-                                    .trim()
+                                // 언어별 단어 처리 전략 적용
+                                val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
 
                                 if (cleanedText.isNotEmpty()) {
                                     segments.add(TranscriptSegment(
@@ -225,12 +257,8 @@ class VertexAiSttClient(
 
                     // 마지막 세그먼트 추가
                     if (segmentWords.isNotEmpty()) {
-                        // 한글 단일 음절 병합 후 텍스트 생성
-                        val mergedWords = mergeKoreanSyllables(segmentWords)
-                        // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
-                        val separator = if (sttLanguageCode.startsWith("ja")) "" else " "
-                        val cleanedText = mergedWords.joinToString(separator)
-                            .trim()
+                        // 언어별 단어 처리 전략 적용
+                        val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
 
                         if (cleanedText.isNotEmpty()) {
                             segments.add(TranscriptSegment(
@@ -451,12 +479,8 @@ class VertexAiSttClient(
                         // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
                         if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
                             if (segmentWords.isNotEmpty()) {
-                                // 한글 단일 음절 병합 후 텍스트 생성
-                                val mergedWords = mergeKoreanSyllables(segmentWords)
-                                // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
-                                val separator = if (sttLanguageCode.startsWith("ja")) "" else " "
-                                val cleanedText = mergedWords.joinToString(separator)
-                                    .trim()
+                                // 언어별 단어 처리 전략 적용
+                                val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
 
                                 if (cleanedText.isNotEmpty()) {
                                     segments.add(TranscriptSegment(
@@ -488,12 +512,8 @@ class VertexAiSttClient(
 
                     // 마지막 세그먼트 추가
                     if (segmentWords.isNotEmpty()) {
-                        // 한글 단일 음절 병합 후 텍스트 생성
-                        val mergedWords = mergeKoreanSyllables(segmentWords)
-                        // 일본어는 띄어쓰기 없음, 한글/영어는 띄어쓰기 유지
-                        val separator = if (sttLanguageCode.startsWith("ja")) "" else " "
-                        val cleanedText = mergedWords.joinToString(separator)
-                            .trim()
+                        // 언어별 단어 처리 전략 적용
+                        val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
 
                         if (cleanedText.isNotEmpty()) {
                             segments.add(TranscriptSegment(
