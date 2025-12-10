@@ -309,6 +309,7 @@ class VertexAiLlmClient(
         |- "story_flow": 순차적으로 이어지는 스토리 만들기
         |- "tutorial_sequence": 튜토리얼 단계를 압축하여 구성
         |- "problem_solution": 문제 제시 → 해결 과정 → 결론
+        |- "video_time": 클립 전체 합계, 편집 후 풀 영상이 최소 30초 이상 최대 3분이 되도록 클립 선택
         |
         |JSON 형식으로만 응답해주세요:
         |{

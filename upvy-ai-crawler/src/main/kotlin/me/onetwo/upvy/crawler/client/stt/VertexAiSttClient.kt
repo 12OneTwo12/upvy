@@ -172,10 +172,11 @@ class VertexAiSttClient(
                             wordCount = 0
                         }
 
-                        // 단어 정리 후 추가
+                        // 단어 정리 후 추가 (특수문자만 제거, 띄어쓰기는 유지)
                         val cleanWord = wordInfo.word
                             .replace("▁", "")
                             .replace("_", "")
+                            .replace(" ", "")
                             .trim()
 
                         if (cleanWord.isNotEmpty()) {
@@ -293,9 +294,7 @@ class VertexAiSttClient(
                             // 세그먼트 구분: 2단어마다 또는 0.8초 이상 쉴 때
                             if (wordCount >= 2 || wordStartMs - segmentEnd > 800) {
                                 if (segmentWords.isNotEmpty()) {
-                                    val cleanedText = segmentWords.joinToString("")
-                                        .replace("▁", "")
-                                        .replace("_", "")
+                                    val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
                                         .trim()
 
                                     if (cleanedText.isNotEmpty()) {
@@ -311,10 +310,11 @@ class VertexAiSttClient(
                                 wordCount = 0
                             }
 
-                            // 단어 정리 후 추가
+                            // 단어 정리 후 추가 (특수문자만 제거, 띄어쓰기는 유지)
                             val cleanWord = wordInfo.word
                                 .replace("▁", "")
                                 .replace("_", "")
+                                .replace(" ", "")
                                 .trim()
 
                             if (cleanWord.isNotEmpty()) {
@@ -327,9 +327,7 @@ class VertexAiSttClient(
 
                         // 마지막 세그먼트 추가
                         if (segmentWords.isNotEmpty()) {
-                            val cleanedText = segmentWords.joinToString("")
-                                .replace("▁", "")
-                                .replace("_", "")
+                            val cleanedText = segmentWords.joinToString(" ")  // 단어 사이 띄어쓰기 유지
                                 .trim()
 
                             if (cleanedText.isNotEmpty()) {
@@ -429,10 +427,11 @@ class VertexAiSttClient(
                             wordCount = 0
                         }
 
-                        // 단어 정리 후 추가
+                        // 단어 정리 후 추가 (특수문자만 제거, 띄어쓰기는 유지)
                         val cleanWord = wordInfo.word
                             .replace("▁", "")
                             .replace("_", "")
+                            .replace(" ", "")
                             .trim()
 
                         if (cleanWord.isNotEmpty()) {

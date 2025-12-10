@@ -249,14 +249,14 @@ class FFmpegWrapperImpl(
             filters.add(
                 "subtitles='$escapedTitleSrtPath':" +
                 "force_style='FontName=Noto Sans KR," +
-                "FontSize=24," +
+                "FontSize=20," +
                 "PrimaryColour=&HFFFFFF," +
                 "OutlineColour=&H000000," +
                 "Outline=2," +
                 "BackColour=&H80000000," +  // 반투명 검은 배경
                 "Bold=1," +
                 "Alignment=8," +  // 상단 중앙
-                "MarginV=30'"  // 상단에서 30px 아래 (더 위로)
+                "MarginV=15'"  // 상단에서 15px 아래 (더 위로)
             )
 
             // 2. 하단 자막 (subtitles 필터 사용) - SRT 파일이 있는 경우만
