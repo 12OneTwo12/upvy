@@ -234,7 +234,7 @@ class FFmpegWrapperImpl(
         val titleSrtContent = """
             1
             00:00:00,000 --> 99:59:59,999
-            $title
+            {\an8}$title
         """.trimIndent()
 
         File(titleSrtPath).writeText(titleSrtContent)
@@ -249,14 +249,14 @@ class FFmpegWrapperImpl(
             filters.add(
                 "subtitles='$escapedTitleSrtPath':" +
                 "force_style='FontName=Noto Sans KR," +
-                "FontSize=20," +
+                "FontSize=16," +
                 "PrimaryColour=&HFFFFFF," +
                 "OutlineColour=&H000000," +
                 "Outline=2," +
                 "BackColour=&H80000000," +  // 반투명 검은 배경
                 "Bold=1," +
                 "Alignment=8," +  // 상단 중앙
-                "MarginV=15'"  // 상단에서 15px 아래 (더 위로)
+                "MarginV=30'"  // 상단에서 30px 아래 (화면 최상단 근처)
             )
 
             // 2. 하단 자막 (subtitles 필터 사용) - SRT 파일이 있는 경우만
