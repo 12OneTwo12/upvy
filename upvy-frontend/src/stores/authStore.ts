@@ -12,6 +12,7 @@ import {
   STORAGE_KEYS,
 } from '@/utils/storage';
 import { getCurrentUser, getMyProfile, logout as apiLogout } from '@/api/auth.api';
+import { setSentryUser, clearSentryUser } from '@/config/sentry';
 
 interface AuthState {
   // State
@@ -60,6 +61,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Save user info
       await setItem(STORAGE_KEYS.USER_INFO, user);
 
+      // Set Sentry user context
+      setSentryUser({
+        id: user.id,
+        email: user.email,
+        username: profile?.nickname || user.email,
+      });
+
       // Update state
       set({
         user,
@@ -68,7 +76,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch (error) {
-      console.error('Login error:', error);
       throw error;
     }
   },
@@ -88,6 +95,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await removeTokens();
       await removeItem(STORAGE_KEYS.USER_INFO);
 
+      // Clear Sentry user context
+      clearSentryUser();
+
       // Clear state
       set({
         user: null,
@@ -96,7 +106,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      // Logout error silently ignored
     }
   },
 
@@ -124,8 +134,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           profile = await getMyProfile();
         } catch (profileError) {
           // 프로필이 없는 경우 (첫 로그인)
-          console.log('No profile found, user needs to create profile');
         }
+
+        // Set Sentry user context (auto-login)
+        setSentryUser({
+          id: user.id,
+          email: user.email,
+          username: profile?.nickname || user.email,
+        });
 
         set({
           user,
@@ -138,7 +154,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await get().logout();
       }
     } catch (error) {
-      console.error('Check auth error:', error);
       set({ isLoading: false, isAuthenticated: false });
     }
   },

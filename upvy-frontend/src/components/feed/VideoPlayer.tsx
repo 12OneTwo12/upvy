@@ -110,7 +110,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
       // 타임아웃 시작
       clearAllTimers();
       loadingTimeoutRef.current = setTimeout(() => {
-        console.log('[VideoPlayer] Loading timeout - triggering retry...');
         handleVideoError('Loading timeout');
       }, LOADING_TIMEOUT);
     }
@@ -178,7 +177,6 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     if (retryCount < MAX_RETRIES) {
       // 자동 재시도
       const delay = Math.min(1000 * 2 ** retryCount, 30000);
-      console.log(`[Retry ${retryCount + 1}/${MAX_RETRIES}] Retrying video load after ${delay}ms...`);
 
       setIsBuffering(true);
 

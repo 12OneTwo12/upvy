@@ -8,7 +8,11 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/components/common';
 import { logError } from './src/utils/errorHandler';
 import { useLanguageStore } from './src/stores/languageStore';
+import { initializeSentry, Sentry } from './src/config/sentry';
 import './src/locales'; // Initialize i18n
+
+// Sentry 초기화 (환경별 설정 적용)
+initializeSentry();
 
 // React Query Client
 const queryClient = new QueryClient({
@@ -22,7 +26,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function App() {
+export default Sentry.wrap(function App() {
   // Initialize language on app start
   useEffect(() => {
     useLanguageStore.getState().initializeLanguage();
@@ -71,4 +75,4 @@ export default function App() {
       </GestureHandlerRootView>
     </ErrorBoundary>
   );
-}
+});

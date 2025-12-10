@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios';
 import { Alert } from 'react-native';
+import { captureException, setSentryContext, addSentryBreadcrumb } from '@/config/sentry';
 
 /**
  * API 에러 응답 타입
@@ -114,16 +115,69 @@ export const showErrorAlert = (error: unknown, title = '오류'): void => {
 };
 
 /**
- * 에러 로깅
+ * 에러 로깅 (Sentry 통합)
+ *
+ * 개발 환경: 콘솔 출력
+ * 프로덕션 환경: Sentry로 전송
  */
 export const logError = (error: unknown, context?: string): void => {
   const message = getErrorMessage(error);
   const timestamp = new Date().toISOString();
 
-  console.error(`[${timestamp}] ${context ? `[${context}] ` : ''}${message}`, error);
+  // 개발 환경에서는 콘솔 출력
+  if (__DEV__) {
+    console.error(`[${timestamp}] ${context ? `[${context}] ` : ''}${message}`, error);
+  }
 
-  // TODO: 프로덕션 환경에서는 에러 모니터링 서비스로 전송
-  // (예: Sentry, Firebase Crashlytics 등)
+  // Sentry로 에러 전송
+  if (error instanceof Error) {
+    // 에러 컨텍스트 설정
+    const errorContext: Record<string, any> = {
+      timestamp,
+      message,
+    };
+
+    if (context) {
+      errorContext.context = context;
+    }
+
+    // Axios 에러인 경우 추가 정보
+    if (isAxiosError(error)) {
+      errorContext.axios = {
+        method: error.config?.method,
+        url: error.config?.url,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+      };
+
+      // 네트워크 에러 태그
+      if (isNetworkError(error)) {
+        setSentryContext('error_type', { type: 'network' });
+      }
+
+      // 인증 에러 태그
+      if (isAuthError(error)) {
+        setSentryContext('error_type', { type: 'auth' });
+      }
+
+      // 유효성 검사 에러 태그
+      if (isValidationError(error)) {
+        setSentryContext('error_type', { type: 'validation' });
+      }
+    }
+
+    // Sentry에 에러 전송
+    captureException(error, errorContext);
+  } else {
+    // Error 객체가 아닌 경우 브레드크럼만 추가
+    addSentryBreadcrumb(
+      `Non-error thrown: ${message}`,
+      context || 'error',
+      'error',
+      { error }
+    );
+  }
 };
 
 /**

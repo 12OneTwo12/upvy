@@ -84,7 +84,6 @@ async function getDeviceId(): Promise<string> {
 
     // AsyncStorage에 저장
     await AsyncStorage.setItem(DEVICE_ID_STORAGE_KEY, newDeviceId);
-    console.log('New device ID generated:', newDeviceId);
 
     return newDeviceId;
   } catch (error) {
@@ -101,7 +100,6 @@ async function getExpoPushToken(): Promise<string | null> {
   try {
     // 실제 디바이스인지 확인
     if (!Device.isDevice) {
-      console.log('Push notifications only work on physical devices');
       return null;
     }
 
@@ -179,14 +177,12 @@ export function useNotifications(): UseNotificationsResult {
       // 권한 확인
       const hasPermission = await requestPermission();
       if (!hasPermission) {
-        console.log('Notification permission denied');
         return;
       }
 
       // 토큰 가져오기
       const token = await getExpoPushToken();
       if (!token) {
-        console.log('Failed to get push token');
         return;
       }
 
@@ -201,7 +197,6 @@ export function useNotifications(): UseNotificationsResult {
         provider: 'EXPO',
       });
 
-      console.log('Push token registered:', token);
     } catch (error) {
       console.error('Failed to register push token:', error);
     }
@@ -214,7 +209,6 @@ export function useNotifications(): UseNotificationsResult {
     try {
       await deleteAllPushTokens();
       setExpoPushToken(null);
-      console.log('All push tokens deleted');
     } catch (error) {
       console.error('Failed to delete push tokens:', error);
     }
@@ -275,7 +269,6 @@ export function useNotifications(): UseNotificationsResult {
     // 포그라운드에서 알림 수신 시
     notificationListener.current = Notifications.addNotificationReceivedListener(
       (notification: Notifications.Notification) => {
-        console.log('Notification received:', notification);
         // 읽지 않은 알림 수 새로고침
         fetchUnreadCount();
       }
