@@ -73,8 +73,6 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
         );
       }
     } catch (error: any) {
-      setIsSubmitting(false);
-
       // errorHandler를 통해 적절한 에러 메시지 추출
       const errorMessage = getErrorMessage(error);
 
@@ -92,6 +90,9 @@ export const BlockConfirmModal: React.FC<BlockConfirmModalProps> = ({
           errorMessage
         );
       }
+    } finally {
+      // 성공/실패 관계없이 항상 로딩 상태 해제
+      setIsSubmitting(false);
     }
   };
 
