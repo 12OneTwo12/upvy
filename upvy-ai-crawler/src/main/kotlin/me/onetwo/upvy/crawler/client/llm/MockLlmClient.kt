@@ -1,9 +1,11 @@
 package me.onetwo.upvy.crawler.client.llm
 
 import me.onetwo.upvy.crawler.client.LlmClient
+import me.onetwo.upvy.crawler.domain.ClipSegment
 import me.onetwo.upvy.crawler.domain.ContentLanguage
 import me.onetwo.upvy.crawler.domain.ContentMetadata
 import me.onetwo.upvy.crawler.domain.Difficulty
+import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
 import me.onetwo.upvy.crawler.domain.Recommendation
 import me.onetwo.upvy.crawler.domain.SearchContext
@@ -68,6 +70,34 @@ class MockLlmClient : LlmClient {
     override suspend fun extractKeySegments(transcript: String): List<Segment> {
         logger.debug("MockLlmClient.extractKeySegments called: transcript length={}", transcript.length)
         return segmentsResponse
+    }
+
+    override suspend fun generateEditPlan(transcript: String): EditPlan {
+        logger.debug("MockLlmClient.generateEditPlan called: transcript length={}", transcript.length)
+        // Mock: 2개 클립으로 구성된 편집 계획 반환
+        return EditPlan(
+            clips = listOf(
+                ClipSegment(
+                    orderIndex = 0,
+                    startTimeMs = 30000,  // 30초
+                    endTimeMs = 60000,    // 60초
+                    title = "Mock Clip 1: 도입부",
+                    description = "테스트용 첫 번째 클립",
+                    keywords = listOf("intro", "mock")
+                ),
+                ClipSegment(
+                    orderIndex = 1,
+                    startTimeMs = 90000,  // 90초
+                    endTimeMs = 120000,   // 120초
+                    title = "Mock Clip 2: 핵심 내용",
+                    description = "테스트용 두 번째 클립",
+                    keywords = listOf("main", "mock")
+                )
+            ),
+            totalDurationMs = 60000,  // 총 60초 (30초 + 30초)
+            editingStrategy = "highlight_compilation",
+            transitionStyle = "hard_cut"
+        )
     }
 
     override suspend fun generateMetadata(content: String, language: ContentLanguage): ContentMetadata {

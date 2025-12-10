@@ -293,7 +293,7 @@ class AiContentScheduler(
     /**
      * 매일 새벽 3시에 AI 콘텐츠 배치 실행
      */
-    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 0 1 * * *")
     fun runDailyBatch() {
         logger.info("AI 콘텐츠 배치 작업 시작")
 

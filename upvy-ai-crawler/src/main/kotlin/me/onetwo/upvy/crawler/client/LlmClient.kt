@@ -2,6 +2,7 @@ package me.onetwo.upvy.crawler.client
 
 import me.onetwo.upvy.crawler.domain.ContentLanguage
 import me.onetwo.upvy.crawler.domain.ContentMetadata
+import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
 import me.onetwo.upvy.crawler.domain.SearchContext
 import me.onetwo.upvy.crawler.domain.SearchQuery
@@ -31,6 +32,18 @@ interface LlmClient {
      * @return 추출된 세그먼트 목록 (시작/종료 시간, 제목, 키워드)
      */
     suspend fun extractKeySegments(transcript: String): List<Segment>
+
+    /**
+     * 영상 자막에서 숏폼 편집 계획 생성
+     *
+     * 단순 구간 추출이 아니라, 여러 구간을 어떻게 조합하면
+     * 최적의 숏폼이 되는지 전체 편집 계획을 제시합니다.
+     * 스토리 플로우, 편집 전략, 클립 순서 등을 포함합니다.
+     *
+     * @param transcript 전체 자막 텍스트 (타임스탬프 포함)
+     * @return 편집 계획 (클립 목록, 순서, 전략)
+     */
+    suspend fun generateEditPlan(transcript: String): EditPlan
 
     /**
      * 콘텐츠 메타데이터 자동 생성
