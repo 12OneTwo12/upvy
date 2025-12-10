@@ -19,7 +19,7 @@ module.exports = {
       backgroundColor: '#ffffff',
     },
     ios: {
-      supportsTablet: true,
+      supportsTablet: false,
       bundleIdentifier: 'com.upvy.app',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
