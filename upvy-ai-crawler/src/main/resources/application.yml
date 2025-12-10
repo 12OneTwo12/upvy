@@ -89,6 +89,7 @@ crawler:
 ffmpeg:
   path: ${FFMPEG_PATH:/opt/homebrew/bin/ffmpeg}
   temp-dir: ${FFMPEG_TEMP_DIR:/tmp/ai-crawler}
+  font-path: ${FFMPEG_FONT_PATH:/System/Library/Fonts/Supplemental/Arial Unicode.ttf}
 
 # yt-dlp
 ytdlp:

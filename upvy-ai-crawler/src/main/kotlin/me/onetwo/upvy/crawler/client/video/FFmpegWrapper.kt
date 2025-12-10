@@ -51,6 +51,24 @@ interface FFmpegWrapper {
      * @return 비디오 정보 (duration, width, height 등)
      */
     fun getVideoInfo(inputPath: String): VideoInfo
+
+    /**
+     * 텍스트 오버레이 추가 (상단 제목 + 하단 자막)
+     *
+     * @param inputPath 입력 비디오 경로
+     * @param outputPath 출력 비디오 경로
+     * @param title 상단에 표시할 제목
+     * @param srtPath SRT 자막 파일 경로 (옵션)
+     * @param fontPath 한글 폰트 파일 경로
+     * @return 출력 파일 경로
+     */
+    fun addTextOverlay(
+        inputPath: String,
+        outputPath: String,
+        title: String,
+        srtPath: String?,
+        fontPath: String
+    ): String
 }
 
 /**
@@ -188,6 +206,91 @@ class FFmpegWrapperImpl(
             logger.warn("비디오 정보 조회 실패: input={}", inputPath, e)
             return VideoInfo(0, 0, 0)
         }
+    }
+
+    override fun addTextOverlay(
+        inputPath: String,
+        outputPath: String,
+        title: String,
+        srtPath: String?,
+        fontPath: String
+    ): String {
+        logger.info("텍스트 오버레이 추가 시작: input={}, title={}, srtPath={}", inputPath, title, srtPath)
+
+        // FFmpeg drawtext 필터용 문자열 이스케이프
+        val escapedTitle = escapeDrawtextString(title)
+
+        // Filter complex 구성
+        val filters = mutableListOf<String>()
+
+        // 1. 상단 제목 (drawtext)
+        filters.add(
+            "drawtext=fontfile='$fontPath':" +
+            "text='$escapedTitle':" +
+            "x=(w-text_w)/2:" +
+            "y=120:" +
+            "fontsize=48:" +
+            "fontcolor=white:" +
+            "borderw=3:" +
+            "bordercolor=black:" +
+            "box=1:" +
+            "boxcolor=black@0.6:" +
+            "boxborderw=20"
+        )
+
+        // 2. 하단 자막 (subtitles) - SRT 파일이 있는 경우만
+        if (srtPath != null && File(srtPath).exists()) {
+            // Windows 경로 처리: 콜론과 백슬래시 이스케이프
+            val escapedSrtPath = srtPath.replace("\\", "/").replace(":", "\\\\:")
+
+            filters.add(
+                "subtitles='$escapedSrtPath':" +
+                "force_style='FontName=Noto Sans KR," +
+                "FontSize=36," +
+                "PrimaryColour=&HFFFFFF," +
+                "OutlineColour=&H000000," +
+                "Outline=2," +
+                "Bold=1," +
+                "Alignment=2," +
+                "MarginV=150'"
+            )
+        }
+
+        val vfFilter = filters.joinToString(",")
+
+        val command = listOf(
+            ffmpegPath,
+            "-i", inputPath,
+            "-vf", vfFilter,
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "23",
+            "-c:a", "copy",  // 오디오는 복사 (인코딩 생략)
+            "-y",
+            outputPath
+        )
+
+        executeCommand(command, "Text overlay")
+
+        logger.info("텍스트 오버레이 추가 완료: output={}", outputPath)
+        return outputPath
+    }
+
+    /**
+     * FFmpeg drawtext 필터용 문자열 이스케이프
+     *
+     * FFmpeg의 drawtext 필터는 특수문자를 이스케이프해야 합니다.
+     * 참고: https://ffmpeg.org/ffmpeg-filters.html#drawtext
+     *
+     * @param text 이스케이프할 텍스트
+     * @return 이스케이프된 텍스트
+     */
+    private fun escapeDrawtextString(text: String): String {
+        return text
+            .replace("\\", "\\\\")   // 백슬래시
+            .replace(":", "\\:")     // 콜론
+            .replace("'", "\\'")     // 작은따옴표
+            .replace("%", "\\%")     // 퍼센트
     }
 
     private fun executeCommand(command: List<String>, operation: String) {

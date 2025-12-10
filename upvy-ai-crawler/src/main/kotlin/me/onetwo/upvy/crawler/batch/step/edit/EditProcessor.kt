@@ -3,9 +3,11 @@ package me.onetwo.upvy.crawler.batch.step.edit
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import me.onetwo.upvy.crawler.client.video.FFmpegWrapper
+import me.onetwo.upvy.crawler.client.video.SrtGenerator
 import me.onetwo.upvy.crawler.domain.AiContentJob
 import me.onetwo.upvy.crawler.domain.JobStatus
 import me.onetwo.upvy.crawler.domain.Segment
+import me.onetwo.upvy.crawler.domain.TranscriptSegment
 import me.onetwo.upvy.crawler.service.S3Service
 import org.slf4j.LoggerFactory
 import org.springframework.batch.item.ItemProcessor
@@ -24,7 +26,9 @@ import java.time.Instant
 class EditProcessor(
     private val ffmpegWrapper: FFmpegWrapper,
     private val s3Service: S3Service,
+    private val srtGenerator: SrtGenerator,
     @Value("\${ffmpeg.temp-dir:/tmp/ai-crawler}") private val tempDir: String,
+    @Value("\${ffmpeg.font-path:/System/Library/Fonts/Supplemental/Arial Unicode.ttf}") private val fontPath: String,
     @Value("\${s3.prefix.edited-videos}") private val editedVideosPrefix: String,
     @Value("\${s3.prefix.thumbnails}") private val thumbnailsPrefix: String
 ) : ItemProcessor<AiContentJob, AiContentJob> {
@@ -73,23 +77,48 @@ class EditProcessor(
             ffmpegWrapper.resizeVertical(clippedPath, resizedPath)
             logger.debug("세로 리사이징 완료: jobId={}, path={}", job.id, resizedPath)
 
-            // 6. 썸네일 추출
+            // 6. 텍스트 오버레이 추가 (NEW)
+            val overlayedPath = "${tempDir}/overlayed_${job.id}.mp4"
+            val title = job.generatedTitle ?: "교육 콘텐츠"  // fallback
+
+            // 6-1. SRT 파일 생성 (transcriptSegments가 있는 경우)
+            var srtPath: String? = null
+            if (!job.transcriptSegments.isNullOrBlank()) {
+                try {
+                    val transcriptSegments: List<TranscriptSegment> = objectMapper.readValue(job.transcriptSegments!!)
+                    if (transcriptSegments.isNotEmpty()) {
+                        srtPath = "${tempDir}/subtitle_${job.id}.srt"
+                        srtGenerator.generateSrtFile(transcriptSegments, srtPath)
+                        logger.debug("SRT 파일 생성 완료: jobId={}, path={}", job.id, srtPath)
+                    }
+                } catch (e: Exception) {
+                    logger.warn("SRT 파일 생성 실패: jobId={}, error={}", job.id, e.message)
+                }
+            }
+
+            // 6-2. 텍스트 오버레이 적용
+            ffmpegWrapper.addTextOverlay(resizedPath, overlayedPath, title, srtPath, fontPath)
+            logger.debug("텍스트 오버레이 완료: jobId={}, path={}", job.id, overlayedPath)
+
+            // 7. 썸네일 추출 (overlayed 영상에서)
             val thumbnailPath = "${tempDir}/thumb_${job.id}.jpg"
             val thumbnailTimeMs = (endMs - startMs) / 2 // 중간 지점
-            ffmpegWrapper.thumbnail(clippedPath, thumbnailPath, thumbnailTimeMs)
+            ffmpegWrapper.thumbnail(overlayedPath, thumbnailPath, thumbnailTimeMs)
             logger.debug("썸네일 추출 완료: jobId={}, path={}", job.id, thumbnailPath)
 
-            // 7. S3 업로드 (단일 버킷 + prefix, public-read ACL)
+            // 8. S3 업로드 (overlayed 영상)
             val editedS3Key = "$editedVideosPrefix/clips/${job.youtubeVideoId}/${job.id}.mp4"
-            s3Service.upload(resizedPath, editedS3Key, publicRead = true)
+            s3Service.upload(overlayedPath, editedS3Key, publicRead = true)
             logger.debug("편집 비디오 S3 업로드 완료 (public): jobId={}, s3Key={}", job.id, editedS3Key)
 
             val thumbnailS3Key = "$thumbnailsPrefix/${job.youtubeVideoId}/${job.id}.jpg"
             s3Service.upload(thumbnailPath, thumbnailS3Key, publicRead = true)
             logger.debug("썸네일 S3 업로드 완료 (public): jobId={}, s3Key={}", job.id, thumbnailS3Key)
 
-            // 8. 임시 파일 정리
-            cleanupTempFiles(listOf(localVideoPath, clippedPath, resizedPath, thumbnailPath))
+            // 9. 임시 파일 정리 (SRT 파일 포함)
+            val filesToCleanup = mutableListOf(localVideoPath, clippedPath, resizedPath, overlayedPath, thumbnailPath)
+            if (srtPath != null) filesToCleanup.add(srtPath)
+            cleanupTempFiles(filesToCleanup)
 
             // 9. Job 업데이트
             val now = Instant.now()
