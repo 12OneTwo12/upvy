@@ -20,9 +20,16 @@ import { Platform } from 'react-native';
  */
 export const initializeSentry = () => {
   // 환경 변수에서 Sentry 설정 가져오기
-  const sentryDsn = process.env.SENTRY_DSN || 'https://2a06b60a8ad086d85995ad82208c530c@o4510507886313472.ingest.us.sentry.io/4510507889065984';
-  const sentryEnabled = process.env.SENTRY_ENABLED !== 'false'; // 기본값: true (프로덕션에서는 활성화)
-  const environment = process.env.SENTRY_ENVIRONMENT || (__DEV__ ? 'development' : 'production');
+  // EAS Build에서는 app.config.js를 통해 Constants.expoConfig.extra로 전달됨
+  const sentryDsn =
+    Constants.expoConfig?.extra?.sentryDsn ||
+    'https://2a06b60a8ad086d85995ad82208c530c@o4510507886313472.ingest.us.sentry.io/4510507889065984';
+
+  const sentryEnabled = Constants.expoConfig?.extra?.sentryEnabled !== false; // 기본값: true
+
+  const environment =
+    Constants.expoConfig?.extra?.sentryEnvironment ||
+    (__DEV__ ? 'development' : 'production');
 
   // 개발 환경에서 Sentry를 비활성화하려면 환경 변수 설정
   if (!sentryEnabled) {
