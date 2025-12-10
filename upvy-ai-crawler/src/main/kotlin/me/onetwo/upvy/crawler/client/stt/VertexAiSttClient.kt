@@ -258,52 +258,21 @@ class VertexAiSttClient(
                             segmentStart = wordStartMs
                         }
 
-                        // 단어 정리 (특수문자 제거, 공백 유지)
+                        // 단어 정리 (특수문자 제거만)
                         val cleanedWord = wordInfo.word
-                            .replace("▁", "")
+                            .replace("▁", " ")  // 밑줄 → 공백 (단어 시작 마커)
                             .replace("_", "")
                             .trim()
 
                         if (cleanedWord.isNotEmpty()) {
-                            // 공백으로 split하여 각 음절 개별 처리
-                            val syllables = cleanedWord.split(" ").filter { it.isNotEmpty() }
-                            logger.debug("[음절 처리] wordInfo.word='{}' → syllables={}, wordStartMs={}",
-                                wordInfo.word, syllables, wordStartMs)
-
-                            syllables.forEach { syllable ->
-                                // 새 세그먼트 시작 체크 (둘 다 비어있으면 현재 단어가 시작점)
-                                val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
-
-                                // 한글 단일 음절인가?
-                                if (syllable.length == 1 && syllable[0] in '가'..'힣') {
-                                    if (isNewSegment) {
-                                        segmentStart = wordStartMs
-                                    }
-                                    syllableBuffer.add(syllable)
-
-                                    // 2음절 누적 → 단어 하나 생성
-                                    if (syllableBuffer.size >= 2) {
-                                        val mergedWord = syllableBuffer.joinToString("")
-                                        segmentWords.add(mergedWord)
-                                        syllableBuffer.clear()
-                                        wordCount++
-                                        createSegmentIfNeeded()
-                                    }
-                                } else {
-                                    // 정상 단어: 누적된 음절 먼저 처리
-                                    if (isNewSegment) {
-                                        segmentStart = wordStartMs
-                                    }
-                                    flushSyllableBuffer()
-
-                                    // 현재 정상 단어 추가
-                                    segmentWords.add(syllable)
-                                    wordCount++
-
-                                    // 2단어 도달 체크
-                                    createSegmentIfNeeded()
-                                }
+                            // 새 세그먼트 시작 체크
+                            val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
+                            if (isNewSegment) {
+                                segmentStart = wordStartMs
                             }
+
+                            // 모든 음절을 버퍼에 누적 (800ms pause 전까지 = 하나의 단어)
+                            syllableBuffer.add(cleanedWord)
                         }
 
                         segmentEnd = wordEndMs
@@ -591,52 +560,21 @@ class VertexAiSttClient(
                             segmentStart = wordStartMs
                         }
 
-                        // 단어 정리 (특수문자 제거, 공백 유지)
+                        // 단어 정리 (특수문자 제거만)
                         val cleanedWord = wordInfo.word
-                            .replace("▁", "")
+                            .replace("▁", " ")  // 밑줄 → 공백 (단어 시작 마커)
                             .replace("_", "")
                             .trim()
 
                         if (cleanedWord.isNotEmpty()) {
-                            // 공백으로 split하여 각 음절 개별 처리
-                            val syllables = cleanedWord.split(" ").filter { it.isNotEmpty() }
-                            logger.debug("[음절 처리] wordInfo.word='{}' → syllables={}, wordStartMs={}",
-                                wordInfo.word, syllables, wordStartMs)
-
-                            syllables.forEach { syllable ->
-                                // 새 세그먼트 시작 체크 (둘 다 비어있으면 현재 단어가 시작점)
-                                val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
-
-                                // 한글 단일 음절인가?
-                                if (syllable.length == 1 && syllable[0] in '가'..'힣') {
-                                    if (isNewSegment) {
-                                        segmentStart = wordStartMs
-                                    }
-                                    syllableBuffer.add(syllable)
-
-                                    // 2음절 누적 → 단어 하나 생성
-                                    if (syllableBuffer.size >= 2) {
-                                        val mergedWord = syllableBuffer.joinToString("")
-                                        segmentWords.add(mergedWord)
-                                        syllableBuffer.clear()
-                                        wordCount++
-                                        createSegmentIfNeeded()
-                                    }
-                                } else {
-                                    // 정상 단어: 누적된 음절 먼저 처리
-                                    if (isNewSegment) {
-                                        segmentStart = wordStartMs
-                                    }
-                                    flushSyllableBuffer()
-
-                                    // 현재 정상 단어 추가
-                                    segmentWords.add(syllable)
-                                    wordCount++
-
-                                    // 2단어 도달 체크
-                                    createSegmentIfNeeded()
-                                }
+                            // 새 세그먼트 시작 체크
+                            val isNewSegment = segmentWords.isEmpty() && syllableBuffer.isEmpty()
+                            if (isNewSegment) {
+                                segmentStart = wordStartMs
                             }
+
+                            // 모든 음절을 버퍼에 누적 (800ms pause 전까지 = 하나의 단어)
+                            syllableBuffer.add(cleanedWord)
                         }
 
                         segmentEnd = wordEndMs
