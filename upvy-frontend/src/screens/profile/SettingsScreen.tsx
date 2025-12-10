@@ -590,6 +590,41 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
           </TouchableOpacity>
         </View>
 
+        {/* Developer Section - Only in DEV mode */}
+        {__DEV__ && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>개발자 도구</Text>
+
+              <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => navigation.navigate('SentryTest' as any)}
+              >
+                <View style={styles.settingRow}>
+                  <Ionicons
+                    name="bug-outline"
+                    size={24}
+                    color={theme.colors.text.secondary}
+                    style={styles.settingIcon}
+                  />
+                  <View style={styles.settingContent}>
+                    <Text style={styles.settingLabel}>Sentry 테스트</Text>
+                    <Text style={styles.settingSubtitle}>
+                      에러 모니터링 동작 확인
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={theme.colors.text.tertiary}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
         <View style={styles.divider} />
 
         {/* Account Management */}
