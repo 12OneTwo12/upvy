@@ -46,7 +46,7 @@ module.exports = {
         '@sentry/react-native/expo',
         {
           url: 'https://sentry.io/',
-          project: 'react-native',
+          project: 'upvy-app',
           organization: 'upvy',
         },
       ],
