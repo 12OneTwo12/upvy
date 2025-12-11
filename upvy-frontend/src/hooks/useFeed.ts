@@ -33,6 +33,7 @@ import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
 import { shareContent, getShareLink } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
+import { trackView } from '@/api/analytics.api';
 import { useLanguageStore } from '@/stores/languageStore';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -60,6 +61,11 @@ export function useFeed(options: UseFeedOptions) {
   const scrollYRef = useRef(0);
   const hasAutoRefreshed = useRef(false);
   const videoLoadedCache = useRef<Map<string, boolean>>(new Map());
+
+  // 시청 기록 추적
+  const viewStartTimeRef = useRef<number>(0); // 현재 콘텐츠 포커스 시작 시간
+  const trackedViewsRef = useRef<Set<string>>(new Set()); // 이미 기록한 콘텐츠 ID (중복 방지)
+  const previousIndexRef = useRef<number>(-1); // 이전 currentIndex
 
   const queryClient = useQueryClient();
   const navigation = useNavigation();
@@ -623,7 +629,71 @@ export function useFeed(options: UseFeedOptions) {
   const clearVideoCache = useCallback(() => {
     videoLoadedCache.current.clear();
     hasAutoRefreshed.current = false;
+    trackedViewsRef.current.clear(); // 시청 기록도 초기화
   }, []);
+
+  // 시청 기록 전송 함수
+  const sendViewEvent = useCallback(async (contentId: string, watchedDuration: number) => {
+    // 중복 전송 방지
+    if (trackedViewsRef.current.has(contentId)) {
+      return;
+    }
+
+    // 최소 1초 이상 시청한 경우에만 전송
+    if (watchedDuration < 1) {
+      return;
+    }
+
+    try {
+      // 3초 이상 시청: 정상 시청 (view_count 증가)
+      // 3초 미만: 스킵 (시청 기록만 저장)
+      const skipped = watchedDuration < 3;
+
+      await trackView({
+        contentId,
+        watchedDuration: Math.floor(watchedDuration),
+        completionRate: 0, // 현재는 0으로 전송 (향후 VideoPlayer에서 실제 값 전달 가능)
+        skipped,
+      });
+
+      // 기록 완료 표시
+      trackedViewsRef.current.add(contentId);
+    } catch (error) {
+      // 시청 기록 전송 실패는 사용자 경험에 영향 없으므로 조용히 무시
+      console.error('Failed to track view:', error);
+    }
+  }, []);
+
+  // currentIndex 변경 감지하여 시청 기록 전송
+  useEffect(() => {
+    const currentItem = displayItems[currentIndex];
+
+    // 로딩 아이템이거나 데이터가 없으면 무시
+    if (!currentItem || currentItem.contentId === 'loading') {
+      return;
+    }
+
+    // 이전 콘텐츠의 시청 기록 전송 (포커스 해제)
+    if (previousIndexRef.current >= 0 && previousIndexRef.current !== currentIndex) {
+      const prevItem = displayItems[previousIndexRef.current];
+      if (prevItem && prevItem.contentId !== 'loading' && viewStartTimeRef.current > 0) {
+        const watchedDuration = (Date.now() - viewStartTimeRef.current) / 1000;
+        sendViewEvent(prevItem.contentId, watchedDuration);
+      }
+    }
+
+    // 새 콘텐츠 포커스 시작 시간 기록
+    viewStartTimeRef.current = Date.now();
+    previousIndexRef.current = currentIndex;
+
+    // Cleanup: 컴포넌트 언마운트 시 마지막 콘텐츠 기록
+    return () => {
+      if (currentItem.contentId !== 'loading' && viewStartTimeRef.current > 0) {
+        const watchedDuration = (Date.now() - viewStartTimeRef.current) / 1000;
+        sendViewEvent(currentItem.contentId, watchedDuration);
+      }
+    };
+  }, [currentIndex, displayItems, sendViewEvent]);
 
   return {
     // 데이터
