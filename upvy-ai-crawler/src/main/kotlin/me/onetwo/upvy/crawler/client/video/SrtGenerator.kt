@@ -45,7 +45,17 @@ class SrtGenerator {
 
                 // 타임스탬프 (시작 --> 종료)
                 val startTime = formatTimestamp(segment.startTimeMs)
-                val endTime = formatTimestamp(segment.endTimeMs)
+
+                // 다음 자막이 시작하기 전까지 현재 자막 유지
+                val extendedEndTimeMs = if (index < segments.size - 1) {
+                    // 다음 세그먼트가 있으면, 다음 세그먼트 시작 시점까지 유지
+                    segments[index + 1].startTimeMs
+                } else {
+                    // 마지막 세그먼트는 원래 종료 시점 + 500ms 추가 (자연스러운 여유)
+                    segment.endTimeMs + 500
+                }
+
+                val endTime = formatTimestamp(extendedEndTimeMs)
                 append("$startTime --> $endTime\n")
 
                 // 자막 텍스트
