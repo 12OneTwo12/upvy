@@ -38,7 +38,7 @@ class AiPoweredSearchReader(
 
     companion object {
         private val logger = LoggerFactory.getLogger(AiPoweredSearchReader::class.java)
-        private const val MAX_QUERIES_PER_RUN = 10  // 카테고리 다양성을 위해 5 -> 10으로 증가
+        private const val MAX_QUERIES_PER_RUN = 20  // 카테고리 다양성을 위해 5 -> 10으로 증가
         private const val MAX_VIDEOS_PER_QUERY = 10
         private const val YOUTUBE_API_DELAY_MS = 1000L  // Rate Limiting 방지용 딜레이
 

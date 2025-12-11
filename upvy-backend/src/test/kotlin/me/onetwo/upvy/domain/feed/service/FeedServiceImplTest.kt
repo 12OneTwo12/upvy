@@ -157,7 +157,7 @@ class FeedServiceImplTest {
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = 250,
-                    excludeContentIds = recentlyViewedIds,
+                    excludeContentIds = any(),
                     preferredLanguage = "en",
                     category = null
                 )
@@ -184,7 +184,7 @@ class FeedServiceImplTest {
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
                     limit = 250,
-                    excludeContentIds = recentlyViewedIds,
+                    excludeContentIds = any(),
                     preferredLanguage = "en",
                     category = null
                 )
