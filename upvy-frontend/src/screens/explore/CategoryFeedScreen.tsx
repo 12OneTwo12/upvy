@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   Text,
   ActivityIndicator,
-  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, useIsFocused, RouteProp } from '@react-navigation/native';
@@ -131,8 +130,6 @@ export default function CategoryFeedScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
-
       {/* 상단 그라데이션 오버레이 */}
       <LinearGradient
         colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.4)', 'transparent']}

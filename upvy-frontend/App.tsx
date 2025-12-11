@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -69,7 +68,6 @@ export default Sentry.wrap(function App() {
         <SafeAreaProvider>
           <QueryClientProvider client={queryClient}>
             <RootNavigator />
-            <StatusBar style="dark" />
           </QueryClientProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

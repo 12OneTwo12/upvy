@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { View, Dimensions, StatusBar, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
+import { View, Dimensions, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -308,7 +308,6 @@ export default function ContentViewerScreen() {
   if (!isLoading && !feedItem) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
         <Ionicons name="alert-circle" size={64} color="#666666" />
       </View>
     );
@@ -316,8 +315,6 @@ export default function ContentViewerScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
-
       {/* 뒤로가기 버튼 */}
       <TouchableOpacity
         onPress={handleBack}

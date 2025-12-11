@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Keyboard,
-  StatusBar,
   Image,
   Dimensions,
 } from 'react-native';
@@ -765,8 +764,6 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-
       {/* 헤더 (Instagram 스타일) */}
       <View style={styles.header}>
         <TouchableOpacity
