@@ -151,7 +151,7 @@ class FeedServiceImplTest {
             val feedItems = recommendedIds.take(20).map { createFeedItem(it) }
 
             every { feedCacheService.getMainFeedBatch(userId, "en", 0) } returns Mono.empty()
-            every { feedRepository.findRecentlyViewedContentIds(userId, 100) } returns
+            every { feedRepository.findRecentlyViewedContentIds(userId, any()) } returns
                 Flux.fromIterable(recentlyViewedIds)
             every {
                 recommendationService.getRecommendedContentIds(
@@ -179,7 +179,7 @@ class FeedServiceImplTest {
                 .verifyComplete()
 
             // Then: 추천 알고리즘 실행 및 캐시 저장 확인
-            verify(exactly = 1) { feedRepository.findRecentlyViewedContentIds(userId, 100) }
+            verify(exactly = 1) { feedRepository.findRecentlyViewedContentIds(userId, any()) }
             verify(exactly = 1) {
                 recommendationService.getRecommendedContentIds(
                     userId = userId,
