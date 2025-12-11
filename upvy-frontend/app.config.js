@@ -24,6 +24,10 @@ module.exports = {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         UIViewControllerBasedStatusBarAppearance: true,
+        NSPhotoLibraryUsageDescription:
+          'Upvy needs access to your photo library to select videos for uploading and sharing.',
+        NSPhotoLibraryAddUsageDescription:
+          'Upvy needs permission to save edited videos to your photo library.',
       },
     },
     android: {
