@@ -395,6 +395,6 @@ class FeedServiceImpl(
         /**
          * 최근 본 콘텐츠 조회 개수 (중복 방지용)
          */
-        private const val RECENTLY_VIEWED_LIMIT = 100
+        private const val RECENTLY_VIEWED_LIMIT = 50
     }
 }
