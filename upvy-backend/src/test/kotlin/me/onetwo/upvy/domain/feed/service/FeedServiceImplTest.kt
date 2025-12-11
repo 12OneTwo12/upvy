@@ -158,7 +158,8 @@ class FeedServiceImplTest {
                     userId = userId,
                     limit = 250,
                     excludeContentIds = recentlyViewedIds,
-                    preferredLanguage = "en"
+                    preferredLanguage = "en",
+                    category = null
                 )
             } returns Flux.fromIterable(recommendedIds)
             every { feedCacheService.saveMainFeedBatch(userId, "en", 0, recommendedIds) } returns
@@ -184,7 +185,8 @@ class FeedServiceImplTest {
                     userId = userId,
                     limit = 250,
                     excludeContentIds = recentlyViewedIds,
-                    preferredLanguage = "en"
+                    preferredLanguage = "en",
+                    category = null
                 )
             }
             verify(exactly = 1) { feedCacheService.saveMainFeedBatch(userId, "en", 0, recommendedIds) }
