@@ -68,6 +68,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
 
@@ -177,6 +178,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           onDoubleTap={handleLike}
           onTap={handleContentTap}
           onProgressUpdate={handleProgressUpdate}
+          onLongPressChange={setIsLongPressing}
         />
       ) : item.contentType === 'PHOTO' && item.photoUrls && item.photoUrls.length > 0 ? (
         <PhotoGallery
@@ -188,8 +190,9 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         />
       ) : null}
 
-      {/* 정보 오버레이 */}
-      <FeedOverlay
+      {/* 정보 오버레이 - 롱프레스 중에는 숨김 */}
+      {!isLongPressing && (
+        <FeedOverlay
         creator={item.creator}
         title={item.title}
         description={item.description}
@@ -208,7 +211,8 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         isExpanded={isExpanded}
         setIsExpanded={setIsExpanded}
         tabBarHeight={tabBarHeight}
-      />
+        />
+      )}
 
       {/* 비디오 진행률 바 - 탭바 바로 위 */}
       {item.contentType === 'VIDEO' && item.url && (

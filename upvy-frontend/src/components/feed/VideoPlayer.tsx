@@ -31,6 +31,7 @@ interface VideoPlayerProps {
   onDoubleTap?: () => void;
   onTap?: () => boolean;
   onProgressUpdate?: (progress: number, duration: number, isDragging: boolean) => void;
+  onLongPressChange?: (isLongPressing: boolean) => void;
 }
 
 export interface VideoPlayerRef {
@@ -50,6 +51,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     onDoubleTap,
     onTap,
     onProgressUpdate,
+    onLongPressChange,
   } = props;
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -106,6 +108,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     return clearAllTimers;
   }, [uri, clearAllTimers]);
 
+  // 롱프레스 상태 변경 시 부모에게 알림
+  useEffect(() => {
+    onLongPressChange?.(isLongPressing);
+  }, [isLongPressing, onLongPressChange]);
 
   // 비디오 로딩 타임아웃 시작
   useEffect(() => {
