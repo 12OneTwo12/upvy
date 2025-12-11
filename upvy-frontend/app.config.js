@@ -23,7 +23,7 @@ module.exports = {
       bundleIdentifier: 'com.upvy.app',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
-        UIViewControllerBasedStatusBarAppearance: true,
+        UIViewControllerBasedStatusBarAppearance: false,
       },
     },
     android: {
