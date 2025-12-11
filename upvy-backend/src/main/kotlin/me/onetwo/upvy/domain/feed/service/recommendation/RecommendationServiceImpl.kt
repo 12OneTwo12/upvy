@@ -113,10 +113,8 @@ class RecommendationServiceImpl(
                     preferredLanguage,
                     excludeCategory
                 ).collectList()
-                    .map { popularIds ->
-                        accumulatedExcludeIds.addAll(popularIds)
-                        Pair(collaborativeIds, popularIds)
-                    }
+                    .doOnNext { popularIds -> accumulatedExcludeIds.addAll(popularIds) }
+                    .map { popularIds -> Pair(collaborativeIds, popularIds) }
             }
             .flatMap { (collaborativeIds, popularIds) ->
                 // 3. New 전략
@@ -128,10 +126,8 @@ class RecommendationServiceImpl(
                     preferredLanguage,
                     excludeCategory
                 ).collectList()
-                    .map { newIds ->
-                        accumulatedExcludeIds.addAll(newIds)
-                        Triple(collaborativeIds, popularIds, newIds)
-                    }
+                    .doOnNext { newIds -> accumulatedExcludeIds.addAll(newIds) }
+                    .map { newIds -> Triple(collaborativeIds, popularIds, newIds) }
             }
             .flatMap { (collaborativeIds, popularIds, newIds) ->
                 // 4. Random 전략
