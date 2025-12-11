@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -67,6 +68,7 @@
     "eslint": "^9.38.0",
     "jest": "^30.2.0",
     "jest-expo": "^51.0.4",
+    "patch-package": "^8.0.1",
     "prettier": "^3.6.2",
     "react-test-renderer": "19.1.0",
     "typescript": "~5.9.2"

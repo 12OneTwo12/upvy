@@ -435,13 +435,31 @@ export default function VideoEditScreen({ navigation, route }: Props) {
 
       setTrimmingProgress(20);
 
+      // 파일 메타데이터 로깅 (디버깅용)
+      try {
+        const trimSourceFileInfo = await FileSystem.getInfoAsync(trimSourceUri);
+        console.log('📊 [Trim] Source file info:');
+        console.log('   Size:', trimSourceFileInfo.size, 'bytes');
+        console.log('   Size (MB):', (trimSourceFileInfo.size / 1024 / 1024).toFixed(2), 'MB');
+      } catch (e) {
+        console.warn('   Could not get file info:', e);
+      }
+
       // 파일 유효성 검사
       console.log('🔍 [Trim] Validating file with react-native-video-trim...');
       const isValid = await isValidFile(trimSourceUri);
       console.log('   File valid:', isValid);
 
-      if (!isValid) {
+      if (!isValid || (typeof isValid === 'object' && !isValid.isValid)) {
+        console.error('❌ File validation failed:', isValid);
         throw new Error('Invalid video file - react-native-video-trim cannot access the file');
+      }
+
+      // isValid가 객체인 경우 상세 정보 로깅 (duration, fileType 등)
+      if (typeof isValid === 'object') {
+        console.log('📹 [Trim] Video file details:');
+        console.log('   Duration:', isValid.duration, 'ms');
+        console.log('   File type:', isValid.fileType);
       }
 
       setTrimmingProgress(30);
@@ -461,36 +479,60 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       console.log('   Start time (ms):', Math.floor(startTime * 1000));
       console.log('   End time (ms):', Math.floor(endTime * 1000));
 
-      // Android에서는 copy 모드를 먼저 시도 (재인코딩 없이 빠른 처리)
-      // copy 모드가 실패하면 일반 trim으로 fallback
+      // Android에서는 여러 설정으로 순차적으로 시도
       let result;
+      let lastError: any = null;
 
-      if (Platform.OS === 'android') {
+      const trimAttempts = Platform.OS === 'android' ? [
+        { name: 'HIGH quality', options: { quality: 'high' } },
+        { name: 'MEDIUM quality', options: { quality: 'medium' } },
+        { name: 'LOW quality', options: { quality: 'low' } },
+        // 마지막 fallback: 매우 짧은 구간만 잘라내기 (빠른 테스트)
+      ] : [
+        { name: 'MEDIUM quality', options: { quality: 'medium' } },
+      ];
+
+      for (const attempt of trimAttempts) {
         try {
-          console.log('   Trying COPY mode first (no re-encoding)...');
-          result = await trim(trimSourcePath, {
+          console.log(`   Attempting trim with ${attempt.name}...`);
+
+          const trimOptions = {
             startTime: Math.floor(startTime * 1000),
             endTime: Math.floor(endTime * 1000),
             outputPath: outputFilePath,
-            quality: 'medium',
-            // copy 모드는 react-native-video-trim에서 지원하지 않을 수 있음
-          });
-        } catch (copyError) {
-          console.log('   Copy mode failed, trying standard trim...');
-          result = await trim(trimSourcePath, {
-            startTime: Math.floor(startTime * 1000),
-            endTime: Math.floor(endTime * 1000),
-            outputPath: outputFilePath,
-            quality: 'low', // low quality로 재시도
-          });
+            ...attempt.options,
+          };
+
+          console.log('   Trim options:', JSON.stringify(trimOptions, null, 2));
+
+          result = await trim(trimSourcePath, trimOptions);
+
+          // 성공하면 루프 종료
+          if (result && result.success) {
+            console.log(`✅ Trim succeeded with ${attempt.name}`);
+            break;
+          } else {
+            console.log(`   ${attempt.name} returned unsuccessful result:`, result);
+            lastError = new Error(`Trim returned success=false with ${attempt.name}`);
+          }
+        } catch (error) {
+          console.log(`   ${attempt.name} failed:`, error);
+          lastError = error;
+
+          // 마지막 시도가 아니면 계속
+          if (attempt !== trimAttempts[trimAttempts.length - 1]) {
+            console.log('   Trying next method...');
+            await new Promise(resolve => setTimeout(resolve, 500)); // 500ms 대기
+            continue;
+          }
         }
-      } else {
-        result = await trim(trimSourcePath, {
-          startTime: Math.floor(startTime * 1000),
-          endTime: Math.floor(endTime * 1000),
-          outputPath: outputFilePath,
-          quality: 'medium',
-        });
+      }
+
+      // 모든 시도가 실패한 경우
+      if (!result || !result.success) {
+        console.error('❌ All trim attempts failed');
+        console.error('   Last error:', lastError);
+        throw lastError || new Error('Video trim failed - all attempts exhausted');
       }
 
       console.log('📦 [Trim] Result:', result);
@@ -701,17 +743,39 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           videoToUpload = await trimVideoNative(thumbnailUri, trimStart, trimEnd);
 
           setUploadProgress(20);
-        } catch (trimError) {
+        } catch (trimError: any) {
           console.error('❌ Trim failed:', trimError);
-          Alert.alert(
-            t('upload:edit.trimFailed'),
-            t('upload:edit.trimFailedMessage'),
-            [
-              { text: t('common:button.cancel'), style: 'cancel', onPress: () => { setIsUploading(false); return; } },
-              { text: t('upload:edit.uploadOriginal'), onPress: () => { videoToUpload = thumbnailUri; } },
-            ]
-          );
-          return;
+          setIsUploading(false);
+
+          // 사용자에게 선택권 제공 (Promise로 대기)
+          const userChoice = await new Promise<'cancel' | 'original'>((resolve) => {
+            Alert.alert(
+              t('upload:edit.trimFailed'),
+              Platform.OS === 'android'
+                ? `${t('upload:edit.trimFailedMessage')}\n\n안드로이드에서 비디오 트리밍 중 오류가 발생했습니다. 원본 비디오를 업로드하거나 취소할 수 있습니다.`
+                : t('upload:edit.trimFailedMessage'),
+              [
+                {
+                  text: t('common:button.cancel'),
+                  style: 'cancel',
+                  onPress: () => resolve('cancel'),
+                },
+                {
+                  text: t('upload:edit.uploadOriginal'),
+                  onPress: () => resolve('original'),
+                },
+              ]
+            );
+          });
+
+          if (userChoice === 'cancel') {
+            return;
+          }
+
+          // 원본 비디오 사용
+          videoToUpload = thumbnailUri;
+          setIsUploading(true);
+          setUploadProgress(10);
         }
       } else {
         setUploadProgress(10);
