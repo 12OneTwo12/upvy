@@ -375,6 +375,9 @@ class VertexAiLlmClient(
         |- 한국어(ko): "코틀린 프로그래밍 입문"
         |- 영어(en): "kotlin programming beginner tutorial"
         |- 일본어(ja): "Kotlin プログラミング 入門"
+        |- 한국어(ko): "운동 동기부여"
+        |- 영어(en): "fitness motivation"
+        |- 일본어(ja): "フィットネス モチベーション"
         |
         |현재 앱 카테고리: ${context.appCategories.joinToString(", ")}
         |인기 키워드: ${context.popularKeywords.joinToString(", ")}
@@ -386,9 +389,10 @@ class VertexAiLlmClient(
         |다음 조건을 고려해주세요:
         |1. 교육적 가치가 높은 콘텐츠
         |2. CC 라이선스로 배포될 가능성이 높은 채널/콘텐츠
-        |3. 짧은 클립으로 편집하기 좋은 콘텐츠
+        |3. 짧은 클립으로 편집하기 좋은 콘텐츠 (숏츠)
         |4. 부족한 카테고리를 우선적으로 채울 수 있는 쿼리
         |5. 각 언어별로 균등하게 쿼리 생성 (각 언어당 최소 3개)
+        |6. 교육적 가치가 높으면서 재미까지 있으면 더 좋음
         |
         |JSON 형식으로 15~30개의 검색 쿼리를 생성해주세요 (언어당 5~10개):
         |[
