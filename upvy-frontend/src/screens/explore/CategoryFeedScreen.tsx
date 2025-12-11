@@ -7,7 +7,7 @@
  * - 커서 기반 페이지네이션
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -37,6 +37,13 @@ export default function CategoryFeedScreen() {
   const navigation = useNavigation();
   const isScreenFocused = useIsFocused();
   const { t } = useTranslation('search');
+
+  // 화면 포커스 시 StatusBar 업데이트
+  useEffect(() => {
+    if (isScreenFocused) {
+      StatusBar.setBarStyle('light-content');
+    }
+  }, [isScreenFocused]);
 
   // 선택된 카테고리 정보
   const categoryInfo = CATEGORIES.find((c) => c.value === category);

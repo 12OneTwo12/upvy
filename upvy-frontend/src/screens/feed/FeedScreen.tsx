@@ -77,6 +77,13 @@ export default function FeedScreen() {
     SCREEN_HEIGHT,
   } = feed;
 
+  // 화면 포커스 시 StatusBar 업데이트
+  useEffect(() => {
+    if (isScreenFocused) {
+      StatusBar.setBarStyle('light-content');
+    }
+  }, [isScreenFocused]);
+
   // 탭 전환 시 비디오 캐시 초기화
   useEffect(() => {
     clearVideoCache();
