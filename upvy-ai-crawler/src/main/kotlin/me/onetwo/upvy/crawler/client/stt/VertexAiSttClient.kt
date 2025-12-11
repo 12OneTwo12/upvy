@@ -225,7 +225,9 @@ class VertexAiSttClient(
                     }
 
                     fun createSegmentIfNeeded(force: Boolean = false) {
-                        if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
+                        // 일본어는 3단어, 한글/영어는 2단어
+                        val wordsPerSegment = if (sttLanguageCode.startsWith("ja")) 3 else 2
+                        if ((wordCount >= wordsPerSegment || force) && segmentWords.isNotEmpty()) {
                             val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
                             if (cleanedText.isNotEmpty()) {
                                 segments.add(TranscriptSegment(
@@ -392,7 +394,9 @@ class VertexAiSttClient(
                         }
 
                         fun createSegmentIfNeeded(force: Boolean = false) {
-                            if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
+                            // 일본어는 3단어, 한글/영어는 2단어
+                            val wordsPerSegment = if (sttLanguageCode.startsWith("ja")) 3 else 2
+                            if ((wordCount >= wordsPerSegment || force) && segmentWords.isNotEmpty()) {
                                 val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
                                 if (cleanedText.isNotEmpty()) {
                                     allSegments.add(TranscriptSegment(
@@ -552,7 +556,9 @@ class VertexAiSttClient(
                     }
 
                     fun createSegmentIfNeeded(force: Boolean = false) {
-                        if ((wordCount >= 2 || force) && segmentWords.isNotEmpty()) {
+                        // 일본어는 3단어, 한글/영어는 2단어
+                        val wordsPerSegment = if (sttLanguageCode.startsWith("ja")) 3 else 2
+                        if ((wordCount >= wordsPerSegment || force) && segmentWords.isNotEmpty()) {
                             val cleanedText = processSegmentWords(segmentWords, sttLanguageCode)
                             if (cleanedText.isNotEmpty()) {
                                 segments.add(TranscriptSegment(
