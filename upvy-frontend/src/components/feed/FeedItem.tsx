@@ -210,7 +210,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           bottom: 0,
           opacity: overlayOpacity,
         }}
-        pointerEvents={isLongPressing ? 'none' : 'auto'}
+        pointerEvents={isLongPressing ? 'none' : 'box-none'}
       >
         <FeedOverlay
           creator={item.creator}
