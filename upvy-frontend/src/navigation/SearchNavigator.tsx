@@ -24,6 +24,7 @@ export default function SearchNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        statusBarStyle: 'dark',
       }}
     >
       <Stack.Screen

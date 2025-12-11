@@ -24,6 +24,7 @@ export default function FeedNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        statusBarStyle: 'light',
       }}
     >
       <Stack.Screen

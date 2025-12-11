@@ -25,6 +25,7 @@ export default function ExploreNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        statusBarStyle: 'dark',
       }}
     >
       <Stack.Screen
@@ -38,6 +39,7 @@ export default function ExploreNavigator() {
         options={{
           title: t('common:screen.category'),
           animation: 'simple_push',
+          statusBarStyle: 'light',
         }}
       />
       <Stack.Screen

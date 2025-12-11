@@ -68,6 +68,7 @@ export default function RootNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          statusBarStyle: 'dark',
         }}
       >
         {!isAuthenticated ? (

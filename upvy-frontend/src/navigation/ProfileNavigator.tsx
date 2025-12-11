@@ -24,6 +24,7 @@ export default function ProfileNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        statusBarStyle: 'dark',
       }}
     >
       <Stack.Screen

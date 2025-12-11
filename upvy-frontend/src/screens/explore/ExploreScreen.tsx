@@ -5,7 +5,7 @@
  * 사용자가 카테고리를 선택하면 해당 카테고리의 피드로 이동
  */
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   StatusBar,
   useWindowDimensions,
 } from 'react-native';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -57,14 +57,6 @@ export default function ExploreScreen() {
   const navigation = useNavigation<ExploreScreenNavigationProp>();
   const { width: screenWidth, fontScale } = useWindowDimensions();
   const { t } = useTranslation('search');
-  const isScreenFocused = useIsFocused();
-
-  // 화면 포커스 시 StatusBar 업데이트
-  useEffect(() => {
-    if (isScreenFocused) {
-      StatusBar.setBarStyle('dark-content');
-    }
-  }, [isScreenFocused]);
 
   // 글자 크기 스케일 제한 (최대 1.3배까지만)
   const adjustedFontScale = Math.min(fontScale, 1.3);
