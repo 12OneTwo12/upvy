@@ -17,6 +17,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -89,6 +90,8 @@ export default function FeedScreen() {
 
     const unsubscribe = parent.addListener('tabPress' as any, async (e: any) => {
       if (e.target?.split('-')[0] === 'Feed' && navigation.isFocused()) {
+        // 약한 진동 피드백
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         await handleRefresh();
       }
     });
@@ -99,6 +102,8 @@ export default function FeedScreen() {
   // 탭 전환 (Instagram 스타일: 같은 탭 재클릭 시 새로고침)
   const handleTabChange = async (tab: FeedTab) => {
     if (tab === currentTab) {
+      // 약한 진동 피드백
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await handleRefresh();
     } else {
       setCurrentTab(tab);
