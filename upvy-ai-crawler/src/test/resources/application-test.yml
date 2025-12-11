@@ -71,7 +71,7 @@ s3:
 # 배치 스케줄링
 batch:
   schedule:
-    cron: "0 0 3 * * *"
+    cron: "0 0 1 * * *"
   chunk-size: 5
   retry:
     max-attempts: 3

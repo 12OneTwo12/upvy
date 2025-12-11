@@ -41,7 +41,7 @@ class SearchContextCollectorImpl(
             "언어", "과학", "역사", "수학", "예술",
             "스타트업", "마케팅", "프로그래밍", "디자인",
             "생산성", "심리학", "재테크", "건강", "동기부여",
-            "육아", "요리", "여행", "취미", "트렌드"
+            "육아", "요리", "여행", "취미", "트렌드", "재미"
         )
 
         // 시즌별 키워드
@@ -57,7 +57,7 @@ class SearchContextCollectorImpl(
             Month.SEPTEMBER to "가을, 새 학기, 취업",
             Month.OCTOBER to "할로윈, 가을 축제, 단풍",
             Month.NOVEMBER to "수능, 연말 준비, 블랙프라이데이",
-            Month.DECEMBER to "크리스마스, 연말 정산, 한 해 마무리, 동기부여"
+            Month.DECEMBER to "크리스마스, 새해 목표, 한 해 마무리, 동기부여"
         )
     }
 
@@ -75,7 +75,7 @@ class SearchContextCollectorImpl(
 
         // 인기 키워드 (향후 분석 데이터 기반으로 개선 예정)
         val popularKeywords = listOf(
-            "생산성", "프로그래밍", "AI", "투자", "건강"
+            "생산성", "프로그래밍", "AI", "투자", "건강", "동기부여", "언어"
         )
 
         // 인기 태그 (향후 분석 데이터 기반으로 개선 예정)

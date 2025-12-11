@@ -98,7 +98,7 @@ export const API_ENDPOINTS = {
 
   // Analytics
   ANALYTICS: {
-    TRACK_VIEW: '/analytics/view',
+    TRACK_VIEW: '/analytics/views',
   },
 
   // Content (크리에이터 스튜디오)

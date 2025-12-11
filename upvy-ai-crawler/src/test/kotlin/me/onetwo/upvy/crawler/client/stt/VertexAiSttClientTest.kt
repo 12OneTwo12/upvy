@@ -182,10 +182,12 @@ class VertexAiSttClientTest {
     // ========== Helper Methods ==========
 
     private fun createClient(): VertexAiSttClient {
+        val mockAudioExtractService = mockk<me.onetwo.upvy.crawler.service.AudioExtractService>()
         val client = VertexAiSttClient(
             languageCode = "ko-KR",
             sampleRateHertz = 16000,
-            enableWordTimeOffsets = true
+            enableWordTimeOffsets = true,
+            audioExtractService = mockAudioExtractService
         )
         client.init()
         return client

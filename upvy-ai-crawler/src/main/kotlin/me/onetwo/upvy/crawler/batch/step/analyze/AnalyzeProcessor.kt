@@ -44,19 +44,20 @@ class AnalyzeProcessor(
             val formattedTranscript = formatTranscriptWithTimestamps(job)
             logger.debug("타임스탬프 포함 transcript 생성: jobId={}, length={}", job.id, formattedTranscript.length)
 
-            // 2. 핵심 세그먼트 추출 (타임스탬프 정보 포함)
-            val segments = runBlocking {
-                llmClient.extractKeySegments(formattedTranscript)
+            // 2. 편집 계획 생성 (타임스탬프 정보 포함)
+            val editPlan = runBlocking {
+                llmClient.generateEditPlan(formattedTranscript)
             }
-            logger.debug("세그먼트 추출 완료: jobId={}, segmentCount={}", job.id, segments.size)
+            logger.debug("편집 계획 생성 완료: jobId={}, clipCount={}, strategy={}",
+                job.id, editPlan.clips.size, editPlan.editingStrategy)
 
-            // 세그먼트 상세 로깅
-            segments.forEachIndexed { index, seg ->
-                logger.info("세그먼트 #{}: {}ms ~ {}ms, title={}",
-                    index + 1, seg.startTimeMs, seg.endTimeMs, seg.title)
+            // 편집 계획 상세 로깅
+            editPlan.clips.forEachIndexed { index, clip ->
+                logger.info("클립 #{}: orderIndex={}, {}ms ~ {}ms, title={}",
+                    index + 1, clip.orderIndex, clip.startTimeMs, clip.endTimeMs, clip.title)
             }
 
-            // 2. 메타데이터 생성 (콘텐츠 언어로)
+            // 3. 메타데이터 생성 (콘텐츠 언어로)
             val contentLanguage = job.language?.let { ContentLanguage.fromCode(it) } ?: ContentLanguage.KO
             val metadata = runBlocking {
                 llmClient.generateMetadata(job.transcript!!, contentLanguage)
@@ -69,8 +70,8 @@ class AnalyzeProcessor(
             // 3. 태그를 JSON 문자열로 변환
             val tagsJson = objectMapper.writeValueAsString(metadata.tags)
 
-            // 4. 세그먼트를 JSON 문자열로 변환
-            val segmentsJson = objectMapper.writeValueAsString(segments)
+            // 4. EditPlan을 JSON 문자열로 변환
+            val editPlanJson = objectMapper.writeValueAsString(editPlan)
 
             // 5. 출처 표기 추가 (CC 라이선스 원본 정보) - 콘텐츠 언어에 맞게
             val sourceAttribution = buildSourceAttribution(job, contentLanguage)
@@ -86,7 +87,7 @@ class AnalyzeProcessor(
                 generatedTitle = metadata.title,
                 generatedDescription = descriptionWithSource,
                 generatedTags = tagsJson,
-                segments = segmentsJson,  // 세그먼트 저장
+                segments = editPlanJson,  // EditPlan 저장 (편집 계획)
                 category = metadata.category,
                 difficulty = metadata.difficulty,
                 llmProvider = llmProvider,

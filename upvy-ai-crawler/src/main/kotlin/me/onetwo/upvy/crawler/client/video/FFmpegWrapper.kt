@@ -51,6 +51,36 @@ interface FFmpegWrapper {
      * @return 비디오 정보 (duration, width, height 등)
      */
     fun getVideoInfo(inputPath: String): VideoInfo
+
+    /**
+     * 텍스트 오버레이 추가 (상단 제목 + 하단 자막)
+     *
+     * @param inputPath 입력 비디오 경로
+     * @param outputPath 출력 비디오 경로
+     * @param title 상단에 표시할 제목
+     * @param srtPath SRT 자막 파일 경로 (옵션)
+     * @param fontPath 한글 폰트 파일 경로
+     * @return 출력 파일 경로
+     */
+    fun addTextOverlay(
+        inputPath: String,
+        outputPath: String,
+        title: String,
+        srtPath: String?,
+        fontPath: String
+    ): String
+
+    /**
+     * 여러 비디오를 하나로 병합 (concat demuxer 사용)
+     *
+     * FFmpeg의 concat demuxer를 사용하여 재인코딩 없이 빠르게 병합합니다.
+     * 모든 클립은 같은 코덱/해상도여야 합니다.
+     *
+     * @param inputPaths 입력 비디오 경로 리스트 (순서대로 이어붙임)
+     * @param outputPath 출력 비디오 경로
+     * @return 출력 파일 경로
+     */
+    fun concat(inputPaths: List<String>, outputPath: String): String
 }
 
 /**
@@ -188,6 +218,197 @@ class FFmpegWrapperImpl(
             logger.warn("비디오 정보 조회 실패: input={}", inputPath, e)
             return VideoInfo(0, 0, 0)
         }
+    }
+
+    override fun addTextOverlay(
+        inputPath: String,
+        outputPath: String,
+        title: String,
+        srtPath: String?,
+        fontPath: String
+    ): String {
+        logger.info("텍스트 오버레이 추가 시작: input={}, title={}, srtPath={}", inputPath, title, srtPath)
+
+        // 제목용 임시 SRT 파일 생성
+        val titleSrtPath = "${inputPath}_title.srt"
+        val titleSrtContent = """
+            1
+            00:00:00,000 --> 99:59:59,999
+            {\an8}$title
+        """.trimIndent()
+
+        File(titleSrtPath).writeText(titleSrtContent)
+        logger.info("제목 SRT 파일 생성: {}", titleSrtPath)
+
+        try {
+            // Filter complex 구성
+            val filters = mutableListOf<String>()
+
+            // 1. 상단 제목 (subtitles 필터 사용)
+            val escapedTitleSrtPath = titleSrtPath.replace("\\", "/").replace(":", "\\\\:")
+            filters.add(
+                "subtitles='$escapedTitleSrtPath':" +
+                "force_style='FontName=Noto Sans KR," +
+                "FontSize=16," +
+                "PrimaryColour=&HFFFFFF," +
+                "OutlineColour=&H000000," +
+                "Outline=2," +
+                "BackColour=&H80000000," +  // 반투명 검은 배경
+                "Bold=1," +
+                "Alignment=8," +  // 상단 중앙
+                "MarginV=30'"  // 상단에서 30px 아래 (화면 최상단 근처)
+            )
+
+            // 2. 하단 자막 (subtitles 필터 사용) - SRT 파일이 있는 경우만
+            if (srtPath != null && File(srtPath).exists()) {
+                // STT 단계에서 이미 짧은 세그먼트로 나뉘므로 추가 처리 불필요
+                val escapedSrtPath = srtPath.replace("\\", "/").replace(":", "\\\\:")
+
+                filters.add(
+                    "subtitles='$escapedSrtPath':" +
+                    "force_style='FontName=Noto Sans KR," +
+                    "FontSize=14," +
+                    "PrimaryColour=&HFFFFFF," +
+                    "OutlineColour=&H000000," +
+                    "Outline=1," +
+                    "Bold=1," +
+                    "Alignment=2," +  // 하단 중앙
+                    "MarginV=60'"  // 하단에서 60px 위 (조금 위로)
+                )
+            }
+
+            val vfFilter = filters.joinToString(",")
+
+            val command = listOf(
+                ffmpegPath,
+                "-i", inputPath,
+                "-vf", vfFilter,
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "23",
+                "-c:a", "copy",  // 오디오는 복사 (인코딩 생략)
+                "-y",
+                outputPath
+            )
+
+            executeCommand(command, "Text overlay")
+
+            logger.info("텍스트 오버레이 추가 완료: output={}", outputPath)
+            return outputPath
+        } finally {
+            // 임시 제목 SRT 파일 삭제
+            try {
+                File(titleSrtPath).delete()
+                logger.debug("임시 제목 SRT 파일 삭제: {}", titleSrtPath)
+            } catch (e: Exception) {
+                logger.warn("임시 제목 SRT 파일 삭제 실패: {}", titleSrtPath, e)
+            }
+        }
+    }
+
+    override fun concat(inputPaths: List<String>, outputPath: String): String {
+        logger.info("비디오 병합 시작: {} 파일 → {}", inputPaths.size, outputPath)
+
+        require(inputPaths.isNotEmpty()) { "입력 파일이 없습니다" }
+
+        // 단일 파일이면 복사만
+        if (inputPaths.size == 1) {
+            File(inputPaths.first()).copyTo(File(outputPath), overwrite = true)
+            logger.info("단일 파일, 복사 완료: {}", outputPath)
+            return outputPath
+        }
+
+        // FFmpeg concat demuxer용 파일 리스트 생성
+        val concatListPath = "$tempDir/concat_list_${System.currentTimeMillis()}.txt"
+        val concatListContent = inputPaths.joinToString("\n") { path ->
+            // FFmpeg concat demuxer 형식: file '/path/to/file.mp4'
+            // 작은따옴표가 경로에 있을 수 있으므로 이스케이프
+            "file '${path.replace("'", "'\\''")}'"
+        }
+        File(concatListPath).writeText(concatListContent, Charsets.UTF_8)
+
+        logger.debug("Concat 리스트 파일 생성: {}", concatListPath)
+
+        try {
+            // FFmpeg concat demuxer 사용 (re-encoding 없이 빠른 병합)
+            val command = listOf(
+                ffmpegPath,
+                "-f", "concat",       // concat demuxer 지정
+                "-safe", "0",         // 절대 경로 허용
+                "-i", concatListPath, // concat 파일 목록
+                "-c", "copy",         // 코덱 복사 (re-encoding 없음)
+                "-y",                 // 기존 파일 덮어쓰기
+                outputPath
+            )
+
+            executeCommand(command, "Video concatenation")
+
+            logger.info("비디오 병합 완료: {}", outputPath)
+            return outputPath
+
+        } finally {
+            // concat 리스트 파일 정리
+            try {
+                File(concatListPath).delete()
+            } catch (e: Exception) {
+                logger.warn("concat 파일 삭제 실패: {}", concatListPath, e)
+            }
+        }
+    }
+
+    /**
+     * 제목이 너무 길면 자동 줄바꿈 추가
+     *
+     * @param title 원본 제목
+     * @param maxCharsPerLine 한 줄 최대 문자 수
+     * @return 줄바꿈이 추가된 제목
+     */
+    private fun wrapTitle(title: String, maxCharsPerLine: Int): String {
+        if (title.length <= maxCharsPerLine) {
+            return title
+        }
+
+        // 공백을 기준으로 단어 분리
+        val words = title.split(" ")
+        val lines = mutableListOf<String>()
+        var currentLine = ""
+
+        for (word in words) {
+            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+
+            if (testLine.length <= maxCharsPerLine) {
+                currentLine = testLine
+            } else {
+                if (currentLine.isNotEmpty()) {
+                    lines.add(currentLine)
+                }
+                currentLine = word
+            }
+        }
+
+        if (currentLine.isNotEmpty()) {
+            lines.add(currentLine)
+        }
+
+        // 최대 2줄까지만 표시
+        return lines.take(2).joinToString("\n")
+    }
+
+    /**
+     * FFmpeg drawtext 필터용 문자열 이스케이프
+     *
+     * FFmpeg의 drawtext 필터는 특수문자를 이스케이프해야 합니다.
+     * 참고: https://ffmpeg.org/ffmpeg-filters.html#drawtext
+     *
+     * @param text 이스케이프할 텍스트
+     * @return 이스케이프된 텍스트
+     */
+    private fun escapeDrawtextString(text: String): String {
+        return text
+            .replace("\\", "\\\\")   // 백슬래시
+            .replace(":", "\\:")     // 콜론
+            .replace("'", "\\'")     // 작은따옴표
+            .replace("%", "\\%")     // 퍼센트
     }
 
     private fun executeCommand(command: List<String>, operation: String) {

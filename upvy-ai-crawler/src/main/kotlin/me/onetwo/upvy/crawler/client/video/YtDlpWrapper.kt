@@ -65,6 +65,8 @@ class YtDlpWrapperImpl(
             "--no-playlist",
             "--no-warnings",
             "--quiet",
+            "--cookies-from-browser", "chrome",  // Chrome 쿠키 사용 (봇 방지)
+            "--user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             youtubeUrl
         )
 
@@ -117,6 +119,8 @@ class YtDlpWrapperImpl(
             "--dump-json",
             "--no-warnings",
             "--quiet",
+            "--cookies-from-browser", "chrome",  // Chrome 쿠키 사용 (봇 방지)
+            "--user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             youtubeUrl
         )
 

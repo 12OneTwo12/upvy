@@ -21,6 +21,20 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
 
+        <!-- Pending Content Quick Link -->
+        <div th:if="${pendingContent != null}" class="alert alert-success mb-4" role="alert">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong>Review 완료!</strong> 승인 대기 중인 콘텐츠가 있습니다.
+                </div>
+                <a th:href="@{/backoffice/pending/{id}(id=${pendingContent.id})}"
+                   class="btn btn-success btn-sm">
+                    <i class="bi bi-arrow-right-circle"></i> 승인 대기 콘텐츠 보기
+                </a>
+            </div>
+        </div>
+
         <div class="row">
             <!-- Main Info -->
             <div class="col-lg-8">

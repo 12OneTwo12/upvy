@@ -173,9 +173,15 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       try {
         setIsLoadingVideo(true);
 
+        console.log('🎬 [VideoEdit] Loading video URI');
+        console.log('   Platform:', Platform.OS);
+        console.log('   Asset URI:', asset.uri);
+        console.log('   Asset ID:', asset.id);
+
         // asset.uri가 file:// 형식이면 바로 사용 (카메라 촬영 등)
         if (asset.uri && asset.uri.startsWith('file://')) {
           const cleanUri = cleanIOSVideoUri(asset.uri);
+          console.log('✅ Using file:// URI directly:', cleanUri);
           setVideoUri(cleanUri);
           setThumbnailUri(cleanUri); // 썸네일도 같은 URI 사용
           setIsLoadingVideo(false);
@@ -205,7 +211,37 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           return;
         }
 
-        // 기타 경우
+        // Android content:// URI인 경우
+        if (asset.uri && asset.uri.startsWith('content://')) {
+          console.log('📱 [VideoEdit] Android content:// URI detected');
+          setVideoUri(asset.uri); // expo-video는 content:// 지원
+
+          // expo-video-thumbnails와 react-native-video-trim을 위해 localUri 가져오기
+          try {
+            console.log('   Fetching localUri from MediaLibrary...');
+            const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id, {
+              shouldDownloadFromNetwork: true,
+            });
+            console.log('   AssetInfo localUri:', assetInfo.localUri);
+
+            if (assetInfo.localUri) {
+              console.log('✅ Using localUri for trim and thumbnails:', assetInfo.localUri);
+              setThumbnailUri(assetInfo.localUri);
+            } else {
+              // localUri가 없으면 원본 URI 사용 (fallback)
+              console.warn('⚠️ No localUri available, using content:// URI as fallback');
+              setThumbnailUri(asset.uri);
+            }
+          } catch (e) {
+            console.error('❌ Failed to get localUri for Android:', e);
+            setThumbnailUri(asset.uri);
+          }
+
+          setIsLoadingVideo(false);
+          return;
+        }
+
+        // 기타 경우 (file:// 등)
         if (asset.uri) {
           const cleanUri = cleanIOSVideoUri(asset.uri);
           setVideoUri(cleanUri);
@@ -327,46 +363,140 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   // 따라서 캐시 디렉토리로 복사 후 트리밍
   const trimVideoNative = async (inputUri: string, startTime: number, endTime: number): Promise<string> => {
     try {
+      console.log('✂️ [Trim] Starting video trim');
+      console.log('   Input URI:', inputUri);
+      console.log('   Start time:', startTime, 'seconds');
+      console.log('   End time:', endTime, 'seconds');
+      console.log('   Duration:', endTime - startTime, 'seconds');
 
       // iOS URI에는 해시(#) 뒤에 메타데이터가 붙어있을 수 있음
       // iOS plist 메타데이터는 '#YnBsaXN0'(base64 시그니처)로 시작함
       // 파일명에 #이 있을 수 있으므로 iOS 메타데이터 패턴만 제거
       const cleanUri = inputUri.replace(/#YnBsaXN0[A-Za-z0-9+/=]*$/, '');
+      if (cleanUri !== inputUri) {
+        console.log('   Cleaned URI:', cleanUri);
+      }
 
       setIsTrimming(true);
       setTrimmingProgress(5);
 
-      // iOS Photo Library 파일을 앱 캐시로 복사 (네이티브 모듈 접근 가능하도록)
-      // /var/mobile/Media/ 경로는 앱 샌드박스 외부라 네이티브 모듈이 직접 접근 불가
+      // 네이티브 모듈이 접근 가능하도록 파일을 앱 캐시로 복사
+      // iOS: Photo Library 파일은 앱 샌드박스 외부라 네이티브 모듈이 직접 접근 불가
+      // Android: Scoped Storage (API 29+) 때문에 MediaLibrary 파일은 네이티브 모듈이 직접 접근 불가
+      //          따라서 항상 앱 캐시로 복사 필요
       let trimSourceUri = cleanUri;
-      if (cleanUri.includes('/var/mobile/Media/') || cleanUri.includes('/PhotoData/')) {
+
+      const needsCopy =
+        // iOS Photo Library 경로
+        cleanUri.includes('/var/mobile/Media/') ||
+        cleanUri.includes('/PhotoData/') ||
+        // Android는 항상 복사 (Scoped Storage)
+        Platform.OS === 'android';
+
+      if (needsCopy) {
+        console.log('📋 [Trim] Copying video to cache for native module access');
+        console.log('   Platform:', Platform.OS);
+        console.log('   Source URI:', cleanUri);
+
         const cacheVideoPath = `${FileSystem.cacheDirectory}trim_source_${Date.now()}.mp4`;
-        await FileSystem.copyAsync({
-          from: cleanUri,
-          to: cacheVideoPath,
-        });
-        trimSourceUri = cacheVideoPath;
+
+        try {
+          // 파일 존재 여부 확인
+          const fileInfo = await FileSystem.getInfoAsync(cleanUri);
+          console.log('   File exists:', fileInfo.exists);
+          if (fileInfo.exists) {
+            console.log('   File size:', fileInfo.size);
+          }
+
+          if (!fileInfo.exists) {
+            throw new Error('Source file does not exist');
+          }
+
+          // 캐시로 복사
+          await FileSystem.copyAsync({
+            from: cleanUri,
+            to: cacheVideoPath,
+          });
+
+          // 복사된 파일 확인
+          const copiedFileInfo = await FileSystem.getInfoAsync(cacheVideoPath);
+          console.log('✅ Video copied to cache:', cacheVideoPath);
+          console.log('   Copied file size:', copiedFileInfo.size);
+
+          trimSourceUri = cacheVideoPath;
+        } catch (copyError) {
+          console.error('❌ Failed to copy video to cache:', copyError);
+          throw new Error(`Failed to copy video: ${copyError}`);
+        }
+      } else {
+        console.log('📋 [Trim] Using original URI (no copy needed):', cleanUri);
+        trimSourceUri = cleanUri;
       }
 
       setTrimmingProgress(20);
 
       // 파일 유효성 검사
+      console.log('🔍 [Trim] Validating file with react-native-video-trim...');
       const isValid = await isValidFile(trimSourceUri);
+      console.log('   File valid:', isValid);
+
       if (!isValid) {
-        throw new Error('Invalid video file');
+        throw new Error('Invalid video file - react-native-video-trim cannot access the file');
       }
 
       setTrimmingProgress(30);
 
       // react-native-video-trim의 trim() 함수 호출
       // startTime, endTime은 밀리초(ms) 단위
-      const result = await trim(trimSourceUri, {
-        startTime: Math.floor(startTime * 1000), // ms 단위
-        endTime: Math.floor(endTime * 1000),     // ms 단위
-      });
+      // Android: 출력 경로를 명시적으로 지정해야 FFmpeg가 파일을 쓸 수 있음
+      const outputPath = `${FileSystem.cacheDirectory}trimmed_output_${Date.now()}.mp4`;
+
+      // FFmpeg는 file:// 프리픽스 없이 순수 경로를 선호함
+      const trimSourcePath = trimSourceUri.replace('file://', '');
+      const outputFilePath = outputPath.replace('file://', '');
+
+      console.log('⚙️ [Trim] Calling react-native-video-trim...');
+      console.log('   Trim source path:', trimSourcePath);
+      console.log('   Output file path:', outputFilePath);
+      console.log('   Start time (ms):', Math.floor(startTime * 1000));
+      console.log('   End time (ms):', Math.floor(endTime * 1000));
+
+      // Android에서는 copy 모드를 먼저 시도 (재인코딩 없이 빠른 처리)
+      // copy 모드가 실패하면 일반 trim으로 fallback
+      let result;
+
+      if (Platform.OS === 'android') {
+        try {
+          console.log('   Trying COPY mode first (no re-encoding)...');
+          result = await trim(trimSourcePath, {
+            startTime: Math.floor(startTime * 1000),
+            endTime: Math.floor(endTime * 1000),
+            outputPath: outputFilePath,
+            quality: 'medium',
+            // copy 모드는 react-native-video-trim에서 지원하지 않을 수 있음
+          });
+        } catch (copyError) {
+          console.log('   Copy mode failed, trying standard trim...');
+          result = await trim(trimSourcePath, {
+            startTime: Math.floor(startTime * 1000),
+            endTime: Math.floor(endTime * 1000),
+            outputPath: outputFilePath,
+            quality: 'low', // low quality로 재시도
+          });
+        }
+      } else {
+        result = await trim(trimSourcePath, {
+          startTime: Math.floor(startTime * 1000),
+          endTime: Math.floor(endTime * 1000),
+          outputPath: outputFilePath,
+          quality: 'medium',
+        });
+      }
+
+      console.log('📦 [Trim] Result:', result);
 
       if (!result.success) {
-        throw new Error('Video trim failed');
+        throw new Error('Video trim failed - FFmpeg command failed');
       }
 
       setTrimmingProgress(100);
@@ -375,6 +505,10 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       const resultUri = result.outputPath.startsWith('file://')
         ? result.outputPath
         : `file://${result.outputPath}`;
+
+      console.log('✅ [Trim] Trim completed successfully');
+      console.log('   Output URI:', resultUri);
+
       return resultUri;
 
     } catch (error) {

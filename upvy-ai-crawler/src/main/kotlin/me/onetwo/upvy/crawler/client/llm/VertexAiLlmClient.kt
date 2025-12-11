@@ -9,9 +9,11 @@ import com.google.cloud.vertexai.generativeai.ResponseHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.onetwo.upvy.crawler.client.LlmClient
+import me.onetwo.upvy.crawler.domain.ClipSegment
 import me.onetwo.upvy.crawler.domain.ContentLanguage
 import me.onetwo.upvy.crawler.domain.ContentMetadata
 import me.onetwo.upvy.crawler.domain.Difficulty
+import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
 import me.onetwo.upvy.crawler.domain.Recommendation
 import me.onetwo.upvy.crawler.domain.SearchContext
@@ -116,6 +118,27 @@ class VertexAiLlmClient(
         } catch (e: Exception) {
             logger.error("핵심 세그먼트 추출 실패", e)
             throw LlmException("Failed to extract key segments", e)
+        }
+    }
+
+    override suspend fun generateEditPlan(transcript: String): EditPlan = withContext(Dispatchers.IO) {
+        logger.info("편집 계획 생성 시작: transcript length={}", transcript.length)
+
+        val prompt = buildEditPlanPrompt(transcript)
+
+        try {
+            val response = model.generateContent(prompt)
+            val responseText = ResponseHandler.getText(response)
+            val jsonResponse = extractJsonFromResponse(responseText.ifEmpty { "{}" })
+
+            val editPlan = parseEditPlanFromJson(jsonResponse)
+
+            logger.info("편집 계획 생성 완료: clips={}, strategy={}", editPlan.clips.size, editPlan.editingStrategy)
+            editPlan
+
+        } catch (e: Exception) {
+            logger.error("편집 계획 생성 실패", e)
+            throw LlmException("Failed to generate edit plan", e)
         }
     }
 
@@ -258,6 +281,54 @@ class VertexAiLlmClient(
         |]
     """.trimMargin()
 
+    private fun buildEditPlanPrompt(transcript: String): String = """
+        |당신은 교육 숏폼 콘텐츠 편집 전문가입니다. 다음 영상 자막을 분석하여 최적의 숏폼 편집 계획을 제시해주세요.
+        |
+        |자막:
+        |$transcript
+        |
+        |임무: 이 영상에서 여러 구간을 선택하고 조합하여 하나의 완성도 높은 숏폼(30초~3분)을 만드는 편집 계획을 세우세요.
+        |
+        |편집 계획 수립 기준:
+        |1. **전체 스토리 플로우**: 각 클립이 어떤 순서로 배치되어야 시청자가 자연스럽게 이해할 수 있는가?
+        |2. **완결성**: 도입-전개-결론 구조를 갖추거나, 하나의 완결된 개념을 전달하는가?
+        |3. **숏폼 최적화**:
+        |   - 빠른 템포: 루즈하거나 늘어지는 구간 제외
+        |   - 밀도 있는 내용: 30초 내에 하나의 인사이트 전달
+        |   - 에너지: 화자의 말하는 속도와 에너지가 높은 부분 우선
+        |4. **편집 효율**: 2~5개의 클립을 선택 (너무 많으면 산만함)
+        |
+        |클립 선택 가이드:
+        |- 각 클립은 15초~60초 사이 (최소 10초, 최대 90초)
+        |- 인트로/아웃트로, 구독 요청 등은 제외
+        |- 문맥 없이 이해 가능한 구간 선택
+        |- 시각적/청각적 변화가 있는 부분 우선
+        |
+        |편집 전략 (editingStrategy):
+        |- "highlight_compilation": 가장 핵심적인 하이라이트 여러 개를 이어붙이기
+        |- "story_flow": 순차적으로 이어지는 스토리 만들기
+        |- "tutorial_sequence": 튜토리얼 단계를 압축하여 구성
+        |- "problem_solution": 문제 제시 → 해결 과정 → 결론
+        |- "video_time": 클립 전체 합계, 편집 후 풀 영상이 최소 30초 이상 최대 3분이 되도록 클립 선택
+        |
+        |JSON 형식으로만 응답해주세요:
+        |{
+        |  "clips": [
+        |    {
+        |      "orderIndex": 0,
+        |      "startTimeMs": 시작시간(밀리초),
+        |      "endTimeMs": 종료시간(밀리초),
+        |      "title": "클립 제목",
+        |      "description": "이 클립을 선택한 이유",
+        |      "keywords": ["키워드1", "키워드2"]
+        |    }
+        |  ],
+        |  "totalDurationMs": 전체_클립_길이_합계,
+        |  "editingStrategy": "highlight_compilation|story_flow|tutorial_sequence|problem_solution",
+        |  "transitionStyle": "hard_cut"
+        |}
+    """.trimMargin()
+
     private fun buildMetadataGenerationPrompt(content: String, language: ContentLanguage): String {
         val languageInstruction = when (language) {
             ContentLanguage.KO -> "한국어로 메타데이터를 생성해주세요."
@@ -304,6 +375,9 @@ class VertexAiLlmClient(
         |- 한국어(ko): "코틀린 프로그래밍 입문"
         |- 영어(en): "kotlin programming beginner tutorial"
         |- 일본어(ja): "Kotlin プログラミング 入門"
+        |- 한국어(ko): "운동 동기부여"
+        |- 영어(en): "fitness motivation"
+        |- 일본어(ja): "フィットネス モチベーション"
         |
         |현재 앱 카테고리: ${context.appCategories.joinToString(", ")}
         |인기 키워드: ${context.popularKeywords.joinToString(", ")}
@@ -315,9 +389,10 @@ class VertexAiLlmClient(
         |다음 조건을 고려해주세요:
         |1. 교육적 가치가 높은 콘텐츠
         |2. CC 라이선스로 배포될 가능성이 높은 채널/콘텐츠
-        |3. 짧은 클립으로 편집하기 좋은 콘텐츠
+        |3. 짧은 클립으로 편집하기 좋은 콘텐츠 (숏츠)
         |4. 부족한 카테고리를 우선적으로 채울 수 있는 쿼리
         |5. 각 언어별로 균등하게 쿼리 생성 (각 언어당 최소 3개)
+        |6. 교육적 가치가 높으면서 재미까지 있으면 더 좋음
         |
         |JSON 형식으로 15~30개의 검색 쿼리를 생성해주세요 (언어당 5~10개):
         |[
@@ -381,10 +456,28 @@ class VertexAiLlmClient(
     // ========== JSON Parsers ==========
 
     private fun extractJsonFromResponse(response: String): String {
-        // Markdown 코드 블록에서 JSON 추출
-        val jsonPattern = """```(?:json)?\s*([\s\S]*?)```""".toRegex()
-        val match = jsonPattern.find(response)
-        return match?.groupValues?.get(1)?.trim() ?: response.trim()
+        val trimmed = response.trim()
+
+        // 1. Markdown 코드 블록 (```json ... ``` 또는 ``` ... ```) 추출 시도
+        val codeBlockPattern = """```(?:json)?\s*\n?([\s\S]*?)\n?```""".toRegex()
+        val codeBlockMatch = codeBlockPattern.find(trimmed)
+        if (codeBlockMatch != null) {
+            val extracted = codeBlockMatch.groupValues[1].trim()
+            logger.debug("Markdown 코드 블록에서 JSON 추출: {} -> {} chars",
+                trimmed.take(50), extracted.length)
+            return extracted
+        }
+
+        // 2. 단일 백틱으로 감싸진 경우 (` ... `) 처리
+        if (trimmed.startsWith("`") && trimmed.endsWith("`")) {
+            val extracted = trimmed.removeSurrounding("`").trim()
+            logger.debug("단일 백틱 제거: {} chars", extracted.length)
+            return extracted
+        }
+
+        // 3. 그대로 반환
+        logger.debug("코드 블록 없음, 원본 반환: {} chars", trimmed.length)
+        return trimmed
     }
 
     private fun parseSegmentsFromJson(json: String): List<Segment> {
@@ -402,6 +495,46 @@ class VertexAiLlmClient(
         } catch (e: Exception) {
             logger.warn("세그먼트 JSON 파싱 실패: {}", e.message)
             emptyList()
+        }
+    }
+
+    private fun parseEditPlanFromJson(json: String): EditPlan {
+        return try {
+            logger.debug("EditPlan JSON 파싱 시작: {} chars", json.length)
+            logger.debug("EditPlan JSON 내용 (첫 200자): {}", json.take(200))
+
+            val plan: Map<String, Any> = objectMapper.readValue(json)
+            val clipsData = plan["clips"] as? List<Map<String, Any>> ?: emptyList()
+
+            logger.debug("EditPlan 클립 개수: {}", clipsData.size)
+
+            val clips = clipsData.map { clip ->
+                ClipSegment(
+                    orderIndex = (clip["orderIndex"] as Number).toInt(),
+                    startTimeMs = (clip["startTimeMs"] as Number).toLong(),
+                    endTimeMs = (clip["endTimeMs"] as Number).toLong(),
+                    title = clip["title"] as String,
+                    description = clip["description"] as? String,
+                    keywords = (clip["keywords"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                )
+            }.sortedBy { it.orderIndex }  // orderIndex로 정렬하여 순서 보장
+
+            EditPlan(
+                clips = clips,
+                totalDurationMs = (plan["totalDurationMs"] as? Number)?.toLong() ?: clips.sumOf { it.endTimeMs - it.startTimeMs },
+                editingStrategy = plan["editingStrategy"] as? String ?: "highlight_compilation",
+                transitionStyle = plan["transitionStyle"] as? String ?: "hard_cut"
+            )
+        } catch (e: Exception) {
+            logger.warn("EditPlan JSON 파싱 실패: {}", e.message, e)
+            logger.debug("파싱 실패한 JSON: {}", json.take(500))
+            // Fallback: 빈 편집 계획
+            EditPlan(
+                clips = emptyList(),
+                totalDurationMs = 0L,
+                editingStrategy = "none",
+                transitionStyle = "hard_cut"
+            )
         }
     }
 
