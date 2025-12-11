@@ -276,11 +276,10 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
       // 현재 재생 상태 저장
       wasPlayingBeforeLongPress.current = status.isPlaying;
 
-      // 재생 중이었다면 일시정지
+      // 재생 중이었다면 일시정지 (아이콘 표시 없음)
       if (status.isPlaying) {
         await videoRef.current.pauseAsync();
         setIsLongPressing(true);
-        setShowPlayIcon('pause');
       }
     } catch (error) {
       console.error('Long press start error:', error);
@@ -292,11 +291,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     if (!videoRef.current || !isLongPressing) return;
 
     try {
-      // 롱프레스 전에 재생 중이었다면 재생 재개
+      // 롱프레스 전에 재생 중이었다면 재생 재개 (아이콘 표시 없음)
       if (wasPlayingBeforeLongPress.current) {
         await videoRef.current.playAsync();
-        setShowPlayIcon('play');
-        setTimeout(() => setShowPlayIcon(null), 800);
       }
     } catch (error) {
       console.error('Long press end error:', error);
