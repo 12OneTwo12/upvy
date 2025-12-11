@@ -38,6 +38,7 @@ export default function ProfileNavigator() {
         options={{
           title: t('common:screen.content'),
           animation: 'slide_from_bottom',
+          statusBarStyle: 'light',
         }}
       />
       <Stack.Screen
