@@ -38,9 +38,48 @@ class AiPoweredSearchReader(
 
     companion object {
         private val logger = LoggerFactory.getLogger(AiPoweredSearchReader::class.java)
-        private const val MAX_QUERIES_PER_RUN = 5
+        private const val MAX_QUERIES_PER_RUN = 10  // 카테고리 다양성을 위해 5 -> 10으로 증가
         private const val MAX_VIDEOS_PER_QUERY = 10
         private const val YOUTUBE_API_DELAY_MS = 1000L  // Rate Limiting 방지용 딜레이
+
+        /**
+         * 카테고리 다양성을 보장하며 검색 쿼리를 선택합니다.
+         *
+         * 알고리즘:
+         * 1. 각 카테고리에서 우선순위가 가장 높은 쿼리를 1개씩 선택
+         * 2. 남은 슬롯은 우선순위 순으로 채움
+         * 3. 이를 통해 한 카테고리로 치우치지 않고 다양한 주제를 검색
+         */
+        private fun selectDiverseQueries(queries: List<SearchQuery>, maxCount: Int): List<SearchQuery> {
+            if (queries.size <= maxCount) return queries
+
+            val selected = mutableListOf<SearchQuery>()
+            val remaining = queries.toMutableList()
+
+            // 1단계: 각 카테고리에서 최소 1개씩 선택 (우선순위 높은 것 우선)
+            val categoriesProcessed = mutableSetOf<String>()
+            for (query in queries.sortedByDescending { it.priority }) {
+                if (selected.size >= maxCount) break
+                if (!categoriesProcessed.contains(query.targetCategory)) {
+                    selected.add(query)
+                    remaining.remove(query)
+                    categoriesProcessed.add(query.targetCategory)
+                    logger.debug("카테고리 다양성: {} 카테고리에서 선택 - {}", query.targetCategory, query.query)
+                }
+            }
+
+            // 2단계: 남은 슬롯을 우선순위 순으로 채움
+            val additionalCount = maxCount - selected.size
+            if (additionalCount > 0) {
+                val additional = remaining
+                    .sortedByDescending { it.priority }
+                    .take(additionalCount)
+                selected.addAll(additional)
+                logger.debug("추가 선택: {}개", additional.size)
+            }
+
+            return selected.sortedByDescending { it.priority }
+        }
     }
 
     private var evaluatedVideos: Iterator<EvaluatedVideo>? = null
@@ -83,17 +122,20 @@ class AiPoweredSearchReader(
                 logger.debug("검색 컨텍스트 수집 완료: {}", context)
 
                 // 2. LLM으로 검색 쿼리 생성
-                var searchQueries = llmClient.generateSearchQueries(context)
-                    .sortedByDescending { it.priority }
+                var generatedQueries = llmClient.generateSearchQueries(context)
 
                 // 카테고리 필터링
                 if (targetCategory != null) {
-                    searchQueries = searchQueries.filter { it.targetCategory == targetCategory }
-                    logger.info("카테고리 필터링 적용: category={}, filtered={}", targetCategory, searchQueries.size)
+                    generatedQueries = generatedQueries.filter { it.targetCategory == targetCategory }
+                    logger.info("카테고리 필터링 적용: category={}, filtered={}", targetCategory, generatedQueries.size)
                 }
 
-                searchQueries = searchQueries.take(MAX_QUERIES_PER_RUN)
-                logger.info("검색 쿼리 생성 완료: count={}", searchQueries.size)
+                // 다양성을 보장하는 쿼리 선택: 각 카테고리에서 골고루 선택
+                val searchQueries = selectDiverseQueries(generatedQueries, MAX_QUERIES_PER_RUN)
+                logger.info("검색 쿼리 생성 완료: count={}, categories={}",
+                    searchQueries.size,
+                    searchQueries.map { it.targetCategory }.distinct().joinToString(", ")
+                )
 
                 // 3. YouTube 검색 (언어별로 검색)
                 // 비디오 ID -> 언어 매핑 (같은 비디오가 여러 언어로 검색될 수 있음)
