@@ -469,70 +469,91 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       // Android: 출력 경로를 명시적으로 지정해야 FFmpeg가 파일을 쓸 수 있음
       const outputPath = `${FileSystem.cacheDirectory}trimmed_output_${Date.now()}.mp4`;
 
-      // FFmpeg는 file:// 프리픽스 없이 순수 경로를 선호함
-      const trimSourcePath = trimSourceUri.replace('file://', '');
-      const outputFilePath = outputPath.replace('file://', '');
-
       console.log('⚙️ [Trim] Calling react-native-video-trim...');
-      console.log('   Trim source path:', trimSourcePath);
-      console.log('   Output file path:', outputFilePath);
+      console.log('   Trim source URI:', trimSourceUri);
+      console.log('   Output path:', outputPath);
       console.log('   Start time (ms):', Math.floor(startTime * 1000));
       console.log('   End time (ms):', Math.floor(endTime * 1000));
 
-      // Android에서는 여러 설정으로 순차적으로 시도
       let result;
       let lastError: any = null;
 
-      const trimAttempts = Platform.OS === 'android' ? [
-        { name: 'HIGH quality', options: { quality: 'high' } },
-        { name: 'MEDIUM quality', options: { quality: 'medium' } },
-        { name: 'LOW quality', options: { quality: 'low' } },
-        // 마지막 fallback: 매우 짧은 구간만 잘라내기 (빠른 테스트)
-      ] : [
-        { name: 'MEDIUM quality', options: { quality: 'medium' } },
-      ];
-
-      for (const attempt of trimAttempts) {
+      if (Platform.OS === 'ios') {
+        // iOS: 원래대로 간단하게 실행 (quality 옵션 없이, file:// URI 유지)
         try {
-          console.log(`   Attempting trim with ${attempt.name}...`);
+          console.log('   iOS trim (no quality option)...');
 
-          const trimOptions = {
+          result = await trim(trimSourceUri, {
             startTime: Math.floor(startTime * 1000),
             endTime: Math.floor(endTime * 1000),
-            outputPath: outputFilePath,
-            ...attempt.options,
-          };
+            outputPath: outputPath,
+          });
 
-          console.log('   Trim options:', JSON.stringify(trimOptions, null, 2));
-
-          result = await trim(trimSourcePath, trimOptions);
-
-          // 성공하면 루프 종료
           if (result && result.success) {
-            console.log(`✅ Trim succeeded with ${attempt.name}`);
-            break;
+            console.log('✅ iOS trim succeeded');
           } else {
-            console.log(`   ${attempt.name} returned unsuccessful result:`, result);
-            lastError = new Error(`Trim returned success=false with ${attempt.name}`);
+            throw new Error('iOS trim returned success=false');
           }
         } catch (error) {
-          console.log(`   ${attempt.name} failed:`, error);
-          lastError = error;
+          console.error('❌ iOS trim failed:', error);
+          throw error;
+        }
+      } else {
+        // Android: file:// 프리픽스 제거 + 여러 quality 옵션 시도
+        const trimSourcePath = trimSourceUri.replace('file://', '');
+        const outputFilePath = outputPath.replace('file://', '');
 
-          // 마지막 시도가 아니면 계속
-          if (attempt !== trimAttempts[trimAttempts.length - 1]) {
-            console.log('   Trying next method...');
-            await new Promise(resolve => setTimeout(resolve, 500)); // 500ms 대기
-            continue;
+        console.log('   Android trim source path:', trimSourcePath);
+        console.log('   Android output file path:', outputFilePath);
+
+        const trimAttempts = [
+          { name: 'HIGH quality', options: { quality: 'high' } },
+          { name: 'MEDIUM quality', options: { quality: 'medium' } },
+          { name: 'LOW quality', options: { quality: 'low' } },
+        ];
+
+        for (const attempt of trimAttempts) {
+          try {
+            console.log(`   Attempting trim with ${attempt.name}...`);
+
+            const trimOptions = {
+              startTime: Math.floor(startTime * 1000),
+              endTime: Math.floor(endTime * 1000),
+              outputPath: outputFilePath,
+              ...attempt.options,
+            };
+
+            console.log('   Trim options:', JSON.stringify(trimOptions, null, 2));
+
+            result = await trim(trimSourcePath, trimOptions);
+
+            // 성공하면 루프 종료
+            if (result && result.success) {
+              console.log(`✅ Trim succeeded with ${attempt.name}`);
+              break;
+            } else {
+              console.log(`   ${attempt.name} returned unsuccessful result:`, result);
+              lastError = new Error(`Trim returned success=false with ${attempt.name}`);
+            }
+          } catch (error) {
+            console.log(`   ${attempt.name} failed:`, error);
+            lastError = error;
+
+            // 마지막 시도가 아니면 계속
+            if (attempt !== trimAttempts[trimAttempts.length - 1]) {
+              console.log('   Trying next method...');
+              await new Promise(resolve => setTimeout(resolve, 500)); // 500ms 대기
+              continue;
+            }
           }
         }
-      }
 
-      // 모든 시도가 실패한 경우
-      if (!result || !result.success) {
-        console.error('❌ All trim attempts failed');
-        console.error('   Last error:', lastError);
-        throw lastError || new Error('Video trim failed - all attempts exhausted');
+        // 모든 시도가 실패한 경우
+        if (!result || !result.success) {
+          console.error('❌ All trim attempts failed');
+          console.error('   Last error:', lastError);
+          throw lastError || new Error('Video trim failed - all attempts exhausted');
+        }
       }
 
       console.log('📦 [Trim] Result:', result);
