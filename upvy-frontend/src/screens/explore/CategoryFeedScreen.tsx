@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, useIsFocused, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -131,6 +132,20 @@ export default function CategoryFeedScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" translucent />
+
+      {/* 상단 그라데이션 오버레이 */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.4)', 'transparent']}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 120,
+          zIndex: 5,
+          pointerEvents: 'none',
+        }}
+      />
 
       {/* 상단 헤더 - 카테고리 이름 */}
       <View
