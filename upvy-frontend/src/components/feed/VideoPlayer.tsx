@@ -2,13 +2,14 @@
  * 비디오 플레이어 컴포넌트
  *
  * Instagram Reels 스타일의 풀스크린 비디오 플레이어
- * - 탭: 일시정지/재생
+ * - 싱글탭: 일시정지/재생 토글
  * - 더블탭: 좋아요
+ * - 롱프레스: 누르는 동안 일시정지, 떼면 재생 재개
  * - 자동재생
  */
 
 import React, { useRef, useState, useEffect, useMemo, forwardRef, useImperativeHandle, useContext, useCallback } from 'react';
-import { View, TouchableWithoutFeedback, Dimensions, Animated, ActivityIndicator, PanResponder } from 'react-native';
+import { View, Pressable, Dimensions, Animated, ActivityIndicator, PanResponder } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,7 +60,9 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const [retryCount, setRetryCount] = useState(0);
   const [showRetryButton, setShowRetryButton] = useState(false);
   const [videoKey, setVideoKey] = useState(0);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const lastTap = useRef<number>(0);
+  const wasPlayingBeforeLongPress = useRef<boolean>(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
@@ -160,6 +163,13 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     controlPlayback();
   }, [isFocused, isLoadingSkeleton, externalIsDragging, hasBeenLoaded, onVideoLoaded, clearAllTimers]);
 
+  // 포커스 해제 시 롱프레스 상태 리셋
+  useEffect(() => {
+    if (!isFocused && isLongPressing) {
+      setIsLongPressing(false);
+    }
+  }, [isFocused, isLongPressing]);
+
   // 컴포넌트 언마운트 시 비디오 정리
   // 주의: Pre-loading을 위해 언로드하지 않음 (일시정지만 수행)
   useEffect(() => {
@@ -255,9 +265,56 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     }
   };
 
+  // 롱프레스 시작: 일시정지
+  const handleLongPressStart = async () => {
+    if (!videoRef.current) return;
+
+    try {
+      const status = await videoRef.current.getStatusAsync();
+      if (!status.isLoaded) return;
+
+      // 현재 재생 상태 저장
+      wasPlayingBeforeLongPress.current = status.isPlaying;
+
+      // 재생 중이었다면 일시정지
+      if (status.isPlaying) {
+        await videoRef.current.pauseAsync();
+        setIsLongPressing(true);
+        setShowPlayIcon('pause');
+      }
+    } catch (error) {
+      console.error('Long press start error:', error);
+    }
+  };
+
+  // 롱프레스 종료: 재생 재개
+  const handleLongPressEnd = async () => {
+    if (!videoRef.current || !isLongPressing) return;
+
+    try {
+      // 롱프레스 전에 재생 중이었다면 재생 재개
+      if (wasPlayingBeforeLongPress.current) {
+        await videoRef.current.playAsync();
+        setShowPlayIcon('play');
+        setTimeout(() => setShowPlayIcon(null), 800);
+      }
+    } catch (error) {
+      console.error('Long press end error:', error);
+    } finally {
+      setIsLongPressing(false);
+    }
+  };
+
   // 싱글탭: 재생/일시정지
   const handleSingleTap = async () => {
     if (!videoRef.current) return;
+
+    // 롱프레스 중에 탭하면 재생 재개 방지
+    if (isLongPressing) {
+      wasPlayingBeforeLongPress.current = false;
+      setIsLongPressing(false);
+      return;
+    }
 
     if (isPlaying) {
       // 일시정지 -> play 아이콘 표시
@@ -338,7 +395,12 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
   return (
     <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, backgroundColor: '#000000', position: 'relative' }}>
-      <TouchableWithoutFeedback onPress={handleTap}>
+      <Pressable
+        onPress={handleTap}
+        onLongPress={handleLongPressStart}
+        onPressOut={handleLongPressEnd}
+        delayLongPress={300}
+      >
         <View style={{ height: videoContainerHeight, width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center', marginTop: -tabBarHeight / 2 }}>
           {/* Video는 항상 렌더링 - 언마운트 절대 금지 */}
           {!isLoadingSkeleton && !showRetryButton && (
@@ -412,7 +474,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
           )}
 
         </View>
-      </TouchableWithoutFeedback>
+      </Pressable>
     </View>
   );
 });
