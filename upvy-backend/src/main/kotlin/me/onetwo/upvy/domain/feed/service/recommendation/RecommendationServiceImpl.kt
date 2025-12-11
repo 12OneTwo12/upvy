@@ -124,7 +124,13 @@ class RecommendationServiceImpl(
                 excludeCategory
             ).collectList()
         ).map { tuple ->
-            (tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4).shuffled()
+            // 모든 전략 결과를 합친 후 중복 제거 (Issue #149)
+            // LinkedHashSet을 사용하여 순서를 유지하면서 중복 제거
+            val allIds = (tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4)
+            val uniqueIds = LinkedHashSet(allIds)
+
+            // 중복 제거 후 필요한 개수만큼만 반환하고 섞기
+            uniqueIds.take(limit).shuffled()
         }
     }
 
