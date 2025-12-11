@@ -634,13 +634,18 @@ export function useFeed(options: UseFeedOptions) {
 
   // 시청 기록 전송 함수
   const sendViewEvent = useCallback(async (contentId: string, watchedDuration: number) => {
+    // contentId 유효성 검증
+    if (!contentId || contentId === 'loading' || contentId.trim() === '') {
+      return;
+    }
+
     // 중복 전송 방지
     if (trackedViewsRef.current.has(contentId)) {
       return;
     }
 
-    // 최소 1초 이상 시청한 경우에만 전송
-    if (watchedDuration < 1) {
+    // 최소 2초 이상 시청한 경우에만 전송 (우발적 터치 방지)
+    if (watchedDuration < 2) {
       return;
     }
 
@@ -685,15 +690,19 @@ export function useFeed(options: UseFeedOptions) {
     // 새 콘텐츠 포커스 시작 시간 기록
     viewStartTimeRef.current = Date.now();
     previousIndexRef.current = currentIndex;
+  }, [currentIndex, displayItems, sendViewEvent]);
 
-    // Cleanup: 컴포넌트 언마운트 시 마지막 콘텐츠 기록
+  // 컴포넌트 언마운트 시 마지막 콘텐츠 시청 기록 전송
+  useEffect(() => {
     return () => {
-      if (currentItem.contentId !== 'loading' && viewStartTimeRef.current > 0) {
+      const currentItem = displayItems[currentIndex];
+      if (currentItem && currentItem.contentId !== 'loading' && viewStartTimeRef.current > 0) {
         const watchedDuration = (Date.now() - viewStartTimeRef.current) / 1000;
         sendViewEvent(currentItem.contentId, watchedDuration);
       }
     };
-  }, [currentIndex, displayItems, sendViewEvent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 언마운트 시에만 실행
 
   return {
     // 데이터
