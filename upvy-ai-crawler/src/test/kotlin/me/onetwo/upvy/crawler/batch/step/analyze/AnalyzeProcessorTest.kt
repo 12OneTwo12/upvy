@@ -7,6 +7,7 @@ import me.onetwo.upvy.crawler.domain.AiContentJob
 import me.onetwo.upvy.crawler.domain.ContentLanguage
 import me.onetwo.upvy.crawler.domain.ContentMetadata
 import me.onetwo.upvy.crawler.domain.Difficulty
+import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
 import me.onetwo.upvy.crawler.domain.JobStatus
 import me.onetwo.upvy.crawler.domain.Recommendation
@@ -126,6 +127,12 @@ class AnalyzeProcessorTest {
 
         override suspend fun analyze(prompt: String): String = "Test analysis"
         override suspend fun extractKeySegments(transcript: String): List<Segment> = segmentsResponse
+        override suspend fun generateEditPlan(transcript: String): EditPlan = EditPlan(
+            clips = emptyList(),
+            totalDurationMs = 0L,
+            editingStrategy = "test",
+            transitionStyle = "hard_cut"
+        )
         override suspend fun generateMetadata(content: String, language: ContentLanguage): ContentMetadata = metadataResponse
         override suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery> = emptyList()
         override suspend fun evaluateVideos(candidates: List<VideoCandidate>): List<EvaluatedVideo> = emptyList()
