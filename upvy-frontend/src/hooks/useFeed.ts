@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { useInfiniteQuery, useMutation, useQueryClient, InfiniteData } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import type { Category } from '@/types/content.types';
 import type { FeedItem as FeedItemType, FeedResponse } from '@/types/feed.types';
 import {
@@ -567,6 +568,9 @@ export function useFeed(options: UseFeedOptions) {
 
   // Pull-to-Refresh
   const handleRefresh = useCallback(async () => {
+    // 햅틱 피드백
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     setRefreshing(true);
     setPullDistance(0);
     try {
