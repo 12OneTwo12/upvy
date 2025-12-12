@@ -47,7 +47,7 @@ class AuthServiceTest {
         val userRepository = mockk<UserRepository>()
         val authMethodRepository = mockk<UserAuthenticationMethodRepository>()
         val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
-        val emailService = mockk<EmailService>()
+        val emailVerificationService = mockk<EmailVerificationService>()
         val passwordEncoder = mockk<BCryptPasswordEncoder>()
         authService = AuthServiceImpl(
             jwtTokenProvider,
@@ -56,7 +56,7 @@ class AuthServiceTest {
             userRepository,
             authMethodRepository,
             emailVerificationTokenRepository,
-            emailService,
+            emailVerificationService,
             passwordEncoder
         )
 

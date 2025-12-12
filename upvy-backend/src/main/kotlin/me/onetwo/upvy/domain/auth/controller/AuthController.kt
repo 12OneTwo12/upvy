@@ -10,7 +10,6 @@ import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.upvy.domain.auth.service.AuthService
 import me.onetwo.upvy.domain.user.service.UserService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
-import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -31,14 +30,12 @@ import reactor.core.publisher.Mono
  *
  * @property authService 인증 서비스
  * @property userService 사용자 서비스
- * @property jwtTokenProvider JWT 토큰 Provider
  */
 @RestController
 @RequestMapping(ApiPaths.API_V1_AUTH)
 class AuthController(
     private val authService: AuthService,
-    private val userService: UserService,
-    private val jwtTokenProvider: JwtTokenProvider
+    private val userService: UserService
 ) {
 
     /**
@@ -109,22 +106,7 @@ class AuthController(
         @RequestParam token: String
     ): Mono<ResponseEntity<EmailVerifyResponse>> {
         return authService.verifyEmail(token)
-            .flatMap { jwtTokens ->
-                // JWT 토큰에서 사용자 ID 추출
-                val userId = jwtTokenProvider.getUserIdFromToken(jwtTokens.accessToken)
-                val email = jwtTokenProvider.getEmailFromToken(jwtTokens.accessToken)
-
-                Mono.just(
-                    ResponseEntity.ok(
-                        EmailVerifyResponse(
-                            accessToken = jwtTokens.accessToken,
-                            refreshToken = jwtTokens.refreshToken,
-                            userId = userId,
-                            email = email
-                        )
-                    )
-                )
-            }
+            .map { response -> ResponseEntity.ok(response) }
     }
 
     /**
@@ -140,21 +122,6 @@ class AuthController(
         @Valid @RequestBody request: EmailSigninRequest
     ): Mono<ResponseEntity<EmailVerifyResponse>> {
         return authService.signIn(request.email, request.password)
-            .flatMap { jwtTokens ->
-                // JWT 토큰에서 사용자 ID 추출
-                val userId = jwtTokenProvider.getUserIdFromToken(jwtTokens.accessToken)
-                val email = jwtTokenProvider.getEmailFromToken(jwtTokens.accessToken)
-
-                Mono.just(
-                    ResponseEntity.ok(
-                        EmailVerifyResponse(
-                            accessToken = jwtTokens.accessToken,
-                            refreshToken = jwtTokens.refreshToken,
-                            userId = userId,
-                            email = email
-                        )
-                    )
-                )
-            }
+            .map { response -> ResponseEntity.ok(response) }
     }
 }

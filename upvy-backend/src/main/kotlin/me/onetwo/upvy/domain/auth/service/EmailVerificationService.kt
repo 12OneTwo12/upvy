@@ -3,11 +3,12 @@ package me.onetwo.upvy.domain.auth.service
 import reactor.core.publisher.Mono
 
 /**
- * 이메일 발송 서비스 인터페이스
+ * 이메일 인증 서비스 인터페이스
  *
- * 이메일 인증, 비밀번호 재설정 등의 이메일을 발송합니다.
+ * 이메일 인증 메일 발송 비즈니스 로직을 정의합니다.
+ * 실제 이메일 발송은 Infrastructure 계층의 EmailClient에 위임합니다.
  */
-interface EmailService {
+interface EmailVerificationService {
 
     /**
      * 이메일 인증 메일 발송

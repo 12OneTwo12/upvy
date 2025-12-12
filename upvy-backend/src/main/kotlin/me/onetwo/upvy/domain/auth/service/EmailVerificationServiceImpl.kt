@@ -1,37 +1,25 @@
 package me.onetwo.upvy.domain.auth.service
 
-import org.slf4j.LoggerFactory
+import me.onetwo.upvy.infrastructure.email.EmailClient
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.mail.javamail.JavaMailSender
-import org.springframework.mail.javamail.MimeMessageHelper
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
-import reactor.core.scheduler.Schedulers
 
 /**
- * 이메일 발송 서비스 구현체
+ * 이메일 인증 서비스 구현체
  *
- * Spring Boot Mail Sender를 사용하여 이메일을 발송합니다.
+ * 이메일 인증 메일 발송 비즈니스 로직을 처리합니다.
+ * HTML 템플릿 생성 및 인증 링크 구성은 이 계층에서 담당하며,
+ * 실제 이메일 발송은 Infrastructure 계층의 EmailClient에 위임합니다.
  *
- * ### 발송 방식
- * - 블로킹 API (JavaMailSender)를 Reactor 스케줄러에서 비동기 실행
- * - HTML 템플릿 사용
- *
- * @property mailSender Spring Mail Sender
+ * @property emailClient 이메일 발송 클라이언트 (Infrastructure)
  * @property frontendUrl 프론트엔드 URL
  */
 @Service
-class EmailServiceImpl(
-    private val mailSender: JavaMailSender,
+class EmailVerificationServiceImpl(
+    private val emailClient: EmailClient,
     @Value("\${app.frontend-url}") private val frontendUrl: String
-) : EmailService {
-
-    private val logger = LoggerFactory.getLogger(javaClass)
-
-    companion object {
-        private const val FROM_EMAIL = "noreply@upvy.app"
-        private const val FROM_NAME = "Upvy"
-    }
+) : EmailVerificationService {
 
     /**
      * 이메일 인증 메일 발송
@@ -39,37 +27,16 @@ class EmailServiceImpl(
      * 회원가입 시 이메일 인증을 위한 메일을 발송합니다.
      * 인증 링크는 {FRONTEND_URL}/auth/verify?token={token} 형식입니다.
      *
-     * ### 비동기 처리
-     * - JavaMailSender는 블로킹 API이므로 Schedulers.boundedElastic()에서 실행
-     * - WebFlux 스레드 풀이 블로킹되지 않도록 함
-     *
      * @param to 수신자 이메일
      * @param verificationToken 인증 토큰
      * @return Mono<Void>
      */
     override fun sendVerificationEmail(to: String, verificationToken: String): Mono<Void> {
-        return Mono.fromRunnable<Void> {
-            try {
-                val verificationLink = "$frontendUrl/auth/verify?token=$verificationToken"
-                val subject = "[Upvy] 이메일 인증을 완료해주세요"
-                val htmlContent = buildVerificationEmailHtml(verificationLink)
+        val verificationLink = "$frontendUrl/auth/verify?token=$verificationToken"
+        val subject = "[Upvy] 이메일 인증을 완료해주세요"
+        val htmlContent = buildVerificationEmailHtml(verificationLink)
 
-                val message = mailSender.createMimeMessage()
-                val helper = MimeMessageHelper(message, true, "UTF-8")
-
-                helper.setFrom(FROM_EMAIL, FROM_NAME)
-                helper.setTo(to)
-                helper.setSubject(subject)
-                helper.setText(htmlContent, true)
-
-                mailSender.send(message)
-                logger.info("Verification email sent successfully to: $to")
-            } catch (e: Exception) {
-                logger.error("Failed to send verification email to: $to", e)
-                throw e
-            }
-        }.subscribeOn(Schedulers.boundedElastic())
-            .then()
+        return emailClient.sendHtmlEmail(to, subject, htmlContent)
     }
 
     /**

@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.auth.service
 
+import me.onetwo.upvy.domain.auth.dto.EmailVerifyResponse
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
 import reactor.core.publisher.Mono
@@ -66,7 +67,7 @@ interface AuthService {
      * 이메일 인증 완료
      *
      * 이메일로 전송된 인증 토큰을 검증하고 사용자의 이메일을 인증 완료 처리합니다.
-     * 인증 완료 후 자동으로 로그인 처리되어 JWT 토큰을 반환합니다.
+     * 인증 완료 후 자동으로 로그인 처리되어 JWT 토큰과 사용자 정보를 반환합니다.
      *
      * ### 비즈니스 로직
      * 1. 토큰으로 인증 정보 조회
@@ -74,13 +75,14 @@ interface AuthService {
      * 3. 사용자 이메일 인증 상태 업데이트 (emailVerified = true)
      * 4. 사용된 토큰 무효화 (Soft Delete)
      * 5. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 6. EmailVerifyResponse 생성 (JWT 토큰에서 userId, email 추출)
      *
      * @param token 인증 토큰
-     * @return JwtTokenDto Access Token과 Refresh Token
+     * @return EmailVerifyResponse JWT 토큰과 사용자 정보
      * @throws me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException 토큰이 유효하지 않은 경우
      * @throws me.onetwo.upvy.domain.auth.exception.TokenExpiredException 토큰이 만료된 경우
      */
-    fun verifyEmail(token: String): Mono<JwtTokenDto>
+    fun verifyEmail(token: String): Mono<EmailVerifyResponse>
 
     /**
      * 이메일 로그인
@@ -92,12 +94,13 @@ interface AuthService {
      * 2. 이메일 인증 완료 여부 확인 (emailVerified = true)
      * 3. 비밀번호 검증 (BCrypt)
      * 4. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 5. EmailVerifyResponse 생성 (JWT 토큰에서 userId, email 추출)
      *
      * @param email 이메일 주소
      * @param password 비밀번호 (평문)
-     * @return JwtTokenDto Access Token과 Refresh Token
+     * @return EmailVerifyResponse JWT 토큰과 사용자 정보
      * @throws me.onetwo.upvy.domain.auth.exception.InvalidCredentialsException 이메일 또는 비밀번호가 올바르지 않은 경우
      * @throws me.onetwo.upvy.domain.auth.exception.EmailNotVerifiedException 이메일 인증이 완료되지 않은 경우
      */
-    fun signIn(email: String, password: String): Mono<JwtTokenDto>
+    fun signIn(email: String, password: String): Mono<EmailVerifyResponse>
 }

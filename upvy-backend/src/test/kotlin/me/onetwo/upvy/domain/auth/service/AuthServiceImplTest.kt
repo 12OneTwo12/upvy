@@ -51,7 +51,7 @@ class AuthServiceImplTest {
     private lateinit var userRepository: UserRepository
     private lateinit var authMethodRepository: UserAuthenticationMethodRepository
     private lateinit var emailVerificationTokenRepository: EmailVerificationTokenRepository
-    private lateinit var emailService: EmailService
+    private lateinit var emailVerificationService: EmailVerificationService
     private lateinit var passwordEncoder: BCryptPasswordEncoder
     private lateinit var authService: AuthServiceImpl
 
@@ -66,7 +66,7 @@ class AuthServiceImplTest {
         userRepository = mockk()
         authMethodRepository = mockk()
         emailVerificationTokenRepository = mockk()
-        emailService = mockk()
+        emailVerificationService = mockk()
         passwordEncoder = BCryptPasswordEncoder()
 
         authService = AuthServiceImpl(
@@ -76,7 +76,7 @@ class AuthServiceImplTest {
             userRepository,
             authMethodRepository,
             emailVerificationTokenRepository,
-            emailService,
+            emailVerificationService,
             passwordEncoder
         )
 
@@ -120,7 +120,7 @@ class AuthServiceImplTest {
             every { userRepository.save(any()) } returns Mono.just(createdUser)
             every { authMethodRepository.save(any()) } returns Mono.just(savedAuthMethod)
             every { emailVerificationTokenRepository.save(any()) } returns Mono.just(verificationToken)
-            every { emailService.sendVerificationEmail(email, any()) } returns Mono.empty()
+            every { emailVerificationService.sendVerificationEmail(email, any()) } returns Mono.empty()
 
             // When: 이메일 가입
             val result = authService.signup(email, password, null)
@@ -133,7 +133,7 @@ class AuthServiceImplTest {
             verify(exactly = 1) { userRepository.save(any()) }
             verify(exactly = 1) { authMethodRepository.save(any()) }
             verify(exactly = 1) { emailVerificationTokenRepository.save(any()) }
-            verify(exactly = 1) { emailService.sendVerificationEmail(email, any()) }
+            verify(exactly = 1) { emailVerificationService.sendVerificationEmail(email, any()) }
         }
 
         @Test
@@ -164,7 +164,7 @@ class AuthServiceImplTest {
             every { authMethodRepository.findByUserIdAndProvider(existingUser.id!!, OAuthProvider.EMAIL) } returns Mono.empty()
             every { authMethodRepository.save(any()) } returns Mono.just(savedAuthMethod)
             every { emailVerificationTokenRepository.save(any()) } returns Mono.just(verificationToken)
-            every { emailService.sendVerificationEmail(email, any()) } returns Mono.empty()
+            every { emailVerificationService.sendVerificationEmail(email, any()) } returns Mono.empty()
 
             // When: 이메일 가입
             val result = authService.signup(email, password, null)
@@ -177,7 +177,7 @@ class AuthServiceImplTest {
             verify(exactly = 1) { authMethodRepository.findByUserIdAndProvider(existingUser.id!!, OAuthProvider.EMAIL) }
             verify(exactly = 1) { authMethodRepository.save(any()) }
             verify(exactly = 1) { emailVerificationTokenRepository.save(any()) }
-            verify(exactly = 1) { emailService.sendVerificationEmail(email, any()) }
+            verify(exactly = 1) { emailVerificationService.sendVerificationEmail(email, any()) }
         }
 
         @Test
@@ -247,7 +247,7 @@ class AuthServiceImplTest {
             every { userRepository.save(any()) } returns Mono.just(createdUser)
             every { authMethodRepository.save(capture(authMethodSlot)) } returns Mono.just(savedAuthMethod)
             every { emailVerificationTokenRepository.save(any()) } returns Mono.just(verificationToken)
-            every { emailService.sendVerificationEmail(email, any()) } returns Mono.empty()
+            every { emailVerificationService.sendVerificationEmail(email, any()) } returns Mono.empty()
 
             // When: 이메일 가입
             authService.signup(email, rawPassword, null).block()
@@ -293,17 +293,20 @@ class AuthServiceImplTest {
             every { authMethodRepository.findByUserIdAndProvider(user.id!!, OAuthProvider.EMAIL) } returns Mono.just(authMethod)
             every { jwtTokenProvider.generateAccessToken(user.id!!, user.email, user.role) } returns accessToken
             every { jwtTokenProvider.generateRefreshToken(user.id!!) } returns refreshToken
+            every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns user.id!!
+            every { jwtTokenProvider.getEmailFromToken(accessToken) } returns user.email
             every { refreshTokenRepository.save(user.id!!, refreshToken) } just Runs
 
             // When: 이메일 로그인
             val result = authService.signIn(email, rawPassword)
 
-            // Then: JWT 토큰 발급됨
+            // Then: EmailVerifyResponse 발급됨
             StepVerifier.create(result)
-                .assertNext { token ->
-                    assertThat(token.accessToken).isEqualTo(accessToken)
-                    assertThat(token.refreshToken).isEqualTo(refreshToken)
-                    assertThat(token.tokenType).isEqualTo("Bearer")
+                .assertNext { response ->
+                    assertThat(response.accessToken).isEqualTo(accessToken)
+                    assertThat(response.refreshToken).isEqualTo(refreshToken)
+                    assertThat(response.userId).isEqualTo(user.id)
+                    assertThat(response.email).isEqualTo(email)
                 }
                 .verifyComplete()
 
@@ -488,16 +491,20 @@ class AuthServiceImplTest {
             every { emailVerificationTokenRepository.softDeleteAllByUserId(userId) } returns Mono.empty()
             every { jwtTokenProvider.generateAccessToken(userId, user.email, user.role) } returns accessToken
             every { jwtTokenProvider.generateRefreshToken(userId) } returns refreshToken
+            every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns userId
+            every { jwtTokenProvider.getEmailFromToken(accessToken) } returns user.email
             every { refreshTokenRepository.save(userId, refreshToken) } just Runs
 
             // When: 이메일 인증
             val result = authService.verifyEmail(tokenString)
 
-            // Then: JWT 토큰 발급됨
+            // Then: EmailVerifyResponse 발급됨
             StepVerifier.create(result)
-                .assertNext { token ->
-                    assertThat(token.accessToken).isEqualTo(accessToken)
-                    assertThat(token.refreshToken).isEqualTo(refreshToken)
+                .assertNext { response ->
+                    assertThat(response.accessToken).isEqualTo(accessToken)
+                    assertThat(response.refreshToken).isEqualTo(refreshToken)
+                    assertThat(response.userId).isEqualTo(userId)
+                    assertThat(response.email).isEqualTo(user.email)
                 }
                 .verifyComplete()
 
@@ -630,6 +637,8 @@ class AuthServiceImplTest {
             every { emailVerificationTokenRepository.softDeleteAllByUserId(userId) } returns Mono.empty()
             every { jwtTokenProvider.generateAccessToken(userId, user.email, user.role) } returns accessToken
             every { jwtTokenProvider.generateRefreshToken(userId) } returns refreshToken
+            every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns userId
+            every { jwtTokenProvider.getEmailFromToken(accessToken) } returns user.email
             every { refreshTokenRepository.save(userId, refreshToken) } just Runs
 
             // When: 이메일 인증

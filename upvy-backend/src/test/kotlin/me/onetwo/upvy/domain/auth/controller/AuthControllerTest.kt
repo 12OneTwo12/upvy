@@ -235,14 +235,14 @@ class AuthControllerTest {
         val accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.access..."
         val refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh..."
 
-        val jwtTokenDto = JwtTokenDto(
+        val emailVerifyResponse = EmailVerifyResponse(
             accessToken = accessToken,
-            refreshToken = refreshToken
+            refreshToken = refreshToken,
+            userId = userId,
+            email = email
         )
 
-        every { authService.verifyEmail(token) } returns Mono.just(jwtTokenDto)
-        every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns userId
-        every { jwtTokenProvider.getEmailFromToken(accessToken) } returns email
+        every { authService.verifyEmail(token) } returns Mono.just(emailVerifyResponse)
 
         // When & Then
         webTestClient.get()
@@ -280,14 +280,14 @@ class AuthControllerTest {
         val accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.access..."
         val refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh..."
 
-        val jwtTokenDto = JwtTokenDto(
+        val emailVerifyResponse = EmailVerifyResponse(
             accessToken = accessToken,
-            refreshToken = refreshToken
+            refreshToken = refreshToken,
+            userId = userId,
+            email = request.email
         )
 
-        every { authService.signIn(request.email, request.password) } returns Mono.just(jwtTokenDto)
-        every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns userId
-        every { jwtTokenProvider.getEmailFromToken(accessToken) } returns request.email
+        every { authService.signIn(request.email, request.password) } returns Mono.just(emailVerifyResponse)
 
         // When & Then
         webTestClient.post()

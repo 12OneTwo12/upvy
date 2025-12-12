@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.auth.service
 
+import me.onetwo.upvy.domain.auth.dto.EmailVerifyResponse
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException
 import me.onetwo.upvy.domain.auth.exception.EmailNotVerifiedException
@@ -35,7 +36,7 @@ import java.util.UUID
  * @property userRepository 사용자 Repository
  * @property authMethodRepository 사용자 인증 수단 Repository
  * @property emailVerificationTokenRepository 이메일 인증 토큰 Repository
- * @property emailService 이메일 발송 서비스
+ * @property emailVerificationService 이메일 인증 메일 발송 서비스
  * @property passwordEncoder BCrypt 비밀번호 암호화
  */
 @Service
@@ -47,7 +48,7 @@ class AuthServiceImpl(
     private val userRepository: UserRepository,
     private val authMethodRepository: UserAuthenticationMethodRepository,
     private val emailVerificationTokenRepository: EmailVerificationTokenRepository,
-    private val emailService: EmailService,
+    private val emailVerificationService: EmailVerificationService,
     private val passwordEncoder: BCryptPasswordEncoder
 ) : AuthService {
 
@@ -232,7 +233,7 @@ class AuthServiceImpl(
         return emailVerificationTokenRepository.save(verificationToken)
             .flatMap { savedToken ->
                 // 인증 이메일 발송
-                emailService.sendVerificationEmail(user.email, savedToken.token)
+                emailVerificationService.sendVerificationEmail(user.email, savedToken.token)
                     .doOnSuccess {
                         logger.info("Verification email sent to: ${user.email}")
                     }
@@ -243,7 +244,7 @@ class AuthServiceImpl(
      * 이메일 인증 완료
      *
      * 이메일로 전송된 인증 토큰을 검증하고 사용자의 이메일 인증 수단을 인증 완료 처리합니다.
-     * 인증 완료 후 자동으로 로그인 처리되어 JWT 토큰을 반환합니다.
+     * 인증 완료 후 자동으로 로그인 처리되어 JWT 토큰과 사용자 정보를 반환합니다.
      *
      * ### 비즈니스 로직
      * 1. 토큰으로 인증 정보 조회
@@ -251,25 +252,26 @@ class AuthServiceImpl(
      * 3. 사용자의 EMAIL 인증 수단 업데이트 (emailVerified = true)
      * 4. 사용된 토큰 무효화 (Soft Delete)
      * 5. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 6. EmailVerifyResponse 생성 (JWT 토큰에서 userId, email 추출)
      *
      * @param token 인증 토큰
-     * @return JwtTokenDto Access Token과 Refresh Token
+     * @return EmailVerifyResponse JWT 토큰과 사용자 정보
      * @throws InvalidVerificationTokenException 토큰이 유효하지 않은 경우
      * @throws TokenExpiredException 토큰이 만료된 경우
      */
     @Transactional
-    override fun verifyEmail(token: String): Mono<JwtTokenDto> {
+    override fun verifyEmail(token: String): Mono<EmailVerifyResponse> {
         return emailVerificationTokenRepository.findByToken(token)
             .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
             .flatMap { verificationToken ->
                 // 토큰 만료 여부 확인
                 if (verificationToken.isExpired()) {
-                    return@flatMap Mono.error<JwtTokenDto>(TokenExpiredException())
+                    return@flatMap Mono.error<EmailVerifyResponse>(TokenExpiredException())
                 }
 
                 // 토큰 유효성 확인
                 if (!verificationToken.isValid()) {
-                    return@flatMap Mono.error<JwtTokenDto>(InvalidVerificationTokenException())
+                    return@flatMap Mono.error<EmailVerifyResponse>(InvalidVerificationTokenException())
                 }
 
                 // 사용자 조회
@@ -281,10 +283,10 @@ class AuthServiceImpl(
                                 authMethodRepository.updateEmailVerified(authMethod.id!!, verified = true)
                                     .then(Mono.defer {
                                         // 사용된 토큰 무효화
-                                        emailVerificationTokenRepository.softDeleteAllByUserId(user.id!!)
+                                        emailVerificationTokenRepository.softDeleteAllByUserId(user.id)
                                             .then(Mono.defer {
-                                                // JWT 토큰 발급
-                                                generateTokens(user)
+                                                // JWT 토큰 발급 및 EmailVerifyResponse 생성
+                                                generateTokensAndResponse(user)
                                                     .doOnSuccess {
                                                         logger.info(
                                                             "Email verification completed for user: ${user.id}, email: ${user.email}"
@@ -308,15 +310,16 @@ class AuthServiceImpl(
      * 3. 이메일 인증 완료 여부 확인 (emailVerified = true)
      * 4. 비밀번호 검증 (BCrypt)
      * 5. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 6. EmailVerifyResponse 생성 (JWT 토큰에서 userId, email 추출)
      *
      * @param email 이메일 주소
      * @param password 비밀번호 (평문)
-     * @return JwtTokenDto Access Token과 Refresh Token
+     * @return EmailVerifyResponse JWT 토큰과 사용자 정보
      * @throws InvalidCredentialsException 이메일 또는 비밀번호가 올바르지 않은 경우
      * @throws EmailNotVerifiedException 이메일 인증이 완료되지 않은 경우
      */
     @Transactional
-    override fun signIn(email: String, password: String): Mono<JwtTokenDto> {
+    override fun signIn(email: String, password: String): Mono<EmailVerifyResponse> {
         return userRepository.findByEmail(email)
             .switchIfEmpty(Mono.error(InvalidCredentialsException()))
             .flatMap { user ->
@@ -326,16 +329,16 @@ class AuthServiceImpl(
                     .flatMap { authMethod ->
                         // 이메일 인증 완료 여부 확인
                         if (!authMethod.emailVerified) {
-                            return@flatMap Mono.error<JwtTokenDto>(EmailNotVerifiedException())
+                            return@flatMap Mono.error<EmailVerifyResponse>(EmailNotVerifiedException())
                         }
 
                         // 비밀번호 검증
                         if (!passwordEncoder.matches(password, authMethod.password)) {
-                            return@flatMap Mono.error<JwtTokenDto>(InvalidCredentialsException())
+                            return@flatMap Mono.error<EmailVerifyResponse>(InvalidCredentialsException())
                         }
 
-                        // JWT 토큰 발급
-                        generateTokens(user)
+                        // JWT 토큰 발급 및 EmailVerifyResponse 생성
+                        generateTokensAndResponse(user)
                             .doOnSuccess {
                                 logger.info("Email sign-in successful for user: ${user.id}, email: ${user.email}")
                             }
@@ -360,5 +363,27 @@ class AuthServiceImpl(
         refreshTokenRepository.save(user.id!!, jwtTokens.refreshToken)
 
         return Mono.just(jwtTokens)
+    }
+
+    /**
+     * JWT 토큰 생성 및 EmailVerifyResponse 생성
+     *
+     * Service 계층에서 JWT 토큰 파싱 및 DTO 생성을 담당합니다.
+     * Controller는 HTTP 처리만 담당하도록 책임을 분리합니다.
+     */
+    private fun generateTokensAndResponse(user: User): Mono<EmailVerifyResponse> {
+        return generateTokens(user)
+            .map { jwtTokens ->
+                // Service 계층에서 JWT 토큰 파싱 (Controller가 아님!)
+                val userId = jwtTokenProvider.getUserIdFromToken(jwtTokens.accessToken)
+                val email = jwtTokenProvider.getEmailFromToken(jwtTokens.accessToken)
+
+                EmailVerifyResponse(
+                    accessToken = jwtTokens.accessToken,
+                    refreshToken = jwtTokens.refreshToken,
+                    userId = userId,
+                    email = email
+                )
+            }
     }
 }
