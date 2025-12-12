@@ -8,7 +8,6 @@ import me.onetwo.upvy.domain.notification.model.PushLogStatus
 import me.onetwo.upvy.domain.notification.model.PushNotificationLog
 import me.onetwo.upvy.domain.notification.model.PushProvider
 import me.onetwo.upvy.domain.notification.model.PushToken
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
@@ -54,9 +53,7 @@ class PushNotificationLogRepositoryTest : AbstractIntegrationTest() {
     fun setUp() {
         testUser = userRepository.save(
             User(
-                email = "test-${UUID.randomUUID()}@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = UUID.randomUUID().toString()
+                email = "test-${UUID.randomUUID()}@example.com"
             )
         ).block()!!
 

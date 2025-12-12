@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.oauth2.client.authentication.OAuth2LoginReactiveAuthenticationManager
 import org.springframework.security.oauth2.client.endpoint.WebClientReactiveAuthorizationCodeTokenResponseClient
 import org.springframework.security.web.server.SecurityWebFilterChain
@@ -54,6 +55,8 @@ class SecurityConfig(
             .cors { it.configurationSource(corsConfigurationSource()) }
             .authorizeExchange { authorize ->
                 authorize
+                    // 비밀번호 변경 요청은 명시적으로 인증 필요 (와일드카드 패턴보다 먼저 선언)
+                    .pathMatchers("${ApiPaths.API_V1_AUTH}/password/change").authenticated()
                     // 인증이 필요 없는 공개 API
                     .pathMatchers(*PublicApiPaths.AUTH_ENDPOINTS).permitAll()
                     // /me 엔드포인트는 명시적으로 인증 필요 (와일드카드 패턴보다 먼저 선언)
@@ -102,5 +105,15 @@ class SecurityConfig(
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/**", configuration)
         }
+    }
+
+    /**
+     * BCrypt 비밀번호 암호화
+     *
+     * 이메일 가입 사용자의 비밀번호를 안전하게 암호화합니다.
+     */
+    @Bean
+    fun passwordEncoder(): BCryptPasswordEncoder {
+        return BCryptPasswordEncoder()
     }
 }

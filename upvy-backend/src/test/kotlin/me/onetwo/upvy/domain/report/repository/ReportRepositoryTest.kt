@@ -5,7 +5,6 @@ import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.report.model.ReportType
 import me.onetwo.upvy.domain.report.model.TargetType
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.jooq.generated.tables.ContentInteractions.Companion.CONTENT_INTERACTIONS
@@ -54,8 +53,6 @@ class ReportRepositoryTest : AbstractIntegrationTest() {
         val user = userRepository.save(
             me.onetwo.upvy.domain.user.model.User(
                 email = "testuser@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "test-provider-id",
                 role = UserRole.USER
             )
         ).block()!!

@@ -4,7 +4,6 @@ import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.interaction.model.Comment
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.jooq.generated.tables.UserCommentLikes.Companion.USER_COMMENT_LIKES
@@ -64,8 +63,6 @@ class CommentLikeRepositoryTest : AbstractIntegrationTest() {
         val user = userRepository.save(
             me.onetwo.upvy.domain.user.model.User(
                 email = "testuser@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "test-provider-id",
                 role = UserRole.USER
             )
         ).block()!!
@@ -257,8 +254,6 @@ class CommentLikeRepositoryTest : AbstractIntegrationTest() {
             val user2 = userRepository.save(
                 me.onetwo.upvy.domain.user.model.User(
                     email = "testuser2@test.com",
-                    provider = OAuthProvider.GOOGLE,
-                    providerId = "test-provider-id-2",
                     role = UserRole.USER
                 )
             ).block()!!
@@ -280,8 +275,6 @@ class CommentLikeRepositoryTest : AbstractIntegrationTest() {
             val user2 = userRepository.save(
                 me.onetwo.upvy.domain.user.model.User(
                     email = "testuser2@test.com",
-                    provider = OAuthProvider.GOOGLE,
-                    providerId = "test-provider-id-2",
                     role = UserRole.USER
                 )
             ).block()!!

@@ -2,7 +2,6 @@ package me.onetwo.upvy.domain.search.event
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.upvy.domain.search.model.SearchType
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -56,8 +55,6 @@ class SearchEventSubscriberTest : AbstractIntegrationTest() {
         testUser = User(
             id = UUID.randomUUID(),
             email = "search-event-test@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "google-search-event-12345",
             role = UserRole.USER
         )
         userRepository.save(testUser).block()

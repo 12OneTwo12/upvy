@@ -45,8 +45,7 @@ class UserProfileControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: API 호출 및 검증
@@ -70,8 +69,7 @@ class UserProfileControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: API 호출 및 검증
@@ -92,8 +90,7 @@ class UserProfileControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, profile) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: API 호출 및 검증
@@ -127,8 +124,7 @@ class UserProfileControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         val request = UpdateProfileRequest(
@@ -179,8 +175,7 @@ class UserProfileControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, profile) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: API 호출 및 검증

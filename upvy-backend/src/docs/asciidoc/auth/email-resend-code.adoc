@@ -1,0 +1,36 @@
+[[auth-email-resend-code]]
+=== 인증 코드 재전송
+
+만료되었거나 받지 못한 인증 코드를 재전송합니다.
+
+==== Request
+
+include::{snippets}/auth/email-resend-code/http-request.adoc[]
+include::{snippets}/auth/email-resend-code/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/auth/email-resend-code/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/auth/email/resend-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "language": "ko"
+  }'
+----
+
+==== Notes
+
+* 재전송 성공 시 204 No Content 상태 코드를 반환합니다
+* 1분에 1회만 재전송할 수 있습니다 (Rate Limiting)
+* 1분 이내 재전송 시도 시 429 Too Many Requests를 반환합니다
+* 새로운 인증 코드가 발송되며, 기존 코드는 모두 무효화됩니다
+* 인증 코드는 5분 동안 유효합니다
+* language 필드는 선택 사항이며, 기본값은 "en"(영어)입니다
+* 지원하는 언어: ko(한국어), en(영어), ja(일본어)
+* 존재하지 않는 이메일로 시도 시 400 Bad Request를 반환합니다

@@ -4,7 +4,7 @@
  * 비디오 플레이어 + 오버레이를 결합한 완전한 피드 아이템
  */
 
-import React, { useState, useRef, useCallback, useContext } from 'react';
+import React, { useState, useRef, useCallback, useContext, useEffect } from 'react';
 import { View, Dimensions, Animated, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
@@ -68,7 +68,9 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const overlayOpacity = useRef(new Animated.Value(1)).current;
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
 
   // 컨텐츠 탭 시 더보기 닫기
@@ -93,6 +95,15 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const handleAnimationComplete = useCallback(() => {
     setShowLikeAnimation(false);
   }, []);
+
+  // 롱프레스 상태에 따라 오버레이 페이드 아웃/인
+  useEffect(() => {
+    Animated.timing(overlayOpacity, {
+      toValue: isLongPressing ? 0 : 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isLongPressing, overlayOpacity]);
 
   // 진행률 업데이트 받기
   const handleProgressUpdate = (prog: number, dur: number, dragging: boolean) => {
@@ -177,6 +188,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           onDoubleTap={handleLike}
           onTap={handleContentTap}
           onProgressUpdate={handleProgressUpdate}
+          onLongPressChange={setIsLongPressing}
         />
       ) : item.contentType === 'PHOTO' && item.photoUrls && item.photoUrls.length > 0 ? (
         <PhotoGallery
@@ -188,27 +200,39 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         />
       ) : null}
 
-      {/* 정보 오버레이 */}
-      <FeedOverlay
-        creator={item.creator}
-        title={item.title}
-        description={item.description}
-        interactions={item.interactions}
-        contentId={item.contentId}
-        category={item.category}
-        tags={item.tags}
-        onLike={onLike}
-        onComment={onComment}
-        onSave={onSave}
-        onShare={onShare}
-        onFollow={onFollow}
-        onCreatorPress={onCreatorPress}
-        onBlockSuccess={onBlockSuccess}
-        onDeleteSuccess={onDeleteSuccess}
-        isExpanded={isExpanded}
-        setIsExpanded={setIsExpanded}
-        tabBarHeight={tabBarHeight}
-      />
+      {/* 정보 오버레이 - 롱프레스 중에는 페이드 아웃 */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          opacity: overlayOpacity,
+        }}
+        pointerEvents={isLongPressing ? 'none' : 'box-none'}
+      >
+        <FeedOverlay
+          creator={item.creator}
+          title={item.title}
+          description={item.description}
+          interactions={item.interactions}
+          contentId={item.contentId}
+          category={item.category}
+          tags={item.tags}
+          onLike={onLike}
+          onComment={onComment}
+          onSave={onSave}
+          onShare={onShare}
+          onFollow={onFollow}
+          onCreatorPress={onCreatorPress}
+          onBlockSuccess={onBlockSuccess}
+          onDeleteSuccess={onDeleteSuccess}
+          isExpanded={isExpanded}
+          setIsExpanded={setIsExpanded}
+          tabBarHeight={tabBarHeight}
+        />
+      </Animated.View>
 
       {/* 비디오 진행률 바 - 탭바 바로 위 */}
       {item.contentType === 'VIDEO' && item.url && (

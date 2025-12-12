@@ -24,6 +24,7 @@ export default function SearchNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        statusBarStyle: 'dark',
       }}
     >
       <Stack.Screen
@@ -37,6 +38,7 @@ export default function SearchNavigator() {
         options={{
           title: t('common:screen.content'),
           animation: 'slide_from_bottom',
+          statusBarStyle: 'light',
         }}
       />
       <Stack.Screen

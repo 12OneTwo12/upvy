@@ -8,7 +8,6 @@ import me.onetwo.upvy.domain.content.model.ContentMetadata
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.repository.ContentRepository
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -18,21 +17,22 @@ import java.util.UUID
 
 /**
  * 통합 테스트용 User와 UserProfile을 함께 생성합니다.
+ *
+ * 계정 통합 아키텍처 적용 후:
+ * - provider, providerId 파라미터 제거
+ * - User 모델에는 핵심 정보만 포함
+ * - 인증 수단 정보는 user_authentication_methods 테이블에서 별도 관리
  */
 fun createUserWithProfile(
     userRepository: UserRepository,
     userProfileRepository: UserProfileRepository,
     email: String = "test@example.com",
-    provider: OAuthProvider = OAuthProvider.GOOGLE,
-    providerId: String = UUID.randomUUID().toString(),
     role: UserRole = UserRole.USER,
     nickname: String = "user${UUID.randomUUID().toString().substring(0, 8)}"
 ): Pair<User, UserProfile> {
     val user = userRepository.save(
         User(
             email = email,
-            provider = provider,
-            providerId = providerId,
             role = role
         )
     ).block()!!

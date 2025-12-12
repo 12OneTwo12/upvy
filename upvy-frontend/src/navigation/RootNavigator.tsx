@@ -12,6 +12,7 @@ import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
 import LanguageSelectorScreen from '@/screens/settings/LanguageSelectorScreen';
+import PasswordChangeScreen from '@/screens/settings/PasswordChangeScreen';
 import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
 import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
@@ -68,6 +69,7 @@ export default function RootNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          statusBarStyle: 'dark',
         }}
       >
         {!isAuthenticated ? (
@@ -84,6 +86,7 @@ export default function RootNavigator() {
             />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="LanguageSelector" component={LanguageSelectorScreen} />
+            <Stack.Screen name="PasswordChange" component={PasswordChangeScreen} />
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />

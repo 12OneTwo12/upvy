@@ -43,5 +43,22 @@
   "comingSoon": {
     "title": "近日公開",
     "message": "{{feature}}機能は現在開発中です。\n近日公開予定です。"
+  },
+  "passwordChange": {
+    "title": "パスワード変更",
+    "subtitle": "新しいパスワードを設定してください",
+    "currentPassword": "現在のパスワード",
+    "currentPasswordPlaceholder": "現在のパスワード",
+    "newPassword": "新しいパスワード",
+    "newPasswordPlaceholder": "新しいパスワード（8文字以上）",
+    "confirmPassword": "パスワード確認",
+    "confirmPasswordPlaceholder": "パスワード確認",
+    "passwordHint": "英数字を含む8文字以上",
+    "passwordError": "英字と数字を含む8文字以上を入力してください",
+    "submit": "パスワード変更",
+    "success": "パスワード変更完了",
+    "successMessage": "パスワードが正常に変更されました。",
+    "error": "エラー",
+    "failed": "パスワード変更失敗"
   }
 }

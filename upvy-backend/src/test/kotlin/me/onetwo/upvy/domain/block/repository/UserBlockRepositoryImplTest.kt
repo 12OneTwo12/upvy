@@ -472,8 +472,6 @@ class UserBlockRepositoryImplTest : AbstractIntegrationTest() {
             dslContext.insertInto(USERS)
                 .set(USERS.ID, userId.toString())
                 .set(USERS.EMAIL, email)
-                .set(USERS.PROVIDER, OAuthProvider.GOOGLE.name)
-                .set(USERS.PROVIDER_ID, providerId)
                 .set(USERS.ROLE, UserRole.USER.name)
                 .set(USERS.CREATED_AT, now)
                 .set(USERS.CREATED_BY, userId.toString())

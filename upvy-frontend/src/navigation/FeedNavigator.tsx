@@ -24,6 +24,7 @@ export default function FeedNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        statusBarStyle: 'light',
       }}
     >
       <Stack.Screen
@@ -45,6 +46,7 @@ export default function FeedNavigator() {
         options={{
           title: t('common:navigation.profile'),
           animation: 'simple_push',
+          statusBarStyle: 'dark',
         }}
       />
       <Stack.Screen
@@ -52,6 +54,7 @@ export default function FeedNavigator() {
         component={FollowListScreen}
         options={{
           title: t('profile:follow.followList'),
+          statusBarStyle: 'dark',
         }}
       />
     </Stack.Navigator>

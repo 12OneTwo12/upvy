@@ -1,7 +1,6 @@
 package me.onetwo.upvy.domain.notification.event
 
 import me.onetwo.upvy.domain.user.event.UserCreatedEvent
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -53,8 +52,6 @@ class NotificationSettingsEventSubscriberTest : AbstractIntegrationTest() {
         testUser = User(
             id = UUID.randomUUID(),
             email = "notification-event-test@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "google-notification-event-12345",
             role = UserRole.USER
         )
         userRepository.save(testUser).block()

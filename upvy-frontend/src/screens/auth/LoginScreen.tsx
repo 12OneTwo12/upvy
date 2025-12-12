@@ -96,6 +96,25 @@ export default function LoginScreen() {
 
         {/* 하단: 로그인 버튼 */}
         <View style={styles.bottomSection}>
+          {/* 이메일 로그인 버튼 */}
+          <Button
+            variant="outline"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.navigate('EmailSignIn')}
+            style={styles.emailButton}
+          >
+            {t('login.emailLogin')}
+          </Button>
+
+          {/* OR 구분선 */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>{t('login.or')}</Text>
+            <View style={styles.divider} />
+          </View>
+
+          {/* Google 로그인 버튼 */}
           <Button
             variant="primary"
             size="lg"
@@ -253,6 +272,28 @@ const useStyles = createStyleSheet({
   bottomSection: {
     gap: theme.spacing[4],
     paddingTop: theme.spacing[8],
+  },
+
+  emailButton: {
+    borderWidth: 2,
+    borderColor: theme.colors.primary[500],
+  },
+
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[3],
+  },
+
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border.light,
+  },
+
+  dividerText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.tertiary,
   },
 
   googleButton: {

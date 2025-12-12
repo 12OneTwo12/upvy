@@ -8,7 +8,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import me.onetwo.upvy.domain.user.exception.DuplicateNicknameException
 import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -49,8 +48,6 @@ class UserProfileServiceTest {
         testUser = User(
             id = testUserId,
             email = "test@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "google-123",
             role = UserRole.USER
         )
 

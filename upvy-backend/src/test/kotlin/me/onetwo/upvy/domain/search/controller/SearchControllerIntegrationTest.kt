@@ -74,8 +74,7 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository = userRepository,
             userProfileRepository = userProfileRepository,
-            email = "search-controller-test-$uuid@example.com",
-            providerId = "test-$uuid"
+            email = "search-controller-test-$uuid@example.com"
         )
         testUserId = user.id!!
     }
@@ -366,8 +365,7 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "test2@example.com",
-                providerId = "google-456"
+                email = "test2@example.com"
             )
 
             // When & Then: 검색 기록 조회
@@ -388,8 +386,7 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "test3@example.com",
-                providerId = "google-789"
+                email = "test3@example.com"
             )
 
             // 동일한 키워드로 여러 번 검색
@@ -423,8 +420,7 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "test4@example.com",
-                providerId = "google-111"
+                email = "test4@example.com"
             )
 
             searchHistoryRepository.save(user.id!!, "Java", SearchType.CONTENT).block()
@@ -451,8 +447,7 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "korean-keyword-test@example.com",
-                providerId = "google-korean-keyword-222"
+                email = "korean-keyword-test@example.com"
             )
 
             searchHistoryRepository.save(user.id!!, "프로그래밍", SearchType.CONTENT).block()
@@ -477,8 +472,7 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "test6@example.com",
-                providerId = "google-333"
+                email = "test6@example.com"
             )
 
             // When & Then: 존재하지 않는 키워드 삭제
@@ -502,8 +496,7 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "test7@example.com",
-                providerId = "google-444"
+                email = "test7@example.com"
             )
 
             searchHistoryRepository.save(user.id!!, "Java", SearchType.CONTENT).block()
@@ -530,8 +523,7 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "test8@example.com",
-                providerId = "google-555"
+                email = "test8@example.com"
             )
 
             // When & Then: 전체 검색 기록 삭제
@@ -554,15 +546,13 @@ class SearchControllerIntegrationTest : AbstractIntegrationTest() {
             val (user1, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "delete-all-user1-$timestamp-$uuid1@example.com",
-                providerId = "google-delete-all-666-$timestamp-$uuid1"
+                email = "delete-all-user1-$timestamp-$uuid1@example.com"
             )
 
             val (user2, _) = createUserWithProfile(
                 userRepository = userRepository,
                 userProfileRepository = userProfileRepository,
-                email = "delete-all-user2-$timestamp-$uuid2@example.com",
-                providerId = "google-delete-all-777-$timestamp-$uuid2"
+                email = "delete-all-user2-$timestamp-$uuid2@example.com"
             )
 
             // 각 사용자의 검색 기록 저장

@@ -24,6 +24,7 @@ export default function UploadNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        statusBarStyle: 'dark',
         // simple_push: iOS에서 모서리 둥글어짐 방지
         animation: 'simple_push',
       }}

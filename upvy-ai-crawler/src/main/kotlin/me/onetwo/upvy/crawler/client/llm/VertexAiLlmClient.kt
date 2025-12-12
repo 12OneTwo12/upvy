@@ -24,6 +24,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
+import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.annotation.PostConstruct
 import javax.annotation.PreDestroy
 
@@ -385,6 +387,7 @@ class VertexAiLlmClient(
         |시즌 컨텍스트: ${context.seasonalContext ?: "없음"}
         |부족한 카테고리: ${context.underrepresentedCategories.joinToString(", ")}
         |최근 게시된 콘텐츠: ${context.recentlyPublished.joinToString(", ")}
+        |현재 년도: ${LocalDate.now()}
         |
         |**콘텐츠 다양성 원칙 (매우 중요!):**
         |1. **균형잡힌 카테고리 믹스**: Hard Skills(프로그래밍, 재테크, 세금 등)와 Soft Skills(동기부여, 습관, 마인드셋, 심리학 등)를 50:50 비율로 균형있게 생성

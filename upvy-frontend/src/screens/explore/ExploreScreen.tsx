@@ -11,7 +11,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -70,8 +69,6 @@ export default function ExploreScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
-
       {/* 헤더 */}
       <View style={{
         paddingTop: insets.top + 16,
