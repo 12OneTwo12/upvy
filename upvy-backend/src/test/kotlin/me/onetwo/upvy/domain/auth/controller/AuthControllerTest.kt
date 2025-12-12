@@ -204,10 +204,9 @@ class AuthControllerTest {
         val request = EmailSignupRequest(
             email = "newuser@example.com",
             password = "SecurePassword123!",
-            name = "홍길동"
         )
 
-        every { authService.signup(request.email, request.password, request.name, request.language) } returns Mono.empty()
+        every { authService.signup(request.email, request.password, request.language) } returns Mono.empty()
 
         // When & Then
         webTestClient.post()

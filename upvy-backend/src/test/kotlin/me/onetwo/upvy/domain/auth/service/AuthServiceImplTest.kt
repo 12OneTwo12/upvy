@@ -125,7 +125,7 @@ class AuthServiceImplTest {
             every { emailVerificationService.sendVerificationEmail(email, any(), any()) } returns Mono.empty()
 
             // When: 이메일 가입
-            val result = authService.signup(email, password, null, "en")
+            val result = authService.signup(email, password, "en")
 
             // Then: 성공 (Mono<Void> 완료)
             StepVerifier.create(result)
@@ -169,7 +169,7 @@ class AuthServiceImplTest {
             every { emailVerificationService.sendVerificationEmail(email, any(), any()) } returns Mono.empty()
 
             // When: 이메일 가입
-            val result = authService.signup(email, password, null, "en")
+            val result = authService.signup(email, password, "en")
 
             // Then: 성공 (기존 사용자에 EMAIL 인증 수단 추가)
             StepVerifier.create(result)
@@ -208,7 +208,7 @@ class AuthServiceImplTest {
             every { authMethodRepository.findByUserIdAndProvider(existingUser.id!!, OAuthProvider.EMAIL) } returns Mono.just(existingAuthMethod)
 
             // When: 이메일 가입 시도
-            val result = authService.signup(email, password, null, "en")
+            val result = authService.signup(email, password, "en")
 
             // Then: EmailAlreadyExistsException 발생
             StepVerifier.create(result)
@@ -252,7 +252,7 @@ class AuthServiceImplTest {
             every { emailVerificationService.sendVerificationEmail(email, any(), any()) } returns Mono.empty()
 
             // When: 이메일 가입
-            authService.signup(email, rawPassword, null, "en").block()
+            authService.signup(email, rawPassword, "en").block()
 
             // Then: 비밀번호가 BCrypt로 암호화됨
             val capturedAuthMethod = authMethodSlot.captured
