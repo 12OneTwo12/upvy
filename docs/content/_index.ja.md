@@ -168,4 +168,15 @@ layout: hextra-home
 </div>
 </div>
 
+<div class="hx:mt-12 hx:mb-8 hx:text-center">
+<div class="hx:text-sm hx:text-gray-600">
+<a href="/privacy" class="hx:text-primary-600 hover:hx:underline">プライバシーポリシー</a>
+&nbsp;|&nbsp;
+<a href="/terms" class="hx:text-primary-600 hover:hx:underline">利用規約</a>
+&nbsp;|&nbsp;
+<a href="/support" class="hx:text-primary-600 hover:hx:underline">サポート</a>
+</div>
+<p class="hx:text-xs hx:text-gray-500 hx:mt-4">© 2025 Upvy. All rights reserved.</p>
+</div>
+
 </main>
