@@ -62,3 +62,15 @@ class TooManyRequestsException : BusinessException(
     httpStatus = HttpStatus.TOO_MANY_REQUESTS,
     message = "잠시 후 다시 시도해주세요. (1분 후 재전송 가능)"
 )
+
+/**
+ * OAuth 전용 사용자가 이메일 인증 기능을 사용하려 할 때 발생하는 예외
+ *
+ * OAuth로만 가입한 사용자는 EMAIL 인증 수단이 없으므로,
+ * 비밀번호 변경/재설정 등의 이메일 인증 관련 기능을 사용할 수 없습니다.
+ */
+class OAuthOnlyUserException : BusinessException(
+    errorCode = "OAUTH_ONLY_USER",
+    httpStatus = HttpStatus.FORBIDDEN,
+    message = "OAuth로만 가입한 사용자는 이 기능을 사용할 수 없습니다. 이메일 인증을 추가해주세요."
+)

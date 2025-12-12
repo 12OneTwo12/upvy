@@ -1,6 +1,7 @@
 package me.onetwo.upvy.domain.auth.controller
 
 import jakarta.validation.Valid
+import me.onetwo.upvy.domain.auth.dto.ChangePasswordRequest
 import me.onetwo.upvy.domain.auth.dto.EmailSigninRequest
 import me.onetwo.upvy.domain.auth.dto.EmailSignupRequest
 import me.onetwo.upvy.domain.auth.dto.EmailVerifyCodeRequest
@@ -9,18 +10,21 @@ import me.onetwo.upvy.domain.auth.dto.LogoutRequest
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenRequest
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.upvy.domain.auth.dto.ResendVerificationCodeRequest
+import me.onetwo.upvy.domain.auth.dto.ResetPasswordConfirmRequest
+import me.onetwo.upvy.domain.auth.dto.ResetPasswordRequest
+import me.onetwo.upvy.domain.auth.dto.ResetPasswordVerifyCodeRequest
 import me.onetwo.upvy.domain.auth.service.AuthService
 import me.onetwo.upvy.domain.user.service.UserService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.security.util.toUserId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
+import java.security.Principal
 
 /**
  * 인증 컨트롤러
@@ -138,5 +142,81 @@ class AuthController(
     ): Mono<ResponseEntity<EmailVerifyResponse>> {
         return authService.signIn(request.email, request.password)
             .map { response -> ResponseEntity.ok(response) }
+    }
+
+    /**
+     * 비밀번호 변경
+     *
+     * 현재 비밀번호를 알고 있는 경우 새 비밀번호로 변경합니다.
+     * 인증된 사용자만 사용 가능하며, OAuth 전용 사용자는 사용할 수 없습니다.
+     *
+     * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
+     * @param request 비밀번호 변경 요청 (현재 비밀번호, 새 비밀번호)
+     * @return 204 No Content
+     */
+    @PostMapping("/password/change")
+    fun changePassword(
+        principal: Mono<Principal>,
+        @Valid @RequestBody request: ChangePasswordRequest
+    ): Mono<ResponseEntity<Void>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                authService.changePassword(userId, request.currentPassword, request.newPassword)
+            }
+            .then(Mono.just(ResponseEntity.noContent().build<Void>()))
+    }
+
+    /**
+     * 비밀번호 재설정 요청
+     *
+     * 비밀번호를 잊어버린 경우 이메일로 인증 코드를 받아 재설정을 시작합니다.
+     * 인증 불필요 (public 엔드포인트)
+     *
+     * @param request 비밀번호 재설정 요청 (이메일, 언어)
+     * @return 204 No Content
+     */
+    @PostMapping("/password/reset/request")
+    fun resetPasswordRequest(
+        @Valid @RequestBody request: ResetPasswordRequest
+    ): Mono<ResponseEntity<Void>> {
+        return authService.resetPasswordRequest(request.email, request.language)
+            .then(Mono.just(ResponseEntity.noContent().build<Void>()))
+    }
+
+    /**
+     * 비밀번호 재설정 코드 검증 (Step 1)
+     *
+     * 이메일로 받은 인증 코드가 유효한지 검증합니다.
+     * 프론트엔드에서 코드 입력 후 "다음" 버튼 클릭 시 사용합니다.
+     * 인증 불필요 (public 엔드포인트)
+     *
+     * @param request 비밀번호 재설정 코드 검증 요청 (이메일, 인증 코드)
+     * @return 204 No Content
+     */
+    @PostMapping("/password/reset/verify-code")
+    fun resetPasswordVerifyCode(
+        @Valid @RequestBody request: ResetPasswordVerifyCodeRequest
+    ): Mono<ResponseEntity<Void>> {
+        return authService.resetPasswordVerifyCode(request.email, request.code)
+            .then(Mono.just(ResponseEntity.noContent().build<Void>()))
+    }
+
+    /**
+     * 비밀번호 재설정 확정 (Step 2)
+     *
+     * 검증된 인증 코드로 새 비밀번호로 재설정합니다.
+     * 프론트엔드에서 비밀번호 입력 후 "완료" 버튼 클릭 시 사용합니다.
+     * 인증 불필요 (public 엔드포인트)
+     *
+     * @param request 비밀번호 재설정 확정 요청 (이메일, 인증 코드, 새 비밀번호)
+     * @return 204 No Content
+     */
+    @PostMapping("/password/reset/confirm")
+    fun resetPasswordConfirm(
+        @Valid @RequestBody request: ResetPasswordConfirmRequest
+    ): Mono<ResponseEntity<Void>> {
+        return authService.resetPasswordConfirm(request.email, request.code, request.newPassword)
+            .then(Mono.just(ResponseEntity.noContent().build<Void>()))
     }
 }

@@ -11,6 +11,7 @@ import me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException
 import me.onetwo.upvy.domain.auth.exception.EmailNotVerifiedException
 import me.onetwo.upvy.domain.auth.exception.InvalidCredentialsException
 import me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException
+import me.onetwo.upvy.domain.auth.exception.OAuthOnlyUserException
 import me.onetwo.upvy.domain.auth.exception.TokenExpiredException
 import me.onetwo.upvy.domain.auth.exception.TooManyRequestsException
 import me.onetwo.upvy.domain.auth.model.EmailVerificationToken
@@ -719,6 +720,631 @@ class AuthServiceImplTest {
 
             verify(exactly = 1) { userRepository.findByEmail(email) }
             verify(exactly = 0) { emailVerificationTokenRepository.findLatestByUserId(any()) }
+        }
+    }
+
+    @Nested
+    @DisplayName("changePassword - 비밀번호 변경")
+    inner class ChangePassword {
+
+        @Test
+        @DisplayName("현재 비밀번호가 올바르면 새 비밀번호로 변경한다")
+        fun changePassword_WithCorrectCurrentPassword_UpdatesPassword() {
+            // Given: EMAIL 인증 수단을 가진 사용자
+            val userId = UUID.randomUUID()
+            val currentPassword = "old-password"
+            val newPassword = "new-password"
+            val encodedCurrentPassword = passwordEncoder.encode(currentPassword)
+
+            val authMethod = UserAuthenticationMethod(
+                id = 1L,
+                userId = userId,
+                provider = OAuthProvider.EMAIL,
+                password = encodedCurrentPassword,
+                emailVerified = true,
+                isPrimary = true
+            )
+
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.just(authMethod)
+            every { authMethodRepository.updatePassword(authMethod.id!!, any()) } returns Mono.just(1)
+
+            // When: 비밀번호 변경
+            val result = authService.changePassword(userId, currentPassword, newPassword)
+
+            // Then: 성공
+            StepVerifier.create(result)
+                .verifyComplete()
+
+            verify(exactly = 1) { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) }
+            verify(exactly = 1) { authMethodRepository.updatePassword(authMethod.id!!, any()) }
+        }
+
+        @Test
+        @DisplayName("OAuth 전용 사용자가 비밀번호 변경 시, OAuthOnlyUserException을 발생시킨다")
+        fun changePassword_WithOAuthOnlyUser_ThrowsException() {
+            // Given: OAuth로만 가입한 사용자 (EMAIL 인증 수단 없음)
+            val userId = UUID.randomUUID()
+            val currentPassword = "password"
+            val newPassword = "new-password"
+
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.empty()
+
+            // When: 비밀번호 변경 시도
+            val result = authService.changePassword(userId, currentPassword, newPassword)
+
+            // Then: OAuthOnlyUserException 발생
+            StepVerifier.create(result)
+                .expectError(OAuthOnlyUserException::class.java)
+                .verify()
+
+            verify(exactly = 1) { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) }
+            verify(exactly = 0) { authMethodRepository.updatePassword(any(), any()) }
+        }
+
+        @Test
+        @DisplayName("현재 비밀번호가 틀리면 InvalidCredentialsException을 발생시킨다")
+        fun changePassword_WithWrongCurrentPassword_ThrowsException() {
+            // Given: EMAIL 인증 수단을 가진 사용자
+            val userId = UUID.randomUUID()
+            val correctPassword = "correct-password"
+            val wrongPassword = "wrong-password"
+            val newPassword = "new-password"
+            val encodedCorrectPassword = passwordEncoder.encode(correctPassword)
+
+            val authMethod = UserAuthenticationMethod(
+                id = 1L,
+                userId = userId,
+                provider = OAuthProvider.EMAIL,
+                password = encodedCorrectPassword,
+                emailVerified = true,
+                isPrimary = true
+            )
+
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.just(authMethod)
+
+            // When: 잘못된 현재 비밀번호로 변경 시도
+            val result = authService.changePassword(userId, wrongPassword, newPassword)
+
+            // Then: InvalidCredentialsException 발생
+            StepVerifier.create(result)
+                .expectError(InvalidCredentialsException::class.java)
+                .verify()
+
+            verify(exactly = 1) { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) }
+            verify(exactly = 0) { authMethodRepository.updatePassword(any(), any()) }
+        }
+    }
+
+    @Nested
+    @DisplayName("resetPasswordRequest - 비밀번호 재설정 요청")
+    inner class ResetPasswordRequest {
+
+        @Test
+        @DisplayName("EMAIL 인증 수단이 있는 사용자에게 재설정 코드를 발송한다")
+        fun resetPasswordRequest_WithEmailAuthMethod_SendsCode() {
+            // Given: EMAIL 인증 수단을 가진 사용자
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val authMethod = UserAuthenticationMethod(
+                id = 1L,
+                userId = userId,
+                provider = OAuthProvider.EMAIL,
+                password = passwordEncoder.encode("password"),
+                emailVerified = true,
+                isPrimary = true
+            )
+
+            val newToken = EmailVerificationToken.create(userId)
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.just(authMethod)
+            every { emailVerificationTokenRepository.findLatestByUserId(userId) } returns Mono.empty()
+            every { emailVerificationTokenRepository.softDeleteAllByUserId(userId) } returns Mono.empty()
+            every { emailVerificationTokenRepository.save(any()) } returns Mono.just(newToken)
+            every { emailVerificationService.sendVerificationEmail(email, any(), any()) } returns Mono.empty()
+
+            // When: 비밀번호 재설정 요청
+            val result = authService.resetPasswordRequest(email, "en")
+
+            // Then: 성공
+            StepVerifier.create(result)
+                .verifyComplete()
+
+            verify(exactly = 1) { emailVerificationTokenRepository.save(any()) }
+            verify(exactly = 1) { emailVerificationService.sendVerificationEmail(email, any(), any()) }
+        }
+
+        @Test
+        @DisplayName("OAuth 전용 사용자가 재설정 요청 시, OAuthOnlyUserException을 발생시킨다")
+        fun resetPasswordRequest_WithOAuthOnlyUser_ThrowsException() {
+            // Given: OAuth로만 가입한 사용자
+            val userId = UUID.randomUUID()
+            val email = "oauth@example.com"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.empty()
+
+            // When: 비밀번호 재설정 요청
+            val result = authService.resetPasswordRequest(email, "en")
+
+            // Then: OAuthOnlyUserException 발생
+            StepVerifier.create(result)
+                .expectError(OAuthOnlyUserException::class.java)
+                .verify()
+
+            verify(exactly = 1) { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) }
+            verify(exactly = 0) { emailVerificationService.sendVerificationEmail(any(), any(), any()) }
+        }
+
+        @Test
+        @DisplayName("1분 이내 재전송 시, TooManyRequestsException을 발생시킨다")
+        fun resetPasswordRequest_WithinOneMinute_ThrowsException() {
+            // Given: 30초 전에 코드를 보낸 사용자
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val authMethod = UserAuthenticationMethod(
+                id = 1L,
+                userId = userId,
+                provider = OAuthProvider.EMAIL,
+                password = passwordEncoder.encode("password"),
+                emailVerified = true,
+                isPrimary = true
+            )
+
+            val recentToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = "111111",
+                expiresAt = Instant.now().plusSeconds(270),
+                createdAt = Instant.now().minusSeconds(30), // 30초 전
+                updatedAt = Instant.now().minusSeconds(30)
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.just(authMethod)
+            every { emailVerificationTokenRepository.findLatestByUserId(userId) } returns Mono.just(recentToken)
+
+            // When: 재전송 시도
+            val result = authService.resetPasswordRequest(email, "en")
+
+            // Then: TooManyRequestsException 발생
+            StepVerifier.create(result)
+                .expectError(TooManyRequestsException::class.java)
+                .verify()
+
+            verify(exactly = 0) { emailVerificationService.sendVerificationEmail(any(), any(), any()) }
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 이메일로 재설정 요청 시, InvalidCredentialsException을 발생시킨다")
+        fun resetPasswordRequest_WithNonExistentEmail_ThrowsException() {
+            // Given: 존재하지 않는 이메일
+            val email = "nonexistent@example.com"
+
+            every { userRepository.findByEmail(email) } returns Mono.empty()
+
+            // When: 재설정 요청
+            val result = authService.resetPasswordRequest(email, "en")
+
+            // Then: InvalidCredentialsException 발생
+            StepVerifier.create(result)
+                .expectError(InvalidCredentialsException::class.java)
+                .verify()
+
+            verify(exactly = 1) { userRepository.findByEmail(email) }
+            verify(exactly = 0) { emailVerificationService.sendVerificationEmail(any(), any(), any()) }
+        }
+    }
+
+    @Nested
+    @DisplayName("resetPasswordVerifyCode - 비밀번호 재설정 코드 검증")
+    inner class ResetPasswordVerifyCode {
+
+        @Test
+        @DisplayName("유효한 코드로 검증 시, 성공한다")
+        fun resetPasswordVerifyCode_WithValidCode_Succeeds() {
+            // Given: 유효한 재설정 코드
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+            val code = "123456"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val verificationToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = code,
+                expiresAt = Instant.now().plusSeconds(300), // 5분 후
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
+            )
+
+            val authMethod = UserAuthenticationMethod(
+                id = 1L,
+                userId = userId,
+                provider = OAuthProvider.EMAIL,
+                password = passwordEncoder.encode("password"),
+                emailVerified = true,
+                isPrimary = true
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) } returns Mono.just(verificationToken)
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.just(authMethod)
+
+            // When: 코드 검증
+            val result = authService.resetPasswordVerifyCode(email, code)
+
+            // Then: 성공
+            StepVerifier.create(result)
+                .verifyComplete()
+
+            verify(exactly = 1) { userRepository.findByEmail(email) }
+            verify(exactly = 1) { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) }
+            verify(exactly = 1) { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) }
+        }
+
+        @Test
+        @DisplayName("잘못된 코드로 검증 시, InvalidVerificationTokenException을 발생시킨다")
+        fun resetPasswordVerifyCode_WithInvalidCode_ThrowsException() {
+            // Given: 잘못된 코드
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+            val wrongCode = "999999"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, wrongCode) } returns Mono.empty()
+
+            // When: 검증 시도
+            val result = authService.resetPasswordVerifyCode(email, wrongCode)
+
+            // Then: InvalidVerificationTokenException 발생
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
+
+            verify(exactly = 1) { emailVerificationTokenRepository.findByUserIdAndToken(userId, wrongCode) }
+        }
+
+        @Test
+        @DisplayName("만료된 코드로 검증 시, TokenExpiredException을 발생시킨다")
+        fun resetPasswordVerifyCode_WithExpiredCode_ThrowsException() {
+            // Given: 만료된 재설정 코드
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+            val code = "123456"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val expiredToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = code,
+                expiresAt = Instant.now().minusSeconds(60), // 1분 전 만료
+                createdAt = Instant.now().minusSeconds(360),
+                updatedAt = Instant.now().minusSeconds(360)
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) } returns Mono.just(expiredToken)
+
+            // When: 검증 시도
+            val result = authService.resetPasswordVerifyCode(email, code)
+
+            // Then: TokenExpiredException 발생
+            StepVerifier.create(result)
+                .expectError(TokenExpiredException::class.java)
+                .verify()
+
+            verify(exactly = 1) { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) }
+        }
+
+        @Test
+        @DisplayName("OAuth 전용 사용자가 코드 검증 시, OAuthOnlyUserException을 발생시킨다")
+        fun resetPasswordVerifyCode_WithOAuthOnlyUser_ThrowsException() {
+            // Given: OAuth로만 가입한 사용자
+            val userId = UUID.randomUUID()
+            val email = "oauth@example.com"
+            val code = "123456"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val verificationToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = code,
+                expiresAt = Instant.now().plusSeconds(300),
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) } returns Mono.just(verificationToken)
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.empty()
+
+            // When: 검증 시도
+            val result = authService.resetPasswordVerifyCode(email, code)
+
+            // Then: OAuthOnlyUserException 발생
+            StepVerifier.create(result)
+                .expectError(OAuthOnlyUserException::class.java)
+                .verify()
+
+            verify(exactly = 1) { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) }
+        }
+
+        @Test
+        @DisplayName("Soft Delete된 코드로 검증 시, InvalidVerificationTokenException을 발생시킨다")
+        fun resetPasswordVerifyCode_WithDeletedCode_ThrowsException() {
+            // Given: Soft Delete된 코드
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+            val code = "123456"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val deletedToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = code,
+                expiresAt = Instant.now().plusSeconds(300),
+                createdAt = Instant.now(),
+                updatedAt = Instant.now(),
+                deletedAt = Instant.now().minusSeconds(10) // Soft Delete됨
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) } returns Mono.just(deletedToken)
+
+            // When: 검증 시도
+            val result = authService.resetPasswordVerifyCode(email, code)
+
+            // Then: InvalidVerificationTokenException 발생
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
+        }
+    }
+
+    @Nested
+    @DisplayName("resetPasswordConfirm - 비밀번호 재설정 확정")
+    inner class ResetPasswordConfirm {
+
+        @Test
+        @DisplayName("유효한 코드로 비밀번호 재설정 시, 성공한다")
+        fun resetPasswordConfirm_WithValidCode_UpdatesPassword() {
+            // Given: 유효한 재설정 코드
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+            val code = "123456"
+            val newPassword = "new-password"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val verificationToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = code,
+                expiresAt = Instant.now().plusSeconds(300),
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
+            )
+
+            val authMethod = UserAuthenticationMethod(
+                id = 1L,
+                userId = userId,
+                provider = OAuthProvider.EMAIL,
+                password = passwordEncoder.encode("old-password"),
+                emailVerified = true,
+                isPrimary = true
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) } returns Mono.just(verificationToken)
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.just(authMethod)
+            every { authMethodRepository.updatePassword(authMethod.id!!, any()) } returns Mono.just(1)
+            every { emailVerificationTokenRepository.softDelete(verificationToken.id!!) } returns Mono.empty()
+
+            // When: 비밀번호 재설정
+            val result = authService.resetPasswordConfirm(email, code, newPassword)
+
+            // Then: 성공
+            StepVerifier.create(result)
+                .verifyComplete()
+
+            verify(exactly = 1) { authMethodRepository.updatePassword(authMethod.id!!, any()) }
+            verify(exactly = 1) { emailVerificationTokenRepository.softDelete(verificationToken.id!!) }
+        }
+
+        @Test
+        @DisplayName("잘못된 코드로 재설정 시, InvalidVerificationTokenException을 발생시킨다")
+        fun resetPasswordConfirm_WithInvalidCode_ThrowsException() {
+            // Given: 잘못된 코드
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+            val wrongCode = "999999"
+            val newPassword = "new-password"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, wrongCode) } returns Mono.empty()
+
+            // When: 재설정 시도
+            val result = authService.resetPasswordConfirm(email, wrongCode, newPassword)
+
+            // Then: InvalidVerificationTokenException 발생
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
+
+            verify(exactly = 0) { authMethodRepository.updatePassword(any(), any()) }
+        }
+
+        @Test
+        @DisplayName("만료된 코드로 재설정 시, TokenExpiredException을 발생시킨다")
+        fun resetPasswordConfirm_WithExpiredCode_ThrowsException() {
+            // Given: 만료된 재설정 코드
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+            val code = "123456"
+            val newPassword = "new-password"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val expiredToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = code,
+                expiresAt = Instant.now().minusSeconds(60), // 만료됨
+                createdAt = Instant.now().minusSeconds(360),
+                updatedAt = Instant.now().minusSeconds(360)
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) } returns Mono.just(expiredToken)
+
+            // When: 재설정 시도
+            val result = authService.resetPasswordConfirm(email, code, newPassword)
+
+            // Then: TokenExpiredException 발생
+            StepVerifier.create(result)
+                .expectError(TokenExpiredException::class.java)
+                .verify()
+
+            verify(exactly = 0) { authMethodRepository.updatePassword(any(), any()) }
+        }
+
+        @Test
+        @DisplayName("OAuth 전용 사용자가 재설정 시, OAuthOnlyUserException을 발생시킨다")
+        fun resetPasswordConfirm_WithOAuthOnlyUser_ThrowsException() {
+            // Given: OAuth로만 가입한 사용자
+            val userId = UUID.randomUUID()
+            val email = "oauth@example.com"
+            val code = "123456"
+            val newPassword = "new-password"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val verificationToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = code,
+                expiresAt = Instant.now().plusSeconds(300),
+                createdAt = Instant.now(),
+                updatedAt = Instant.now()
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) } returns Mono.just(verificationToken)
+            every { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) } returns Mono.empty()
+
+            // When: 재설정 시도
+            val result = authService.resetPasswordConfirm(email, code, newPassword)
+
+            // Then: OAuthOnlyUserException 발생
+            StepVerifier.create(result)
+                .expectError(OAuthOnlyUserException::class.java)
+                .verify()
+
+            verify(exactly = 0) { authMethodRepository.updatePassword(any(), any()) }
+        }
+
+        @Test
+        @DisplayName("이미 사용된 코드로 재설정 시, InvalidVerificationTokenException을 발생시킨다")
+        fun resetPasswordConfirm_WithUsedCode_ThrowsException() {
+            // Given: Soft Delete된 (이미 사용된) 코드
+            val userId = UUID.randomUUID()
+            val email = "user@example.com"
+            val code = "123456"
+            val newPassword = "new-password"
+
+            val user = User(
+                id = userId,
+                email = email,
+                role = UserRole.USER
+            )
+
+            val usedToken = EmailVerificationToken(
+                id = 1L,
+                userId = userId,
+                token = code,
+                expiresAt = Instant.now().plusSeconds(300),
+                createdAt = Instant.now(),
+                updatedAt = Instant.now(),
+                deletedAt = Instant.now().minusSeconds(10) // 이미 사용됨
+            )
+
+            every { userRepository.findByEmail(email) } returns Mono.just(user)
+            every { emailVerificationTokenRepository.findByUserIdAndToken(userId, code) } returns Mono.just(usedToken)
+
+            // When: 재설정 시도
+            val result = authService.resetPasswordConfirm(email, code, newPassword)
+
+            // Then: InvalidVerificationTokenException 발생
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
+
+            verify(exactly = 0) { authMethodRepository.updatePassword(any(), any()) }
         }
     }
 }

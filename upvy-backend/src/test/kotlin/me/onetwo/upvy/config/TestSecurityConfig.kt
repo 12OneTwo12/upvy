@@ -98,6 +98,8 @@ class TestSecurityConfig {
             .csrf { it.disable() }
             .authorizeExchange { authorize ->
                 authorize
+                    // 비밀번호 변경 요청은 명시적으로 인증 필요 (와일드카드 패턴보다 먼저 선언)
+                    .pathMatchers("${ApiPaths.API_V1_AUTH}/password/change").authenticated()
                     // 인증이 필요 없는 공개 API
                     .pathMatchers(*PublicApiPaths.AUTH_ENDPOINTS).permitAll()
                     // /me 엔드포인트는 명시적으로 인증 필요 (와일드카드 패턴보다 먼저 선언)

@@ -6,6 +6,7 @@ import me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException
 import me.onetwo.upvy.domain.auth.exception.EmailNotVerifiedException
 import me.onetwo.upvy.domain.auth.exception.InvalidCredentialsException
 import me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException
+import me.onetwo.upvy.domain.auth.exception.OAuthOnlyUserException
 import me.onetwo.upvy.domain.auth.exception.TokenExpiredException
 import me.onetwo.upvy.domain.auth.exception.TooManyRequestsException
 import me.onetwo.upvy.domain.auth.model.EmailVerificationToken
@@ -465,6 +466,208 @@ class AuthServiceImpl(
                     userId = userId,
                     email = email
                 )
+            }
+    }
+
+    /**
+     * 비밀번호 변경
+     *
+     * 현재 비밀번호를 알고 있는 경우 새 비밀번호로 변경합니다.
+     * 인증된 사용자만 사용 가능하며, OAuth 전용 사용자는 사용할 수 없습니다.
+     *
+     * ### 비즈니스 로직
+     * 1. 사용자 ID로 EMAIL 인증 수단 조회
+     * 2. EMAIL 인증 수단이 없으면 OAuthOnlyUserException 발생
+     * 3. 현재 비밀번호 검증 (BCrypt)
+     * 4. 새 비밀번호로 업데이트 (BCrypt 암호화)
+     *
+     * @param userId 사용자 ID (JWT에서 추출)
+     * @param currentPassword 현재 비밀번호 (평문)
+     * @param newPassword 새 비밀번호 (평문)
+     * @return Mono<Void>
+     * @throws OAuthOnlyUserException OAuth 전용 사용자인 경우
+     * @throws InvalidCredentialsException 현재 비밀번호가 올바르지 않은 경우
+     */
+    @Transactional
+    override fun changePassword(userId: UUID, currentPassword: String, newPassword: String): Mono<Void> {
+        return authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL)
+            .switchIfEmpty(Mono.error(OAuthOnlyUserException()))
+            .flatMap { authMethod ->
+                // 현재 비밀번호 검증
+                if (!passwordEncoder.matches(currentPassword, authMethod.password)) {
+                    return@flatMap Mono.error<Void>(InvalidCredentialsException())
+                }
+
+                // 새 비밀번호로 업데이트 (BCrypt 암호화)
+                val encodedPassword = passwordEncoder.encode(newPassword)
+                authMethodRepository.updatePassword(authMethod.id!!, encodedPassword)
+                    .then()
+                    .doOnSuccess {
+                        logger.info("Password changed successfully for user: $userId")
+                    }
+            }
+    }
+
+    /**
+     * 비밀번호 재설정 요청
+     *
+     * 비밀번호를 잊어버린 경우 이메일로 인증 코드를 발송합니다.
+     *
+     * ### 비즈니스 로직
+     * 1. 이메일로 사용자 조회
+     * 2. EMAIL 인증 수단이 없으면 OAuthOnlyUserException 발생
+     * 3. 마지막 코드 발송 시간 확인 (1분 이내 재전송 방지)
+     * 4. 기존 코드 모두 무효화 (Soft Delete)
+     * 5. 새로운 인증 코드 생성 및 이메일 발송
+     *
+     * @param email 이메일 주소
+     * @param language 이메일 언어 (ko: 한국어, en: 영어, ja: 일본어)
+     * @return Mono<Void>
+     * @throws OAuthOnlyUserException OAuth 전용 사용자인 경우
+     * @throws TooManyRequestsException 1분 이내 재전송 시도 시
+     * @throws InvalidCredentialsException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional
+    override fun resetPasswordRequest(email: String, language: String): Mono<Void> {
+        return userRepository.findByEmail(email)
+            .switchIfEmpty(Mono.error(InvalidCredentialsException()))
+            .flatMap { user ->
+                // EMAIL 인증 수단이 있는지 확인
+                authMethodRepository.findByUserIdAndProvider(user.id!!, OAuthProvider.EMAIL)
+                    .switchIfEmpty(Mono.error(OAuthOnlyUserException()))
+                    .flatMap { authMethod ->
+                        // 마지막 코드 발송 시간 확인 (resendVerificationCode와 동일한 로직)
+                        emailVerificationTokenRepository.findLatestByUserId(user.id)
+                            .map { java.util.Optional.of(it) }
+                            .defaultIfEmpty(java.util.Optional.empty())
+                            .flatMap { optionalToken ->
+                                if (optionalToken.isEmpty) {
+                                    // 토큰이 없으면 바로 발송
+                                    resendCodeInternal(user, language)
+                                } else {
+                                    // 토큰이 있으면 1분 이내 재전송 방지 확인
+                                    val latestToken = optionalToken.get()
+                                    val now = Instant.now()
+                                    val oneMinuteAgo = now.minusSeconds(60)
+
+                                    if (latestToken.createdAt.isAfter(oneMinuteAgo)) {
+                                        Mono.error<Void>(TooManyRequestsException())
+                                    } else {
+                                        resendCodeInternal(user, language)
+                                    }
+                                }
+                            }
+                    }
+            }
+    }
+
+    /**
+     * 비밀번호 재설정 코드 검증
+     *
+     * 이메일로 받은 인증 코드가 유효한지 검증합니다.
+     * 프론트엔드에서 코드 입력 후 "다음" 버튼 클릭 시 호출하여,
+     * 코드가 유효하면 비밀번호 입력 화면으로 전환합니다.
+     *
+     * ### 비즈니스 로직
+     * 1. 이메일로 사용자 조회
+     * 2. 사용자 ID + 코드로 인증 정보 조회
+     * 3. 코드 유효성 검증 (만료 여부, Soft Delete 여부)
+     * 4. EMAIL 인증 수단이 있는지 확인
+     *
+     * @param email 이메일 주소
+     * @param code 6자리 인증 코드
+     * @return Mono<Void>
+     * @throws InvalidVerificationTokenException 코드가 유효하지 않은 경우
+     * @throws TokenExpiredException 코드가 만료된 경우
+     * @throws OAuthOnlyUserException OAuth 전용 사용자인 경우
+     */
+    @Transactional(readOnly = true)
+    override fun resetPasswordVerifyCode(email: String, code: String): Mono<Void> {
+        return userRepository.findByEmail(email)
+            .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
+            .flatMap { user ->
+                // 사용자 ID + 코드로 인증 토큰 조회
+                emailVerificationTokenRepository.findByUserIdAndToken(user.id!!, code)
+                    .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
+                    .flatMap { verificationToken ->
+                        // 코드 만료 여부 확인
+                        if (verificationToken.isExpired()) {
+                            return@flatMap Mono.error<Void>(TokenExpiredException())
+                        }
+
+                        // 코드 유효성 확인
+                        if (!verificationToken.isValid()) {
+                            return@flatMap Mono.error<Void>(InvalidVerificationTokenException())
+                        }
+
+                        // EMAIL 인증 수단이 있는지 확인
+                        authMethodRepository.findByUserIdAndProvider(user.id, OAuthProvider.EMAIL)
+                            .switchIfEmpty(Mono.error(OAuthOnlyUserException()))
+                            .then(Mono.defer {
+                                logger.info("Password reset code verified for user: ${user.id}, email: ${user.email}")
+                                Mono.empty()
+                            })
+                    }
+            }
+    }
+
+    /**
+     * 비밀번호 재설정 확정
+     *
+     * 검증된 인증 코드로 새 비밀번호로 재설정합니다.
+     * 프론트엔드에서 비밀번호 입력 후 "완료" 버튼 클릭 시 호출합니다.
+     *
+     * ### 비즈니스 로직
+     * 1. 이메일로 사용자 조회
+     * 2. 사용자 ID + 코드로 인증 정보 조회
+     * 3. 코드 유효성 재검증 (만료 여부, Soft Delete 여부)
+     * 4. EMAIL 인증 수단 조회
+     * 5. 새 비밀번호로 업데이트 (BCrypt 암호화)
+     * 6. 사용된 코드 무효화 (Soft Delete)
+     *
+     * @param email 이메일 주소
+     * @param code 6자리 인증 코드
+     * @param newPassword 새 비밀번호 (평문)
+     * @return Mono<Void>
+     * @throws InvalidVerificationTokenException 코드가 유효하지 않은 경우
+     * @throws TokenExpiredException 코드가 만료된 경우
+     * @throws OAuthOnlyUserException OAuth 전용 사용자인 경우
+     */
+    @Transactional
+    override fun resetPasswordConfirm(email: String, code: String, newPassword: String): Mono<Void> {
+        return userRepository.findByEmail(email)
+            .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
+            .flatMap { user ->
+                // 사용자 ID + 코드로 인증 토큰 조회
+                emailVerificationTokenRepository.findByUserIdAndToken(user.id!!, code)
+                    .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
+                    .flatMap { verificationToken ->
+                        // 코드 만료 여부 확인
+                        if (verificationToken.isExpired()) {
+                            return@flatMap Mono.error<Void>(TokenExpiredException())
+                        }
+
+                        // 코드 유효성 확인
+                        if (!verificationToken.isValid()) {
+                            return@flatMap Mono.error<Void>(InvalidVerificationTokenException())
+                        }
+
+                        // EMAIL 인증 수단 조회
+                        authMethodRepository.findByUserIdAndProvider(user.id, OAuthProvider.EMAIL)
+                            .switchIfEmpty(Mono.error(OAuthOnlyUserException()))
+                            .flatMap { authMethod ->
+                                // 새 비밀번호로 업데이트 (BCrypt 암호화)
+                                val encodedPassword = passwordEncoder.encode(newPassword)
+                                authMethodRepository.updatePassword(authMethod.id!!, encodedPassword)
+                                    .then(
+                                        // 사용된 코드 무효화
+                                        emailVerificationTokenRepository.softDelete(verificationToken.id!!)
+                                    )
+                                    .doOnSuccess {
+                                        logger.info("Password reset successful for user: ${user.id}, email: ${user.email}")
+                                    }
+                            }
+                    }
             }
     }
 }

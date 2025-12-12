@@ -186,3 +186,80 @@ data class EmailVerifyResponse(
     val userId: UUID,
     val email: String
 )
+
+/**
+ * 비밀번호 변경 요청
+ *
+ * 현재 비밀번호를 알고 있는 경우 새 비밀번호로 변경합니다.
+ * 인증된 사용자만 사용 가능하며, OAuth 전용 사용자는 사용할 수 없습니다.
+ *
+ * @property currentPassword 현재 비밀번호
+ * @property newPassword 새 비밀번호
+ */
+data class ChangePasswordRequest(
+    @field:NotBlank(message = "현재 비밀번호는 필수입니다")
+    val currentPassword: String,
+
+    @field:NotBlank(message = "새 비밀번호는 필수입니다")
+    @field:Size(min = 8, message = "새 비밀번호는 최소 8자 이상이어야 합니다")
+    val newPassword: String
+)
+
+/**
+ * 비밀번호 재설정 요청
+ *
+ * 비밀번호를 잊어버린 경우 이메일로 인증 코드를 받아 재설정을 시작합니다.
+ *
+ * @property email 이메일 주소
+ * @property language 이메일 언어 (ko: 한국어, en: 영어, ja: 일본어, 기본값: en)
+ */
+data class ResetPasswordRequest(
+    @field:NotBlank(message = "이메일은 필수입니다")
+    @field:Email(message = "올바른 이메일 형식이 아닙니다")
+    val email: String,
+
+    val language: String = "en"
+)
+
+/**
+ * 비밀번호 재설정 코드 검증 요청
+ *
+ * 이메일로 받은 인증 코드가 유효한지 검증합니다.
+ * 프론트엔드에서 코드 입력 후 "다음" 버튼 클릭 시 사용합니다.
+ *
+ * @property email 이메일 주소
+ * @property code 6자리 인증 코드
+ */
+data class ResetPasswordVerifyCodeRequest(
+    @field:NotBlank(message = "이메일은 필수입니다")
+    @field:Email(message = "올바른 이메일 형식이 아닙니다")
+    val email: String,
+
+    @field:NotBlank(message = "인증 코드는 필수입니다")
+    @field:Size(min = 6, max = 6, message = "인증 코드는 6자리여야 합니다")
+    val code: String
+)
+
+/**
+ * 비밀번호 재설정 확정 요청
+ *
+ * 검증된 인증 코드로 새 비밀번호로 재설정합니다.
+ * 프론트엔드에서 비밀번호 입력 후 "완료" 버튼 클릭 시 사용합니다.
+ *
+ * @property email 이메일 주소
+ * @property code 6자리 인증 코드
+ * @property newPassword 새 비밀번호
+ */
+data class ResetPasswordConfirmRequest(
+    @field:NotBlank(message = "이메일은 필수입니다")
+    @field:Email(message = "올바른 이메일 형식이 아닙니다")
+    val email: String,
+
+    @field:NotBlank(message = "인증 코드는 필수입니다")
+    @field:Size(min = 6, max = 6, message = "인증 코드는 6자리여야 합니다")
+    val code: String,
+
+    @field:NotBlank(message = "새 비밀번호는 필수입니다")
+    @field:Size(min = 8, message = "새 비밀번호는 최소 8자 이상이어야 합니다")
+    val newPassword: String
+)
