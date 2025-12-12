@@ -372,13 +372,13 @@ class EmailVerificationTokenRepositoryTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("기본 토큰 유효 기간은 24시간이다")
-        fun create_DefaultExpiryIs24Hours() {
+        @DisplayName("기본 토큰 유효 기간은 5분이다")
+        fun create_DefaultExpiryIs5Minutes() {
             // Given: 새 토큰 생성
             val token = EmailVerificationToken.create(testUser.id!!)
 
-            // When & Then: 만료 시각이 약 24시간 후
-            val expectedExpiresAt = Instant.now().plusSeconds(60 * 60 * 24)
+            // When & Then: 만료 시각이 약 5분 후
+            val expectedExpiresAt = Instant.now().plusSeconds(60 * 5)
             val diff = token.expiresAt.epochSecond - expectedExpiresAt.epochSecond
 
             // 5초 이내 오차 허용
