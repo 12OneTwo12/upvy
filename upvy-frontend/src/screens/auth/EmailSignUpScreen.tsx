@@ -127,7 +127,7 @@ export default function EmailSignUpScreen() {
       }
 
       if (password !== confirmPassword) {
-        showErrorAlert(t('emailSignup.confirmPasswordPlaceholder'), '');
+        showErrorAlert(t('emailSignup.passwordMismatch'), '');
         return;
       }
 
