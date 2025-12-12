@@ -10,6 +10,12 @@ export const STORAGE_KEYS = {
 } as const;
 
 /**
+ * In-memory token cache to avoid AsyncStorage race conditions
+ */
+let accessTokenCache: string | null = null;
+let refreshTokenCache: string | null = null;
+
+/**
  * Get item from AsyncStorage
  */
 export const getItem = async <T = string>(key: string): Promise<T | null> => {
@@ -58,36 +64,67 @@ export const clearAll = async (): Promise<void> => {
 
 /**
  * Get access token
+ * Returns cached value immediately if available, otherwise reads from AsyncStorage
  */
-export const getAccessToken = (): Promise<string | null> => {
-  return getItem<string>(STORAGE_KEYS.ACCESS_TOKEN);
+export const getAccessToken = async (): Promise<string | null> => {
+  // Return cached value immediately to avoid race conditions
+  if (accessTokenCache !== null) {
+    return accessTokenCache;
+  }
+
+  // Load from AsyncStorage and cache it
+  const token = await getItem<string>(STORAGE_KEYS.ACCESS_TOKEN);
+  accessTokenCache = token;
+  return token;
 };
 
 /**
  * Set access token
+ * Saves to both memory cache and AsyncStorage
  */
-export const setAccessToken = (token: string): Promise<void> => {
-  return setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
+export const setAccessToken = async (token: string): Promise<void> => {
+  // Update cache immediately
+  accessTokenCache = token;
+  // Persist to AsyncStorage
+  await setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
 };
 
 /**
  * Get refresh token
+ * Returns cached value immediately if available, otherwise reads from AsyncStorage
  */
-export const getRefreshToken = (): Promise<string | null> => {
-  return getItem<string>(STORAGE_KEYS.REFRESH_TOKEN);
+export const getRefreshToken = async (): Promise<string | null> => {
+  // Return cached value immediately to avoid race conditions
+  if (refreshTokenCache !== null) {
+    return refreshTokenCache;
+  }
+
+  // Load from AsyncStorage and cache it
+  const token = await getItem<string>(STORAGE_KEYS.REFRESH_TOKEN);
+  refreshTokenCache = token;
+  return token;
 };
 
 /**
  * Set refresh token
+ * Saves to both memory cache and AsyncStorage
  */
-export const setRefreshToken = (token: string): Promise<void> => {
-  return setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+export const setRefreshToken = async (token: string): Promise<void> => {
+  // Update cache immediately
+  refreshTokenCache = token;
+  // Persist to AsyncStorage
+  await setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
 };
 
 /**
  * Remove tokens
+ * Clears both memory cache and AsyncStorage
  */
 export const removeTokens = async (): Promise<void> => {
+  // Clear cache immediately
+  accessTokenCache = null;
+  refreshTokenCache = null;
+  // Remove from AsyncStorage
   await removeItem(STORAGE_KEYS.ACCESS_TOKEN);
   await removeItem(STORAGE_KEYS.REFRESH_TOKEN);
 };
