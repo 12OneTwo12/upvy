@@ -162,9 +162,6 @@ export default function EmailSignUpScreen() {
               {password.length > 0 && !validatePassword(password).isValid && (
                 <Text style={styles.errorHint}>{t('emailSignup.passwordHint')}</Text>
               )}
-              {(!password || validatePassword(password).isValid) && (
-                <Text style={styles.hint}>{t('emailSignup.passwordHint')}</Text>
-              )}
             </View>
 
             {/* 비밀번호 확인 */}

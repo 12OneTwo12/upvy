@@ -273,9 +273,6 @@ export default function PasswordResetConfirmScreen() {
                 {newPassword.length > 0 && !validatePassword(newPassword).isValid && (
                   <Text style={styles.errorHint}>{t('passwordResetConfirm.passwordMinLength')}</Text>
                 )}
-                {(!newPassword || validatePassword(newPassword).isValid) && (
-                  <Text style={styles.hint}>{t('passwordResetConfirm.passwordMinLength')}</Text>
-                )}
               </View>
 
               <View style={styles.inputGroup}>

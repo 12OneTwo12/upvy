@@ -158,9 +158,6 @@ export default function PasswordChangeScreen() {
               {newPassword.length > 0 && !validatePassword(newPassword).isValid && (
                 <Text style={styles.errorHint}>{t('passwordChange.passwordHint')}</Text>
               )}
-              {(!newPassword || validatePassword(newPassword).isValid) && (
-                <Text style={styles.hint}>{t('passwordChange.passwordHint')}</Text>
-              )}
             </View>
 
             {/* 비밀번호 확인 */}
