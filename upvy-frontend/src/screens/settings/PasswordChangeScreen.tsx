@@ -39,8 +39,17 @@ export default function PasswordChangeScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const validatePassword = (password: string): boolean => {
-    return password.length >= 8;
+  const validatePassword = (password: string): { isValid: boolean; hasLength: boolean; hasLetterAndNumber: boolean } => {
+    const hasLength = password.length >= 8;
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasLetterAndNumber = hasLetter && hasNumber;
+
+    return {
+      isValid: hasLength && hasLetterAndNumber,
+      hasLength,
+      hasLetterAndNumber,
+    };
   };
 
   const handleSubmit = async () => {
@@ -55,7 +64,8 @@ export default function PasswordChangeScreen() {
         return;
       }
 
-      if (!validatePassword(newPassword)) {
+      const passwordValidation = validatePassword(newPassword);
+      if (!passwordValidation.isValid) {
         showErrorAlert(t('passwordChange.passwordMinLength'), t('passwordChange.error'));
         return;
       }
@@ -145,7 +155,12 @@ export default function PasswordChangeScreen() {
                 secureTextEntry
                 style={styles.input}
               />
-              <Text style={styles.hint}>{t('passwordChange.passwordHint')}</Text>
+              {newPassword.length > 0 && !validatePassword(newPassword).isValid && (
+                <Text style={styles.errorHint}>{t('passwordChange.passwordHint')}</Text>
+              )}
+              {(!newPassword || validatePassword(newPassword).isValid) && (
+                <Text style={styles.hint}>{t('passwordChange.passwordHint')}</Text>
+              )}
             </View>
 
             {/* 비밀번호 확인 */}
@@ -169,7 +184,14 @@ export default function PasswordChangeScreen() {
               fullWidth
               onPress={handleSubmit}
               loading={isLoading}
-              disabled={isLoading}
+              disabled={
+                isLoading ||
+                !currentPassword.trim() ||
+                !newPassword.trim() ||
+                !confirmPassword.trim() ||
+                !validatePassword(newPassword).isValid ||
+                newPassword !== confirmPassword
+              }
             >
               {t('passwordChange.submit')}
             </Button>
@@ -252,6 +274,11 @@ const useStyles = createStyleSheet({
   hint: {
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.tertiary,
+  },
+
+  errorHint: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.error[500],
   },
 
   buttonContainer: {

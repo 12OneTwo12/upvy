@@ -31,7 +31,7 @@ type RoutePropType = RouteProp<AuthStackParamList, 'EmailVerification'>;
  * 이메일 인증 코드 입력 화면
  */
 export default function EmailVerificationScreen() {
-  const { t } = useTranslation('auth');
+  const { t, i18n } = useTranslation('auth');
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
@@ -119,7 +119,7 @@ export default function EmailVerificationScreen() {
 
       await resendVerificationCode({
         email,
-        language: 'ko',
+        language: i18n.language,
       });
 
       Alert.alert(t('emailVerification.resendSuccess'), t('emailVerification.resendSuccessMessage'));

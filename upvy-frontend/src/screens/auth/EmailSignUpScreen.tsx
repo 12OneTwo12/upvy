@@ -27,7 +27,7 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'EmailSignUp
  * 이메일 회원가입 화면
  */
 export default function EmailSignUpScreen() {
-  const { t } = useTranslation('auth');
+  const { t, i18n } = useTranslation('auth');
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
@@ -35,7 +35,6 @@ export default function EmailSignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [nickname, setNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const validateEmail = (email: string): boolean => {
@@ -43,8 +42,17 @@ export default function EmailSignUpScreen() {
     return emailRegex.test(email);
   };
 
-  const validatePassword = (password: string): boolean => {
-    return password.length >= 8;
+  const validatePassword = (password: string): { isValid: boolean; hasLength: boolean; hasLetterAndNumber: boolean } => {
+    const hasLength = password.length >= 8;
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasLetterAndNumber = hasLetter && hasNumber;
+
+    return {
+      isValid: hasLength && hasLetterAndNumber,
+      hasLength,
+      hasLetterAndNumber,
+    };
   };
 
   const handleSignUp = async () => {
@@ -65,7 +73,8 @@ export default function EmailSignUpScreen() {
         return;
       }
 
-      if (!validatePassword(password)) {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
         showErrorAlert(t('emailSignup.passwordHint'), t('emailSignup.error'));
         return;
       }
@@ -80,8 +89,7 @@ export default function EmailSignUpScreen() {
       const request: EmailSignupRequest = {
         email: email.trim(),
         password,
-        nickname: nickname.trim() || undefined,
-        language: 'ko',
+        language: i18n.language,
       };
 
       await emailSignup(request);
@@ -136,17 +144,9 @@ export default function EmailSignUpScreen() {
                 keyboardType="email-address"
                 style={styles.input}
               />
-            </View>
-
-            {/* 닉네임 (선택) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>{t('emailSignup.nickname')}</Text>
-              <TextInput
-                value={nickname}
-                onChangeText={setNickname}
-                placeholder={t('emailSignup.nicknamePlaceholder')}
-                style={styles.input}
-              />
+              {email.length > 0 && !validateEmail(email) && (
+                <Text style={styles.errorHint}>{t('emailSignup.emailPlaceholder')}</Text>
+              )}
             </View>
 
             {/* 비밀번호 */}
@@ -159,7 +159,12 @@ export default function EmailSignUpScreen() {
                 secureTextEntry
                 style={styles.input}
               />
-              <Text style={styles.hint}>{t('emailSignup.passwordHint')}</Text>
+              {password.length > 0 && !validatePassword(password).isValid && (
+                <Text style={styles.errorHint}>{t('emailSignup.passwordHint')}</Text>
+              )}
+              {(!password || validatePassword(password).isValid) && (
+                <Text style={styles.hint}>{t('emailSignup.passwordHint')}</Text>
+              )}
             </View>
 
             {/* 비밀번호 확인 */}
@@ -183,7 +188,15 @@ export default function EmailSignUpScreen() {
               fullWidth
               onPress={handleSignUp}
               loading={isLoading}
-              disabled={isLoading}
+              disabled={
+                isLoading ||
+                !email.trim() ||
+                !validateEmail(email) ||
+                !password.trim() ||
+                !confirmPassword.trim() ||
+                !validatePassword(password).isValid ||
+                password !== confirmPassword
+              }
             >
               {t('emailSignup.signup')}
             </Button>
@@ -273,6 +286,11 @@ const useStyles = createStyleSheet({
   hint: {
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.tertiary,
+  },
+
+  errorHint: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.error[500],
   },
 
   buttonContainer: {

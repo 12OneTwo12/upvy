@@ -112,7 +112,6 @@ export interface FollowResponse {
 export interface EmailSignupRequest {
   email: string;
   password: string;
-  nickname?: string;
   language?: string;
 }
 

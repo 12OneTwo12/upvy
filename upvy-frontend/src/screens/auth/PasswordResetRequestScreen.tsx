@@ -27,7 +27,7 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'PasswordRes
  * 이메일을 입력하면 인증 코드가 전송됩니다
  */
 export default function PasswordResetRequestScreen() {
-  const { t } = useTranslation('auth');
+  const { t, i18n } = useTranslation('auth');
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
@@ -56,7 +56,7 @@ export default function PasswordResetRequestScreen() {
 
       await resetPasswordRequest({
         email: email.trim(),
-        language: 'ko',
+        language: i18n.language,
       });
 
       // 성공 시 비밀번호 재설정 확정 화면으로 이동

@@ -30,7 +30,7 @@ type RoutePropType = RouteProp<AuthStackParamList, 'PasswordResetConfirm'>;
  * 6자리 인증 코드와 새 비밀번호를 입력받습니다
  */
 export default function PasswordResetConfirmScreen() {
-  const { t } = useTranslation('auth');
+  const { t, i18n } = useTranslation('auth');
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
@@ -68,8 +68,17 @@ export default function PasswordResetConfirmScreen() {
     }
   };
 
-  const validatePassword = (password: string): boolean => {
-    return password.length >= 8;
+  const validatePassword = (password: string): { isValid: boolean; hasLength: boolean; hasLetterAndNumber: boolean } => {
+    const hasLength = password.length >= 8;
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasLetterAndNumber = hasLetter && hasNumber;
+
+    return {
+      isValid: hasLength && hasLetterAndNumber,
+      hasLength,
+      hasLetterAndNumber,
+    };
   };
 
   const handleVerifyCode = async () => {
@@ -112,7 +121,8 @@ export default function PasswordResetConfirmScreen() {
         return;
       }
 
-      if (!validatePassword(newPassword)) {
+      const passwordValidation = validatePassword(newPassword);
+      if (!passwordValidation.isValid) {
         showErrorAlert(t('passwordResetConfirm.passwordMinLength'), t('passwordResetConfirm.error'));
         return;
       }
@@ -154,7 +164,7 @@ export default function PasswordResetConfirmScreen() {
 
       await resendVerificationCode({
         email,
-        language: 'ko',
+        language: i18n.language,
       });
 
       Alert.alert(t('passwordResetConfirm.resendSuccessTitle'), t('passwordResetConfirm.resendSuccessMessage'));
@@ -260,6 +270,12 @@ export default function PasswordResetConfirmScreen() {
                   secureTextEntry
                   style={styles.input}
                 />
+                {newPassword.length > 0 && !validatePassword(newPassword).isValid && (
+                  <Text style={styles.errorHint}>{t('passwordResetConfirm.passwordMinLength')}</Text>
+                )}
+                {(!newPassword || validatePassword(newPassword).isValid) && (
+                  <Text style={styles.hint}>{t('passwordResetConfirm.passwordMinLength')}</Text>
+                )}
               </View>
 
               <View style={styles.inputGroup}>
@@ -284,7 +300,13 @@ export default function PasswordResetConfirmScreen() {
                 fullWidth
                 onPress={handleSubmit}
                 loading={isLoading}
-                disabled={isLoading}
+                disabled={
+                  isLoading ||
+                  !newPassword.trim() ||
+                  !confirmPassword.trim() ||
+                  !validatePassword(newPassword).isValid ||
+                  newPassword !== confirmPassword
+                }
               >
                 {t('passwordResetConfirm.submit')}
               </Button>
@@ -425,6 +447,16 @@ const useStyles = createStyleSheet({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
     backgroundColor: theme.colors.background.primary,
+  },
+
+  hint: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.tertiary,
+  },
+
+  errorHint: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.error[500],
   },
 
   buttonContainer: {
