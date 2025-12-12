@@ -44,7 +44,7 @@ A: Update to the latest version or reinstall the app. If the problem persists, c
 Didn't find your answer in the FAQ? Contact us directly.
 
 ### Email Support
-📧 **app.grow.snap@gmail.com**
+📧 **app.upvy@gmail.com**
 
 Please include the following information for faster assistance:
 - Device you're using (e.g., iPhone 13 mini, iOS 16.5)
