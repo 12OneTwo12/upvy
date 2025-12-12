@@ -90,6 +90,25 @@ apiClient.interceptors.response.use(
 
     // 401 Unauthorized && 재시도 안 함
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // 인증이 필요 없는 엔드포인트는 refresh 재시도 스킵
+      const publicEndpoints = [
+        '/auth/email/signup',
+        '/auth/email/signin',
+        '/auth/email/verify-code',
+        '/auth/email/resend-code',
+        '/auth/password/reset/request',
+        '/auth/password/reset/verify-code',
+        '/auth/password/reset/confirm',
+      ];
+
+      const requestUrl = originalRequest.url || '';
+      const isPublicEndpoint = publicEndpoints.some(endpoint => requestUrl.includes(endpoint));
+
+      // Public 엔드포인트는 401을 그대로 반환 (잘못된 비밀번호 등)
+      if (isPublicEndpoint) {
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
 
       try {
