@@ -52,7 +52,7 @@ Please include the following information for faster assistance:
 - Detailed description of the issue
 - Screenshots or screen recordings if possible
 
-**Response Time**: Within 1-2 business days
+**Response Time**: Within 3-7 business days
 
 ---
 
