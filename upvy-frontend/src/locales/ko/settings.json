@@ -13,6 +13,8 @@
   "privacy": {
     "privateAccount": "비공개 계정",
     "privateAccountSubtitle": "팔로워 승인 필요",
+    "changePassword": "비밀번호 변경",
+    "changePasswordSubtitle": "현재 비밀번호를 새 비밀번호로 변경",
     "blockManagement": "차단 관리",
     "blockManagementSubtitle": "차단한 사용자 및 콘텐츠 관리"
   },

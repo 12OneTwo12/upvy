@@ -13,6 +13,8 @@
   "privacy": {
     "privateAccount": "非公開アカウント",
     "privateAccountSubtitle": "フォロワーの承認を必要にする",
+    "changePassword": "パスワード変更",
+    "changePasswordSubtitle": "現在のパスワードを変更",
     "blockManagement": "ブロック管理",
     "blockManagementSubtitle": "ブロックしたユーザーとコンテンツを管理"
   },

@@ -271,6 +271,13 @@ export default function SettingsScreen() {
   };
 
   /**
+   * 비밀번호 변경 화면으로 이동
+   */
+  const handlePasswordChange = () => {
+    navigation.navigate('PasswordChange');
+  };
+
+  /**
    * 버전 정보 터치 핸들러 (5번 터치 시 디버그 정보 표시)
    */
   const handleVersionTap = () => {
@@ -424,6 +431,31 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               thumbColor={privateAccount ? theme.colors.primary[500] : theme.colors.gray[200]}
             />
           </View>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handlePasswordChange}
+          >
+            <View style={styles.settingLeft}>
+              <Ionicons
+                name="key-outline"
+                size={22}
+                color={theme.colors.text.secondary}
+                style={styles.settingIcon}
+              />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>{t('privacy.changePassword')}</Text>
+                <Text style={styles.settingSubtitle}>
+                  {t('privacy.changePasswordSubtitle')}
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme.colors.gray[400]}
+            />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingRow}

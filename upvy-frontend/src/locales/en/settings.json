@@ -13,6 +13,8 @@
   "privacy": {
     "privateAccount": "Private Account",
     "privateAccountSubtitle": "Require follower approval",
+    "changePassword": "Change Password",
+    "changePasswordSubtitle": "Change your current password",
     "blockManagement": "Block Management",
     "blockManagementSubtitle": "Manage blocked users and content"
   },
