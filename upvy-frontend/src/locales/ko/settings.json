@@ -43,5 +43,21 @@
   "comingSoon": {
     "title": "준비 중",
     "message": "{{feature}} 기능은 현재 개발 중입니다.\n곧 사용 가능합니다."
+  },
+  "passwordChange": {
+    "title": "비밀번호 변경",
+    "subtitle": "새로운 비밀번호를 설정하세요",
+    "currentPassword": "현재 비밀번호",
+    "currentPasswordPlaceholder": "현재 비밀번호",
+    "newPassword": "새 비밀번호",
+    "newPasswordPlaceholder": "새 비밀번호 (8자 이상)",
+    "confirmPassword": "비밀번호 확인",
+    "confirmPasswordPlaceholder": "비밀번호 확인",
+    "passwordHint": "영문, 숫자 포함 8자 이상",
+    "submit": "비밀번호 변경",
+    "success": "비밀번호 변경 완료",
+    "successMessage": "비밀번호가 성공적으로 변경되었습니다.",
+    "error": "오류",
+    "failed": "비밀번호 변경 실패"
   }
 }

@@ -10,6 +10,7 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList>;
   EditProfile: undefined;
   Settings: undefined;
+  PasswordChange: undefined;
   LanguageSelector: undefined;
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
@@ -24,6 +25,11 @@ export type RootStackParamList = {
  */
 export type AuthStackParamList = {
   Login: undefined;
+  EmailSignUp: undefined;
+  EmailSignIn: undefined;
+  EmailVerification: { email: string };
+  PasswordReset: undefined;
+  PasswordResetConfirm: { email: string };
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
 };

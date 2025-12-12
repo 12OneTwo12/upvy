@@ -4,7 +4,7 @@
 export interface User {
   id: string;
   email: string;
-  provider: 'GOOGLE' | 'NAVER' | 'KAKAO';
+  provider: 'EMAIL' | 'GOOGLE' | 'NAVER' | 'KAKAO';
   role: 'USER' | 'CREATOR' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
@@ -103,4 +103,90 @@ export interface FollowResponse {
   followerId: string;
   followingId: string;
   createdAt: string;
+}
+
+/**
+ * 이메일 회원가입 요청
+ * 백엔드: EmailSignupRequest
+ */
+export interface EmailSignupRequest {
+  email: string;
+  password: string;
+  nickname?: string;
+  language?: string;
+}
+
+/**
+ * 이메일 로그인 요청
+ * 백엔드: EmailSigninRequest
+ */
+export interface EmailSigninRequest {
+  email: string;
+  password: string;
+}
+
+/**
+ * 이메일 인증 코드 검증 요청
+ * 백엔드: EmailVerifyCodeRequest
+ */
+export interface EmailVerifyCodeRequest {
+  email: string;
+  code: string;
+}
+
+/**
+ * 인증 코드 재전송 요청
+ * 백엔드: ResendVerificationCodeRequest
+ */
+export interface ResendVerificationCodeRequest {
+  email: string;
+  language?: string;
+}
+
+/**
+ * 이메일 인증 응답
+ * 백엔드: EmailVerifyResponse
+ */
+export interface EmailVerifyResponse {
+  accessToken: string;
+  refreshToken: string;
+  userId: string;
+  email: string;
+}
+
+/**
+ * 비밀번호 변경 요청
+ * 백엔드: ChangePasswordRequest
+ */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/**
+ * 비밀번호 재설정 요청
+ * 백엔드: ResetPasswordRequest
+ */
+export interface ResetPasswordRequest {
+  email: string;
+  language?: string;
+}
+
+/**
+ * 비밀번호 재설정 코드 검증 요청
+ * 백엔드: ResetPasswordVerifyCodeRequest
+ */
+export interface ResetPasswordVerifyCodeRequest {
+  email: string;
+  code: string;
+}
+
+/**
+ * 비밀번호 재설정 확정 요청
+ * 백엔드: ResetPasswordConfirmRequest
+ */
+export interface ResetPasswordConfirmRequest {
+  email: string;
+  code: string;
+  newPassword: string;
 }

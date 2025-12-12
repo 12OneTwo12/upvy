@@ -43,5 +43,21 @@
   "comingSoon": {
     "title": "Coming Soon",
     "message": "The {{feature}} feature is currently under development.\nIt will be available soon."
+  },
+  "passwordChange": {
+    "title": "Change Password",
+    "subtitle": "Set a new password",
+    "currentPassword": "Current Password",
+    "currentPasswordPlaceholder": "Current password",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "New password (8+ characters)",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm password",
+    "passwordHint": "At least 8 characters with letters and numbers",
+    "submit": "Change Password",
+    "success": "Password Changed",
+    "successMessage": "Your password has been successfully changed.",
+    "error": "Error",
+    "failed": "Password Change Failed"
   }
 }
