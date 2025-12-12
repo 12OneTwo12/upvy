@@ -62,7 +62,7 @@ interface AuthService {
      * @return Mono<Void>
      * @throws me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException 이메일이 이미 존재하는 경우
      */
-    fun signup(email: String, password: String, name: String?, language: String): Mono<Void>
+    fun signup(email: String, password: String, nickname: String?, language: String): Mono<Void>
 
     /**
      * 이메일 인증 코드 검증

@@ -146,13 +146,13 @@ class AuthServiceImpl(
      *
      * @param email 이메일 주소
      * @param password 비밀번호 (평문)
-     * @param name 사용자 이름 (선택, 프로필 생성 시 사용)
+     * @param nickname 사용자 이름 (선택, 프로필 생성 시 사용)
      * @param language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어)
      * @return Mono<Void>
      * @throws EmailAlreadyExistsException 이메일 인증 수단이 이미 존재하는 경우
      */
     @Transactional
-    override fun signup(email: String, password: String, name: String?, language: String): Mono<Void> {
+    override fun signup(email: String, password: String, nickname: String?, language: String): Mono<Void> {
         return userRepository.findByEmail(email)
             .hasElement()
             .flatMap { userExists ->

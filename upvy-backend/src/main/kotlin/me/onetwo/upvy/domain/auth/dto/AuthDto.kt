@@ -117,7 +117,7 @@ data class EmailSignupRequest(
     @field:NotBlank(message = "비밀번호는 필수입니다")
     val password: String,
 
-    val name: String? = null,
+    val nickname: String? = null,
 
     val language: String = "en"
 )

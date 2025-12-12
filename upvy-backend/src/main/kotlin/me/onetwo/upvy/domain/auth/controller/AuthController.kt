@@ -90,7 +90,7 @@ class AuthController(
     fun emailSignup(
         @Valid @RequestBody request: EmailSignupRequest
     ): Mono<ResponseEntity<Void>> {
-        return authService.signup(request.email, request.password, request.name, request.language)
+        return authService.signup(request.email, request.password, request.nickname, request.language)
             .then(Mono.just(ResponseEntity.status(HttpStatus.CREATED).build<Void>()))
     }
 
