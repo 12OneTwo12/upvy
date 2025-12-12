@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.auth.model
 
+import java.security.SecureRandom
 import java.time.Instant
 import java.util.UUID
 
@@ -84,12 +85,22 @@ data class EmailVerificationToken(
         }
 
         /**
+         * 코드 생성 범위 상수
+         */
+        private const val CODE_MIN = 100000
+        private const val CODE_MAX = 999999
+        private const val CODE_RANGE = CODE_MAX - CODE_MIN + 1
+
+        /**
          * 6자리 랜덤 숫자 코드 생성
+         *
+         * SecureRandom을 사용하여 암호학적으로 안전한 난수를 생성합니다.
          *
          * @return 6자리 숫자 문자열 (100000-999999)
          */
         private fun generateCode(): String {
-            return (100000..999999).random().toString()
+            val secureRandom = SecureRandom()
+            return (CODE_MIN + secureRandom.nextInt(CODE_RANGE)).toString()
         }
     }
 }

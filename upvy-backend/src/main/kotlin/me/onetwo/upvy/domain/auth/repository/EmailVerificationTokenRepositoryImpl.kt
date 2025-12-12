@@ -2,7 +2,6 @@ package me.onetwo.upvy.domain.auth.repository
 
 import me.onetwo.upvy.domain.auth.model.EmailVerificationToken
 import me.onetwo.upvy.jooq.generated.tables.EmailVerificationTokens
-import me.onetwo.upvy.jooq.generated.tables.records.EmailVerificationTokensRecord
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono

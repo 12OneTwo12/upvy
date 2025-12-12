@@ -18,7 +18,6 @@ import me.onetwo.upvy.domain.auth.dto.ResetPasswordVerifyCodeRequest
 import me.onetwo.upvy.domain.auth.service.AuthService
 import me.onetwo.upvy.domain.user.service.UserService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
-import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
 import me.onetwo.upvy.util.mockUser
 import java.util.UUID

@@ -107,7 +107,6 @@ data class LogoutRequest(
  *
  * @property email 이메일 주소
  * @property password 비밀번호
- * @property name 사용자 이름 (선택)
  * @property language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어, 기본값: en)
  */
 data class EmailSignupRequest(

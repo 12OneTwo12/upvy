@@ -3,7 +3,6 @@ package me.onetwo.upvy.domain.user.repository
 import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.UserAuthenticationMethod
 import me.onetwo.upvy.jooq.generated.tables.references.USER_AUTHENTICATION_METHODS
-import me.onetwo.upvy.jooq.generated.tables.records.UserAuthenticationMethodsRecord
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux

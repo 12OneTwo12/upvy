@@ -2,7 +2,6 @@ package me.onetwo.upvy.domain.auth.service
 
 import me.onetwo.upvy.domain.auth.dto.EmailVerifyResponse
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
-import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
 import reactor.core.publisher.Mono
 import java.util.UUID
 
@@ -52,12 +51,11 @@ interface AuthService {
      * 1. 이메일 중복 확인 (같은 이메일로 가입된 계정이 있는지 확인)
      * 2. 비밀번호 BCrypt 암호화
      * 3. 사용자 계정 생성 (emailVerified = false, provider = EMAIL)
-     * 4. 이메일 인증 토큰 생성 (24시간 유효)
+     * 4. 이메일 인증 토큰 생성 (5분 유효)
      * 5. 인증 이메일 발송
      *
      * @param email 이메일 주소
      * @param password 비밀번호 (평문)
-     * @param name 사용자 이름 (선택, 프로필 생성 시 사용)
      * @param language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어)
      * @return Mono<Void>
      * @throws me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException 이메일이 이미 존재하는 경우

@@ -57,6 +57,13 @@ class AuthServiceImpl(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    companion object {
+        /**
+         * Rate Limiting 기간 (60초 = 1분)
+         */
+        private const val RATE_LIMIT_SECONDS = 60L
+    }
+
     /**
      * Access Token 갱신
      *
@@ -146,7 +153,6 @@ class AuthServiceImpl(
      *
      * @param email 이메일 주소
      * @param password 비밀번호 (평문)
-     * @param nickname 사용자 이름 (선택, 프로필 생성 시 사용)
      * @param language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어)
      * @return Mono<Void>
      * @throws EmailAlreadyExistsException 이메일 인증 수단이 이미 존재하는 경우
@@ -347,7 +353,7 @@ class AuthServiceImpl(
                             // 토큰이 있으면 1분 이내 재전송 방지 확인
                             val latestToken = optionalToken.get()
                             val now = Instant.now()
-                            val oneMinuteAgo = now.minusSeconds(60)
+                            val oneMinuteAgo = now.minusSeconds(RATE_LIMIT_SECONDS)
 
                             if (latestToken.createdAt.isAfter(oneMinuteAgo)) {
                                 Mono.error<Void>(TooManyRequestsException())
@@ -450,21 +456,17 @@ class AuthServiceImpl(
     /**
      * JWT 토큰 생성 및 EmailVerifyResponse 생성
      *
-     * Service 계층에서 JWT 토큰 파싱 및 DTO 생성을 담당합니다.
+     * Service 계층에서 JWT 토큰 생성 및 DTO 생성을 담당합니다.
      * Controller는 HTTP 처리만 담당하도록 책임을 분리합니다.
      */
     private fun generateTokensAndResponse(user: User): Mono<EmailVerifyResponse> {
         return generateTokens(user)
             .map { jwtTokens ->
-                // Service 계층에서 JWT 토큰 파싱 (Controller가 아님!)
-                val userId = jwtTokenProvider.getUserIdFromToken(jwtTokens.accessToken)
-                val email = jwtTokenProvider.getEmailFromToken(jwtTokens.accessToken)
-
                 EmailVerifyResponse(
                     accessToken = jwtTokens.accessToken,
                     refreshToken = jwtTokens.refreshToken,
-                    userId = userId,
-                    email = email
+                    userId = user.id!!,
+                    email = user.email
                 )
             }
     }
@@ -513,28 +515,27 @@ class AuthServiceImpl(
      *
      * 비밀번호를 잊어버린 경우 이메일로 인증 코드를 발송합니다.
      *
+     * ### 보안 고려사항
+     * User Enumeration 공격을 방지하기 위해 이메일이 존재하지 않거나 EMAIL 인증 수단이 없는 경우에도
+     * 동일하게 204 No Content를 반환합니다. 공격자가 이메일 존재 여부를 추측할 수 없도록 합니다.
+     *
      * ### 비즈니스 로직
-     * 1. 이메일로 사용자 조회
-     * 2. EMAIL 인증 수단이 없으면 OAuthOnlyUserException 발생
-     * 3. 마지막 코드 발송 시간 확인 (1분 이내 재전송 방지)
+     * 1. 이메일로 사용자 조회 (존재하지 않으면 조용히 종료)
+     * 2. EMAIL 인증 수단 확인 (없으면 조용히 종료)
+     * 3. 마지막 코드 발송 시간 확인 (1분 이내면 조용히 종료)
      * 4. 기존 코드 모두 무효화 (Soft Delete)
      * 5. 새로운 인증 코드 생성 및 이메일 발송
      *
      * @param email 이메일 주소
      * @param language 이메일 언어 (ko: 한국어, en: 영어, ja: 일본어)
-     * @return Mono<Void>
-     * @throws OAuthOnlyUserException OAuth 전용 사용자인 경우
-     * @throws TooManyRequestsException 1분 이내 재전송 시도 시
-     * @throws InvalidCredentialsException 사용자를 찾을 수 없는 경우
+     * @return Mono<Void> (항상 성공, User Enumeration 방지)
      */
     @Transactional
     override fun resetPasswordRequest(email: String, language: String): Mono<Void> {
         return userRepository.findByEmail(email)
-            .switchIfEmpty(Mono.error(InvalidCredentialsException()))
             .flatMap { user ->
-                // EMAIL 인증 수단이 있는지 확인
+                // EMAIL 인증 수단이 있는지 확인 (없으면 조용히 종료)
                 authMethodRepository.findByUserIdAndProvider(user.id!!, OAuthProvider.EMAIL)
-                    .switchIfEmpty(Mono.error(OAuthOnlyUserException()))
                     .flatMap { authMethod ->
                         // 마지막 코드 발송 시간 확인 (resendVerificationCode와 동일한 로직)
                         emailVerificationTokenRepository.findLatestByUserId(user.id)
@@ -548,10 +549,11 @@ class AuthServiceImpl(
                                     // 토큰이 있으면 1분 이내 재전송 방지 확인
                                     val latestToken = optionalToken.get()
                                     val now = Instant.now()
-                                    val oneMinuteAgo = now.minusSeconds(60)
+                                    val oneMinuteAgo = now.minusSeconds(RATE_LIMIT_SECONDS)
 
                                     if (latestToken.createdAt.isAfter(oneMinuteAgo)) {
-                                        Mono.error<Void>(TooManyRequestsException())
+                                        // Rate limit에 걸려도 조용히 종료 (User Enumeration 방지)
+                                        Mono.empty<Void>()
                                     } else {
                                         resendCodeInternal(user, language)
                                     }
@@ -559,6 +561,7 @@ class AuthServiceImpl(
                             }
                     }
             }
+            .then() // 모든 경우에 성공적으로 완료 (User Enumeration 방지)
     }
 
     /**
