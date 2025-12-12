@@ -152,7 +152,7 @@ class AuthServiceImpl(
      * @throws EmailAlreadyExistsException 이메일 인증 수단이 이미 존재하는 경우
      */
     @Transactional
-    override fun signup(email: String, password: String, nickname: String?, language: String): Mono<Void> {
+    override fun signup(email: String, password: String, language: String): Mono<Void> {
         return userRepository.findByEmail(email)
             .hasElement()
             .flatMap { userExists ->

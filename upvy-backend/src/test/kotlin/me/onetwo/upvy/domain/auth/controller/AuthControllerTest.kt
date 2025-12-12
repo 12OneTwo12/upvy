@@ -225,8 +225,6 @@ class AuthControllerTest {
                             .description("이메일 주소 (고유, 인증 필요)"),
                         fieldWithPath("password")
                             .description("비밀번호 (평문, 서버에서 BCrypt 암호화)"),
-                        fieldWithPath("nickname")
-                            .description("사용자 이름 (선택, 프로필 생성 시 사용)").optional(),
                         fieldWithPath("language")
                             .description("사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어, 기본값: en)").optional()
                     )
