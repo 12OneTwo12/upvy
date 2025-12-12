@@ -1,6 +1,8 @@
 package me.onetwo.upvy.domain.auth.dto
 
+import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
 import java.util.UUID
 
@@ -106,6 +108,7 @@ data class LogoutRequest(
  * @property email 이메일 주소
  * @property password 비밀번호
  * @property name 사용자 이름 (선택)
+ * @property language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어, 기본값: en)
  */
 data class EmailSignupRequest(
     @field:NotBlank(message = "이메일은 필수입니다")
@@ -114,7 +117,9 @@ data class EmailSignupRequest(
     @field:NotBlank(message = "비밀번호는 필수입니다")
     val password: String,
 
-    val name: String? = null
+    val name: String? = null,
+
+    val language: String = "en"
 )
 
 /**
@@ -129,6 +134,40 @@ data class EmailSigninRequest(
 
     @field:NotBlank(message = "비밀번호는 필수입니다")
     val password: String
+)
+
+/**
+ * 이메일 인증 코드 검증 요청
+ *
+ * 이메일로 발송된 6자리 인증 코드를 검증합니다.
+ *
+ * @property email 이메일 주소
+ * @property code 6자리 인증 코드
+ */
+data class EmailVerifyCodeRequest(
+    @field:NotBlank(message = "이메일은 필수입니다")
+    @field:Email(message = "올바른 이메일 형식이 아닙니다")
+    val email: String,
+
+    @field:NotBlank(message = "인증 코드는 필수입니다")
+    @field:Size(min = 6, max = 6, message = "인증 코드는 6자리여야 합니다")
+    val code: String
+)
+
+/**
+ * 인증 코드 재전송 요청
+ *
+ * 만료되었거나 받지 못한 인증 코드를 재전송합니다.
+ *
+ * @property email 이메일 주소
+ * @property language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어, 기본값: en)
+ */
+data class ResendVerificationCodeRequest(
+    @field:NotBlank(message = "이메일은 필수입니다")
+    @field:Email(message = "올바른 이메일 형식이 아닙니다")
+    val email: String,
+
+    val language: String = "en"
 )
 
 /**

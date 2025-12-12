@@ -5,10 +5,12 @@ import io.mockk.every
 import me.onetwo.upvy.config.TestSecurityConfig
 import me.onetwo.upvy.domain.auth.dto.EmailSigninRequest
 import me.onetwo.upvy.domain.auth.dto.EmailSignupRequest
+import me.onetwo.upvy.domain.auth.dto.EmailVerifyCodeRequest
 import me.onetwo.upvy.domain.auth.dto.EmailVerifyResponse
 import me.onetwo.upvy.domain.auth.dto.LogoutRequest
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenRequest
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
+import me.onetwo.upvy.domain.auth.dto.ResendVerificationCodeRequest
 import me.onetwo.upvy.domain.auth.service.AuthService
 import me.onetwo.upvy.domain.user.service.UserService
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
@@ -200,7 +202,7 @@ class AuthControllerTest {
             name = "홍길동"
         )
 
-        every { authService.signup(request.email, request.password, request.name) } returns Mono.empty()
+        every { authService.signup(request.email, request.password, request.name, request.language) } returns Mono.empty()
 
         // When & Then
         webTestClient.post()
@@ -219,19 +221,24 @@ class AuthControllerTest {
                         fieldWithPath("password")
                             .description("비밀번호 (평문, 서버에서 BCrypt 암호화)"),
                         fieldWithPath("name")
-                            .description("사용자 이름 (선택, 프로필 생성 시 사용)").optional()
+                            .description("사용자 이름 (선택, 프로필 생성 시 사용)").optional(),
+                        fieldWithPath("language")
+                            .description("사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어, 기본값: en)").optional()
                     )
                 )
             )
     }
 
     @Test
-    @DisplayName("유효한 토큰으로 이메일 인증 시, JWT 토큰을 반환한다")
-    fun verifyEmail_WithValidToken_ReturnsJwtToken() {
+    @DisplayName("이메일 인증 코드 검증 성공 시, JWT 토큰을 반환한다")
+    fun verifyEmailCode_Success_ReturnsJwtToken() {
         // Given
-        val token = "valid-email-verification-token"
+        val request = EmailVerifyCodeRequest(
+            email = "user@example.com",
+            code = "123456"
+        )
+
         val userId = UUID.randomUUID()
-        val email = "user@example.com"
         val accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.access..."
         val refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh..."
 
@@ -239,20 +246,28 @@ class AuthControllerTest {
             accessToken = accessToken,
             refreshToken = refreshToken,
             userId = userId,
-            email = email
+            email = request.email
         )
 
-        every { authService.verifyEmail(token) } returns Mono.just(emailVerifyResponse)
+        every { authService.verifyEmailCode(request.email, request.code) } returns Mono.just(emailVerifyResponse)
 
         // When & Then
-        webTestClient.get()
-            .uri("${ApiPaths.API_V1_AUTH}/email/verify?token=$token")
+        webTestClient.post()
+            .uri("${ApiPaths.API_V1_AUTH}/email/verify-code")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
             .exchange()
             .expectStatus().isOk
             .expectBody()
             .consumeWith(
                 document(
-                    "auth/email-verify",
+                    "auth/email-verify-code",
+                    requestFields(
+                        fieldWithPath("email")
+                            .description("이메일 주소"),
+                        fieldWithPath("code")
+                            .description("6자리 인증 코드")
+                    ),
                     responseFields(
                         fieldWithPath("accessToken")
                             .description("JWT Access Token (1시간 만료)"),
@@ -262,6 +277,37 @@ class AuthControllerTest {
                             .description("사용자 UUID"),
                         fieldWithPath("email")
                             .description("인증된 이메일 주소")
+                    )
+                )
+            )
+    }
+
+    @Test
+    @DisplayName("인증 코드 재전송 성공 시, 204 No Content를 반환한다")
+    fun resendVerificationCode_Success_Returns204NoContent() {
+        // Given
+        val request = ResendVerificationCodeRequest(
+            email = "user@example.com"
+        )
+
+        every { authService.resendVerificationCode(request.email, request.language) } returns Mono.empty()
+
+        // When & Then
+        webTestClient.post()
+            .uri("${ApiPaths.API_V1_AUTH}/email/resend-code")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isNoContent
+            .expectBody()
+            .consumeWith(
+                document(
+                    "auth/email-resend-code",
+                    requestFields(
+                        fieldWithPath("email")
+                            .description("이메일 주소"),
+                        fieldWithPath("language")
+                            .description("이메일 언어 (ko: 한국어, en: 영어, ja: 일본어, 기본값: en)").optional()
                     )
                 )
             )

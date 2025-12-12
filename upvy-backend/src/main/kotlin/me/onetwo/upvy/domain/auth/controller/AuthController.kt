@@ -3,10 +3,12 @@ package me.onetwo.upvy.domain.auth.controller
 import jakarta.validation.Valid
 import me.onetwo.upvy.domain.auth.dto.EmailSigninRequest
 import me.onetwo.upvy.domain.auth.dto.EmailSignupRequest
+import me.onetwo.upvy.domain.auth.dto.EmailVerifyCodeRequest
 import me.onetwo.upvy.domain.auth.dto.EmailVerifyResponse
 import me.onetwo.upvy.domain.auth.dto.LogoutRequest
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenRequest
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
+import me.onetwo.upvy.domain.auth.dto.ResendVerificationCodeRequest
 import me.onetwo.upvy.domain.auth.service.AuthService
 import me.onetwo.upvy.domain.user.service.UserService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
@@ -77,36 +79,49 @@ class AuthController(
      * 이메일 주소와 비밀번호로 회원가입합니다.
      * 회원가입 후 이메일 인증 메일이 발송되며, 인증 완료 전까지는 로그인할 수 없습니다.
      *
-     * @param request 회원가입 요청 (이메일, 비밀번호, 이름)
+     * @param request 회원가입 요청 (이메일, 비밀번호, 이름, 언어)
      * @return 201 Created
      */
     @PostMapping("/email/signup")
     fun emailSignup(
         @Valid @RequestBody request: EmailSignupRequest
     ): Mono<ResponseEntity<Void>> {
-        return authService.signup(request.email, request.password, request.name)
+        return authService.signup(request.email, request.password, request.name, request.language)
             .then(Mono.just(ResponseEntity.status(HttpStatus.CREATED).build<Void>()))
     }
 
     /**
-     * 이메일 인증
+     * 이메일 인증 코드 검증
      *
-     * 이메일로 전송된 인증 토큰을 검증하고 이메일 인증을 완료합니다.
+     * 이메일로 발송된 6자리 인증 코드를 검증합니다.
      * 인증 완료 후 자동으로 로그인 처리되어 JWT 토큰을 반환합니다.
      *
-     * ### 사용 방법
-     * - 프론트엔드: GET /auth/verify?token={token}
-     * - 이메일 링크 클릭 시 자동으로 이 엔드포인트 호출
-     *
-     * @param token 인증 토큰 (query parameter)
+     * @param request 이메일 인증 코드 검증 요청 (이메일, 6자리 코드)
      * @return EmailVerifyResponse JWT 토큰과 사용자 정보
      */
-    @GetMapping("/email/verify")
-    fun verifyEmail(
-        @RequestParam token: String
+    @PostMapping("/email/verify-code")
+    fun verifyEmailCode(
+        @Valid @RequestBody request: EmailVerifyCodeRequest
     ): Mono<ResponseEntity<EmailVerifyResponse>> {
-        return authService.verifyEmail(token)
+        return authService.verifyEmailCode(request.email, request.code)
             .map { response -> ResponseEntity.ok(response) }
+    }
+
+    /**
+     * 인증 코드 재전송
+     *
+     * 만료되었거나 받지 못한 인증 코드를 재전송합니다.
+     * 1분에 1회만 재전송 가능합니다.
+     *
+     * @param request 인증 코드 재전송 요청 (이메일, 언어)
+     * @return 204 No Content
+     */
+    @PostMapping("/email/resend-code")
+    fun resendVerificationCode(
+        @Valid @RequestBody request: ResendVerificationCodeRequest
+    ): Mono<ResponseEntity<Void>> {
+        return authService.resendVerificationCode(request.email, request.language)
+            .then(Mono.just(ResponseEntity.noContent().build<Void>()))
     }
 
     /**

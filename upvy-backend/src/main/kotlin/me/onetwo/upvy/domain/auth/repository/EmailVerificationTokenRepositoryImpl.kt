@@ -76,6 +76,36 @@ class EmailVerificationTokenRepositoryImpl(
     }
 
     /**
+     * 사용자 ID와 코드로 인증 토큰 조회
+     *
+     * 6자리 코드는 충돌 가능성이 있으므로 userId와 함께 검증합니다.
+     * Soft Delete된 토큰은 제외합니다.
+     *
+     * @param userId 사용자 ID
+     * @param token 인증 코드
+     * @return 인증 토큰 (존재하지 않으면 empty)
+     */
+    override fun findByUserIdAndToken(userId: UUID, token: String): Mono<EmailVerificationToken> {
+        return Mono.from(
+            dsl.select(
+                TOKEN.ID,
+                TOKEN.USER_ID,
+                TOKEN.TOKEN,
+                TOKEN.EXPIRES_AT,
+                TOKEN.CREATED_AT,
+                TOKEN.CREATED_BY,
+                TOKEN.UPDATED_AT,
+                TOKEN.UPDATED_BY,
+                TOKEN.DELETED_AT
+            )
+                .from(TOKEN)
+                .where(TOKEN.USER_ID.eq(userId.toString()))
+                .and(TOKEN.TOKEN.eq(token))
+                .and(TOKEN.DELETED_AT.isNull)
+        ).map { record -> mapToEmailVerificationToken(record) }
+    }
+
+    /**
      * 사용자 ID로 인증 토큰 조회 (가장 최근 토큰)
      *
      * Soft Delete된 토큰은 제외하고, created_at 기준 내림차순으로 정렬하여 가장 최근 토큰을 반환합니다.

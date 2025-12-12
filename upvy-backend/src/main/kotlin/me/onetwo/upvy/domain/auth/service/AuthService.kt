@@ -58,31 +58,53 @@ interface AuthService {
      * @param email 이메일 주소
      * @param password 비밀번호 (평문)
      * @param name 사용자 이름 (선택, 프로필 생성 시 사용)
+     * @param language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어)
      * @return Mono<Void>
      * @throws me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException 이메일이 이미 존재하는 경우
      */
-    fun signup(email: String, password: String, name: String?): Mono<Void>
+    fun signup(email: String, password: String, name: String?, language: String): Mono<Void>
 
     /**
-     * 이메일 인증 완료
+     * 이메일 인증 코드 검증
      *
-     * 이메일로 전송된 인증 토큰을 검증하고 사용자의 이메일을 인증 완료 처리합니다.
+     * 이메일로 발송된 6자리 인증 코드를 검증하고 사용자의 이메일을 인증 완료 처리합니다.
      * 인증 완료 후 자동으로 로그인 처리되어 JWT 토큰과 사용자 정보를 반환합니다.
      *
      * ### 비즈니스 로직
-     * 1. 토큰으로 인증 정보 조회
-     * 2. 토큰 유효성 검증 (만료 여부, Soft Delete 여부)
-     * 3. 사용자 이메일 인증 상태 업데이트 (emailVerified = true)
-     * 4. 사용된 토큰 무효화 (Soft Delete)
-     * 5. JWT 토큰 발급 및 Redis에 Refresh Token 저장
-     * 6. EmailVerifyResponse 생성 (JWT 토큰에서 userId, email 추출)
+     * 1. 이메일로 사용자 조회
+     * 2. 사용자 ID + 코드로 인증 정보 조회
+     * 3. 코드 유효성 검증 (만료 여부, Soft Delete 여부)
+     * 4. 사용자의 EMAIL 인증 수단 업데이트 (emailVerified = true)
+     * 5. 사용된 코드 무효화 (Soft Delete)
+     * 6. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 7. EmailVerifyResponse 생성
      *
-     * @param token 인증 토큰
+     * @param email 이메일 주소
+     * @param code 6자리 인증 코드
      * @return EmailVerifyResponse JWT 토큰과 사용자 정보
-     * @throws me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException 토큰이 유효하지 않은 경우
-     * @throws me.onetwo.upvy.domain.auth.exception.TokenExpiredException 토큰이 만료된 경우
+     * @throws me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException 코드가 유효하지 않은 경우
+     * @throws me.onetwo.upvy.domain.auth.exception.TokenExpiredException 코드가 만료된 경우
      */
-    fun verifyEmail(token: String): Mono<EmailVerifyResponse>
+    fun verifyEmailCode(email: String, code: String): Mono<EmailVerifyResponse>
+
+    /**
+     * 인증 코드 재전송
+     *
+     * 만료되었거나 받지 못한 인증 코드를 재전송합니다.
+     *
+     * ### 비즈니스 로직
+     * 1. 이메일로 사용자 조회
+     * 2. 마지막 코드 발송 시간 확인 (1분 이내 재전송 방지)
+     * 3. 기존 코드 모두 무효화 (Soft Delete)
+     * 4. 새로운 코드 생성 및 이메일 발송
+     *
+     * @param email 이메일 주소
+     * @param language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어)
+     * @return Mono<Void>
+     * @throws me.onetwo.upvy.domain.auth.exception.TooManyRequestsException 1분 이내 재전송 시도 시
+     * @throws me.onetwo.upvy.domain.auth.exception.UserNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    fun resendVerificationCode(email: String, language: String): Mono<Void>
 
     /**
      * 이메일 로그인

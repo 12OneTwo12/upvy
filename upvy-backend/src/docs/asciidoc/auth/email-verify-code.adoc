@@ -1,0 +1,37 @@
+[[auth-email-verify-code]]
+=== 이메일 인증 코드 검증
+
+이메일로 발송된 6자리 인증 코드를 검증하고 계정을 활성화합니다.
+
+==== Request
+
+include::{snippets}/auth/email-verify-code/http-request.adoc[]
+include::{snippets}/auth/email-verify-code/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/auth/email-verify-code/http-response.adoc[]
+include::{snippets}/auth/email-verify-code/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/auth/email/verify-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "code": "123456"
+  }'
+----
+
+==== Notes
+
+* 인증 성공 시 자동으로 로그인 처리되어 JWT 토큰을 반환합니다
+* Access Token은 1시간 동안 유효합니다
+* Refresh Token은 14일 동안 유효합니다
+* 인증 코드는 5분 동안 유효하며, 만료된 코드는 사용할 수 없습니다
+* 인증 코드는 일회용이며, 사용 후 즉시 무효화됩니다
+* 잘못된 코드 입력 시 400 Bad Request를 반환합니다
+* 만료된 코드 입력 시 400 Bad Request를 반환합니다 (재전송 필요)
+* 인증 완료 후 해당 이메일로 로그인할 수 있습니다

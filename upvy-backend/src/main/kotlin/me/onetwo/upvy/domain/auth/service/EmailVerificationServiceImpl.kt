@@ -25,34 +25,51 @@ class EmailVerificationServiceImpl(
      * 이메일 인증 메일 발송
      *
      * 회원가입 시 이메일 인증을 위한 메일을 발송합니다.
-     * 인증 링크는 {FRONTEND_URL}/auth/verify?token={token} 형식입니다.
+     * 6자리 인증 코드를 이메일로 전송하며, 사용자는 앱에서 해당 코드를 입력하여 인증을 완료합니다.
      *
      * @param to 수신자 이메일
-     * @param verificationToken 인증 토큰
+     * @param verificationToken 인증 코드 (6자리 숫자)
+     * @param language 이메일 언어 (ko: 한국어, en: 영어, ja: 일본어)
      * @return Mono<Void>
      */
-    override fun sendVerificationEmail(to: String, verificationToken: String): Mono<Void> {
-        val verificationLink = "$frontendUrl/auth/verify?token=$verificationToken"
-        val subject = "[Upvy] 이메일 인증을 완료해주세요"
-        val htmlContent = buildVerificationEmailHtml(verificationLink)
+    override fun sendVerificationEmail(to: String, verificationToken: String, language: String): Mono<Void> {
+        val subject = getSubject(language)
+        val htmlContent = buildVerificationEmailHtml(verificationToken, language)
 
         return emailClient.sendHtmlEmail(to, subject, htmlContent)
     }
 
     /**
+     * 언어별 제목 반환
+     *
+     * @param language 이메일 언어
+     * @return 제목
+     */
+    private fun getSubject(language: String): String {
+        return when (language.lowercase()) {
+            "ko" -> "[Upvy] 이메일 인증 코드"
+            "ja" -> "[Upvy] メール認証コード"
+            else -> "[Upvy] Email Verification Code" // 기본값: 영어
+        }
+    }
+
+    /**
      * 이메일 인증 HTML 템플릿 생성
      *
-     * @param verificationLink 인증 링크
+     * @param verificationCode 6자리 인증 코드
+     * @param language 이메일 언어 (ko: 한국어, en: 영어, ja: 일본어)
      * @return HTML 콘텐츠
      */
-    private fun buildVerificationEmailHtml(verificationLink: String): String {
+    private fun buildVerificationEmailHtml(verificationCode: String, language: String): String {
+        val content = getEmailContent(language)
+
         return """
             <!DOCTYPE html>
-            <html lang="ko">
+            <html lang="${content.langCode}">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Upvy 이메일 인증</title>
+                <title>${content.title}</title>
             </head>
             <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
                 <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -69,33 +86,35 @@ class EmailVerificationServiceImpl(
                                 <!-- Content -->
                                 <tr>
                                     <td style="padding: 0 40px 20px 40px;">
-                                        <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">이메일 인증을 완료해주세요</h2>
+                                        <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px; font-weight: 600;">${content.heading}</h2>
                                         <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                                            Upvy에 가입해주셔서 감사합니다!<br>
-                                            아래 버튼을 클릭하여 이메일 인증을 완료해주세요.
+                                            ${content.greeting}<br>
+                                            ${content.instruction}
                                         </p>
                                     </td>
                                 </tr>
 
-                                <!-- Button -->
+                                <!-- Verification Code -->
                                 <tr>
                                     <td style="padding: 0 40px 40px 40px; text-align: center;">
-                                        <a href="$verificationLink"
-                                           style="display: inline-block; padding: 16px 32px; background-color: #007AFF; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                                            이메일 인증하기
-                                        </a>
+                                        <div style="display: inline-block; padding: 24px 48px; background-color: #f9f9f9; border-radius: 8px; border: 2px solid #e0e0e0;">
+                                            <p style="margin: 0 0 8px 0; color: #999999; font-size: 14px; font-weight: 500;">${content.codeLabel}</p>
+                                            <p style="margin: 0; color: #333333; font-size: 48px; font-weight: 700; letter-spacing: 8px; font-family: 'Courier New', monospace;">$verificationCode</p>
+                                        </div>
                                     </td>
                                 </tr>
 
-                                <!-- Alternative Link -->
+                                <!-- Notice -->
                                 <tr>
                                     <td style="padding: 0 40px 40px 40px;">
-                                        <p style="margin: 0 0 10px 0; color: #999999; font-size: 14px; line-height: 1.6;">
-                                            버튼이 작동하지 않으면 아래 링크를 복사하여 브라우저에 붙여넣으세요:
-                                        </p>
-                                        <p style="margin: 0; color: #007AFF; font-size: 14px; word-break: break-all;">
-                                            <a href="$verificationLink" style="color: #007AFF; text-decoration: none;">$verificationLink</a>
-                                        </p>
+                                        <div style="padding: 16px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                            <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
+                                                <strong>${content.securityTitle}</strong><br>
+                                                ${content.securityNotice1}<br>
+                                                ${content.securityNotice2}<br>
+                                                ${content.securityNotice3}
+                                            </p>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -103,8 +122,8 @@ class EmailVerificationServiceImpl(
                                 <tr>
                                     <td style="padding: 20px 40px; background-color: #f9f9f9; border-top: 1px solid #eeeeee; border-radius: 0 0 8px 8px;">
                                         <p style="margin: 0; color: #999999; font-size: 12px; line-height: 1.6; text-align: center;">
-                                            이 이메일은 발신 전용입니다. 문의사항이 있으시면 앱 내 고객지원을 이용해주세요.<br>
-                                            인증 링크는 24시간 동안 유효합니다.
+                                            ${content.footer1}<br>
+                                            ${content.footer2}
                                         </p>
                                     </td>
                                 </tr>
@@ -116,4 +135,75 @@ class EmailVerificationServiceImpl(
             </html>
         """.trimIndent()
     }
+
+    /**
+     * 언어별 이메일 내용 반환
+     *
+     * @param language 이메일 언어
+     * @return 이메일 내용
+     */
+    private fun getEmailContent(language: String): EmailContent {
+        return when (language.lowercase()) {
+            "ko" -> EmailContent(
+                langCode = "ko",
+                title = "Upvy 이메일 인증 코드",
+                heading = "이메일 인증 코드",
+                greeting = "Upvy에 가입해주셔서 감사합니다!",
+                instruction = "아래 인증 코드를 앱에 입력하여 이메일 인증을 완료해주세요.",
+                codeLabel = "인증 코드",
+                securityTitle = "보안 안내",
+                securityNotice1 = "• 이 코드는 <strong>5분간 유효</strong>합니다.",
+                securityNotice2 = "• 본인이 요청하지 않았다면 이 이메일을 무시하세요.",
+                securityNotice3 = "• 코드를 타인과 공유하지 마세요.",
+                footer1 = "이 이메일은 발신 전용입니다. 문의사항이 있으시면 앱 내 고객지원을 이용해주세요.",
+                footer2 = "인증 코드가 만료되었다면 앱에서 \"코드 재전송\"을 눌러주세요."
+            )
+            "ja" -> EmailContent(
+                langCode = "ja",
+                title = "Upvy メール認証コード",
+                heading = "メール認証コード",
+                greeting = "Upvyにご登録いただきありがとうございます！",
+                instruction = "以下の認証コードをアプリに入力して、メール認証を完了してください。",
+                codeLabel = "認証コード",
+                securityTitle = "セキュリティに関するご案内",
+                securityNotice1 = "• このコードは<strong>5分間有効</strong>です。",
+                securityNotice2 = "• ご本人が要求されていない場合は、このメールを無視してください。",
+                securityNotice3 = "• コードを他人と共有しないでください。",
+                footer1 = "このメールは送信専用です。お問い合わせはアプリ内のカスタマーサポートをご利用ください。",
+                footer2 = "認証コードが期限切れの場合は、アプリで「コード再送信」をタップしてください。"
+            )
+            else -> EmailContent(
+                langCode = "en",
+                title = "Upvy Email Verification Code",
+                heading = "Email Verification Code",
+                greeting = "Thank you for signing up for Upvy!",
+                instruction = "Please enter the verification code below in the app to complete email verification.",
+                codeLabel = "Verification Code",
+                securityTitle = "Security Notice",
+                securityNotice1 = "• This code is valid for <strong>5 minutes</strong>.",
+                securityNotice2 = "• If you didn't request this, please ignore this email.",
+                securityNotice3 = "• Do not share this code with others.",
+                footer1 = "This is an automated email. For inquiries, please use customer support in the app.",
+                footer2 = "If the verification code has expired, please tap \"Resend Code\" in the app."
+            )
+        }
+    }
+
+    /**
+     * 이메일 내용 데이터 클래스
+     */
+    private data class EmailContent(
+        val langCode: String,
+        val title: String,
+        val heading: String,
+        val greeting: String,
+        val instruction: String,
+        val codeLabel: String,
+        val securityTitle: String,
+        val securityNotice1: String,
+        val securityNotice2: String,
+        val securityNotice3: String,
+        val footer1: String,
+        val footer2: String
+    )
 }

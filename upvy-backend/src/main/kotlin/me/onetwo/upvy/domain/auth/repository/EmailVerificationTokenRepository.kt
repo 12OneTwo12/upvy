@@ -26,6 +26,17 @@ interface EmailVerificationTokenRepository {
     fun findByToken(token: String): Mono<EmailVerificationToken>
 
     /**
+     * 사용자 ID와 코드로 인증 토큰 조회
+     *
+     * 6자리 코드는 충돌 가능성이 있으므로 userId와 함께 검증합니다.
+     *
+     * @param userId 사용자 ID
+     * @param token 인증 코드
+     * @return 인증 토큰 (존재하지 않으면 empty)
+     */
+    fun findByUserIdAndToken(userId: UUID, token: String): Mono<EmailVerificationToken>
+
+    /**
      * 사용자 ID로 인증 토큰 조회 (가장 최근 토큰)
      *
      * @param userId 사용자 ID

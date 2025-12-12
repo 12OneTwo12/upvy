@@ -14,11 +14,18 @@ endif::[]
 [[auth-overview]]
 == 개요
 
-OAuth2 소셜 로그인 및 JWT 기반 인증 시스템을 제공합니다.
+이메일/비밀번호 인증 및 OAuth2 소셜 로그인을 지원하는 JWT 기반 인증 시스템을 제공합니다.
 
 === 인증 흐름
 
-1. **OAuth2 로그인**
+1. **이메일 인증 (Email)**
+   - 사용자가 이메일과 비밀번호로 회원가입
+   - 백엔드가 6자리 인증 코드를 이메일로 발송 (5분 유효)
+   - 사용자가 인증 코드 입력하여 이메일 인증 완료
+   - 인증 완료 후 자동 로그인되어 JWT Access Token + Refresh Token 발급
+   - 이후 이메일과 비밀번호로 로그인 가능
+
+2. **OAuth2 로그인 (Google)**
    - 사용자가 프론트엔드에서 "Google 로그인" 버튼 클릭
    - 프론트엔드 → `/oauth2/authorization/google` 리다이렉트
    - Spring Security → Google OAuth2 인증 페이지로 리다이렉트
@@ -26,10 +33,10 @@ OAuth2 소셜 로그인 및 JWT 기반 인증 시스템을 제공합니다.
    - 백엔드가 JWT Access Token + Refresh Token 생성
    - 프론트엔드 `/auth/oauth2/redirect`로 리다이렉트 (쿼리 파라미터로 토큰 전달)
 
-2. **Access Token 갱신**
+3. **Access Token 갱신**
    - Access Token 만료 시 Refresh Token으로 새로운 Access Token 발급
 
-3. **로그아웃**
+4. **로그아웃**
    - Redis에 저장된 Refresh Token 삭제
 
 === JWT 토큰 정보
@@ -118,6 +125,57 @@ include::{snippets}/auth/logout/curl-request.adoc[]
 |500 Internal Server Error
 |Refresh Token이 유효하지 않음
 |===
+
+[[auth-email]]
+== 이메일 인증
+
+이메일 주소와 비밀번호를 사용한 회원가입 및 로그인 기능을 제공합니다.
+
+=== 이메일 인증 흐름
+
+1. **회원가입**
+   - 사용자가 이메일, 비밀번호, 이름(선택), 언어(선택)를 입력하여 회원가입
+   - 백엔드가 계정 생성 후 6자리 인증 코드를 이메일로 발송
+   - 인증 코드는 5분 동안 유효
+
+2. **이메일 인증**
+   - 사용자가 이메일로 받은 6자리 코드를 입력
+   - 인증 성공 시 자동으로 로그인 처리되어 JWT 토큰 반환
+   - 인증 코드는 일회용이며, 사용 후 즉시 무효화
+
+3. **인증 코드 재전송**
+   - 코드를 받지 못했거나 만료된 경우 재전송 요청
+   - 1분에 1회만 재전송 가능 (Rate Limiting)
+
+4. **로그인**
+   - 이메일 인증이 완료된 사용자는 이메일과 비밀번호로 로그인
+   - 로그인 성공 시 JWT Access Token과 Refresh Token 발급
+
+=== 다국어 지원
+
+이메일 인증 메일은 다음 언어를 지원합니다:
+
+[cols="1,2"]
+|===
+|언어 코드|설명
+
+|ko
+|한국어
+
+|en
+|영어 (기본값)
+
+|ja
+|일본어
+|===
+
+include::auth/email-signup.adoc[]
+
+include::auth/email-verify-code.adoc[]
+
+include::auth/email-resend-code.adoc[]
+
+include::auth/email-signin.adoc[]
 
 [[auth-oauth2-google]]
 == Google OAuth2 로그인

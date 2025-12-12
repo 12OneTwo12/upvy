@@ -51,3 +51,14 @@ class EmailNotVerifiedException : BusinessException(
     httpStatus = HttpStatus.FORBIDDEN,
     message = "이메일 인증이 완료되지 않았습니다. 인증 이메일을 확인해주세요."
 )
+
+/**
+ * 너무 많은 요청을 시도했을 때 발생하는 예외
+ *
+ * 인증 코드 재전송 시 1분 이내 재시도를 방지합니다.
+ */
+class TooManyRequestsException : BusinessException(
+    errorCode = "TOO_MANY_REQUESTS",
+    httpStatus = HttpStatus.TOO_MANY_REQUESTS,
+    message = "잠시 후 다시 시도해주세요. (1분 후 재전송 가능)"
+)

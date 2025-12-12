@@ -7,6 +7,7 @@ import me.onetwo.upvy.domain.auth.exception.EmailNotVerifiedException
 import me.onetwo.upvy.domain.auth.exception.InvalidCredentialsException
 import me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException
 import me.onetwo.upvy.domain.auth.exception.TokenExpiredException
+import me.onetwo.upvy.domain.auth.exception.TooManyRequestsException
 import me.onetwo.upvy.domain.auth.model.EmailVerificationToken
 import me.onetwo.upvy.domain.auth.repository.EmailVerificationTokenRepository
 import me.onetwo.upvy.domain.user.model.OAuthProvider
@@ -23,6 +24,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -144,11 +146,12 @@ class AuthServiceImpl(
      * @param email 이메일 주소
      * @param password 비밀번호 (평문)
      * @param name 사용자 이름 (선택, 프로필 생성 시 사용)
+     * @param language 사용자 언어 설정 (ko: 한국어, en: 영어, ja: 일본어)
      * @return Mono<Void>
      * @throws EmailAlreadyExistsException 이메일 인증 수단이 이미 존재하는 경우
      */
     @Transactional
-    override fun signup(email: String, password: String, name: String?): Mono<Void> {
+    override fun signup(email: String, password: String, name: String?, language: String): Mono<Void> {
         return userRepository.findByEmail(email)
             .hasElement()
             .flatMap { userExists ->
@@ -175,7 +178,7 @@ class AuthServiceImpl(
 
                                         authMethodRepository.save(authMethod)
                                             .flatMap { savedAuthMethod ->
-                                                sendVerificationEmail(existingUser, savedAuthMethod)
+                                                sendVerificationEmail(existingUser, savedAuthMethod, language)
                                                     .doOnSuccess {
                                                         logger.info(
                                                             "Email auth method added to existing user: ${existingUser.id}, email: $email"
@@ -187,7 +190,7 @@ class AuthServiceImpl(
                         }
                 } else {
                     // 완전히 새로운 사용자 - User + EMAIL 인증 수단 생성
-                    createNewUserWithEmailAuth(email, password)
+                    createNewUserWithEmailAuth(email, password, language)
                         .doOnSuccess {
                             logger.info("New user created with email auth: $email")
                         }
@@ -197,8 +200,12 @@ class AuthServiceImpl(
 
     /**
      * 새로운 사용자 생성 (EMAIL 인증 수단 포함)
+     *
+     * @param email 이메일 주소
+     * @param password 비밀번호 (평문)
+     * @param language 이메일 언어
      */
-    private fun createNewUserWithEmailAuth(email: String, password: String): Mono<Void> {
+    private fun createNewUserWithEmailAuth(email: String, password: String, language: String): Mono<Void> {
         val encodedPassword = passwordEncoder.encode(password)
 
         // 1. User 생성
@@ -218,84 +225,158 @@ class AuthServiceImpl(
                 authMethodRepository.save(authMethod)
                     .flatMap { savedAuthMethod ->
                         // 3. 이메일 인증 메일 발송
-                        sendVerificationEmail(savedUser, savedAuthMethod)
+                        sendVerificationEmail(savedUser, savedAuthMethod, language)
                     }
             }
     }
 
     /**
      * 이메일 인증 메일 발송
+     *
+     * @param user 사용자
+     * @param authMethod 인증 수단
+     * @param language 이메일 언어 (ko: 한국어, en: 영어, ja: 일본어)
      */
-    private fun sendVerificationEmail(user: User, authMethod: UserAuthenticationMethod): Mono<Void> {
+    private fun sendVerificationEmail(user: User, authMethod: UserAuthenticationMethod, language: String): Mono<Void> {
         // 이메일 인증 토큰 생성
         val verificationToken = EmailVerificationToken.create(user.id!!)
 
         return emailVerificationTokenRepository.save(verificationToken)
             .flatMap { savedToken ->
                 // 인증 이메일 발송
-                emailVerificationService.sendVerificationEmail(user.email, savedToken.token)
+                emailVerificationService.sendVerificationEmail(user.email, savedToken.token, language)
                     .doOnSuccess {
-                        logger.info("Verification email sent to: ${user.email}")
+                        logger.info("Verification email sent to: ${user.email}, language: $language")
                     }
             }
     }
 
     /**
-     * 이메일 인증 완료
+     * 이메일 인증 코드 검증
      *
-     * 이메일로 전송된 인증 토큰을 검증하고 사용자의 이메일 인증 수단을 인증 완료 처리합니다.
+     * 이메일로 발송된 6자리 인증 코드를 검증하고 사용자의 이메일 인증 수단을 인증 완료 처리합니다.
      * 인증 완료 후 자동으로 로그인 처리되어 JWT 토큰과 사용자 정보를 반환합니다.
      *
      * ### 비즈니스 로직
-     * 1. 토큰으로 인증 정보 조회
-     * 2. 토큰 유효성 검증 (만료 여부, Soft Delete 여부)
-     * 3. 사용자의 EMAIL 인증 수단 업데이트 (emailVerified = true)
-     * 4. 사용된 토큰 무효화 (Soft Delete)
-     * 5. JWT 토큰 발급 및 Redis에 Refresh Token 저장
-     * 6. EmailVerifyResponse 생성 (JWT 토큰에서 userId, email 추출)
+     * 1. 이메일로 사용자 조회
+     * 2. 사용자 ID + 코드로 인증 정보 조회
+     * 3. 코드 유효성 검증 (만료 여부, Soft Delete 여부)
+     * 4. 사용자의 EMAIL 인증 수단 업데이트 (emailVerified = true)
+     * 5. 사용된 코드 무효화 (Soft Delete)
+     * 6. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 7. EmailVerifyResponse 생성
      *
-     * @param token 인증 토큰
+     * @param email 이메일 주소
+     * @param code 6자리 인증 코드
      * @return EmailVerifyResponse JWT 토큰과 사용자 정보
-     * @throws InvalidVerificationTokenException 토큰이 유효하지 않은 경우
-     * @throws TokenExpiredException 토큰이 만료된 경우
+     * @throws InvalidVerificationTokenException 코드가 유효하지 않은 경우
+     * @throws TokenExpiredException 코드가 만료된 경우
      */
     @Transactional
-    override fun verifyEmail(token: String): Mono<EmailVerifyResponse> {
-        return emailVerificationTokenRepository.findByToken(token)
+    override fun verifyEmailCode(email: String, code: String): Mono<EmailVerifyResponse> {
+        return userRepository.findByEmail(email)
             .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
-            .flatMap { verificationToken ->
-                // 토큰 만료 여부 확인
-                if (verificationToken.isExpired()) {
-                    return@flatMap Mono.error<EmailVerifyResponse>(TokenExpiredException())
-                }
+            .flatMap { user ->
+                // 사용자 ID + 코드로 인증 토큰 조회
+                emailVerificationTokenRepository.findByUserIdAndToken(user.id!!, code)
+                    .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
+                    .flatMap { verificationToken ->
+                        // 코드 만료 여부 확인
+                        if (verificationToken.isExpired()) {
+                            return@flatMap Mono.error<EmailVerifyResponse>(TokenExpiredException())
+                        }
 
-                // 토큰 유효성 확인
-                if (!verificationToken.isValid()) {
-                    return@flatMap Mono.error<EmailVerifyResponse>(InvalidVerificationTokenException())
-                }
+                        // 코드 유효성 확인
+                        if (!verificationToken.isValid()) {
+                            return@flatMap Mono.error<EmailVerifyResponse>(InvalidVerificationTokenException())
+                        }
 
-                // 사용자 조회
-                userRepository.findById(verificationToken.userId)
-                    .flatMap { user ->
                         // EMAIL 인증 수단 조회 및 업데이트
                         authMethodRepository.findByUserIdAndProvider(user.id!!, OAuthProvider.EMAIL)
                             .flatMap { authMethod ->
                                 authMethodRepository.updateEmailVerified(authMethod.id!!, verified = true)
                                     .then(Mono.defer {
-                                        // 사용된 토큰 무효화
+                                        // 사용된 코드 무효화
                                         emailVerificationTokenRepository.softDeleteAllByUserId(user.id)
                                             .then(Mono.defer {
                                                 // JWT 토큰 발급 및 EmailVerifyResponse 생성
                                                 generateTokensAndResponse(user)
                                                     .doOnSuccess {
                                                         logger.info(
-                                                            "Email verification completed for user: ${user.id}, email: ${user.email}"
+                                                            "Email verification completed via code for user: ${user.id}, email: ${user.email}"
                                                         )
                                                     }
                                             })
                                     })
                             }
                     }
+            }
+    }
+
+    /**
+     * 인증 코드 재전송
+     *
+     * 만료되었거나 받지 못한 인증 코드를 재전송합니다.
+     *
+     * ### 비즈니스 로직
+     * 1. 이메일로 사용자 조회
+     * 2. 마지막 코드 발송 시간 확인 (1분 이내 재전송 방지)
+     * 3. 기존 코드 모두 무효화 (Soft Delete)
+     * 4. 새로운 코드 생성 및 이메일 발송
+     *
+     * @param email 이메일 주소
+     * @param language 이메일 언어 (ko: 한국어, en: 영어, ja: 일본어)
+     * @return Mono<Void>
+     * @throws TooManyRequestsException 1분 이내 재전송 시도 시
+     */
+    @Transactional
+    override fun resendVerificationCode(email: String, language: String): Mono<Void> {
+        return userRepository.findByEmail(email)
+            .switchIfEmpty(Mono.error(InvalidCredentialsException()))
+            .flatMap { user ->
+                // 마지막 코드 발송 시간 확인
+                emailVerificationTokenRepository.findLatestByUserId(user.id!!)
+                    .map { java.util.Optional.of(it) }
+                    .defaultIfEmpty(java.util.Optional.empty())
+                    .flatMap { optionalToken ->
+                        if (optionalToken.isEmpty) {
+                            // 토큰이 없으면 바로 재전송
+                            resendCodeInternal(user, language)
+                        } else {
+                            // 토큰이 있으면 1분 이내 재전송 방지 확인
+                            val latestToken = optionalToken.get()
+                            val now = Instant.now()
+                            val oneMinuteAgo = now.minusSeconds(60)
+
+                            if (latestToken.createdAt.isAfter(oneMinuteAgo)) {
+                                Mono.error<Void>(TooManyRequestsException())
+                            } else {
+                                resendCodeInternal(user, language)
+                            }
+                        }
+                    }
+            }
+    }
+
+    /**
+     * 코드 재전송 내부 로직
+     *
+     * @param user 사용자
+     * @param language 이메일 언어
+     */
+    private fun resendCodeInternal(user: User, language: String): Mono<Void> {
+        // EMAIL 인증 수단 조회
+        return authMethodRepository.findByUserIdAndProvider(user.id!!, OAuthProvider.EMAIL)
+            .flatMap { authMethod ->
+                // 기존 코드 모두 무효화
+                emailVerificationTokenRepository.softDeleteAllByUserId(user.id)
+                    .then(Mono.defer {
+                        // 새로운 코드 생성 및 이메일 발송
+                        sendVerificationEmail(user, authMethod, language)
+                            .doOnSuccess {
+                                logger.info("Verification code resent to: ${user.email}, language: $language")
+                            }
+                    })
             }
     }
 
