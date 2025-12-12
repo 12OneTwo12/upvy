@@ -862,8 +862,8 @@ class AuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("OAuth 전용 사용자가 재설정 요청 시, OAuthOnlyUserException을 발생시킨다")
-        fun resetPasswordRequest_WithOAuthOnlyUser_ThrowsException() {
+        @DisplayName("OAuth 전용 사용자가 재설정 요청 시, User Enumeration 방지를 위해 조용히 성공한다")
+        fun resetPasswordRequest_WithOAuthOnlyUser_SucceedsSilently() {
             // Given: OAuth로만 가입한 사용자
             val userId = UUID.randomUUID()
             val email = "oauth@example.com"
@@ -880,9 +880,9 @@ class AuthServiceImplTest {
             // When: 비밀번호 재설정 요청
             val result = authService.resetPasswordRequest(email, "en")
 
-            // Then: OAuthOnlyUserException 발생
+            // Then: User Enumeration 방지를 위해 성공적으로 완료 (에러 없음)
             StepVerifier.create(result)
-                .expectError(OAuthOnlyUserException::class.java)
+                .expectComplete()
                 .verify()
 
             verify(exactly = 1) { authMethodRepository.findByUserIdAndProvider(userId, OAuthProvider.EMAIL) }
@@ -890,8 +890,8 @@ class AuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("1분 이내 재전송 시, TooManyRequestsException을 발생시킨다")
-        fun resetPasswordRequest_WithinOneMinute_ThrowsException() {
+        @DisplayName("1분 이내 재전송 시, User Enumeration 방지를 위해 조용히 성공한다")
+        fun resetPasswordRequest_WithinOneMinute_SucceedsSilently() {
             // Given: 30초 전에 코드를 보낸 사용자
             val userId = UUID.randomUUID()
             val email = "user@example.com"
@@ -927,17 +927,17 @@ class AuthServiceImplTest {
             // When: 재전송 시도
             val result = authService.resetPasswordRequest(email, "en")
 
-            // Then: TooManyRequestsException 발생
+            // Then: User Enumeration 방지를 위해 성공적으로 완료 (에러 없음)
             StepVerifier.create(result)
-                .expectError(TooManyRequestsException::class.java)
+                .expectComplete()
                 .verify()
 
             verify(exactly = 0) { emailVerificationService.sendVerificationEmail(any(), any(), any()) }
         }
 
         @Test
-        @DisplayName("존재하지 않는 이메일로 재설정 요청 시, InvalidCredentialsException을 발생시킨다")
-        fun resetPasswordRequest_WithNonExistentEmail_ThrowsException() {
+        @DisplayName("존재하지 않는 이메일로 재설정 요청 시, User Enumeration 방지를 위해 조용히 성공한다")
+        fun resetPasswordRequest_WithNonExistentEmail_SucceedsSilently() {
             // Given: 존재하지 않는 이메일
             val email = "nonexistent@example.com"
 
@@ -946,9 +946,9 @@ class AuthServiceImplTest {
             // When: 재설정 요청
             val result = authService.resetPasswordRequest(email, "en")
 
-            // Then: InvalidCredentialsException 발생
+            // Then: User Enumeration 방지를 위해 성공적으로 완료 (에러 없음)
             StepVerifier.create(result)
-                .expectError(InvalidCredentialsException::class.java)
+                .expectComplete()
                 .verify()
 
             verify(exactly = 1) { userRepository.findByEmail(email) }
