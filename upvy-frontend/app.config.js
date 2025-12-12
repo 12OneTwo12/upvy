@@ -4,6 +4,15 @@
  * app.json을 app.config.js로 변환하여 동적 환경 변수 지원
  */
 
+// 권한 설명 문자열 상수
+const PERMISSION_STRINGS = {
+  NSPhotoLibraryUsageDescription: {
+    ko: 'Upvy는 사진 및 동영상 업로드를 위해 사진 라이브러리 접근 권한이 필요합니다.',
+    en: 'Upvy needs access to your photo library to select photos and videos for uploading and sharing.',
+    ja: 'Upvyは写真と動画のアップロードのため、フォトライブラリへのアクセス権限が必要です。',
+  },
+};
+
 module.exports = {
   expo: {
     name: 'Upvy',
@@ -24,8 +33,7 @@ module.exports = {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         UIViewControllerBasedStatusBarAppearance: true,
-        NSPhotoLibraryUsageDescription:
-          'Upvy needs access to your photo library to select photos and videos for uploading and sharing.',
+        NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.en,
       },
     },
     android: {
@@ -57,16 +65,13 @@ module.exports = {
         './plugins/withInfoPlistStrings',
         {
           ko: {
-            NSPhotoLibraryUsageDescription:
-              'Upvy는 사진 및 동영상 업로드를 위해 사진 라이브러리 접근 권한이 필요합니다.',
+            NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.ko,
           },
           en: {
-            NSPhotoLibraryUsageDescription:
-              'Upvy needs access to your photo library to select photos and videos for uploading and sharing.',
+            NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.en,
           },
           ja: {
-            NSPhotoLibraryUsageDescription:
-              'Upvyは写真と動画のアップロードのため、フォトライブラリへのアクセス権限が必要です。',
+            NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.ja,
           },
         },
       ],

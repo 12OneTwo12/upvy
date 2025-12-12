@@ -5,10 +5,7 @@
  * 한국어, 영어, 일본어 지원
  */
 
-const {
-  withDangerousMod,
-  IOSConfig,
-} = require('@expo/config-plugins');
+const { withDangerousMod } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -18,14 +15,11 @@ const path = require('path');
  * @returns {string} InfoPlist.strings 파일 내용
  */
 function generateInfoPlistStrings(translations) {
-  const lines = [];
-
-  // NSPhotoLibraryUsageDescription
-  if (translations.NSPhotoLibraryUsageDescription) {
-    lines.push(`"NSPhotoLibraryUsageDescription" = "${translations.NSPhotoLibraryUsageDescription}";`);
-  }
-
-  return lines.join('\n') + '\n';
+  return (
+    Object.entries(translations)
+      .map(([key, value]) => `"${key}" = "${value}";`)
+      .join('\n') + '\n'
+  );
 }
 
 /**
@@ -35,25 +29,38 @@ function generateInfoPlistStrings(translations) {
  * @param {Object} localizations - 언어별 번역 객체
  */
 function createInfoPlistStrings(config, projectRoot, localizations) {
+  // Input validation
+  if (!localizations || typeof localizations !== 'object') {
+    console.warn('⚠️  Invalid localizations provided to withInfoPlistStrings');
+    return;
+  }
+
   const iosPath = path.join(projectRoot, 'ios');
-  const projectName = config.name || 'Upvy';
+
+  // Path injection 방지: path.basename으로 sanitize
+  const projectName = path.basename(config.name || 'Upvy');
   const projectPath = path.join(iosPath, projectName);
 
   // 각 언어별로 .lproj 폴더 생성 및 InfoPlist.strings 작성
   Object.keys(localizations).forEach((languageCode) => {
-    const lprojPath = path.join(projectPath, `${languageCode}.lproj`);
-    const infoPlistStringsPath = path.join(lprojPath, 'InfoPlist.strings');
+    try {
+      const lprojPath = path.join(projectPath, `${languageCode}.lproj`);
+      const infoPlistStringsPath = path.join(lprojPath, 'InfoPlist.strings');
 
-    // .lproj 폴더 생성
-    if (!fs.existsSync(lprojPath)) {
-      fs.mkdirSync(lprojPath, { recursive: true });
+      // .lproj 폴더 생성
+      if (!fs.existsSync(lprojPath)) {
+        fs.mkdirSync(lprojPath, { recursive: true });
+      }
+
+      // InfoPlist.strings 파일 작성
+      const content = generateInfoPlistStrings(localizations[languageCode]);
+      fs.writeFileSync(infoPlistStringsPath, content, 'utf8');
+
+      console.log(`✓ Created ${languageCode}.lproj/InfoPlist.strings`);
+    } catch (error) {
+      console.error(`❌ Failed to create InfoPlist.strings for ${languageCode}:`, error.message);
+      throw new Error(`Plugin withInfoPlistStrings failed: ${error.message}`);
     }
-
-    // InfoPlist.strings 파일 작성
-    const content = generateInfoPlistStrings(localizations[languageCode]);
-    fs.writeFileSync(infoPlistStringsPath, content, 'utf8');
-
-    console.log(`✓ Created ${languageCode}.lproj/InfoPlist.strings`);
   });
 }
 
@@ -63,7 +70,7 @@ function createInfoPlistStrings(config, projectRoot, localizations) {
 const withInfoPlistStrings = (config, localizations = {}) => {
   return withDangerousMod(config, [
     'ios',
-    async (config) => {
+    (config) => {
       const projectRoot = config.modRequest.projectRoot;
 
       // InfoPlist.strings 파일 생성
