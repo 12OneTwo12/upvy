@@ -6,7 +6,6 @@ import me.onetwo.upvy.domain.content.model.Content
 import me.onetwo.upvy.domain.content.model.ContentMetadata
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.repository.UserRepository
@@ -52,8 +51,6 @@ class ContentRepositoryTest : AbstractIntegrationTest() {
         testUser = userRepository.save(
             User(
                 email = "creator@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "creator-123",
                 role = UserRole.USER
             )
         ).block()!!
@@ -291,8 +288,6 @@ class ContentRepositoryTest : AbstractIntegrationTest() {
             val otherUser = userRepository.save(
                 User(
                     email = "other@test.com",
-                    provider = OAuthProvider.GOOGLE,
-                    providerId = "other-123",
                     role = UserRole.USER
                 )
             ).block()!!
@@ -364,8 +359,6 @@ class ContentRepositoryTest : AbstractIntegrationTest() {
             val otherUser = userRepository.save(
                 User(
                     email = "other2@test.com",
-                    provider = OAuthProvider.GOOGLE,
-                    providerId = "other2-123",
                     role = UserRole.USER
                 )
             ).block()!!

@@ -50,7 +50,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "follower@example.com",
-            providerId = "google-123",
             nickname = "follower${System.currentTimeMillis() % 100000}"
         )
 
@@ -58,7 +57,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "following@example.com",
-            providerId = "google-456",
             nickname = "following${System.currentTimeMillis() % 100000}"
         )
 
@@ -87,8 +85,7 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: 자기 자신 팔로우 시도
@@ -108,7 +105,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "follower@example.com",
-            providerId = "google-follower",
             nickname = "follower${System.currentTimeMillis() % 100000}"
         )
 
@@ -116,7 +112,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "following@example.com",
-            providerId = "google-following",
             nickname = "following${System.currentTimeMillis() % 100000}"
         )
 
@@ -145,7 +140,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "follower@example.com",
-            providerId = "google-123",
             nickname = "follower${System.currentTimeMillis() % 100000}"
         )
 
@@ -153,7 +147,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "following@example.com",
-            providerId = "google-456",
             nickname = "following${System.currentTimeMillis() % 100000}"
         )
 
@@ -188,7 +181,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "follower@example.com",
-            providerId = "google-follower",
             nickname = "follower${System.currentTimeMillis() % 100000}"
         )
 
@@ -196,7 +188,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "notfollowing@example.com",
-            providerId = "google-notfollowing",
             nickname = "notfollowing${System.currentTimeMillis() % 100000}"
         )
 
@@ -217,7 +208,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "follower@example.com",
-            providerId = "google-123",
             nickname = "follower${System.currentTimeMillis() % 100000}"
         )
 
@@ -225,7 +215,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "following@example.com",
-            providerId = "google-456",
             nickname = "following${System.currentTimeMillis() % 100000}"
         )
 
@@ -258,7 +247,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "follower@example.com",
-            providerId = "google-123",
             nickname = "follower${System.currentTimeMillis() % 100000}"
         )
 
@@ -266,7 +254,6 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
             userRepository,
             userProfileRepository,
             email = "following@example.com",
-            providerId = "google-456",
             nickname = "following${System.currentTimeMillis() % 100000}"
         )
 
@@ -288,8 +275,7 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: 팔로우 통계 조회
@@ -311,8 +297,7 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: 내 팔로우 통계 조회
@@ -335,8 +320,7 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: 팔로워 목록 조회
@@ -357,8 +341,7 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: 팔로워 목록 조회 - 빈 배열 반환
@@ -379,8 +362,7 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: 팔로잉 목록 조회
@@ -401,8 +383,7 @@ class FollowControllerIntegrationTest : AbstractIntegrationTest() {
         val (user, _) = createUserWithProfile(
             userRepository,
             userProfileRepository,
-            email = "test@example.com",
-            providerId = "google-123"
+            email = "test@example.com"
         )
 
         // When & Then: 팔로잉 목록 조회 - 빈 배열 반환

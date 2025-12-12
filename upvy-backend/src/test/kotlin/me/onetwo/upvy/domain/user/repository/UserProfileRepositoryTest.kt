@@ -3,7 +3,6 @@ import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 
 import java.util.UUID
 
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -45,8 +44,6 @@ class UserProfileRepositoryTest : AbstractIntegrationTest() {
         // 테스트 사용자 생성
         testUser = userRepository.save(User(
                 email = "profile-test@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "profile-google-12345",
                 role = UserRole.USER
             )).block()!!
 
@@ -206,8 +203,6 @@ class UserProfileRepositoryTest : AbstractIntegrationTest() {
         // When & Then
         val anotherUser = userRepository.save(User(
                 email = "another@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "another-google-12345",
                 role = UserRole.USER
             )).block()!!
         val duplicateProfile = UserProfile(
@@ -246,22 +241,16 @@ class UserProfileRepositoryTest : AbstractIntegrationTest() {
         // Given: 여러 사용자 프로필 생성
         val user1 = userRepository.save(User(
             email = "john1@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "john1-google-123",
             role = UserRole.USER
         )).block()!!
 
         val user2 = userRepository.save(User(
             email = "john2@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "john2-google-123",
             role = UserRole.USER
         )).block()!!
 
         val user3 = userRepository.save(User(
             email = "alice@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "alice-google-123",
             role = UserRole.USER
         )).block()!!
 
@@ -311,22 +300,16 @@ class UserProfileRepositoryTest : AbstractIntegrationTest() {
         // Given: 팔로워 수가 다른 사용자들
         val user1 = userRepository.save(User(
             email = "test1@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "test1-google-123",
             role = UserRole.USER
         )).block()!!
 
         val user2 = userRepository.save(User(
             email = "test2@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "test2-google-123",
             role = UserRole.USER
         )).block()!!
 
         val user3 = userRepository.save(User(
             email = "test3@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "test3-google-123",
             role = UserRole.USER
         )).block()!!
 
@@ -367,15 +350,11 @@ class UserProfileRepositoryTest : AbstractIntegrationTest() {
         // Given: 2개 프로필 생성, 1개 삭제
         val user1 = userRepository.save(User(
             email = "active@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "active-google-123",
             role = UserRole.USER
         )).block()!!
 
         val user2 = userRepository.save(User(
             email = "deleted@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "deleted-google-123",
             role = UserRole.USER
         )).block()!!
 
@@ -409,8 +388,6 @@ class UserProfileRepositoryTest : AbstractIntegrationTest() {
         repeat(5) { index ->
             val user = userRepository.save(User(
                 email = "search$index@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "search$index-google-123",
                 role = UserRole.USER
             )).block()!!
 

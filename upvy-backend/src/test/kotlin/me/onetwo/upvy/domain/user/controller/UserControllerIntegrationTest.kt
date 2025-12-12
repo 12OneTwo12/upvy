@@ -55,7 +55,7 @@ class UserControllerIntegrationTest : AbstractIntegrationTest() {
             .expectBody()
             .jsonPath("$.id").isEqualTo(user.id!!.toString())
             .jsonPath("$.email").isEqualTo("test@example.com")
-            .jsonPath("$.provider").isEqualTo("GOOGLE")
+            .jsonPath("$.status").isEqualTo("ACTIVE")
             .jsonPath("$.role").isEqualTo("USER")
     }
 

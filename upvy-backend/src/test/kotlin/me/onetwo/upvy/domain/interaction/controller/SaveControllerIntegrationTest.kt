@@ -63,8 +63,7 @@ class SaveControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -106,8 +105,7 @@ class SaveControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -157,8 +155,7 @@ class SaveControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content1 = createContent(
@@ -214,8 +211,7 @@ class SaveControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             // When & Then: 빈 배열 반환 검증
@@ -244,8 +240,7 @@ class SaveControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -281,8 +276,7 @@ class SaveControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(

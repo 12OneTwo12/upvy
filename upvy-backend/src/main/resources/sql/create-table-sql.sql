@@ -1,23 +1,49 @@
--- Users Table
+-- Users Table (Account Linking Architecture)
+-- 하나의 사용자 계정은 여러 인증 수단을 가질 수 있음 (Google, Naver, Kakao, Email 등)
 CREATE TABLE IF NOT EXISTS users (
     id CHAR(36) PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    provider VARCHAR(50) NOT NULL DEFAULT 'GOOGLE',
-    provider_id VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE COMMENT '사용자의 고유 이메일 (계정 식별자)',
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
     created_by VARCHAR(36) NULL,
     updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
-    deleted_at DATETIME(6) NULL,
-    CONSTRAINT unique_provider_user UNIQUE (provider, provider_id)
+    deleted_at DATETIME(6) NULL
 );
 
 CREATE INDEX idx_email ON users(email);
-CREATE INDEX idx_provider_id ON users(provider_id);
 CREATE INDEX idx_users_status ON users(status);
 CREATE INDEX idx_deleted_at ON users(deleted_at);
+
+-- User Authentication Methods Table (인증 수단 관리)
+-- 하나의 사용자가 여러 인증 방법을 사용할 수 있음
+CREATE TABLE IF NOT EXISTS user_authentication_methods (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL COMMENT '사용자 ID',
+    provider VARCHAR(50) NOT NULL COMMENT '인증 제공자 (GOOGLE, NAVER, KAKAO, EMAIL, SYSTEM)',
+    provider_id VARCHAR(255) NULL COMMENT 'OAuth provider ID (EMAIL인 경우 NULL)',
+    password VARCHAR(255) NULL COMMENT 'BCrypt 암호화된 비밀번호 (EMAIL인 경우만)',
+    email_verified BOOLEAN DEFAULT FALSE COMMENT '이메일 인증 여부 (OAuth는 자동 TRUE, EMAIL은 인증 필요)',
+    is_primary BOOLEAN DEFAULT FALSE COMMENT '주 인증 수단 여부',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_auth_method UNIQUE (provider, provider_id),
+    CONSTRAINT check_email_password CHECK (
+        (provider = 'EMAIL' AND provider_id IS NULL AND password IS NOT NULL) OR
+        (provider != 'EMAIL' AND provider_id IS NOT NULL AND password IS NULL)
+    )
+);
+
+CREATE INDEX idx_auth_user_id ON user_authentication_methods(user_id);
+CREATE INDEX idx_auth_provider ON user_authentication_methods(provider);
+CREATE INDEX idx_auth_provider_id ON user_authentication_methods(provider_id);
+CREATE INDEX idx_auth_email_verified ON user_authentication_methods(email_verified);
+CREATE INDEX idx_auth_deleted_at ON user_authentication_methods(deleted_at);
 
 -- User Status History Table (Audit Trail)
 CREATE TABLE IF NOT EXISTS user_status_history (
@@ -58,6 +84,25 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 CREATE INDEX idx_nickname ON user_profiles(nickname);
 CREATE INDEX idx_user_id ON user_profiles(user_id);
 CREATE INDEX idx_profile_deleted_at ON user_profiles(deleted_at);
+
+-- Email Verification Tokens Table (이메일 인증 토큰)
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    expires_at DATETIME(6) NOT NULL,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_token ON email_verification_tokens(token);
+CREATE INDEX idx_verification_user_id ON email_verification_tokens(user_id);
+CREATE INDEX idx_verification_expires_at ON email_verification_tokens(expires_at);
+CREATE INDEX idx_verification_deleted_at ON email_verification_tokens(deleted_at);
 
 -- Follows Table (팔로우 관계)
 CREATE TABLE IF NOT EXISTS follows (

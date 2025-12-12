@@ -99,3 +99,51 @@ data class LogoutRequest(
     @field:NotBlank(message = "Refresh Token은 필수입니다")
     val refreshToken: String
 )
+
+/**
+ * 이메일 회원가입 요청
+ *
+ * @property email 이메일 주소
+ * @property password 비밀번호
+ * @property name 사용자 이름 (선택)
+ */
+data class EmailSignupRequest(
+    @field:NotBlank(message = "이메일은 필수입니다")
+    val email: String,
+
+    @field:NotBlank(message = "비밀번호는 필수입니다")
+    val password: String,
+
+    val name: String? = null
+)
+
+/**
+ * 이메일 로그인 요청
+ *
+ * @property email 이메일 주소
+ * @property password 비밀번호
+ */
+data class EmailSigninRequest(
+    @field:NotBlank(message = "이메일은 필수입니다")
+    val email: String,
+
+    @field:NotBlank(message = "비밀번호는 필수입니다")
+    val password: String
+)
+
+/**
+ * 이메일 인증 응답
+ *
+ * 이메일 인증 완료 후 자동 로그인되어 JWT 토큰을 반환합니다.
+ *
+ * @property accessToken JWT Access Token
+ * @property refreshToken JWT Refresh Token
+ * @property userId 사용자 ID
+ * @property email 사용자 이메일
+ */
+data class EmailVerifyResponse(
+    val accessToken: String,
+    val refreshToken: String,
+    val userId: UUID,
+    val email: String
+)

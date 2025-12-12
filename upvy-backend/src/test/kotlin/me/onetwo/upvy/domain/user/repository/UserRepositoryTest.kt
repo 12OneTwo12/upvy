@@ -2,7 +2,6 @@ package me.onetwo.upvy.domain.user.repository
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 
 import java.util.UUID
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.jooq.generated.tables.references.FOLLOWS
@@ -41,8 +40,6 @@ class UserRepositoryTest : AbstractIntegrationTest() {
         // 테스트 데이터 초기화
         testUser = User(
             email = "test@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "google-12345",
             role = UserRole.USER
         )
     }
@@ -64,8 +61,6 @@ class UserRepositoryTest : AbstractIntegrationTest() {
         // Then
         assertNotNull(savedUser.id)
         assertEquals(testUser.email, savedUser.email)
-        assertEquals(testUser.provider, savedUser.provider)
-        assertEquals(testUser.providerId, savedUser.providerId)
         assertEquals(testUser.role, savedUser.role)
     }
 
@@ -89,37 +84,6 @@ class UserRepositoryTest : AbstractIntegrationTest() {
     fun findByEmail_NonExistingUser_ReturnsNull() {
         // When
         val foundUser = userRepository.findByEmail("nonexistent@example.com").block()
-
-        // Then
-        assertNull(foundUser)
-    }
-
-    @Test
-    @DisplayName("Provider와 Provider ID로 사용자 조회 성공")
-    fun findByProviderAndProviderId_ExistingUser_ReturnsUser() {
-        // Given
-        val savedUser = userRepository.save(testUser).block()!!
-
-        // When
-        val foundUser = userRepository.findByProviderAndProviderId(
-            OAuthProvider.GOOGLE,
-            testUser.providerId
-        ).block()
-
-        // Then
-        assertNotNull(foundUser)
-        assertEquals(savedUser.id, foundUser?.id)
-        assertEquals(savedUser.providerId, foundUser?.providerId)
-    }
-
-    @Test
-    @DisplayName("Provider와 Provider ID로 사용자 조회 - 존재하지 않는 경우")
-    fun findByProviderAndProviderId_NonExistingUser_ReturnsNull() {
-        // When
-        val foundUser = userRepository.findByProviderAndProviderId(
-            OAuthProvider.GOOGLE,
-            "nonexistent-id"
-        ).block()
 
         // Then
         assertNull(foundUser)
@@ -158,19 +122,6 @@ class UserRepositoryTest : AbstractIntegrationTest() {
 
         // When & Then
         val duplicateUser = testUser.copy()
-        assertThrows(Exception::class.java) {
-            userRepository.save(duplicateUser).block()!!
-        }
-    }
-
-    @Test
-    @DisplayName("중복 Provider와 Provider ID로 저장 시도 - 예외 발생")
-    fun save_DuplicateProviderAndProviderId_ThrowsException() {
-        // Given
-        userRepository.save(testUser).block()!!
-
-        // When & Then
-        val duplicateUser = testUser.copy(email = "different@example.com")
         assertThrows(Exception::class.java) {
             userRepository.save(duplicateUser).block()!!
         }

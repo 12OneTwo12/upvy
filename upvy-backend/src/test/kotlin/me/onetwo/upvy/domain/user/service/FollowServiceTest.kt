@@ -11,7 +11,6 @@ import me.onetwo.upvy.domain.user.exception.AlreadyFollowingException
 import me.onetwo.upvy.domain.user.exception.CannotFollowSelfException
 import me.onetwo.upvy.domain.user.exception.NotFollowingException
 import me.onetwo.upvy.domain.user.model.Follow
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -64,16 +63,12 @@ class FollowServiceTest {
         followerUser = User(
             id = UUID.randomUUID(),
             email = "follower@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "follower-123",
             role = UserRole.USER
         )
 
         followingUser = User(
             id = UUID.randomUUID(),
             email = "following@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "following-456",
             role = UserRole.USER
         )
 

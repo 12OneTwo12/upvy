@@ -118,8 +118,7 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test-presigned-${UUID.randomUUID()}@example.com",
-                providerId = "google-presigned-${UUID.randomUUID()}"
+                email = "test-presigned-${UUID.randomUUID()}@example.com"
             )
 
             val request = ContentUploadUrlRequest(
@@ -155,8 +154,7 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test-create-${UUID.randomUUID()}@example.com",
-                providerId = "google-create-${UUID.randomUUID()}"
+                email = "test-create-${UUID.randomUUID()}@example.com"
             )
 
             // Presigned URL 생성 (콘텐츠 ID 얻기)
@@ -223,8 +221,7 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -270,8 +267,7 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             // PHOTO 타입 콘텐츠 생성
@@ -364,8 +360,7 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -394,15 +389,13 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
             val (contentOwner, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "owner@example.com",
-                providerId = "google-owner"
+                email = "owner@example.com"
             )
 
             val (otherUser, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "other@example.com",
-                providerId = "google-other"
+                email = "other@example.com"
             )
 
             // 첫 번째 사용자가 콘텐츠 생성
@@ -428,8 +421,7 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val nonExistentContentId = UUID.randomUUID()

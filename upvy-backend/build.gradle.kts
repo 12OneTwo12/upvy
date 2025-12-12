@@ -81,6 +81,9 @@ dependencies {
     // BCrypt
     implementation("org.springframework.security:spring-security-crypto")
 
+    // Spring Mail for Email Verification
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
     // AWS S3 for image upload (Spring Cloud AWS)
     implementation(platform("io.awspring.cloud:spring-cloud-aws-dependencies:3.0.3"))
     implementation("io.awspring.cloud:spring-cloud-aws-starter-s3")

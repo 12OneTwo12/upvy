@@ -5,7 +5,6 @@ import me.onetwo.upvy.domain.analytics.dto.InteractionType
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.repository.UserRepository
@@ -65,8 +64,6 @@ class UserContentInteractionRepositoryTest : AbstractIntegrationTest() {
         testUser1 = userRepository.save(
             User(
                 email = "user1@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "user1-123",
                 role = UserRole.USER
             )
         ).block()!!
@@ -74,8 +71,6 @@ class UserContentInteractionRepositoryTest : AbstractIntegrationTest() {
         testUser2 = userRepository.save(
             User(
                 email = "user2@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "user2-123",
                 role = UserRole.USER
             )
         ).block()!!
@@ -83,8 +78,6 @@ class UserContentInteractionRepositoryTest : AbstractIntegrationTest() {
         testUser3 = userRepository.save(
             User(
                 email = "user3@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "user3-123",
                 role = UserRole.USER
             )
         ).block()!!

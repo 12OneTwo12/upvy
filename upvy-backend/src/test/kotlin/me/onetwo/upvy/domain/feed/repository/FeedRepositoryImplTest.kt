@@ -5,7 +5,6 @@ import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.user.model.Follow
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -75,8 +74,6 @@ class FeedRepositoryImplTest : AbstractIntegrationTest() {
         viewer = userRepository.save(
             User(
                 email = "viewer@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "viewer-123",
                 role = UserRole.USER
             )
         ).block()!!
@@ -84,8 +81,6 @@ class FeedRepositoryImplTest : AbstractIntegrationTest() {
         creator1 = userRepository.save(
             User(
                 email = "creator1@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "creator1-123",
                 role = UserRole.USER
             )
         ).block()!!
@@ -93,8 +88,6 @@ class FeedRepositoryImplTest : AbstractIntegrationTest() {
         creator2 = userRepository.save(
             User(
                 email = "creator2@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "creator2-123",
                 role = UserRole.USER
             )
         ).block()!!

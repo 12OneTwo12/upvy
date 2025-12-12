@@ -4,7 +4,6 @@ import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 import me.onetwo.upvy.domain.content.model.ContentPhoto
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.repository.UserRepository
@@ -49,8 +48,6 @@ class ContentPhotoRepositoryTest : AbstractIntegrationTest() {
         testUser = userRepository.save(
             User(
                 email = "creator@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "creator-123",
                 role = UserRole.USER
             )
         ).block()!!

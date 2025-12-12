@@ -4,10 +4,14 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.domain.auth.repository.EmailVerificationTokenRepository
 import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
+import me.onetwo.upvy.domain.user.repository.UserAuthenticationMethodRepository
+import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.domain.user.service.UserService
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import me.onetwo.upvy.infrastructure.redis.RefreshTokenRepository
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -40,14 +44,26 @@ class AuthServiceTest {
         jwtTokenProvider = mockk()
         refreshTokenRepository = mockk()
         userService = mockk()
-        authService = AuthServiceImpl(jwtTokenProvider, refreshTokenRepository, userService)
+        val userRepository = mockk<UserRepository>()
+        val authMethodRepository = mockk<UserAuthenticationMethodRepository>()
+        val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
+        val emailService = mockk<EmailService>()
+        val passwordEncoder = mockk<BCryptPasswordEncoder>()
+        authService = AuthServiceImpl(
+            jwtTokenProvider,
+            refreshTokenRepository,
+            userService,
+            userRepository,
+            authMethodRepository,
+            emailVerificationTokenRepository,
+            emailService,
+            passwordEncoder
+        )
 
         testUserId = UUID.randomUUID()
         testUser = User(
             id = testUserId,
             email = "test@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "google-123",
             role = UserRole.USER
         )
     }

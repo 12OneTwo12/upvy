@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.oauth2.client.authentication.OAuth2LoginReactiveAuthenticationManager
 import org.springframework.security.oauth2.client.endpoint.WebClientReactiveAuthorizationCodeTokenResponseClient
 import org.springframework.security.web.server.SecurityWebFilterChain
@@ -102,5 +103,15 @@ class SecurityConfig(
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/**", configuration)
         }
+    }
+
+    /**
+     * BCrypt 비밀번호 암호화
+     *
+     * 이메일 가입 사용자의 비밀번호를 안전하게 암호화합니다.
+     */
+    @Bean
+    fun passwordEncoder(): BCryptPasswordEncoder {
+        return BCryptPasswordEncoder()
     }
 }

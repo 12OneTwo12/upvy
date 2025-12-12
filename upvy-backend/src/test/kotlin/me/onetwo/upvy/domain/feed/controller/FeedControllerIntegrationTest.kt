@@ -79,8 +79,7 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -113,8 +112,7 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -156,8 +154,7 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             // PHOTO 타입 콘텐츠 생성
@@ -250,8 +247,7 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             // When & Then: API 호출 및 검증
@@ -290,15 +286,13 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             val (follower, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "follower@example.com",
-                providerId = "google-follower"
+                email = "follower@example.com"
             )
 
             val (following, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "following@example.com",
-                providerId = "google-following"
+                email = "following@example.com"
             )
 
             // 팔로우 관계 생성
@@ -400,8 +394,7 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             // When & Then: 피드 새로고침 API 호출
@@ -436,8 +429,7 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
             val category = Category.PROGRAMMING
             val cacheKey = "feed:category:${user.id!!}:${category.name}:lang:ko:batch:0"
@@ -474,8 +466,7 @@ class FeedControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test-$category@example.com",
-                providerId = "google-$category"
+                email = "test-$category@example.com"
             )
 
             // When & Then: 카테고리 피드 새로고침 API 호출

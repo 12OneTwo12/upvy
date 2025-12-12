@@ -3,10 +3,17 @@ package me.onetwo.upvy.domain.auth.controller
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import me.onetwo.upvy.config.TestSecurityConfig
+import me.onetwo.upvy.domain.auth.dto.EmailSigninRequest
+import me.onetwo.upvy.domain.auth.dto.EmailSignupRequest
+import me.onetwo.upvy.domain.auth.dto.EmailVerifyResponse
 import me.onetwo.upvy.domain.auth.dto.LogoutRequest
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenRequest
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.upvy.domain.auth.service.AuthService
+import me.onetwo.upvy.domain.user.service.UserService
+import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
+import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
+import java.util.UUID
 import me.onetwo.upvy.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -38,6 +45,12 @@ class AuthControllerTest {
 
     @MockkBean
     private lateinit var authService: AuthService
+
+    @MockkBean
+    private lateinit var userService: UserService
+
+    @MockkBean
+    private lateinit var jwtTokenProvider: JwtTokenProvider
 
     @Test
     @DisplayName("Access Token 갱신 API 문서화")
@@ -175,5 +188,135 @@ class AuthControllerTest {
             .bodyValue(invalidRequest)
             .exchange()
             .expectStatus().is4xxClientError
+    }
+
+    @Test
+    @DisplayName("이메일 회원가입 성공 시, 201 Created를 반환한다")
+    fun emailSignup_Success_Returns201Created() {
+        // Given
+        val request = EmailSignupRequest(
+            email = "newuser@example.com",
+            password = "SecurePassword123!",
+            name = "홍길동"
+        )
+
+        every { authService.signup(request.email, request.password, request.name) } returns Mono.empty()
+
+        // When & Then
+        webTestClient.post()
+            .uri("${ApiPaths.API_V1_AUTH}/email/signup")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody()
+            .consumeWith(
+                document(
+                    "auth/email-signup",
+                    requestFields(
+                        fieldWithPath("email")
+                            .description("이메일 주소 (고유, 인증 필요)"),
+                        fieldWithPath("password")
+                            .description("비밀번호 (평문, 서버에서 BCrypt 암호화)"),
+                        fieldWithPath("name")
+                            .description("사용자 이름 (선택, 프로필 생성 시 사용)").optional()
+                    )
+                )
+            )
+    }
+
+    @Test
+    @DisplayName("유효한 토큰으로 이메일 인증 시, JWT 토큰을 반환한다")
+    fun verifyEmail_WithValidToken_ReturnsJwtToken() {
+        // Given
+        val token = "valid-email-verification-token"
+        val userId = UUID.randomUUID()
+        val email = "user@example.com"
+        val accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.access..."
+        val refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh..."
+
+        val jwtTokenDto = JwtTokenDto(
+            accessToken = accessToken,
+            refreshToken = refreshToken
+        )
+
+        every { authService.verifyEmail(token) } returns Mono.just(jwtTokenDto)
+        every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns userId
+        every { jwtTokenProvider.getEmailFromToken(accessToken) } returns email
+
+        // When & Then
+        webTestClient.get()
+            .uri("${ApiPaths.API_V1_AUTH}/email/verify?token=$token")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .consumeWith(
+                document(
+                    "auth/email-verify",
+                    responseFields(
+                        fieldWithPath("accessToken")
+                            .description("JWT Access Token (1시간 만료)"),
+                        fieldWithPath("refreshToken")
+                            .description("JWT Refresh Token (14일 만료)"),
+                        fieldWithPath("userId")
+                            .description("사용자 UUID"),
+                        fieldWithPath("email")
+                            .description("인증된 이메일 주소")
+                    )
+                )
+            )
+    }
+
+    @Test
+    @DisplayName("이메일 로그인 성공 시, JWT 토큰을 반환한다")
+    fun emailSignin_Success_ReturnsJwtToken() {
+        // Given
+        val request = EmailSigninRequest(
+            email = "user@example.com",
+            password = "SecurePassword123!"
+        )
+
+        val userId = UUID.randomUUID()
+        val accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.access..."
+        val refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh..."
+
+        val jwtTokenDto = JwtTokenDto(
+            accessToken = accessToken,
+            refreshToken = refreshToken
+        )
+
+        every { authService.signIn(request.email, request.password) } returns Mono.just(jwtTokenDto)
+        every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns userId
+        every { jwtTokenProvider.getEmailFromToken(accessToken) } returns request.email
+
+        // When & Then
+        webTestClient.post()
+            .uri("${ApiPaths.API_V1_AUTH}/email/signin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .consumeWith(
+                document(
+                    "auth/email-signin",
+                    requestFields(
+                        fieldWithPath("email")
+                            .description("이메일 주소"),
+                        fieldWithPath("password")
+                            .description("비밀번호")
+                    ),
+                    responseFields(
+                        fieldWithPath("accessToken")
+                            .description("JWT Access Token (1시간 만료)"),
+                        fieldWithPath("refreshToken")
+                            .description("JWT Refresh Token (14일 만료)"),
+                        fieldWithPath("userId")
+                            .description("사용자 UUID"),
+                        fieldWithPath("email")
+                            .description("로그인한 이메일 주소")
+                    )
+                )
+            )
     }
 }

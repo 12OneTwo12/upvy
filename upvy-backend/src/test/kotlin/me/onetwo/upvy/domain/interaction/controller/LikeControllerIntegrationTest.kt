@@ -63,8 +63,7 @@ class LikeControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -106,8 +105,7 @@ class LikeControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -158,7 +156,6 @@ class LikeControllerIntegrationTest : AbstractIntegrationTest() {
                 userRepository,
                 userProfileRepository,
                 email = "test1@example.com",
-                providerId = "google-123",
                 nickname = "user1${System.currentTimeMillis() % 100000}"
             )
 
@@ -166,7 +163,6 @@ class LikeControllerIntegrationTest : AbstractIntegrationTest() {
                 userRepository,
                 userProfileRepository,
                 email = "test2@example.com",
-                providerId = "google-456",
                 nickname = "user2${System.currentTimeMillis() % 100000}"
             )
 
@@ -221,8 +217,7 @@ class LikeControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -258,8 +253,7 @@ class LikeControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(

@@ -7,7 +7,6 @@ import io.mockk.every
 import io.mockk.verify
 import me.onetwo.upvy.config.TestSecurityConfig
 import me.onetwo.upvy.domain.user.exception.UserNotFoundException
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.service.UserService
@@ -47,8 +46,6 @@ class UserControllerTest {
     private val testUser = User(
         id = testUserId,
         email = "test@example.com",
-        provider = OAuthProvider.GOOGLE,
-        providerId = "google-123",
         role = UserRole.USER
     )
 
@@ -67,7 +64,7 @@ class UserControllerTest {
             .expectBody()
             .jsonPath("$.id").isEqualTo(testUserId.toString())
             .jsonPath("$.email").isEqualTo("test@example.com")
-            .jsonPath("$.provider").isEqualTo("GOOGLE")
+            .jsonPath("$.status").isEqualTo("ACTIVE")
             .jsonPath("$.role").isEqualTo("USER")
             .consumeWith(
                 document(
@@ -76,7 +73,7 @@ class UserControllerTest {
                     responseFields(
                         fieldWithPath("id").description("사용자 ID (UUID)"),
                         fieldWithPath("email").description("이메일"),
-                        fieldWithPath("provider").description("OAuth 제공자 (GOOGLE, NAVER, KAKAO)"),
+                        fieldWithPath("status").description("사용자 상태 (ACTIVE, DELETED, SUSPENDED)"),
                         fieldWithPath("role").description("사용자 역할 (USER, ADMIN)"),
                         fieldWithPath("createdAt").description("가입일시"),
                         fieldWithPath("updatedAt").description("수정일시")
@@ -112,7 +109,7 @@ class UserControllerTest {
                     responseFields(
                         fieldWithPath("id").description("사용자 ID (UUID)"),
                         fieldWithPath("email").description("이메일"),
-                        fieldWithPath("provider").description("OAuth 제공자"),
+                        fieldWithPath("status").description("사용자 상태 (ACTIVE, DELETED, SUSPENDED)"),
                         fieldWithPath("role").description("사용자 역할 (USER, ADMIN)"),
                         fieldWithPath("createdAt").description("가입일시"),
                         fieldWithPath("updatedAt").description("수정일시")

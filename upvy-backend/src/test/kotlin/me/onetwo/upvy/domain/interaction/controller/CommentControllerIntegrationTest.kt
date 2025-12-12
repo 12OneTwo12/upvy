@@ -66,8 +66,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -109,8 +108,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -142,8 +140,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -203,8 +200,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -246,8 +242,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -279,8 +274,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -349,8 +343,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -407,8 +400,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val content = createContent(
@@ -452,8 +444,7 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (user, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "test@example.com",
-                providerId = "google-123"
+                email = "test@example.com"
             )
 
             val nonExistentCommentId = UUID.randomUUID().toString()
@@ -474,15 +465,13 @@ class CommentControllerIntegrationTest : AbstractIntegrationTest() {
             val (commentAuthor, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "author@example.com",
-                providerId = "google-author"
+                email = "author@example.com"
             )
 
             val (otherUser, _) = createUserWithProfile(
                 userRepository,
                 userProfileRepository,
-                email = "other@example.com",
-                providerId = "google-other"
+                email = "other@example.com"
             )
 
             val content = createContent(
