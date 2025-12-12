@@ -43,25 +43,29 @@ menu:
       name: Home
       pageRef: /
       weight: 1
+    - identifier: support
+      name: Support
+      pageRef: /support
+      weight: 2
     - identifier: privacy
       name: Privacy Policy
       pageRef: /privacy
-      weight: 2
+      weight: 3
     - identifier: terms
       name: Terms of Service
       pageRef: /terms
-      weight: 3
+      weight: 4
     - identifier: developer
       name: Developer
       pageRef: /developer
-      weight: 4
-    - name: GitHub
       weight: 5
+    - name: GitHub
+      weight: 6
       url: "https://github.com/12OneTwo12/upvy"
       params:
         icon: github
     - name: Languages
-      weight: 6
+      weight: 7
       params:
         type: language-switch
 
