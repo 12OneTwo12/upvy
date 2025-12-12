@@ -25,9 +25,7 @@ module.exports = {
         ITSAppUsesNonExemptEncryption: false,
         UIViewControllerBasedStatusBarAppearance: true,
         NSPhotoLibraryUsageDescription:
-          'Upvy needs access to your photo library to select videos for uploading and sharing.',
-        NSPhotoLibraryAddUsageDescription:
-          'Upvy needs permission to save edited videos to your photo library.',
+          'Upvy needs access to your photo library to select photos and videos for uploading and sharing.',
       },
     },
     android: {
@@ -53,6 +51,23 @@ module.exports = {
           url: 'https://sentry.io/',
           project: 'upvy-app',
           organization: 'upvy',
+        },
+      ],
+      [
+        './plugins/withInfoPlistStrings',
+        {
+          ko: {
+            NSPhotoLibraryUsageDescription:
+              'Upvy는 사진 및 동영상 업로드를 위해 사진 라이브러리 접근 권한이 필요합니다.',
+          },
+          en: {
+            NSPhotoLibraryUsageDescription:
+              'Upvy needs access to your photo library to select photos and videos for uploading and sharing.',
+          },
+          ja: {
+            NSPhotoLibraryUsageDescription:
+              'Upvyは写真と動画のアップロードのため、フォトライブラリへのアクセス権限が必要です。',
+          },
         },
       ],
     ],
