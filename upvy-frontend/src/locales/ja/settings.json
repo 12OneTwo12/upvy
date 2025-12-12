@@ -54,6 +54,7 @@
     "confirmPassword": "パスワード確認",
     "confirmPasswordPlaceholder": "パスワード確認",
     "passwordHint": "英数字を含む8文字以上",
+    "passwordError": "英字と数字を含む8文字以上を入力してください",
     "submit": "パスワード変更",
     "success": "パスワード変更完了",
     "successMessage": "パスワードが正常に変更されました。",

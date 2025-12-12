@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,53 @@ export default function EmailSignUpScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailError, setShowEmailError] = useState(false);
+  const [showPasswordError, setShowPasswordError] = useState(false);
+
+  const emailTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const passwordTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce email validation
+  useEffect(() => {
+    if (emailTimerRef.current) {
+      clearTimeout(emailTimerRef.current);
+    }
+
+    if (email.length > 0) {
+      emailTimerRef.current = setTimeout(() => {
+        setShowEmailError(!validateEmail(email));
+      }, 1000);
+    } else {
+      setShowEmailError(false);
+    }
+
+    return () => {
+      if (emailTimerRef.current) {
+        clearTimeout(emailTimerRef.current);
+      }
+    };
+  }, [email]);
+
+  // Debounce password validation
+  useEffect(() => {
+    if (passwordTimerRef.current) {
+      clearTimeout(passwordTimerRef.current);
+    }
+
+    if (password.length > 0) {
+      passwordTimerRef.current = setTimeout(() => {
+        setShowPasswordError(!validatePassword(password).isValid);
+      }, 1000);
+    } else {
+      setShowPasswordError(false);
+    }
+
+    return () => {
+      if (passwordTimerRef.current) {
+        clearTimeout(passwordTimerRef.current);
+      }
+    };
+  }, [password]);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -59,28 +106,28 @@ export default function EmailSignUpScreen() {
     try {
       // 유효성 검증
       if (!email.trim()) {
-        showErrorAlert(t('emailSignup.emailPlaceholder'), t('emailSignup.error'));
+        showErrorAlert(t('emailSignup.emailError'), '');
         return;
       }
 
       if (!validateEmail(email)) {
-        showErrorAlert(t('emailSignup.emailPlaceholder'), t('emailSignup.error'));
+        showErrorAlert(t('emailSignup.emailError'), '');
         return;
       }
 
       if (!password.trim()) {
-        showErrorAlert(t('emailSignup.passwordPlaceholder'), t('emailSignup.error'));
+        showErrorAlert(t('emailSignup.passwordError'), '');
         return;
       }
 
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
-        showErrorAlert(t('emailSignup.passwordHint'), t('emailSignup.error'));
+        showErrorAlert(t('emailSignup.passwordError'), '');
         return;
       }
 
       if (password !== confirmPassword) {
-        showErrorAlert(t('emailSignup.confirmPasswordPlaceholder'), t('emailSignup.error'));
+        showErrorAlert(t('emailSignup.confirmPasswordPlaceholder'), '');
         return;
       }
 
@@ -144,8 +191,8 @@ export default function EmailSignUpScreen() {
                 keyboardType="email-address"
                 style={styles.input}
               />
-              {email.length > 0 && !validateEmail(email) && (
-                <Text style={styles.errorHint}>{t('emailSignup.emailPlaceholder')}</Text>
+              {showEmailError && (
+                <Text style={styles.errorHint}>{t('emailSignup.emailError')}</Text>
               )}
             </View>
 
@@ -159,8 +206,11 @@ export default function EmailSignUpScreen() {
                 secureTextEntry
                 style={styles.input}
               />
-              {password.length > 0 && !validatePassword(password).isValid && (
-                <Text style={styles.errorHint}>{t('emailSignup.passwordHint')}</Text>
+              {password.length === 0 && (
+                <Text style={styles.hint}>{t('emailSignup.passwordHint')}</Text>
+              )}
+              {showPasswordError && (
+                <Text style={styles.errorHint}>{t('emailSignup.passwordError')}</Text>
               )}
             </View>
 
@@ -287,7 +337,7 @@ const useStyles = createStyleSheet({
 
   errorHint: {
     fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.error[500],
+    color: theme.colors.error,
   },
 
   buttonContainer: {

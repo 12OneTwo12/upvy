@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -44,8 +44,31 @@ export default function PasswordResetConfirmScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isCodeVerified, setIsCodeVerified] = useState(false);
+  const [showPasswordError, setShowPasswordError] = useState(false);
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
+  const passwordTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce password validation
+  useEffect(() => {
+    if (passwordTimerRef.current) {
+      clearTimeout(passwordTimerRef.current);
+    }
+
+    if (newPassword.length > 0) {
+      passwordTimerRef.current = setTimeout(() => {
+        setShowPasswordError(!validatePassword(newPassword).isValid);
+      }, 1000);
+    } else {
+      setShowPasswordError(false);
+    }
+
+    return () => {
+      if (passwordTimerRef.current) {
+        clearTimeout(passwordTimerRef.current);
+      }
+    };
+  }, [newPassword]);
 
   const handleCodeChange = (index: number, value: string) => {
     if (value.length > 1) {
@@ -270,8 +293,11 @@ export default function PasswordResetConfirmScreen() {
                   secureTextEntry
                   style={styles.input}
                 />
-                {newPassword.length > 0 && !validatePassword(newPassword).isValid && (
-                  <Text style={styles.errorHint}>{t('passwordResetConfirm.passwordMinLength')}</Text>
+                {newPassword.length === 0 && (
+                  <Text style={styles.hint}>{t('passwordResetConfirm.passwordMinLength')}</Text>
+                )}
+                {showPasswordError && (
+                  <Text style={styles.errorHint}>{t('passwordResetConfirm.passwordError')}</Text>
                 )}
               </View>
 
@@ -453,7 +479,7 @@ const useStyles = createStyleSheet({
 
   errorHint: {
     fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.error[500],
+    color: theme.colors.error,
   },
 
   buttonContainer: {

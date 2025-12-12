@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -38,6 +38,30 @@ export default function PasswordChangeScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPasswordError, setShowPasswordError] = useState(false);
+
+  const passwordTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce password validation
+  useEffect(() => {
+    if (passwordTimerRef.current) {
+      clearTimeout(passwordTimerRef.current);
+    }
+
+    if (newPassword.length > 0) {
+      passwordTimerRef.current = setTimeout(() => {
+        setShowPasswordError(!validatePassword(newPassword).isValid);
+      }, 1000);
+    } else {
+      setShowPasswordError(false);
+    }
+
+    return () => {
+      if (passwordTimerRef.current) {
+        clearTimeout(passwordTimerRef.current);
+      }
+    };
+  }, [newPassword]);
 
   const validatePassword = (password: string): { isValid: boolean; hasLength: boolean; hasLetterAndNumber: boolean } => {
     const hasLength = password.length >= 8;
@@ -155,8 +179,11 @@ export default function PasswordChangeScreen() {
                 secureTextEntry
                 style={styles.input}
               />
-              {newPassword.length > 0 && !validatePassword(newPassword).isValid && (
-                <Text style={styles.errorHint}>{t('passwordChange.passwordHint')}</Text>
+              {newPassword.length === 0 && (
+                <Text style={styles.hint}>{t('passwordChange.passwordHint')}</Text>
+              )}
+              {showPasswordError && (
+                <Text style={styles.errorHint}>{t('passwordChange.passwordError')}</Text>
               )}
             </View>
 
@@ -275,7 +302,7 @@ const useStyles = createStyleSheet({
 
   errorHint: {
     fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.error[500],
+    color: theme.colors.error,
   },
 
   buttonContainer: {

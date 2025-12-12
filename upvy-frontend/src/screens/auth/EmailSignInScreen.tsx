@@ -41,12 +41,12 @@ export default function EmailSignInScreen() {
   const handleSignIn = async () => {
     try {
       if (!email.trim()) {
-        showErrorAlert(t('emailSignin.emailPlaceholder'), t('emailSignin.error'));
+        showErrorAlert(t('emailSignin.emailError'), '');
         return;
       }
 
       if (!password.trim()) {
-        showErrorAlert(t('emailSignin.passwordPlaceholder'), t('emailSignin.error'));
+        showErrorAlert(t('emailSignin.passwordError'), '');
         return;
       }
 
