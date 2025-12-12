@@ -7,11 +7,13 @@ import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_METADATA
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_SUBTITLES
+import me.onetwo.upvy.jooq.generated.tables.references.EMAIL_VERIFICATION_TOKENS
 import me.onetwo.upvy.jooq.generated.tables.references.FOLLOWS
 import me.onetwo.upvy.jooq.generated.tables.references.NOTIFICATION_SETTINGS
 import me.onetwo.upvy.jooq.generated.tables.references.REPORTS
 import me.onetwo.upvy.jooq.generated.tables.references.SEARCH_HISTORY
 import me.onetwo.upvy.jooq.generated.tables.references.USERS
+import me.onetwo.upvy.jooq.generated.tables.references.USER_AUTHENTICATION_METHODS
 import me.onetwo.upvy.jooq.generated.tables.references.USER_BLOCKS
 import me.onetwo.upvy.jooq.generated.tables.references.USER_COMMENT_LIKES
 import me.onetwo.upvy.jooq.generated.tables.references.USER_CONTENT_INTERACTIONS
@@ -86,6 +88,8 @@ abstract class AbstractIntegrationTest {
             .then(Mono.from(dslContext.deleteFrom(FOLLOWS)))
             .then(Mono.from(dslContext.deleteFrom(USER_PROFILES)))
             .then(Mono.from(dslContext.deleteFrom(USER_STATUS_HISTORY)))
+            .then(Mono.from(dslContext.deleteFrom(EMAIL_VERIFICATION_TOKENS)))
+            .then(Mono.from(dslContext.deleteFrom(USER_AUTHENTICATION_METHODS)))
             .then(Mono.from(dslContext.deleteFrom(USERS)))
             // 외래 키 제약 조건 다시 활성화
             .then(Mono.from(dslContext.query("SET FOREIGN_KEY_CHECKS = 1")))

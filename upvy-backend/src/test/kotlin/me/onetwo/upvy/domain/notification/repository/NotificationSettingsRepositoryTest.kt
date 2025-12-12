@@ -1,7 +1,6 @@
 package me.onetwo.upvy.domain.notification.repository
 
 import me.onetwo.upvy.domain.notification.model.NotificationSettings
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
@@ -29,9 +28,7 @@ class NotificationSettingsRepositoryTest : AbstractIntegrationTest() {
 
     private fun createTestUser(): User {
         val user = User(
-            email = "test-${UUID.randomUUID()}@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = UUID.randomUUID().toString()
+            email = "test-${UUID.randomUUID()}@example.com"
         )
         return userRepository.save(user).block()!!
     }

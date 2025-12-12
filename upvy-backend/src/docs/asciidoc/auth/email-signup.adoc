@@ -1,0 +1,38 @@
+[[auth-email-signup]]
+=== 이메일 회원가입
+
+이메일 주소와 비밀번호로 새로운 계정을 생성합니다.
+
+==== Request
+
+include::{snippets}/auth/email-signup/http-request.adoc[]
+include::{snippets}/auth/email-signup/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/auth/email-signup/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/auth/email/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newuser@example.com",
+    "password": "SecurePassword123!",
+    "name": "홍길동",
+    "language": "ko"
+  }'
+----
+
+==== Notes
+
+* 회원가입 성공 시 201 Created 상태 코드를 반환합니다
+* 이메일 인증 메일이 자동으로 발송되며, 인증 완료 전까지는 로그인할 수 없습니다
+* 인증 코드는 5분 동안 유효합니다
+* 비밀번호는 서버에서 BCrypt로 암호화되어 저장됩니다
+* name 필드는 선택 사항이며, 생략 시 프로필 이름이 "Unknown User"로 설정됩니다
+* language 필드는 선택 사항이며, 기본값은 "en"(영어)입니다
+* 지원하는 언어: ko(한국어), en(영어), ja(일본어)
+* 이미 가입된 이메일로 시도 시 400 Bad Request를 반환합니다

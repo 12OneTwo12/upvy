@@ -20,6 +20,16 @@ export const API_ENDPOINTS = {
   AUTH: {
     REFRESH: '/auth/refresh',
     LOGOUT: '/auth/logout',
+    // Email Auth
+    EMAIL_SIGNUP: '/auth/email/signup',
+    EMAIL_SIGNIN: '/auth/email/signin',
+    EMAIL_VERIFY_CODE: '/auth/email/verify-code',
+    EMAIL_RESEND_CODE: '/auth/email/resend-code',
+    // Password
+    PASSWORD_CHANGE: '/auth/password/change',
+    PASSWORD_RESET_REQUEST: '/auth/password/reset/request',
+    PASSWORD_RESET_VERIFY_CODE: '/auth/password/reset/verify-code',
+    PASSWORD_RESET_CONFIRM: '/auth/password/reset/confirm',
   },
 
   // User

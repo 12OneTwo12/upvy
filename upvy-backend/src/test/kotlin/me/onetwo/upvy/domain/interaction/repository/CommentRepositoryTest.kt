@@ -5,7 +5,6 @@ import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.interaction.model.Comment
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.repository.UserRepository
@@ -61,8 +60,6 @@ class CommentRepositoryTest : AbstractIntegrationTest() {
         testUser = userRepository.save(
             User(
                 email = "user@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "user-123",
                 role = UserRole.USER
             )
         ).block()!!
@@ -70,8 +67,6 @@ class CommentRepositoryTest : AbstractIntegrationTest() {
         testUser2 = userRepository.save(
             User(
                 email = "user2@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "user2-123",
                 role = UserRole.USER
             )
         ).block()!!
@@ -79,8 +74,6 @@ class CommentRepositoryTest : AbstractIntegrationTest() {
         testUser3 = userRepository.save(
             User(
                 email = "user3@test.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "user3-123",
                 role = UserRole.USER
             )
         ).block()!!

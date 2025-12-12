@@ -2,7 +2,6 @@ package me.onetwo.upvy.domain.search.repository
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.upvy.domain.search.model.SearchType
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -56,8 +55,6 @@ class SearchHistoryRepositoryImplTest : AbstractIntegrationTest() {
         testUser = User(
             id = UUID.randomUUID(),
             email = "search-history-repo-test@example.com",
-            provider = OAuthProvider.GOOGLE,
-            providerId = "google-search-history-repo-12345",
             role = UserRole.USER
         )
         userRepository.save(testUser).block()
@@ -237,8 +234,6 @@ class SearchHistoryRepositoryImplTest : AbstractIntegrationTest() {
             val otherUser = User(
                 id = UUID.randomUUID(),
                 email = "other@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "google-67890",
                 role = UserRole.USER
             )
             userRepository.save(otherUser).block()
@@ -387,8 +382,6 @@ class SearchHistoryRepositoryImplTest : AbstractIntegrationTest() {
             val otherUser = User(
                 id = UUID.randomUUID(),
                 email = "other@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "google-67890",
                 role = UserRole.USER
             )
             userRepository.save(otherUser).block()

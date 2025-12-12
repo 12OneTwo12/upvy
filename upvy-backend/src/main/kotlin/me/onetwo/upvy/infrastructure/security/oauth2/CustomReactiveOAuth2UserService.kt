@@ -113,6 +113,7 @@ class CustomReactiveOAuth2UserService(
                 )
             }
 
+            OAuthProvider.EMAIL -> throw IllegalArgumentException("EMAIL 계정은 OAuth2 로그인을 사용하지 않습니다")
             OAuthProvider.SYSTEM -> throw IllegalArgumentException("SYSTEM 계정은 OAuth2 로그인을 사용하지 않습니다")
         }
     }

@@ -10,6 +10,15 @@ import {
   FollowStats,
   CheckFollowResponse,
   FollowResponse,
+  EmailSignupRequest,
+  EmailSigninRequest,
+  EmailVerifyCodeRequest,
+  EmailVerifyResponse,
+  ResendVerificationCodeRequest,
+  ChangePasswordRequest,
+  ResetPasswordRequest,
+  ResetPasswordVerifyCodeRequest,
+  ResetPasswordConfirmRequest,
 } from '@/types/auth.types';
 
 /**
@@ -183,4 +192,112 @@ export const getFollowing = async (userId: string): Promise<UserProfile[]> => {
     API_ENDPOINTS.FOLLOW.FOLLOWING(userId)
   );
   return response.data;
+};
+
+/**
+ * 이메일 회원가입
+ * 백엔드: POST /api/v1/auth/email/signup
+ *
+ * @param data 회원가입 정보 (이메일, 비밀번호, 이름, 언어)
+ * @returns 201 Created (Void)
+ */
+export const emailSignup = async (data: EmailSignupRequest): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.AUTH.EMAIL_SIGNUP, data);
+};
+
+/**
+ * 이메일 인증 코드 검증
+ * 백엔드: POST /api/v1/auth/email/verify-code
+ *
+ * @param data 이메일과 6자리 인증 코드
+ * @returns JWT 토큰 및 사용자 정보
+ */
+export const verifyEmailCode = async (
+  data: EmailVerifyCodeRequest
+): Promise<EmailVerifyResponse> => {
+  const response = await apiClient.post<EmailVerifyResponse>(
+    API_ENDPOINTS.AUTH.EMAIL_VERIFY_CODE,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * 인증 코드 재전송
+ * 백엔드: POST /api/v1/auth/email/resend-code
+ *
+ * @param data 이메일과 언어 설정
+ * @returns 204 No Content (Void)
+ */
+export const resendVerificationCode = async (
+  data: ResendVerificationCodeRequest
+): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.AUTH.EMAIL_RESEND_CODE, data);
+};
+
+/**
+ * 이메일 로그인
+ * 백엔드: POST /api/v1/auth/email/signin
+ *
+ * @param data 이메일과 비밀번호
+ * @returns JWT 토큰 및 사용자 정보
+ */
+export const emailSignin = async (
+  data: EmailSigninRequest
+): Promise<EmailVerifyResponse> => {
+  const response = await apiClient.post<EmailVerifyResponse>(
+    API_ENDPOINTS.AUTH.EMAIL_SIGNIN,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * 비밀번호 변경
+ * 백엔드: POST /api/v1/auth/password/change (인증 필요)
+ *
+ * @param data 현재 비밀번호와 새 비밀번호
+ * @returns 204 No Content (Void)
+ */
+export const changePassword = async (data: ChangePasswordRequest): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_CHANGE, data);
+};
+
+/**
+ * 비밀번호 재설정 요청
+ * 백엔드: POST /api/v1/auth/password/reset/request
+ *
+ * @param data 이메일과 언어 설정
+ * @returns 204 No Content (Void)
+ */
+export const resetPasswordRequest = async (
+  data: ResetPasswordRequest
+): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_RESET_REQUEST, data);
+};
+
+/**
+ * 비밀번호 재설정 코드 검증
+ * 백엔드: POST /api/v1/auth/password/reset/verify-code
+ *
+ * @param data 이메일과 인증 코드
+ * @returns 204 No Content (Void)
+ */
+export const resetPasswordVerifyCode = async (
+  data: ResetPasswordVerifyCodeRequest
+): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_RESET_VERIFY_CODE, data);
+};
+
+/**
+ * 비밀번호 재설정 확정
+ * 백엔드: POST /api/v1/auth/password/reset/confirm
+ *
+ * @param data 이메일, 인증 코드, 새 비밀번호
+ * @returns 204 No Content (Void)
+ */
+export const resetPasswordConfirm = async (
+  data: ResetPasswordConfirmRequest
+): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_RESET_CONFIRM, data);
 };

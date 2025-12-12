@@ -2,7 +2,6 @@ package me.onetwo.upvy.domain.user.repository
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 
 import me.onetwo.upvy.domain.user.model.Follow
-import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.jooq.generated.tables.references.FOLLOWS
@@ -44,22 +43,16 @@ class FollowRepositoryTest : AbstractIntegrationTest() {
         // 테스트 사용자들 생성
         follower = userRepository.save(User(
                 email = "follower@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "follower-google-123",
                 role = UserRole.USER
             )).block()!!
 
         following = userRepository.save(User(
                 email = "following@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "following-google-456",
                 role = UserRole.USER
             )).block()!!
 
         anotherUser = userRepository.save(User(
                 email = "another@example.com",
-                provider = OAuthProvider.GOOGLE,
-                providerId = "another-google-789",
                 role = UserRole.USER
             )).block()!!
     }
