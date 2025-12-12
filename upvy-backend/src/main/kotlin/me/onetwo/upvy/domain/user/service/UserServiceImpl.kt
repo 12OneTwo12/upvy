@@ -169,9 +169,10 @@ class UserServiceImpl(
     /**
      * 탈퇴한 계정 복원
      *
+     * 프로필은 생성하지 않으며, 로그인 후 사용자가 직접 입력하도록 합니다.
+     *
      * 1. 사용자 상태를 ACTIVE로 변경 (이력 기록)
      * 2. OAuth 인증 수단 추가
-     * 3. 새로운 프로필 생성 (이전 프로필은 audit trail로만 보관)
      *
      * 참고: 탈퇴한 사용자가 재가입하면 완전히 새로 시작합니다.
      */
@@ -200,19 +201,10 @@ class UserServiceImpl(
             )
 
             authMethodRepository.save(authMethod)
-                .flatMap {
-                    // 새로운 프로필 생성
-                    logger.info("Creating fresh profile for re-registered user: userId=${restoredUser.id}")
-                    createProfileForNewUser(
-                        restoredUser,
-                        name ?: restoredUser.email.substringBefore("@"),
-                        profileImageUrl
-                    )
-                        .doOnNext {
-                            logger.info("Account restored with fresh profile: userId=${restoredUser.id}, provider=$provider")
-                        }
-                        .thenReturn(restoredUser)
+                .doOnNext {
+                    logger.info("Account restored: userId=${restoredUser.id}, provider=$provider")
                 }
+                .thenReturn(restoredUser)
         }
     }
 
@@ -250,11 +242,12 @@ class UserServiceImpl(
     /**
      * 신규 사용자 생성 (OAuth)
      *
+     * 프로필은 생성하지 않으며, 로그인 후 사용자가 직접 입력하도록 합니다.
+     *
      * 1. User 생성
      * 2. OAuth 인증 수단 생성
      * 3. 상태 이력 기록 (최초 가입)
-     * 4. 프로필 자동 생성
-     * 5. UserCreatedEvent 발행 (알림 설정 등 비동기 처리)
+     * 4. UserCreatedEvent 발행 (알림 설정 등 비동기 처리)
      */
     private fun createNewUserWithOAuth(
         email: String,
@@ -294,10 +287,8 @@ class UserServiceImpl(
                             changedBy = savedUser.id.toString()
                         )
 
-                        Mono.zip(
-                            createProfileForNewUser(savedUser, name ?: email.substringBefore("@"), profileImageUrl),
-                            userStatusHistoryRepository.save(history)
-                        ).map { tuple -> tuple.t1 }
+                        userStatusHistoryRepository.save(history)
+                            .thenReturn(savedUser)
                     }
             }
             .doOnSuccess { savedUser ->
@@ -309,64 +300,6 @@ class UserServiceImpl(
             }
     }
 
-    /**
-     * 신규 사용자 프로필 자동 생성
-     *
-     * OAuth 이름을 기반으로 고유한 닉네임을 생성하고 프로필을 생성합니다.
-     */
-    private fun createProfileForNewUser(
-        user: User,
-        baseName: String,
-        profileImageUrl: String?
-    ): Mono<User> {
-        return generateUniqueNickname(baseName)
-            .flatMap { nickname ->
-                val profile = UserProfile(
-                    userId = user.id!!,
-                    nickname = nickname,
-                    profileImageUrl = profileImageUrl,
-                    bio = null
-                )
-                userProfileRepository.save(profile)
-                    .doOnNext { logger.info("Auto-created profile: userId=${user.id}, nickname=$nickname") }
-                    .thenReturn(user)
-            }
-    }
-
-    /**
-     * 고유한 닉네임 생성
-     *
-     * 닉네임이 중복되면 6자리 랜덤 suffix를 추가합니다.
-     * 예: "John" -> "John_a1b2c3"
-     *
-     * @param baseName 기본 닉네임
-     * @return 고유한 닉네임
-     */
-    private fun generateUniqueNickname(baseName: String): Mono<String> {
-        val initialNickname = baseName.take(MAX_NICKNAME_LENGTH)
-
-        fun tryNickname(nickname: String, attempts: Int): Mono<String> {
-            if (attempts >= MAX_NICKNAME_GENERATION_ATTEMPTS) {
-                // 만약 MAX_NICKNAME_GENERATION_ATTEMPTS번 시도해도 중복이면 UUID 사용
-                val fallbackNickname = "user_${UUID.randomUUID().toString().replace("-", "").take(FALLBACK_NICKNAME_UUID_LENGTH)}"
-                logger.warn("Failed to generate unique nickname after $MAX_NICKNAME_GENERATION_ATTEMPTS attempts, using UUID: $fallbackNickname")
-                return Mono.just(fallbackNickname)
-            }
-
-            return userProfileRepository.existsByNickname(nickname)
-                .flatMap { exists ->
-                    if (exists) {
-                        val suffix = UUID.randomUUID().toString().replace("-", "").take(NICKNAME_SUFFIX_LENGTH)
-                        val newNickname = "${baseName.take(MAX_NICKNAME_BASE_LENGTH)}_$suffix"
-                        tryNickname(newNickname, attempts + 1)
-                    } else {
-                        Mono.just(nickname)
-                    }
-                }
-        }
-
-        return tryNickname(initialNickname, 0)
-    }
 
     /**
      * 사용자 ID로 조회

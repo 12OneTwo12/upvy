@@ -3,6 +3,7 @@ package me.onetwo.upvy.domain.user.controller
 import jakarta.validation.Valid
 import me.onetwo.upvy.domain.content.dto.ContentPageResponse
 import me.onetwo.upvy.domain.content.service.ContentService
+import me.onetwo.upvy.domain.user.dto.CreateProfileRequest
 import me.onetwo.upvy.domain.user.dto.ImageUploadResponse
 import me.onetwo.upvy.domain.user.dto.NicknameCheckResponse
 import me.onetwo.upvy.domain.user.dto.UpdateProfileRequest
@@ -30,9 +31,9 @@ import java.util.UUID
 /**
  * 사용자 프로필 관리 Controller
  *
- * 프로필 조회, 수정, 닉네임 중복 확인, 이미지 업로드 API를 제공합니다.
+ * 프로필 생성, 조회, 수정, 닉네임 중복 확인, 이미지 업로드 API를 제공합니다.
  *
- * **참고**: 프로필은 OAuth 회원가입 시 자동 생성됩니다.
+ * **참고**: 회원가입 시 프로필은 자동 생성되지 않으며, 사용자가 직접 생성해야 합니다.
  */
 @RestController
 @RequestMapping(ApiPaths.API_V1_PROFILES)
@@ -40,6 +41,36 @@ class UserProfileController(
     private val userProfileService: UserProfileService,
     private val contentService: ContentService
 ) {
+
+    /**
+     * 프로필 생성
+     *
+     * 회원가입 후 최초 1회 프로필을 생성합니다.
+     * 프로필은 사용자당 1개만 생성 가능하며, 이미 존재하는 경우 409 Conflict를 반환합니다.
+     *
+     * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
+     * @param request 프로필 생성 요청 (닉네임 필수, 프로필 이미지 URL과 자기소개 선택)
+     * @return 201 Created - 생성된 프로필 정보
+     * @throws IllegalStateException 이미 프로필이 존재하는 경우 (409 Conflict)
+     * @throws DuplicateNicknameException 닉네임이 중복된 경우 (409 Conflict)
+     */
+    @PostMapping
+    fun createProfile(
+        principal: Mono<Principal>,
+        @Valid @RequestBody request: CreateProfileRequest
+    ): Mono<ResponseEntity<UserProfileResponse>> {
+        return principal
+            .toUserId()
+            .flatMap { userId ->
+                userProfileService.createProfile(
+                    userId = userId,
+                    nickname = request.nickname,
+                    profileImageUrl = request.profileImageUrl,
+                    bio = request.bio
+                )
+            }
+            .map { profile -> ResponseEntity.status(HttpStatus.CREATED).body(UserProfileResponse.from(profile)) }
+    }
 
     /**
      * 내 프로필 조회

@@ -76,7 +76,7 @@ class UserServiceTest {
     inner class FindOrCreateOAuthUser {
 
         @Test
-        @DisplayName("완전히 새로운 사용자 OAuth 로그인 시, User + 인증 수단 + 프로필을 생성한다")
+        @DisplayName("완전히 새로운 사용자 OAuth 로그인 시, User + 인증 수단을 생성한다")
         fun findOrCreateOAuthUser_NewUser_CreatesUserAndAuthMethodAndProfile() {
             // Given: 완전히 새로운 사용자
             val email = "newuser@example.com"
@@ -102,14 +102,6 @@ class UserServiceTest {
                 isPrimary = true
             )
 
-            val profile = UserProfile(
-                id = 1L,
-                userId = userId,
-                nickname = name,
-                profileImageUrl = profileImageUrl,
-                bio = null
-            )
-
             val statusHistory = UserStatusHistory(
                 id = 1L,
                 userId = userId,
@@ -122,15 +114,13 @@ class UserServiceTest {
             every { userRepository.findByEmailIncludingDeleted(email) } returns Mono.empty()
             every { userRepository.save(any()) } returns Mono.just(createdUser)
             every { authMethodRepository.save(any()) } returns Mono.just(authMethod)
-            every { userProfileRepository.existsByNickname(name) } returns Mono.just(false)
-            every { userProfileRepository.save(any()) } returns Mono.just(profile)
             every { userStatusHistoryRepository.save(any()) } returns Mono.just(statusHistory)
             every { eventPublisher.publish(any<UserCreatedEvent>()) } just Runs
 
             // When: OAuth 로그인
             val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl)
 
-            // Then: User + 인증 수단 + 프로필 생성됨
+            // Then: User + 인증 수단 생성됨 (프로필은 사용자가 직접 생성)
             StepVerifier.create(result)
                 .assertNext { user ->
                     assertThat(user.id).isEqualTo(userId)
@@ -142,7 +132,6 @@ class UserServiceTest {
             verify(exactly = 1) { userRepository.findByEmailIncludingDeleted(email) }
             verify(exactly = 1) { userRepository.save(any()) }
             verify(exactly = 1) { authMethodRepository.save(any()) }
-            verify(exactly = 1) { userProfileRepository.save(any()) }
             verify(exactly = 1) { userStatusHistoryRepository.save(any()) }
             verify(exactly = 1) { eventPublisher.publish(any<UserCreatedEvent>()) }
         }
@@ -255,7 +244,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("탈퇴한 계정 재가입 시, 상태를 ACTIVE로 복원하고 새 프로필을 생성한다")
+        @DisplayName("탈퇴한 계정 재가입 시, 상태를 ACTIVE로 복원한다")
         fun findOrCreateOAuthUser_DeletedUser_RestoresAndCreatesNewProfile() {
             // Given: 탈퇴한 사용자
             val email = "deleted@example.com"
@@ -290,14 +279,6 @@ class UserServiceTest {
                 isPrimary = true  // 재가입 시 첫 인증 수단은 primary
             )
 
-            val newProfile = UserProfile(
-                id = 2L,
-                userId = userId,
-                nickname = name,
-                profileImageUrl = profileImageUrl,
-                bio = null
-            )
-
             val statusHistory = UserStatusHistory(
                 id = 2L,
                 userId = userId,
@@ -311,14 +292,12 @@ class UserServiceTest {
             every { userRepository.findByIdIncludingDeleted(userId) } returns Mono.just(deletedUser)
             every { userRepository.updateStatus(userId, UserStatus.ACTIVE, userId) } returns Mono.just(restoredUser)
             every { authMethodRepository.save(any()) } returns Mono.just(authMethod)
-            every { userProfileRepository.existsByNickname(name) } returns Mono.just(false)
-            every { userProfileRepository.save(any()) } returns Mono.just(newProfile)
             every { userStatusHistoryRepository.save(any()) } returns Mono.just(statusHistory)
 
             // When: 탈퇴한 계정 재가입
             val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl)
 
-            // Then: 상태 복원 + 새 프로필 생성
+            // Then: 상태 복원 (프로필은 사용자가 직접 생성)
             StepVerifier.create(result)
                 .assertNext { user ->
                     assertThat(user.id).isEqualTo(userId)
@@ -330,150 +309,10 @@ class UserServiceTest {
             verify(exactly = 1) { userRepository.findByEmailIncludingDeleted(email) }
             verify(exactly = 1) { userRepository.updateStatus(userId, UserStatus.ACTIVE, userId) }
             verify(exactly = 1) { authMethodRepository.save(any()) }
-            verify(exactly = 1) { userProfileRepository.save(any()) }  // 새 프로필 생성
             verify(exactly = 1) { userStatusHistoryRepository.save(any()) }
             verify(exactly = 0) { userRepository.save(any()) }  // User 생성 안함
         }
 
-        @Test
-        @DisplayName("닉네임 중복 시, suffix를 추가하여 고유한 닉네임을 생성한다")
-        fun findOrCreateOAuthUser_DuplicateNickname_GeneratesUniqueNickname() {
-            // Given: 닉네임이 중복되는 경우
-            val email = "user@example.com"
-            val provider = OAuthProvider.GOOGLE
-            val providerId = "google-111"
-            val name = "John"  // 이미 존재하는 닉네임
-            val profileImageUrl = null
-
-            val userId = UUID.randomUUID()
-            val createdUser = User(
-                id = userId,
-                email = email,
-                role = UserRole.USER,
-                status = UserStatus.ACTIVE
-            )
-
-            val authMethod = UserAuthenticationMethod(
-                id = 1L,
-                userId = userId,
-                provider = provider,
-                providerId = providerId,
-                emailVerified = true,
-                isPrimary = true
-            )
-
-            val profileSlot = slot<UserProfile>()
-            val profile = UserProfile(
-                id = 1L,
-                userId = userId,
-                nickname = "John_abc123",  // suffix 추가됨
-                profileImageUrl = null,
-                bio = null
-            )
-
-            val statusHistory = UserStatusHistory(
-                id = 1L,
-                userId = userId,
-                previousStatus = null,
-                newStatus = UserStatus.ACTIVE,
-                reason = "Initial signup via $provider OAuth",
-                changedBy = userId.toString()
-            )
-
-            every { userRepository.findByEmailIncludingDeleted(email) } returns Mono.empty()
-            every { userRepository.save(any()) } returns Mono.just(createdUser)
-            every { authMethodRepository.save(any()) } returns Mono.just(authMethod)
-            every { userProfileRepository.existsByNickname(name) } returns Mono.just(true)  // 중복!
-            every { userProfileRepository.existsByNickname(match { it.startsWith("John_") }) } returns Mono.just(false)  // suffix 추가된 닉네임은 사용 가능
-            every { userProfileRepository.save(capture(profileSlot)) } returns Mono.just(profile)
-            every { userStatusHistoryRepository.save(any()) } returns Mono.just(statusHistory)
-            every { eventPublisher.publish(any<UserCreatedEvent>()) } just Runs
-
-            // When: OAuth 로그인 (닉네임 중복)
-            val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl)
-
-            // Then: suffix 추가된 고유 닉네임으로 프로필 생성
-            StepVerifier.create(result)
-                .assertNext { user ->
-                    assertThat(user.id).isEqualTo(userId)
-                }
-                .verifyComplete()
-
-            verify(exactly = 1) { userProfileRepository.existsByNickname(name) }
-            verify(atLeast = 1) { userProfileRepository.existsByNickname(any()) }
-            verify(exactly = 1) { userProfileRepository.save(any()) }
-
-            val capturedProfile = profileSlot.captured
-            assertThat(capturedProfile.nickname).startsWith("John_")
-            assertThat(capturedProfile.nickname.length).isGreaterThan(name.length)
-        }
-
-        @Test
-        @DisplayName("OAuth 제공자에서 이름을 제공하지 않으면, 이메일 prefix를 닉네임으로 사용한다")
-        fun findOrCreateOAuthUser_NoNameProvided_UsesEmailPrefix() {
-            // Given: OAuth에서 이름을 제공하지 않음
-            val email = "testuser@example.com"
-            val provider = OAuthProvider.KAKAO
-            val providerId = "kakao-555"
-            val name = null  // 이름 없음
-            val profileImageUrl = null
-
-            val userId = UUID.randomUUID()
-            val createdUser = User(
-                id = userId,
-                email = email,
-                role = UserRole.USER,
-                status = UserStatus.ACTIVE
-            )
-
-            val authMethod = UserAuthenticationMethod(
-                id = 1L,
-                userId = userId,
-                provider = provider,
-                providerId = providerId,
-                emailVerified = true,
-                isPrimary = true
-            )
-
-            val profileSlot = slot<UserProfile>()
-            val profile = UserProfile(
-                id = 1L,
-                userId = userId,
-                nickname = "testuser",  // 이메일 prefix 사용
-                profileImageUrl = null,
-                bio = null
-            )
-
-            val statusHistory = UserStatusHistory(
-                id = 1L,
-                userId = userId,
-                previousStatus = null,
-                newStatus = UserStatus.ACTIVE,
-                reason = "Initial signup via $provider OAuth",
-                changedBy = userId.toString()
-            )
-
-            every { userRepository.findByEmailIncludingDeleted(email) } returns Mono.empty()
-            every { userRepository.save(any()) } returns Mono.just(createdUser)
-            every { authMethodRepository.save(any()) } returns Mono.just(authMethod)
-            every { userProfileRepository.existsByNickname("testuser") } returns Mono.just(false)
-            every { userProfileRepository.save(capture(profileSlot)) } returns Mono.just(profile)
-            every { userStatusHistoryRepository.save(any()) } returns Mono.just(statusHistory)
-            every { eventPublisher.publish(any<UserCreatedEvent>()) } just Runs
-
-            // When: OAuth 로그인 (이름 없음)
-            val result = userService.findOrCreateOAuthUser(email, provider, providerId, name, profileImageUrl)
-
-            // Then: 이메일 prefix를 닉네임으로 사용
-            StepVerifier.create(result)
-                .assertNext { user ->
-                    assertThat(user.id).isEqualTo(userId)
-                }
-                .verifyComplete()
-
-            val capturedProfile = profileSlot.captured
-            assertThat(capturedProfile.nickname).isEqualTo("testuser")
-        }
     }
 
     @Nested

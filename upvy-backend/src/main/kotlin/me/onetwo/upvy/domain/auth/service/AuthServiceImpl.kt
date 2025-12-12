@@ -208,6 +208,13 @@ class AuthServiceImpl(
     /**
      * 새로운 사용자 생성 (EMAIL 인증 수단 포함)
      *
+     * 프로필은 생성하지 않으며, 로그인 후 사용자가 직접 입력하도록 합니다.
+     *
+     * ### 처리 순서
+     * 1. User 생성
+     * 2. EMAIL 인증 수단 생성
+     * 3. 이메일 인증 메일 발송
+     *
      * @param email 이메일 주소
      * @param password 비밀번호 (평문)
      * @param language 이메일 언어

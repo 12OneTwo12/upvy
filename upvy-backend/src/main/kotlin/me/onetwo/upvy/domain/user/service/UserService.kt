@@ -16,13 +16,13 @@ interface UserService {
      * OAuth 제공자와 Provider ID로 사용자 조회 또는 생성
      *
      * OAuth 로그인 시 사용하며, 기존 사용자가 있으면 반환하고 없으면 새로 생성합니다.
-     * 신규 사용자 생성 시 프로필도 자동으로 생성됩니다.
+     * 프로필은 생성하지 않으며, 로그인 후 사용자가 직접 입력하도록 합니다.
      *
      * @param email 사용자 이메일
      * @param provider OAuth 제공자 (GOOGLE, NAVER, KAKAO 등)
      * @param providerId OAuth 제공자에서 제공한 사용자 고유 ID
-     * @param name OAuth 제공자에서 제공한 사용자 이름 (닉네임으로 사용)
-     * @param profileImageUrl OAuth 제공자에서 제공한 프로필 이미지 URL
+     * @param name OAuth 제공자에서 제공한 사용자 이름 (현재 사용하지 않음)
+     * @param profileImageUrl OAuth 제공자에서 제공한 프로필 이미지 URL (현재 사용하지 않음)
      * @return 조회되거나 생성된 사용자
      */
     fun findOrCreateOAuthUser(

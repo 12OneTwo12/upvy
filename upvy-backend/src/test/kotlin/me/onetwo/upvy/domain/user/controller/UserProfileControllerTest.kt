@@ -12,7 +12,9 @@ import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
+import me.onetwo.upvy.domain.user.dto.CreateProfileRequest
 import me.onetwo.upvy.domain.user.dto.UpdateProfileRequest
+import me.onetwo.upvy.domain.user.exception.DuplicateNicknameException
 import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.service.UserProfileService
@@ -65,6 +67,142 @@ class UserProfileControllerTest {
         followerCount = 10,
         followingCount = 5
     )
+
+    @Test
+    @DisplayName("프로필 생성 성공")
+    fun createProfile_Success() {
+        // Given
+        val request = CreateProfileRequest(
+            nickname = "newuser",
+            profileImageUrl = "https://example.com/profile.jpg",
+            bio = "안녕하세요! 처음 시작합니다."
+        )
+
+        val createdProfile = UserProfile(
+            id = 1L,
+            userId = testUserId,
+            nickname = request.nickname,
+            profileImageUrl = request.profileImageUrl,
+            bio = request.bio,
+            followerCount = 0,
+            followingCount = 0
+        )
+
+        every {
+            userProfileService.createProfile(
+                userId = testUserId,
+                nickname = request.nickname,
+                profileImageUrl = request.profileImageUrl,
+                bio = request.bio
+            )
+        } returns Mono.just(createdProfile)
+
+        // When & Then
+        webTestClient
+            .mutateWith(mockUser(testUserId))
+            .post()
+            .uri(ApiPaths.API_V1_PROFILES)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody()
+            .jsonPath("$.userId").isEqualTo(testUserId.toString())
+            .jsonPath("$.nickname").isEqualTo("newuser")
+            .jsonPath("$.bio").isEqualTo("안녕하세요! 처음 시작합니다.")
+            .jsonPath("$.followerCount").isEqualTo(0)
+            .jsonPath("$.followingCount").isEqualTo(0)
+            .consumeWith(
+                document(
+                    "profile-create",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    requestFields(
+                        fieldWithPath("nickname").description("닉네임 (필수, 2-20자)"),
+                        fieldWithPath("profileImageUrl").description("프로필 이미지 URL (선택, 500자 이하)").optional(),
+                        fieldWithPath("bio").description("자기소개 (선택, 500자 이하)").optional()
+                    ),
+                    responseFields(
+                        fieldWithPath("id").description("프로필 ID"),
+                        fieldWithPath("userId").description("사용자 ID"),
+                        fieldWithPath("nickname").description("닉네임"),
+                        fieldWithPath("profileImageUrl").description("프로필 이미지 URL"),
+                        fieldWithPath("bio").description("자기소개"),
+                        fieldWithPath("followerCount").description("팔로워 수 (초기값: 0)"),
+                        fieldWithPath("followingCount").description("팔로잉 수 (초기값: 0)"),
+                        fieldWithPath("createdAt").description("생성일시"),
+                        fieldWithPath("updatedAt").description("수정일시")
+                    )
+                )
+            )
+
+        verify(exactly = 1) {
+            userProfileService.createProfile(
+                userId = testUserId,
+                nickname = request.nickname,
+                profileImageUrl = request.profileImageUrl,
+                bio = request.bio
+            )
+        }
+    }
+
+    @Test
+    @DisplayName("프로필 생성 실패 - 닉네임 중복")
+    fun createProfile_Fail_DuplicateNickname() {
+        // Given
+        val request = CreateProfileRequest(
+            nickname = "duplicatednick",
+            bio = null
+        )
+
+        every {
+            userProfileService.createProfile(
+                userId = testUserId,
+                nickname = request.nickname,
+                profileImageUrl = null,
+                bio = null
+            )
+        } returns Mono.error(DuplicateNicknameException("duplicatednick"))
+
+        // When & Then
+        webTestClient
+            .mutateWith(mockUser(testUserId))
+            .post()
+            .uri(ApiPaths.API_V1_PROFILES)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().is4xxClientError
+    }
+
+    @Test
+    @DisplayName("프로필 생성 실패 - 이미 프로필이 존재하는 경우")
+    fun createProfile_Fail_AlreadyExists() {
+        // Given
+        val request = CreateProfileRequest(
+            nickname = "newuser",
+            bio = null
+        )
+
+        every {
+            userProfileService.createProfile(
+                userId = testUserId,
+                nickname = request.nickname,
+                profileImageUrl = null,
+                bio = null
+            )
+        } returns Mono.error(IllegalStateException("이미 프로필이 존재합니다"))
+
+        // When & Then
+        webTestClient
+            .mutateWith(mockUser(testUserId))
+            .post()
+            .uri(ApiPaths.API_V1_PROFILES)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().is4xxClientError
+    }
 
     @Test
     @DisplayName("내 프로필 조회 성공")

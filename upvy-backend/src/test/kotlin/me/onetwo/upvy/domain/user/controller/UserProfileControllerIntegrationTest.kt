@@ -2,7 +2,9 @@ package me.onetwo.upvy.domain.user.controller
 
 import me.onetwo.upvy.config.TestSecurityConfig
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
+import me.onetwo.upvy.domain.user.dto.CreateProfileRequest
 import me.onetwo.upvy.domain.user.dto.UpdateProfileRequest
+import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.repository.UserProfileRepository
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.infrastructure.common.ApiPaths
@@ -37,6 +39,96 @@ class UserProfileControllerIntegrationTest : AbstractIntegrationTest() {
 
     @Autowired
     private lateinit var userProfileRepository: UserProfileRepository
+
+    @Test
+    @DisplayName("프로필 생성 성공 - 최초 프로필 생성")
+    fun createProfile_Success() {
+        // Given: 프로필이 없는 사용자 생성
+        val user = User(email = "newuser@example.com")
+        val savedUser = userRepository.save(user).block()!!
+
+        val request = CreateProfileRequest(
+            nickname = "newuser",
+            profileImageUrl = null,
+            bio = "안녕하세요!"
+        )
+
+        // When & Then: API 호출 및 검증
+        webTestClient
+            .mutateWith(mockUser(savedUser.id!!))
+            .post()
+            .uri(ApiPaths.API_V1_PROFILES)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody()
+            .jsonPath("$.userId").isEqualTo(savedUser.id!!.toString())
+            .jsonPath("$.nickname").isEqualTo("newuser")
+            .jsonPath("$.bio").isEqualTo("안녕하세요!")
+            .jsonPath("$.followerCount").isEqualTo(0)
+            .jsonPath("$.followingCount").isEqualTo(0)
+
+        // Then: DB에 생성되었는지 확인
+        val createdProfile = userProfileRepository.findByUserId(savedUser.id!!).block()!!
+        assertThat(createdProfile.nickname).isEqualTo("newuser")
+        assertThat(createdProfile.bio).isEqualTo("안녕하세요!")
+    }
+
+    @Test
+    @DisplayName("프로필 생성 실패 - 이미 프로필이 존재하는 경우")
+    fun createProfile_Fail_AlreadyExists() {
+        // Given: 이미 프로필이 있는 사용자
+        val (user, _) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "test@example.com"
+        )
+
+        val request = CreateProfileRequest(
+            nickname = "newuser",
+            bio = null
+        )
+
+        // When & Then: API 호출 시 409 Conflict
+        webTestClient
+            .mutateWith(mockUser(user.id!!))
+            .post()
+            .uri(ApiPaths.API_V1_PROFILES)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().is4xxClientError
+    }
+
+    @Test
+    @DisplayName("프로필 생성 실패 - 닉네임 중복")
+    fun createProfile_Fail_DuplicateNickname() {
+        // Given: 기존 사용자와 새로운 사용자
+        val (existingUser, existingProfile) = createUserWithProfile(
+            userRepository,
+            userProfileRepository,
+            email = "existing@example.com"
+        )
+
+        val newUser = User(email = "newuser@example.com")
+        val savedNewUser = userRepository.save(newUser).block()!!
+
+        val request = CreateProfileRequest(
+            nickname = existingProfile.nickname,  // 기존 닉네임 사용
+            bio = null
+        )
+
+        // When & Then: API 호출 시 409 Conflict
+        webTestClient
+            .mutateWith(mockUser(savedNewUser.id!!))
+            .post()
+            .uri(ApiPaths.API_V1_PROFILES)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().is4xxClientError
+    }
 
     @Test
     @DisplayName("내 프로필 조회 성공")

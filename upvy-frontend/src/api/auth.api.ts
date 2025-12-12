@@ -70,15 +70,15 @@ export const checkNickname = async (nickname: string): Promise<CheckNicknameResp
 };
 
 /**
- * 프로필 수정
- * 백엔드에서 프로필은 OAuth 로그인 시 자동 생성되므로,
- * 최초 프로필 설정도 업데이트 API를 사용합니다.
+ * 프로필 생성
+ * 회원가입 후 최초 1회 프로필을 생성합니다.
+ * 백엔드에서 프로필은 자동 생성되지 않으며, 사용자가 직접 생성해야 합니다.
  */
 export const createProfile = async (
   data: CreateProfileRequest
 ): Promise<CreateProfileResponse> => {
-  const response = await apiClient.patch<CreateProfileResponse>(
-    API_ENDPOINTS.PROFILE.UPDATE,
+  const response = await apiClient.post<CreateProfileResponse>(
+    API_ENDPOINTS.PROFILE.UPDATE,  // POST /api/v1/profiles
     data
   );
   return response.data;
