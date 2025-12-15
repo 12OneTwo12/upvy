@@ -8,6 +8,7 @@ import com.google.cloud.vertexai.generativeai.GenerativeModel
 import com.google.cloud.vertexai.generativeai.ResponseHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.onetwo.upvy.crawler.backoffice.domain.Category
 import me.onetwo.upvy.crawler.client.LlmClient
 import me.onetwo.upvy.crawler.domain.ClipSegment
 import me.onetwo.upvy.crawler.domain.ContentLanguage
@@ -344,6 +345,14 @@ class VertexAiLlmClient(
             ContentLanguage.JA -> "初心者のためのKotlin入門ガイド"
         }
 
+        // Category enum에서 동적으로 카테고리 목록 생성
+        val availableCategories = Category.entries
+            .joinToString("|") { it.name }
+
+        // Difficulty enum에서 동적으로 난이도 목록 생성
+        val availableDifficulties = Difficulty.entries
+            .joinToString("|") { it.name }
+
         return """
         |당신은 글로벌 교육 콘텐츠 메타데이터 생성 전문가입니다.
         |
@@ -358,8 +367,8 @@ class VertexAiLlmClient(
         |  "title": "$titleExample (30자/단어 이내)",
         |  "description": "SEO에 최적화된 상세 설명 (200자/단어 이내)",
         |  "tags": ["관련 태그", "최대 10개 - ${language.nativeName}로"],
-        |  "category": "PROGRAMMING|SCIENCE|LANGUAGE|LIFESTYLE|BUSINESS|HEALTH|ARTS|HISTORY",
-        |  "difficulty": "BEGINNER|INTERMEDIATE|ADVANCED"
+        |  "category": "$availableCategories",
+        |  "difficulty": "$availableDifficulties"
         |}
     """.trimMargin()
     }

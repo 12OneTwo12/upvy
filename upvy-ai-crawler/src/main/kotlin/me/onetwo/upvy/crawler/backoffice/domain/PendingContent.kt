@@ -193,6 +193,7 @@ enum class Category(val displayName: String) {
     HOBBY("취미"),
     TREND("트렌드"),
     OTHER("기타"),
+    MOTIVATION("동기부여"),
     FUN("재미");
 
     companion object {
