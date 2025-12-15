@@ -7,12 +7,16 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { checkNickname, createProfile } from '@/api/auth.api';
+import * as ImagePicker from 'expo-image-picker';
+import { checkNickname, createProfile, uploadProfileImage } from '@/api/auth.api';
 import { useAuthStore } from '@/stores/authStore';
 import { Button, Input } from '@/components/common';
+import { ProfileAvatar } from '@/components/profile';
 import { theme } from '@/theme';
 import { showErrorAlert, withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
@@ -27,8 +31,10 @@ export default function ProfileSetupScreen() {
   const insets = useSafeAreaInsets();
   const { updateProfile } = useAuthStore();
 
+  const [profileImageUrl, setProfileImageUrl] = useState('');
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isCheckingNickname, setIsCheckingNickname] = useState(false);
   const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(
     null
@@ -68,6 +74,88 @@ export default function ProfileSetupScreen() {
   };
 
   /**
+   * 이미지 선택 (갤러리 또는 카메라)
+   */
+  const pickImage = async (useCamera: boolean = false) => {
+    try {
+      // 권한 요청
+      const permission = useCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          t('profileSetup.error.permissionDenied'),
+          t('profileSetup.error.permissionMessage')
+        );
+        return;
+      }
+
+      // 이미지 선택 또는 촬영
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+
+        // 이미지 업로드
+        setIsUploadingImage(true);
+        const uploadResult = await withErrorHandling(
+          async () => await uploadProfileImage(imageUri),
+          {
+            showAlert: true,
+            alertTitle: t('profileSetup.error.uploadFailed'),
+            logContext: 'ProfileSetupScreen.uploadImage',
+          }
+        );
+        setIsUploadingImage(false);
+
+        if (uploadResult) {
+          setProfileImageUrl(uploadResult.imageUrl);
+        }
+      }
+    } catch (error) {
+      setIsUploadingImage(false);
+      console.error('Image picker error:', error);
+      showErrorAlert(
+        t('profileSetup.error.imagePickerError'),
+        t('profileSetup.error.alert')
+      );
+    }
+  };
+
+  /**
+   * 이미지 변경 옵션 표시
+   */
+  const showImageOptions = () => {
+    Alert.alert(t('profileSetup.changePhoto'), t('profileSetup.selectImageSource'), [
+      {
+        text: t('profileSetup.camera'),
+        onPress: () => pickImage(true),
+      },
+      {
+        text: t('profileSetup.gallery'),
+        onPress: () => pickImage(false),
+      },
+      {
+        text: t('profileSetup.cancel'),
+        style: 'cancel',
+      },
+    ]);
+  };
+
+  /**
    * 프로필 생성
    */
   const handleCreateProfile = async () => {
@@ -79,7 +167,11 @@ export default function ProfileSetupScreen() {
     setIsCreating(true);
     const result = await withErrorHandling(
       async () =>
-        await createProfile({ nickname, bio: bio || undefined }),
+        await createProfile({
+          nickname,
+          profileImageUrl: profileImageUrl || undefined,
+          bio: bio || undefined,
+        }),
       {
         showAlert: true,
         alertTitle: t('profileSetup.error.profileCreationFailed'),
@@ -122,11 +214,36 @@ export default function ProfileSetupScreen() {
 
           {/* 프로필 이미지 */}
           <View style={styles.profileImageSection}>
-            <TouchableOpacity style={styles.profileImageContainer}>
-              <Text style={styles.profileImagePlaceholder}>👤</Text>
+            <TouchableOpacity
+              style={styles.profileImageContainer}
+              onPress={showImageOptions}
+              disabled={isUploadingImage}
+              activeOpacity={0.7}
+            >
+              {profileImageUrl ? (
+                <ProfileAvatar
+                  imageUrl={profileImageUrl}
+                  size="xlarge"
+                  showBorder={true}
+                />
+              ) : (
+                <Text style={styles.profileImagePlaceholder}>👤</Text>
+              )}
+              {isUploadingImage && (
+                <View style={styles.uploadingOverlay}>
+                  <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+                </View>
+              )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.changePhotoButton}>
-              <Text style={styles.changePhotoText}>{t('profileSetup.changePhoto')}</Text>
+            <TouchableOpacity
+              style={styles.changePhotoButton}
+              onPress={showImageOptions}
+              disabled={isUploadingImage}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.changePhotoText}>
+                {isUploadingImage ? t('profileSetup.uploading') : t('profileSetup.changePhoto')}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -268,6 +385,18 @@ const useStyles = createStyleSheet({
 
   profileImagePlaceholder: {
     fontSize: 40,
+  },
+
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   changePhotoButton: {
