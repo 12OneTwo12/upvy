@@ -85,6 +85,69 @@ CREATE INDEX idx_nickname ON user_profiles(nickname);
 CREATE INDEX idx_user_id ON user_profiles(user_id);
 CREATE INDEX idx_profile_deleted_at ON user_profiles(deleted_at);
 
+-- User Terms Agreements Table (사용자 약관 동의 현재 상태)
+CREATE TABLE IF NOT EXISTS user_terms_agreements (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL COMMENT '사용자 ID',
+
+    -- 서비스 이용약관 (필수)
+    service_terms_agreed BOOLEAN NOT NULL DEFAULT FALSE COMMENT '서비스 이용약관 동의 여부',
+    service_terms_version VARCHAR(20) NULL COMMENT '동의한 약관 버전 (예: v1.0)',
+    service_terms_agreed_at DATETIME(6) NULL COMMENT '동의 시각',
+
+    -- 개인정보 처리방침 (필수)
+    privacy_policy_agreed BOOLEAN NOT NULL DEFAULT FALSE COMMENT '개인정보 처리방침 동의 여부',
+    privacy_policy_version VARCHAR(20) NULL COMMENT '동의한 약관 버전',
+    privacy_policy_agreed_at DATETIME(6) NULL COMMENT '동의 시각',
+
+    -- 커뮤니티 가이드라인 (필수)
+    community_guidelines_agreed BOOLEAN NOT NULL DEFAULT FALSE COMMENT '커뮤니티 가이드라인 동의 여부',
+    community_guidelines_version VARCHAR(20) NULL COMMENT '동의한 약관 버전',
+    community_guidelines_agreed_at DATETIME(6) NULL COMMENT '동의 시각',
+
+    -- 마케팅 정보 수신 동의 (선택)
+    marketing_agreed BOOLEAN NOT NULL DEFAULT FALSE COMMENT '마케팅 정보 수신 동의 여부',
+    marketing_version VARCHAR(20) NULL COMMENT '동의한 약관 버전',
+    marketing_agreed_at DATETIME(6) NULL COMMENT '동의 시각',
+
+    -- Audit Trail
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_terms UNIQUE (user_id)
+);
+
+CREATE INDEX idx_terms_user_id ON user_terms_agreements(user_id);
+CREATE INDEX idx_terms_service ON user_terms_agreements(service_terms_agreed, service_terms_version);
+CREATE INDEX idx_terms_privacy ON user_terms_agreements(privacy_policy_agreed, privacy_policy_version);
+CREATE INDEX idx_terms_community ON user_terms_agreements(community_guidelines_agreed, community_guidelines_version);
+CREATE INDEX idx_terms_deleted_at ON user_terms_agreements(deleted_at);
+
+-- User Terms Agreement History Table (약관 동의 이력 - 법적 증빙용)
+CREATE TABLE IF NOT EXISTS user_terms_agreement_history (
+    id CHAR(36) PRIMARY KEY,
+    user_id CHAR(36) NOT NULL COMMENT '사용자 ID',
+    terms_type VARCHAR(50) NOT NULL COMMENT '약관 타입 (SERVICE_TERMS, PRIVACY_POLICY, COMMUNITY_GUIDELINES, MARKETING_CONSENT)',
+    terms_version VARCHAR(20) NOT NULL COMMENT '약관 버전',
+    action VARCHAR(20) NOT NULL COMMENT '동작 (AGREED: 최초 동의, UPDATED: 재동의, REVOKED: 철회)',
+    agreed_at DATETIME(6) NOT NULL COMMENT '동의/철회 시각',
+    ip_address VARCHAR(50) NULL COMMENT 'IP 주소 (법적 증빙용)',
+    user_agent TEXT NULL COMMENT 'User Agent (법적 증빙용)',
+
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_terms_history_user_id ON user_terms_agreement_history(user_id);
+CREATE INDEX idx_terms_history_type ON user_terms_agreement_history(terms_type);
+CREATE INDEX idx_terms_history_agreed_at ON user_terms_agreement_history(agreed_at DESC);
+CREATE INDEX idx_terms_history_composite ON user_terms_agreement_history(user_id, terms_type, agreed_at DESC);
+
 -- Email Verification Tokens Table (이메일 인증 토큰)
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
