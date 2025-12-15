@@ -77,12 +77,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         username: profile?.nickname || user.email,
       });
 
+      // 약관 동의 여부 조회
+      let hasAgreedToTerms = false;
+      try {
+        const termsAgreement = await getTermsAgreement();
+        hasAgreedToTerms = termsAgreement.isAllRequiredAgreed;
+      } catch (termsError) {
+        // 약관 동의 정보가 없는 경우 (첫 로그인)
+      }
+
       // Update state
       set({
         user,
         profile: profile || null,
         isAuthenticated: true,
         isLoading: false,
+        hasAgreedToTerms,
       });
     } catch (error) {
       throw error;
