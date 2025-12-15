@@ -24,7 +24,7 @@ import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
 import org.slf4j.LoggerFactory
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
+import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
@@ -44,6 +44,7 @@ import java.util.UUID
  * @property emailVerificationTokenRepository 이메일 인증 토큰 Repository
  * @property emailVerificationService 이메일 인증 메일 발송 서비스
  * @property passwordEncoder BCrypt 비밀번호 암호화
+ * @property appleJwtDecoder Apple Identity Token 검증용 JWT Decoder
  */
 @Service
 @Transactional(readOnly = true)
@@ -55,7 +56,8 @@ class AuthServiceImpl(
     private val authMethodRepository: UserAuthenticationMethodRepository,
     private val emailVerificationTokenRepository: EmailVerificationTokenRepository,
     private val emailVerificationService: EmailVerificationService,
-    private val passwordEncoder: BCryptPasswordEncoder
+    private val passwordEncoder: BCryptPasswordEncoder,
+    private val appleJwtDecoder: JwtDecoder
 ) : AuthService {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -65,11 +67,6 @@ class AuthServiceImpl(
          * Rate Limiting 기간 (60초 = 1분)
          */
         private const val RATE_LIMIT_SECONDS = 60L
-
-        /**
-         * Apple JWK Set URI
-         */
-        private const val APPLE_JWK_SET_URI = "https://appleid.apple.com/auth/keys"
     }
 
     /**
@@ -729,9 +726,8 @@ class AuthServiceImpl(
     ): Mono<AppleTokenResponse> {
         return Mono.fromCallable {
             try {
-                // 1. Apple Public Key로 JWT 검증
-                val jwtDecoder = NimbusJwtDecoder.withJwkSetUri(APPLE_JWK_SET_URI).build()
-                val jwt = jwtDecoder.decode(identityToken)
+                // 1. Apple Public Key로 JWT 검증 (JWK 캐싱을 위해 Bean으로 주입받은 Decoder 사용)
+                val jwt = appleJwtDecoder.decode(identityToken)
 
                 // 2. JWT Claims에서 사용자 정보 추출
                 val providerId = jwt.subject

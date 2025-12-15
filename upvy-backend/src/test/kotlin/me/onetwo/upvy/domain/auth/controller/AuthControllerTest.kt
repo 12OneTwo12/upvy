@@ -512,8 +512,12 @@ class AuthControllerTest {
     fun authenticateWithApple_Success() {
         // Given
         val userId = UUID.randomUUID()
+        val identityToken = "eyJraWQiOiJmaDZCczhDIiwiYWxnIjoiUlMyNTYifQ." +
+            "eyJpc3MiOiJodHRwczovL2FwcGxlaWQuYXBwbGUuY29tIiwiYXVkIjoibWUub25ldHdvLnVwdnkiLCJleHAiOjE3MDg4NTg4M" +
+            "DAsImlhdCI6MTcwODg1ODIwMCwic3ViIjoiMDAwMTIzLjQ1Njc4OWFiY2RlZjEyMzQuMTIzNCIsImVtYWlsIjoidXNlckB" +
+            "leGFtcGxlLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlfQ..."
         val request = AppleTokenRequest(
-            identityToken = "eyJraWQiOiJmaDZCczhDIiwiYWxnIjoiUlMyNTYifQ.eyJpc3MiOiJodHRwczovL2FwcGxlaWQuYXBwbGUuY29tIiwiYXVkIjoibWUub25ldHdvLnVwdnkiLCJleHAiOjE3MDg4NTg4MDAsImlhdCI6MTcwODg1ODIwMCwic3ViIjoiMDAwMTIzLjQ1Njc4OWFiY2RlZjEyMzQuMTIzNCIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlfQ...",
+            identityToken = identityToken,
             authorizationCode = "c1234567890abcdef",
             user = AppleUserInfo(
                 familyName = "Doe",
@@ -521,9 +525,13 @@ class AuthControllerTest {
             )
         )
 
+        val accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ..."
+        val refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyfQ..."
         val response = AppleTokenResponse(
-            accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ...",
-            refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyfQ...",
+            accessToken = accessToken,
+            refreshToken = refreshToken,
             userId = userId,
             email = "user@example.com"
         )
@@ -531,8 +539,8 @@ class AuthControllerTest {
         every {
             authService.authenticateWithApple(
                 identityToken = request.identityToken,
-                familyName = "Doe",
-                givenName = "John"
+                familyName = request.user?.familyName,
+                givenName = request.user?.givenName
             )
         } returns Mono.just(response)
 
