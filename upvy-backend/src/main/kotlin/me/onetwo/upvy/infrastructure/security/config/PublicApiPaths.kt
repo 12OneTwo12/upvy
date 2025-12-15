@@ -20,7 +20,8 @@ object PublicApiPaths {
         "${ApiPaths.API_V1_AUTH}/**",
         "/oauth2/**",
         "/login/**",
-        "/error"
+        "/error",
+        "/actuator/health/**"
     )
 
     /**
