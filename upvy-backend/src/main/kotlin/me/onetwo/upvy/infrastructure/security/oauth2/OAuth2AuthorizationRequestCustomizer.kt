@@ -13,11 +13,16 @@ import reactor.core.publisher.Mono
  *
  * OAuth2 인증 요청에 추가 파라미터를 설정합니다.
  * - prompt=select_account: 매번 구글 계정 선택 화면 표시
+ * - WebSession에 isMobile 플래그 저장 (state 파라미터 기반)
  */
 @Component
 class OAuth2AuthorizationRequestCustomizer(
     clientRegistrationRepository: ReactiveClientRegistrationRepository
 ) : ServerOAuth2AuthorizationRequestResolver {
+
+    companion object {
+        const val SESSION_ATTR_IS_MOBILE = "oauth2.isMobile"
+    }
 
     private val defaultResolver = DefaultServerOAuth2AuthorizationRequestResolver(
         clientRegistrationRepository
@@ -25,6 +30,9 @@ class OAuth2AuthorizationRequestCustomizer(
 
     override fun resolve(exchange: ServerWebExchange): Mono<OAuth2AuthorizationRequest> {
         return defaultResolver.resolve(exchange)
+            .flatMap { authRequest ->
+                saveIsMobileToSession(exchange).thenReturn(authRequest)
+            }
             .map { customizeAuthorizationRequest(it) }
     }
 
@@ -33,7 +41,22 @@ class OAuth2AuthorizationRequestCustomizer(
         clientRegistrationId: String
     ): Mono<OAuth2AuthorizationRequest> {
         return defaultResolver.resolve(exchange, clientRegistrationId)
+            .flatMap { authRequest ->
+                saveIsMobileToSession(exchange).thenReturn(authRequest)
+            }
             .map { customizeAuthorizationRequest(it) }
+    }
+
+    private fun saveIsMobileToSession(exchange: ServerWebExchange): Mono<Void> {
+        // 클라이언트가 보낸 state 파라미터 확인 (mobile:xxx 형식)
+        val clientState = exchange.request.queryParams.getFirst("state")
+        val isMobile = clientState?.startsWith("mobile:") == true
+
+        // WebSession에 isMobile 플래그 저장 (OAuth2AuthenticationSuccessHandler에서 사용)
+        return exchange.session.flatMap { session ->
+            session.attributes[SESSION_ATTR_IS_MOBILE] = isMobile
+            Mono.empty<Void>()
+        }
     }
 
     private fun customizeAuthorizationRequest(
