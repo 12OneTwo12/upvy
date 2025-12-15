@@ -182,18 +182,20 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("로그아웃 실패 - Refresh Token 누락")
-    fun logout_MissingToken() {
+    @DisplayName("로그아웃 성공 - Refresh Token 없이 JWT로 로그아웃")
+    fun logout_WithJwtOnly() {
         // Given
-        val invalidRequest = mapOf("refreshToken" to "")
+        val userId = UUID.randomUUID()
+
+        every { authService.logoutByUserId(userId) } returns Unit
 
         // When & Then
-        webTestClient.post()
+        webTestClient
+            .mutateWith(mockUser(userId))
+            .post()
             .uri("${ApiPaths.API_V1_AUTH}/logout")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(invalidRequest)
             .exchange()
-            .expectStatus().is4xxClientError
+            .expectStatus().isNoContent
     }
 
     @Test
