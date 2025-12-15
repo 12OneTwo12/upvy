@@ -11,6 +11,11 @@ const PERMISSION_STRINGS = {
     en: 'Upvy needs access to your photo library to select photos and videos for uploading and sharing.',
     ja: 'Upvyは写真と動画のアップロードのため、フォトライブラリへのアクセス権限が必要です。',
   },
+  NSCameraUsageDescription: {
+    ko: 'Upvy는 프로필 사진 촬영 및 동영상 콘텐츠 제작을 위해 카메라 접근 권한이 필요합니다.',
+    en: 'Upvy needs access to your camera to take profile photos and create video content.',
+    ja: 'Upvyはプロフィール写真の撮影と動画コンテンツの作成のため、カメラへのアクセス権限が必要です。',
+  },
 };
 
 module.exports = {
@@ -34,6 +39,7 @@ module.exports = {
         ITSAppUsesNonExemptEncryption: false,
         UIViewControllerBasedStatusBarAppearance: true,
         NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.en,
+        NSCameraUsageDescription: PERMISSION_STRINGS.NSCameraUsageDescription.en,
       },
     },
     android: {
@@ -66,12 +72,15 @@ module.exports = {
         {
           ko: {
             NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.ko,
+            NSCameraUsageDescription: PERMISSION_STRINGS.NSCameraUsageDescription.ko,
           },
           en: {
             NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.en,
+            NSCameraUsageDescription: PERMISSION_STRINGS.NSCameraUsageDescription.en,
           },
           ja: {
             NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.ja,
+            NSCameraUsageDescription: PERMISSION_STRINGS.NSCameraUsageDescription.ja,
           },
         },
       ],
@@ -83,7 +92,7 @@ module.exports = {
       policy: 'appVersion',
     },
     extra: {
-      otaVersion: '1.1.3',
+      otaVersion: '1.1.4',
       apiUrl: 'https://api.upvy.org',
       eas: {
         projectId: '4eeab4c9-332d-496a-a23d-f63e4726f221',

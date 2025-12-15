@@ -29,23 +29,20 @@ class OAuth2AuthorizationRequestCustomizer(
     )
 
     override fun resolve(exchange: ServerWebExchange): Mono<OAuth2AuthorizationRequest> {
-        return defaultResolver.resolve(exchange)
-            .flatMap { authRequest ->
-                saveIsMobileToSession(exchange).thenReturn(authRequest)
-            }
-            .map { customizeAuthorizationRequest(it) }
+        return defaultResolver.resolve(exchange).customize(exchange)
     }
 
     override fun resolve(
         exchange: ServerWebExchange,
         clientRegistrationId: String
     ): Mono<OAuth2AuthorizationRequest> {
-        return defaultResolver.resolve(exchange, clientRegistrationId)
-            .flatMap { authRequest ->
-                saveIsMobileToSession(exchange).thenReturn(authRequest)
-            }
-            .map { customizeAuthorizationRequest(it) }
+        return defaultResolver.resolve(exchange, clientRegistrationId).customize(exchange)
     }
+
+    private fun Mono<OAuth2AuthorizationRequest>.customize(exchange: ServerWebExchange) =
+        flatMap { authRequest ->
+            saveIsMobileToSession(exchange).thenReturn(authRequest)
+        }.map { customizeAuthorizationRequest(it) }
 
     private fun saveIsMobileToSession(exchange: ServerWebExchange): Mono<Void> {
         // 클라이언트가 보낸 state 파라미터 확인 (mobile:xxx 형식)
@@ -55,7 +52,7 @@ class OAuth2AuthorizationRequestCustomizer(
         // WebSession에 isMobile 플래그 저장 (OAuth2AuthenticationSuccessHandler에서 사용)
         return exchange.session.flatMap { session ->
             session.attributes[SESSION_ATTR_IS_MOBILE] = isMobile
-            Mono.empty<Void>()
+            session.save()
         }
     }
 
