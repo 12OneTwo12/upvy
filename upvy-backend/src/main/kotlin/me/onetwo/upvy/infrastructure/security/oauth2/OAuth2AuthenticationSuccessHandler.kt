@@ -67,15 +67,13 @@ class OAuth2AuthenticationSuccessHandler(
         val refreshToken = jwtTokenProvider.generateRefreshToken(customOAuth2User.userId)
 
         // Refresh Token을 Redis에 저장 (blocking 코드를 별도 스레드에서 실행)
-        return Mono.fromRunnable<Void> {
-                try {
-                    refreshTokenRepository.save(customOAuth2User.userId, refreshToken)
-                } catch (error: Exception) {
-                    // Redis 저장 실패 시에도 로그인 진행 (리프레시 토큰 없이)
-                    logger.error("Failed to save refresh token to Redis for user: ${customOAuth2User.userId}", error)
-                }
-            }
+        return Mono.fromRunnable<Void> { refreshTokenRepository.save(customOAuth2User.userId, refreshToken) }
             .subscribeOn(Schedulers.boundedElastic()) // blocking 작업을 별도 스레드풀에서 실행
+            .doOnError { error ->
+                // Redis 저장 실패 시에도 로그인 진행 (리프레시 토큰 없이)
+                logger.error("Failed to save refresh token to Redis for user: ${customOAuth2User.userId}", error)
+            }
+            .onErrorComplete() // graceful degradation
             .then(exchange.session)
             .flatMap { session ->
                 // 플랫폼 구분: WebSession에서 isMobile 플래그 확인
