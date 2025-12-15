@@ -116,9 +116,9 @@ export default function TermsAgreementScreen() {
     setIsSubmitting(false);
 
     if (result) {
-      // Terms agreement successful, update store and navigate to profile setup
+      // Terms agreement successful, update store
+      // RootNavigator will automatically handle navigation based on hasAgreedToTerms state
       setHasAgreedToTerms(result.isAllRequiredAgreed);
-      navigation.navigate('ProfileSetup');
     }
   };
 
