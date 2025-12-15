@@ -92,7 +92,7 @@ module.exports = {
       policy: 'appVersion',
     },
     extra: {
-      otaVersion: '1.1.3',
+      otaVersion: '1.1.4',
       apiUrl: 'https://api.upvy.org',
       eas: {
         projectId: '4eeab4c9-332d-496a-a23d-f63e4726f221',
