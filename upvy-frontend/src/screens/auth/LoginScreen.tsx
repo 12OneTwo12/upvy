@@ -7,12 +7,14 @@ import {
   Dimensions,
   Image,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation, Trans } from 'react-i18next';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { useAppleAuth } from '@/hooks/useAppleAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/common';
 import { theme } from '@/theme';
@@ -35,6 +37,12 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
+  const {
+    handleAppleLogin,
+    isLoading: isAppleLoading,
+    error: appleError,
+    isAvailable: isAppleAvailable
+  } = useAppleAuth();
   // const { checkAuth } = useAuthStore(); // MVP: Auto-login disabled
 
   // MVP: Auto-login disabled for now
@@ -42,13 +50,21 @@ export default function LoginScreen() {
   //   checkAuth();
   // }, []);
 
-  // 에러 처리
+  // Google 에러 처리
   useEffect(() => {
     if (error) {
       logError(new Error(error), 'LoginScreen.googleAuth');
       showErrorAlert(error, t('login.loginFailed'));
     }
   }, [error, t]);
+
+  // Apple 에러 처리
+  useEffect(() => {
+    if (appleError) {
+      logError(new Error(appleError), 'LoginScreen.appleAuth');
+      showErrorAlert(appleError, t('login.loginFailed'));
+    }
+  }, [appleError, t]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -126,6 +142,21 @@ export default function LoginScreen() {
           >
             {t('login.googleLogin')}
           </Button>
+
+          {/* Apple 로그인 버튼 (iOS만) */}
+          {Platform.OS === 'ios' && isAppleAvailable && (
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onPress={handleAppleLogin}
+              disabled={!isAppleAvailable}
+              loading={isAppleLoading}
+              style={styles.appleButton}
+            >
+              {t('login.appleLogin')}
+            </Button>
+          )}
 
           {/* 약관 동의 */}
           <Text style={styles.termsText}>
@@ -298,6 +329,11 @@ const useStyles = createStyleSheet({
 
   googleButton: {
     ...theme.shadows.sm,
+  },
+
+  appleButton: {
+    ...theme.shadows.sm,
+    backgroundColor: '#000000', // Apple 브랜드 가이드라인: 검정 배경
   },
 
   termsText: {

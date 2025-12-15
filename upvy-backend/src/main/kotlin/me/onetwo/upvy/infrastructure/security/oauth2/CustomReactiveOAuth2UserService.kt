@@ -42,6 +42,7 @@ class CustomReactiveOAuth2UserService(
                 val registrationId = userRequest.clientRegistration.registrationId
                 val provider = when (registrationId.uppercase()) {
                     "GOOGLE" -> OAuthProvider.GOOGLE
+                    "APPLE" -> OAuthProvider.APPLE
                     "NAVER" -> OAuthProvider.NAVER
                     "KAKAO" -> OAuthProvider.KAKAO
                     else -> throw IllegalArgumentException("지원하지 않는 OAuth 제공자: $registrationId")
@@ -91,6 +92,18 @@ class CustomReactiveOAuth2UserService(
                 name = attributes["name"] as? String,
                 profileImageUrl = attributes["picture"] as? String
             )
+
+            OAuthProvider.APPLE -> {
+                // Apple OAuth2 attributes structure:
+                // { "sub": "unique_id", "email": "user@example.com" }
+                // Note: Apple only provides name on first login if user shares it
+                OAuth2UserInfo(
+                    email = attributes["email"] as String,
+                    providerId = attributes["sub"] as String,
+                    name = null, // Apple doesn't reliably provide name in OAuth2 flow
+                    profileImageUrl = null // Apple doesn't provide profile image
+                )
+            }
 
             OAuthProvider.NAVER -> {
                 val response = attributes["response"] as Map<*, *>
