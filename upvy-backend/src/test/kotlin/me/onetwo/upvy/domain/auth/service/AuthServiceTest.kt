@@ -12,6 +12,7 @@ import me.onetwo.upvy.domain.user.repository.UserAuthenticationMethodRepository
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.domain.user.service.UserService
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.security.oauth2.jwt.JwtDecoder
 import me.onetwo.upvy.infrastructure.redis.RefreshTokenRepository
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -49,6 +50,7 @@ class AuthServiceTest {
         val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
         val emailVerificationService = mockk<EmailVerificationService>()
         val passwordEncoder = mockk<BCryptPasswordEncoder>()
+        val appleJwtDecoder = mockk<JwtDecoder>()
         authService = AuthServiceImpl(
             jwtTokenProvider,
             refreshTokenRepository,
@@ -57,7 +59,8 @@ class AuthServiceTest {
             authMethodRepository,
             emailVerificationTokenRepository,
             emailVerificationService,
-            passwordEncoder
+            passwordEncoder,
+            appleJwtDecoder
         )
 
         testUserId = UUID.randomUUID()

@@ -170,11 +170,11 @@ layout: hextra-home
 
 <div class="hx:mt-12 hx:mb-8 hx:text-center">
 <div class="hx:text-sm hx:text-gray-600">
-<a href="/privacy" class="hx:text-primary-600 hover:hx:underline">Privacy Policy</a>
+<a href="/en/privacy" class="hx:text-primary-600 hover:hx:underline">Privacy Policy</a>
 &nbsp;|&nbsp;
-<a href="/terms" class="hx:text-primary-600 hover:hx:underline">Terms of Service</a>
+<a href="/en/terms" class="hx:text-primary-600 hover:hx:underline">Terms of Service</a>
 &nbsp;|&nbsp;
-<a href="/support" class="hx:text-primary-600 hover:hx:underline">Support</a>
+<a href="/en/support" class="hx:text-primary-600 hover:hx:underline">Support</a>
 </div>
 <p class="hx:text-xs hx:text-gray-500 hx:mt-4">© 2025 Upvy. All rights reserved.</p>
 </div>

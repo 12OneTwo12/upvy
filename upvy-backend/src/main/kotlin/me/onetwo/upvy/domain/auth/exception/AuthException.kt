@@ -74,3 +74,20 @@ class OAuthOnlyUserException : BusinessException(
     httpStatus = HttpStatus.FORBIDDEN,
     message = "OAuth로만 가입한 사용자는 이 기능을 사용할 수 없습니다. 이메일 인증을 추가해주세요."
 )
+
+/**
+ * Apple Identity Token이 유효하지 않을 때 발생하는 예외
+ *
+ * Apple 네이티브 인증 시 전달된 identityToken(JWT)이 다음과 같은 경우 발생합니다:
+ * - JWT 서명 검증 실패
+ * - JWT 만료
+ * - 필수 claim(email, sub 등)이 누락된 경우
+ * - Apple 공개키로 검증할 수 없는 토큰
+ */
+class InvalidAppleTokenException(
+    message: String = "Apple Identity Token이 유효하지 않습니다."
+) : BusinessException(
+    errorCode = "INVALID_APPLE_TOKEN",
+    httpStatus = HttpStatus.UNAUTHORIZED,
+    message = message
+)

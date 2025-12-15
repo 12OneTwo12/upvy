@@ -28,9 +28,30 @@ By agreeing to these terms, you agree to the following:
 
 ## 3. Content and Copyright
 
-### User-Uploaded Content
+### User-Generated Content (UGC)
 
 Users retain copyright to their uploaded content and grant Upvy a non-exclusive license to use, distribute, and modify such content.
+
+**By uploading content, you represent and warrant that:**
+- You own or have the necessary rights to the content
+- Your content does not violate any third-party rights (copyright, trademark, privacy, etc.)
+- Your content complies with these Terms of Service and Community Guidelines
+
+**Content Moderation:**
+- All user-generated content is subject to moderation and review
+- We reserve the right to remove any content that violates our Community Guidelines
+- Repeat violations may result in account suspension or termination
+- Automated and manual content filtering systems are in place to ensure safety
+
+**Reporting System:**
+- Users can report inappropriate content or behavior via in-app reporting
+- Reports are reviewed by our moderation team within 24-48 hours
+- Reporters will receive status updates on their submissions
+
+**User Safety Features:**
+- Block users who engage in inappropriate behavior
+- Filter content based on your preferences
+- Control who can comment on your content
 
 ### AI-Generated Content
 

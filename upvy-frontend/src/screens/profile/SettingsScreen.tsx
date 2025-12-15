@@ -257,6 +257,13 @@ export default function SettingsScreen() {
   };
 
   /**
+   * 커뮤니티 가이드라인 화면으로 이동
+   */
+  const handleCommunityGuidelines = () => {
+    navigation.navigate('CommunityGuidelines');
+  };
+
+  /**
    * 도움말 및 지원 화면으로 이동
    */
   const handleHelp = () => {
@@ -576,6 +583,26 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
                 style={styles.settingIcon}
               />
               <Text style={styles.settingLabel}>{t('general.privacyPolicy')}</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme.colors.gray[400]}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleCommunityGuidelines}
+          >
+            <View style={styles.settingLeft}>
+              <Ionicons
+                name="people-outline"
+                size={22}
+                color={theme.colors.text.secondary}
+                style={styles.settingIcon}
+              />
+              <Text style={styles.settingLabel}>{t('general.communityGuidelines')}</Text>
             </View>
             <Ionicons
               name="chevron-forward"

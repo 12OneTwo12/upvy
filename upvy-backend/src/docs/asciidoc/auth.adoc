@@ -236,6 +236,51 @@ include::auth/password-reset-verify-code.adoc[]
 
 include::auth/password-reset-confirm.adoc[]
 
+[[auth-terms-agreement]]
+== UGC 약관 동의
+
+사용자 생성 콘텐츠(UGC)를 제공하는 앱을 위한 약관 동의 관리 기능입니다.
+
+Apple App Store 심사 가이드라인 1.2를 준수하기 위해, 사용자가 콘텐츠를 생성하기 전에 필수 약관에 동의해야 합니다.
+
+=== 약관 종류
+
+[cols="1,2,1"]
+|===
+|약관 타입|설명|필수 여부
+
+|서비스 이용약관
+|서비스 이용에 대한 기본 약관
+|필수
+
+|개인정보 처리방침
+|개인정보 수집 및 이용에 대한 약관 (GDPR, CCPA 준수)
+|필수
+
+|커뮤니티 가이드라인
+|UGC 생성 및 커뮤니티 행동 규칙
+|필수
+
+|마케팅 정보 수신 동의
+|마케팅 메일 및 푸시 알림 수신 동의
+|선택
+|===
+
+=== 사용자 플로우
+
+권장하는 약관 동의 플로우:
+
+1. **OAuth2 로그인** → JWT 토큰 획득
+2. **약관 동의 조회** → 동의 여부 확인
+3. **약관 미동의 시** → 약관 동의 화면 표시
+4. **약관 동의** → 필수 약관 3개 체크 + 선택 약관 1개 체크
+5. **프로필 생성** → 닉네임, 프로필 이미지 등록
+6. **홈 화면** → 콘텐츠 탐색 및 생성
+
+include::auth/terms-agreement-agree.adoc[]
+
+include::auth/terms-agreement-get.adoc[]
+
 [[auth-oauth2-google]]
 == Google OAuth2 로그인
 

@@ -1,9 +1,11 @@
 package me.onetwo.upvy.domain.auth.service
 
+import me.onetwo.upvy.domain.auth.dto.AppleTokenResponse
 import me.onetwo.upvy.domain.auth.dto.EmailVerifyResponse
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException
 import me.onetwo.upvy.domain.auth.exception.EmailNotVerifiedException
+import me.onetwo.upvy.domain.auth.exception.InvalidAppleTokenException
 import me.onetwo.upvy.domain.auth.exception.InvalidCredentialsException
 import me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException
 import me.onetwo.upvy.domain.auth.exception.OAuthOnlyUserException
@@ -22,6 +24,7 @@ import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
 import org.slf4j.LoggerFactory
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
@@ -41,6 +44,7 @@ import java.util.UUID
  * @property emailVerificationTokenRepository 이메일 인증 토큰 Repository
  * @property emailVerificationService 이메일 인증 메일 발송 서비스
  * @property passwordEncoder BCrypt 비밀번호 암호화
+ * @property appleJwtDecoder Apple Identity Token 검증용 JWT Decoder
  */
 @Service
 @Transactional(readOnly = true)
@@ -52,7 +56,8 @@ class AuthServiceImpl(
     private val authMethodRepository: UserAuthenticationMethodRepository,
     private val emailVerificationTokenRepository: EmailVerificationTokenRepository,
     private val emailVerificationService: EmailVerificationService,
-    private val passwordEncoder: BCryptPasswordEncoder
+    private val passwordEncoder: BCryptPasswordEncoder,
+    private val appleJwtDecoder: JwtDecoder
 ) : AuthService {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -693,5 +698,87 @@ class AuthServiceImpl(
                             }
                     }
             }
+    }
+
+    /**
+     * Apple Identity Token 검증 및 로그인
+     *
+     * expo-apple-authentication에서 받은 identityToken을 검증하고 로그인 처리합니다.
+     *
+     * ### 비즈니스 로직
+     * 1. Apple Public Key로 identityToken 검증 (JWT)
+     * 2. JWT에서 사용자 정보 추출 (sub = providerId, email)
+     * 3. 사용자 조회 또는 생성 (findOrCreateOAuthUser)
+     * 4. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 5. AppleTokenResponse 생성
+     *
+     * @param identityToken Apple Identity Token (JWT)
+     * @param familyName 성 (첫 로그인 시에만 제공됨)
+     * @param givenName 이름 (첫 로그인 시에만 제공됨)
+     * @return Mono<AppleTokenResponse> JWT 토큰과 사용자 정보
+     * @throws InvalidAppleTokenException Identity Token이 유효하지 않은 경우
+     */
+    @Transactional
+    override fun authenticateWithApple(
+        identityToken: String,
+        familyName: String?,
+        givenName: String?
+    ): Mono<AppleTokenResponse> {
+        return Mono.fromCallable {
+            try {
+                // 1. Apple Public Key로 JWT 검증 (JWK 캐싱을 위해 Bean으로 주입받은 Decoder 사용)
+                val jwt = appleJwtDecoder.decode(identityToken)
+
+                // 2. JWT Claims에서 사용자 정보 추출
+                val providerId = jwt.subject
+                    ?: throw InvalidAppleTokenException("Apple Identity Token에 subject(sub)가 없습니다")
+
+                val email = jwt.getClaimAsString("email")
+                    ?: throw InvalidAppleTokenException("Apple Identity Token에 이메일(email)이 없습니다")
+
+                // 3. 이름 조합 (familyName + givenName)
+                val name = when {
+                    familyName != null && givenName != null -> "$givenName $familyName"
+                    givenName != null -> givenName
+                    familyName != null -> familyName
+                    else -> null
+                }
+
+                logger.debug(
+                    "Apple Identity Token verified - email: $email, providerId: $providerId, name: $name"
+                )
+
+                Triple(email, providerId, name)
+            } catch (e: InvalidAppleTokenException) {
+                // 비즈니스 예외는 그대로 던짐
+                throw e
+            } catch (e: Exception) {
+                // JWT 검증 실패 등 다른 모든 예외는 InvalidAppleTokenException으로 래핑
+                throw InvalidAppleTokenException("Apple Identity Token 검증에 실패했습니다: ${e.message}")
+            }
+        }.flatMap { (email, providerId, name) ->
+            // 4. 사용자 조회 또는 생성
+            userService.findOrCreateOAuthUser(
+                email = email,
+                provider = OAuthProvider.APPLE,
+                providerId = providerId,
+                name = name,
+                profileImageUrl = null // Apple은 프로필 이미지를 제공하지 않음
+            )
+        }.flatMap { user ->
+            // 5. JWT 토큰 생성 및 Redis에 저장
+            generateTokens(user).map { jwtTokens ->
+                AppleTokenResponse(
+                    accessToken = jwtTokens.accessToken,
+                    refreshToken = jwtTokens.refreshToken,
+                    userId = user.id!!,
+                    email = user.email
+                )
+            }
+        }.doOnSuccess {
+            logger.info("Apple authentication successful for email: ${it.email}, userId: ${it.userId}")
+        }.doOnError { error ->
+            logger.error("Apple authentication failed", error)
+        }
     }
 }

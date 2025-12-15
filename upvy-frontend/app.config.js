@@ -22,7 +22,7 @@ module.exports = {
   expo: {
     name: 'Upvy',
     slug: 'upvy',
-    version: '1.1.0',
+    version: '1.2.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -41,6 +41,7 @@ module.exports = {
         NSPhotoLibraryUsageDescription: PERMISSION_STRINGS.NSPhotoLibraryUsageDescription.en,
         NSCameraUsageDescription: PERMISSION_STRINGS.NSCameraUsageDescription.en,
       },
+      usesAppleSignIn: true,
     },
     android: {
       adaptiveIcon: {
@@ -59,6 +60,7 @@ module.exports = {
       'expo-web-browser',
       'expo-dev-client',
       'expo-video',
+      'expo-apple-authentication',
       [
         '@sentry/react-native/expo',
         {
@@ -92,7 +94,7 @@ module.exports = {
       policy: 'appVersion',
     },
     extra: {
-      otaVersion: '1.1.4',
+      otaVersion: '1.2.0',
       apiUrl: 'https://api.upvy.org',
       eas: {
         projectId: '4eeab4c9-332d-496a-a23d-f63e4726f221',
