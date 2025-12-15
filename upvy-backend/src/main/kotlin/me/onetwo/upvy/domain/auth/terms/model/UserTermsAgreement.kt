@@ -74,14 +74,16 @@ data class UserTermsAgreement(
     }
 
     /**
-     * 특정 약관이 최신 버전인지 확인
+     * 모든 필수 약관이 최신 버전인지 확인
      *
-     * @param currentVersion 현재 시스템의 최신 약관 버전
+     * 각 약관 타입의 최신 버전과 비교하여 확인합니다.
+     * 서비스 이용약관, 개인정보 처리방침, 커뮤니티 가이드라인을 각각 독립적으로 확인합니다.
+     *
      * @return 모든 필수 약관이 최신 버전인지 여부
      */
-    fun isLatestVersion(currentVersion: String): Boolean {
-        return serviceTermsVersion == currentVersion &&
-            privacyPolicyVersion == currentVersion &&
-            communityGuidelinesVersion == currentVersion
+    fun isLatestVersion(): Boolean {
+        return serviceTermsVersion == TermsVersions.CURRENT_SERVICE_TERMS_VERSION &&
+            privacyPolicyVersion == TermsVersions.CURRENT_PRIVACY_POLICY_VERSION &&
+            communityGuidelinesVersion == TermsVersions.CURRENT_COMMUNITY_GUIDELINES_VERSION
     }
 }

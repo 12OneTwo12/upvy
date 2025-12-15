@@ -1,7 +1,5 @@
 package me.onetwo.upvy.domain.auth.terms.repository
 
-import me.onetwo.upvy.domain.auth.terms.model.AgreementAction
-import me.onetwo.upvy.domain.auth.terms.model.TermsType
 import me.onetwo.upvy.domain.auth.terms.model.UserTermsAgreement
 import me.onetwo.upvy.domain.auth.terms.model.UserTermsAgreementHistory
 import me.onetwo.upvy.jooq.generated.tables.references.USER_TERMS_AGREEMENT_HISTORY
@@ -67,9 +65,11 @@ class TermsAgreementRepositoryImpl(
                 marketingAgreed = record.get(USER_TERMS_AGREEMENTS.MARKETING_AGREED) ?: false,
                 marketingVersion = record.get(USER_TERMS_AGREEMENTS.MARKETING_VERSION),
                 marketingAgreedAt = record.get(USER_TERMS_AGREEMENTS.MARKETING_AGREED_AT),
-                createdAt = record.get(USER_TERMS_AGREEMENTS.CREATED_AT) ?: Instant.now(),
+                createdAt = record.get(USER_TERMS_AGREEMENTS.CREATED_AT)
+                    ?: throw IllegalStateException("createdAt is null for user terms agreement with userId: ${record.get(USER_TERMS_AGREEMENTS.USER_ID)}"),
                 createdBy = record.get(USER_TERMS_AGREEMENTS.CREATED_BY),
-                updatedAt = record.get(USER_TERMS_AGREEMENTS.UPDATED_AT) ?: Instant.now(),
+                updatedAt = record.get(USER_TERMS_AGREEMENTS.UPDATED_AT)
+                    ?: throw IllegalStateException("updatedAt is null for user terms agreement with userId: ${record.get(USER_TERMS_AGREEMENTS.USER_ID)}"),
                 updatedBy = record.get(USER_TERMS_AGREEMENTS.UPDATED_BY),
                 deletedAt = record.get(USER_TERMS_AGREEMENTS.DELETED_AT)
             )

@@ -23,7 +23,6 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import reactor.core.publisher.Mono
 import java.time.Instant
-import java.util.UUID
 
 /**
  * TermsAgreementRepository 통합 테스트

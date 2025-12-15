@@ -65,8 +65,8 @@ class TermsAgreementController(
         @Valid @RequestBody request: TermsAgreementRequest,
         serverHttpRequest: ServerHttpRequest
     ): Mono<ResponseEntity<TermsAgreementResponse>> {
-        // IP 주소 추출
-        val ipAddress = serverHttpRequest.remoteAddress?.address?.hostAddress
+        // IP 주소 추출 (Reverse Proxy 환경 고려)
+        val ipAddress = extractClientIpAddress(serverHttpRequest)
 
         // User Agent 추출
         val userAgent = serverHttpRequest.headers.getFirst("User-Agent")
@@ -105,5 +105,35 @@ class TermsAgreementController(
                 termsAgreementService.getTermsAgreement(userId)
             }
             .map { response -> ResponseEntity.ok(response) }
+    }
+
+    /**
+     * 클라이언트 IP 주소 추출
+     *
+     * Reverse Proxy 환경을 고려하여 IP 주소를 추출합니다.
+     * 우선순위:
+     * 1. X-Forwarded-For 헤더 (첫 번째 IP 사용)
+     * 2. X-Real-IP 헤더
+     * 3. RemoteAddress (직접 연결)
+     *
+     * @param serverHttpRequest ServerHttpRequest
+     * @return IP 주소 (nullable)
+     */
+    private fun extractClientIpAddress(serverHttpRequest: ServerHttpRequest): String? {
+        // X-Forwarded-For 헤더 확인 (Reverse Proxy가 설정한 원본 IP)
+        val xForwardedFor = serverHttpRequest.headers.getFirst("X-Forwarded-For")
+        if (!xForwardedFor.isNullOrBlank()) {
+            // X-Forwarded-For는 "client, proxy1, proxy2" 형식이므로 첫 번째 IP 사용
+            return xForwardedFor.split(",").firstOrNull()?.trim()
+        }
+
+        // X-Real-IP 헤더 확인
+        val xRealIp = serverHttpRequest.headers.getFirst("X-Real-IP")
+        if (!xRealIp.isNullOrBlank()) {
+            return xRealIp.trim()
+        }
+
+        // 직접 연결된 경우 RemoteAddress 사용
+        return serverHttpRequest.remoteAddress?.address?.hostAddress
     }
 }

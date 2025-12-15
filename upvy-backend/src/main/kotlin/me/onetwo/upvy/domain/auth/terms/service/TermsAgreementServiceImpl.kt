@@ -16,6 +16,27 @@ import java.time.Instant
 import java.util.UUID
 
 /**
+ * 약관 동의 처리 컨텍스트
+ *
+ * buildHistories 함수의 파라미터를 그룹화하여 가독성과 유지보수성을 개선합니다.
+ *
+ * @property userId 사용자 ID
+ * @property request 약관 동의 요청
+ * @property agreedAt 동의 시각
+ * @property ipAddress IP 주소
+ * @property userAgent User Agent
+ * @property existing 기존 약관 동의 정보
+ */
+private data class AgreementContext(
+    val userId: UUID,
+    val request: TermsAgreementRequest,
+    val agreedAt: Instant,
+    val ipAddress: String?,
+    val userAgent: String?,
+    val existing: UserTermsAgreement
+)
+
+/**
  * 약관 동의 Service 구현체
  *
  * 약관 동의 관련 비즈니스 로직을 처리합니다.
@@ -65,7 +86,15 @@ class TermsAgreementServiceImpl(
                 termsAgreementRepository.save(updated)
                     .flatMap { saved ->
                         // 약관 동의 이력 저장
-                        val histories = buildHistories(userId, request, now, ipAddress, userAgent, existing)
+                        val context = AgreementContext(
+                            userId = userId,
+                            request = request,
+                            agreedAt = now,
+                            ipAddress = ipAddress,
+                            userAgent = userAgent,
+                            existing = existing
+                        )
+                        val histories = buildHistories(context)
                         Flux.fromIterable(histories)
                             .flatMap { termsAgreementRepository.saveHistory(it) }
                             .then(Mono.just(saved))
@@ -124,83 +153,73 @@ class TermsAgreementServiceImpl(
      * 동의한 약관에 대해서만 이력을 생성합니다.
      * 기존 동의가 있었는지 확인하여 AGREED 또는 UPDATED 액션을 결정합니다.
      *
-     * @param userId 사용자 ID
-     * @param request 약관 동의 요청
-     * @param agreedAt 동의 시각
-     * @param ipAddress IP 주소
-     * @param userAgent User Agent
-     * @param existing 기존 약관 동의 (없으면 기본값)
+     * @param context 약관 동의 처리 컨텍스트
      * @return 약관 동의 이력 목록
      */
     private fun buildHistories(
-        userId: UUID,
-        request: TermsAgreementRequest,
-        agreedAt: Instant,
-        ipAddress: String?,
-        userAgent: String?,
-        existing: UserTermsAgreement
+        context: AgreementContext
     ): List<UserTermsAgreementHistory> {
         val histories = mutableListOf<UserTermsAgreementHistory>()
 
         // 서비스 이용약관
-        if (request.serviceTermsAgreed) {
+        if (context.request.serviceTermsAgreed) {
             histories.add(
                 UserTermsAgreementHistory(
-                    userId = userId,
+                    userId = context.userId,
                     termsType = TermsType.SERVICE_TERMS,
                     termsVersion = TermsVersions.CURRENT_SERVICE_TERMS_VERSION,
-                    action = if (existing.serviceTermsAgreed) AgreementAction.UPDATED else AgreementAction.AGREED,
-                    agreedAt = agreedAt,
-                    ipAddress = ipAddress,
-                    userAgent = userAgent
+                    action = if (context.existing.serviceTermsAgreed) AgreementAction.UPDATED else AgreementAction.AGREED,
+                    agreedAt = context.agreedAt,
+                    ipAddress = context.ipAddress,
+                    userAgent = context.userAgent
                 )
             )
         }
 
         // 개인정보 처리방침
-        if (request.privacyPolicyAgreed) {
+        if (context.request.privacyPolicyAgreed) {
             histories.add(
                 UserTermsAgreementHistory(
-                    userId = userId,
+                    userId = context.userId,
                     termsType = TermsType.PRIVACY_POLICY,
                     termsVersion = TermsVersions.CURRENT_PRIVACY_POLICY_VERSION,
-                    action = if (existing.privacyPolicyAgreed) AgreementAction.UPDATED else AgreementAction.AGREED,
-                    agreedAt = agreedAt,
-                    ipAddress = ipAddress,
-                    userAgent = userAgent
+                    action = if (context.existing.privacyPolicyAgreed) AgreementAction.UPDATED else AgreementAction.AGREED,
+                    agreedAt = context.agreedAt,
+                    ipAddress = context.ipAddress,
+                    userAgent = context.userAgent
                 )
             )
         }
 
         // 커뮤니티 가이드라인
-        if (request.communityGuidelinesAgreed) {
+        if (context.request.communityGuidelinesAgreed) {
             histories.add(
                 UserTermsAgreementHistory(
-                    userId = userId,
+                    userId = context.userId,
                     termsType = TermsType.COMMUNITY_GUIDELINES,
                     termsVersion = TermsVersions.CURRENT_COMMUNITY_GUIDELINES_VERSION,
-                    action = if (existing.communityGuidelinesAgreed) AgreementAction.UPDATED else AgreementAction.AGREED,
-                    agreedAt = agreedAt,
-                    ipAddress = ipAddress,
-                    userAgent = userAgent
+                    action = if (context.existing.communityGuidelinesAgreed) AgreementAction.UPDATED else AgreementAction.AGREED,
+                    agreedAt = context.agreedAt,
+                    ipAddress = context.ipAddress,
+                    userAgent = context.userAgent
                 )
             )
         }
 
         // 마케팅 정보 수신 동의 (선택)
-        if (request.marketingAgreed != existing.marketingAgreed) {
+        if (context.request.marketingAgreed != context.existing.marketingAgreed) {
             histories.add(
                 UserTermsAgreementHistory(
-                    userId = userId,
+                    userId = context.userId,
                     termsType = TermsType.MARKETING_CONSENT,
                     termsVersion = TermsVersions.CURRENT_MARKETING_VERSION,
                     action = when {
-                        request.marketingAgreed -> AgreementAction.AGREED
+                        context.request.marketingAgreed -> AgreementAction.AGREED
                         else -> AgreementAction.REVOKED
                     },
-                    agreedAt = agreedAt,
-                    ipAddress = ipAddress,
-                    userAgent = userAgent
+                    agreedAt = context.agreedAt,
+                    ipAddress = context.ipAddress,
+                    userAgent = context.userAgent
                 )
             )
         }
