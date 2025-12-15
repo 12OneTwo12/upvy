@@ -260,3 +260,49 @@ data class ResetPasswordConfirmRequest(
     @field:Size(min = 8, message = "새 비밀번호는 최소 8자 이상이어야 합니다")
     val newPassword: String
 )
+
+/**
+ * Apple 네이티브 로그인 요청
+ *
+ * expo-apple-authentication으로부터 받은 identityToken을 검증하여 로그인합니다.
+ *
+ * @property identityToken Apple에서 발급한 Identity Token (JWT)
+ * @property authorizationCode Apple Authorization Code (선택)
+ * @property user 사용자 이름 정보 (첫 로그인 시에만 제공됨)
+ */
+data class AppleTokenRequest(
+    @field:NotBlank(message = "Identity Token은 필수입니다")
+    val identityToken: String,
+
+    val authorizationCode: String? = null,
+
+    val user: AppleUserInfo? = null
+)
+
+/**
+ * Apple 사용자 이름 정보
+ *
+ * @property familyName 성
+ * @property givenName 이름
+ */
+data class AppleUserInfo(
+    val familyName: String? = null,
+    val givenName: String? = null
+)
+
+/**
+ * Apple 토큰 검증 응답
+ *
+ * Apple identityToken 검증 성공 시 JWT 토큰과 사용자 정보를 반환합니다.
+ *
+ * @property accessToken JWT Access Token
+ * @property refreshToken JWT Refresh Token
+ * @property userId 사용자 ID
+ * @property email 사용자 이메일
+ */
+data class AppleTokenResponse(
+    val accessToken: String,
+    val refreshToken: String,
+    val userId: UUID,
+    val email: String
+)

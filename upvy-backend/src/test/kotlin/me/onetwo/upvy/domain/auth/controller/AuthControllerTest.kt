@@ -3,7 +3,11 @@ package me.onetwo.upvy.domain.auth.controller
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.every
 import me.onetwo.upvy.config.TestSecurityConfig
+import me.onetwo.upvy.domain.auth.dto.AppleTokenRequest
+import me.onetwo.upvy.domain.auth.dto.AppleTokenResponse
+import me.onetwo.upvy.domain.auth.dto.AppleUserInfo
 import me.onetwo.upvy.domain.auth.dto.ChangePasswordRequest
+import me.onetwo.upvy.domain.auth.exception.InvalidAppleTokenException
 import me.onetwo.upvy.domain.auth.dto.EmailSigninRequest
 import me.onetwo.upvy.domain.auth.dto.EmailSignupRequest
 import me.onetwo.upvy.domain.auth.dto.EmailVerifyCodeRequest
@@ -501,5 +505,98 @@ class AuthControllerTest {
                     )
                 )
             )
+    }
+
+    @Test
+    @DisplayName("Apple 네이티브 로그인 성공")
+    fun authenticateWithApple_Success() {
+        // Given
+        val userId = UUID.randomUUID()
+        val request = AppleTokenRequest(
+            identityToken = "eyJraWQiOiJmaDZCczhDIiwiYWxnIjoiUlMyNTYifQ.eyJpc3MiOiJodHRwczovL2FwcGxlaWQuYXBwbGUuY29tIiwiYXVkIjoibWUub25ldHdvLnVwdnkiLCJleHAiOjE3MDg4NTg4MDAsImlhdCI6MTcwODg1ODIwMCwic3ViIjoiMDAwMTIzLjQ1Njc4OWFiY2RlZjEyMzQuMTIzNCIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlfQ...",
+            authorizationCode = "c1234567890abcdef",
+            user = AppleUserInfo(
+                familyName = "Doe",
+                givenName = "John"
+            )
+        )
+
+        val response = AppleTokenResponse(
+            accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ...",
+            refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyfQ...",
+            userId = userId,
+            email = "user@example.com"
+        )
+
+        every {
+            authService.authenticateWithApple(
+                identityToken = request.identityToken,
+                familyName = "Doe",
+                givenName = "John"
+            )
+        } returns Mono.just(response)
+
+        // When & Then
+        webTestClient.post()
+            .uri("${ApiPaths.API_V1_AUTH}/apple/token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .consumeWith(
+                document(
+                    "auth/apple-token",
+                    requestFields(
+                        fieldWithPath("identityToken")
+                            .description("Apple Identity Token (JWT) - expo-apple-authentication에서 발급"),
+                        fieldWithPath("authorizationCode")
+                            .description("Apple Authorization Code (선택)").optional(),
+                        fieldWithPath("user")
+                            .description("사용자 이름 정보 (첫 로그인 시에만 제공됨, 선택)").optional(),
+                        fieldWithPath("user.familyName")
+                            .description("성 (선택)").optional(),
+                        fieldWithPath("user.givenName")
+                            .description("이름 (선택)").optional()
+                    ),
+                    responseFields(
+                        fieldWithPath("accessToken")
+                            .description("JWT Access Token (1시간 만료)"),
+                        fieldWithPath("refreshToken")
+                            .description("JWT Refresh Token (90일 만료)"),
+                        fieldWithPath("userId")
+                            .description("사용자 ID (UUID)"),
+                        fieldWithPath("email")
+                            .description("이메일 주소")
+                    )
+                )
+            )
+    }
+
+    @Test
+    @DisplayName("Apple 네이티브 로그인 실패 - 유효하지 않은 토큰")
+    fun authenticateWithApple_InvalidToken() {
+        // Given
+        val request = AppleTokenRequest(
+            identityToken = "invalid-token",
+            authorizationCode = null,
+            user = null
+        )
+
+        every {
+            authService.authenticateWithApple(
+                identityToken = request.identityToken,
+                familyName = null,
+                givenName = null
+            )
+        } returns Mono.error(InvalidAppleTokenException("Apple Identity Token이 유효하지 않습니다"))
+
+        // When & Then
+        webTestClient.post()
+            .uri("${ApiPaths.API_V1_AUTH}/apple/token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isUnauthorized
     }
 }

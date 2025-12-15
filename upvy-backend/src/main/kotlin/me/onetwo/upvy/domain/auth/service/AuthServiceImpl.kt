@@ -1,9 +1,11 @@
 package me.onetwo.upvy.domain.auth.service
 
+import me.onetwo.upvy.domain.auth.dto.AppleTokenResponse
 import me.onetwo.upvy.domain.auth.dto.EmailVerifyResponse
 import me.onetwo.upvy.domain.auth.dto.RefreshTokenResponse
 import me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException
 import me.onetwo.upvy.domain.auth.exception.EmailNotVerifiedException
+import me.onetwo.upvy.domain.auth.exception.InvalidAppleTokenException
 import me.onetwo.upvy.domain.auth.exception.InvalidCredentialsException
 import me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException
 import me.onetwo.upvy.domain.auth.exception.OAuthOnlyUserException
@@ -22,6 +24,7 @@ import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenDto
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
 import org.slf4j.LoggerFactory
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
@@ -62,6 +65,11 @@ class AuthServiceImpl(
          * Rate Limiting 기간 (60초 = 1분)
          */
         private const val RATE_LIMIT_SECONDS = 60L
+
+        /**
+         * Apple JWK Set URI
+         */
+        private const val APPLE_JWK_SET_URI = "https://appleid.apple.com/auth/keys"
     }
 
     /**
@@ -693,5 +701,88 @@ class AuthServiceImpl(
                             }
                     }
             }
+    }
+
+    /**
+     * Apple Identity Token 검증 및 로그인
+     *
+     * expo-apple-authentication에서 받은 identityToken을 검증하고 로그인 처리합니다.
+     *
+     * ### 비즈니스 로직
+     * 1. Apple Public Key로 identityToken 검증 (JWT)
+     * 2. JWT에서 사용자 정보 추출 (sub = providerId, email)
+     * 3. 사용자 조회 또는 생성 (findOrCreateOAuthUser)
+     * 4. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 5. AppleTokenResponse 생성
+     *
+     * @param identityToken Apple Identity Token (JWT)
+     * @param familyName 성 (첫 로그인 시에만 제공됨)
+     * @param givenName 이름 (첫 로그인 시에만 제공됨)
+     * @return Mono<AppleTokenResponse> JWT 토큰과 사용자 정보
+     * @throws InvalidAppleTokenException Identity Token이 유효하지 않은 경우
+     */
+    @Transactional
+    override fun authenticateWithApple(
+        identityToken: String,
+        familyName: String?,
+        givenName: String?
+    ): Mono<AppleTokenResponse> {
+        return Mono.fromCallable {
+            try {
+                // 1. Apple Public Key로 JWT 검증
+                val jwtDecoder = NimbusJwtDecoder.withJwkSetUri(APPLE_JWK_SET_URI).build()
+                val jwt = jwtDecoder.decode(identityToken)
+
+                // 2. JWT Claims에서 사용자 정보 추출
+                val providerId = jwt.subject
+                    ?: throw InvalidAppleTokenException("Apple Identity Token에 subject(sub)가 없습니다")
+
+                val email = jwt.getClaimAsString("email")
+                    ?: throw InvalidAppleTokenException("Apple Identity Token에 이메일(email)이 없습니다")
+
+                // 3. 이름 조합 (familyName + givenName)
+                val name = when {
+                    familyName != null && givenName != null -> "$givenName $familyName"
+                    givenName != null -> givenName
+                    familyName != null -> familyName
+                    else -> null
+                }
+
+                logger.debug(
+                    "Apple Identity Token verified - email: $email, providerId: $providerId, name: $name"
+                )
+
+                Triple(email, providerId, name)
+            } catch (e: InvalidAppleTokenException) {
+                // 비즈니스 예외는 그대로 던짐
+                throw e
+            } catch (e: Exception) {
+                // JWT 검증 실패 등 다른 모든 예외는 InvalidAppleTokenException으로 래핑
+                throw InvalidAppleTokenException("Apple Identity Token 검증에 실패했습니다: ${e.message}")
+            }
+        }.flatMap { (email, providerId, name) ->
+            // 4. 사용자 조회 또는 생성
+            userService.findOrCreateOAuthUser(
+                email = email,
+                provider = OAuthProvider.APPLE,
+                providerId = providerId,
+                name = name,
+                profileImageUrl = null // Apple은 프로필 이미지를 제공하지 않음
+            )
+        }.flatMap { user ->
+            // 5. JWT 토큰 생성 및 Redis에 저장
+            generateTokens(user).map { jwtTokens ->
+                AppleTokenResponse(
+                    accessToken = jwtTokens.accessToken,
+                    refreshToken = jwtTokens.refreshToken,
+                    userId = user.id!!,
+                    email = user.email
+                )
+            }
+        }.doOnSuccess {
+            logger.info("Apple authentication successful for email: ${it.email}, userId: ${it.userId}")
+        }.doOnError { error ->
+            logger.error("Apple authentication failed", error)
+        }
     }
 }
