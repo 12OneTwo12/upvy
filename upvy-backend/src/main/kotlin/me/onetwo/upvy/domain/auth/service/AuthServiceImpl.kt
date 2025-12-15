@@ -126,6 +126,20 @@ class AuthServiceImpl(
     }
 
     /**
+     * 사용자 ID로 로그아웃
+     *
+     * Redis에 저장된 Refresh Token을 사용자 ID로 삭제하여 로그아웃 처리합니다.
+     *
+     * @param userId 사용자 ID
+     */
+    @Transactional
+    override fun logoutByUserId(userId: UUID) {
+        // Redis에서 Refresh Token 삭제
+        refreshTokenRepository.deleteByUserId(userId)
+        logger.info("User logged out by userId: $userId")
+    }
+
+    /**
      * 사용자 ID로 Refresh Token 조회
      *
      * @param userId 사용자 ID

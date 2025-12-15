@@ -65,16 +65,31 @@ class AuthController(
      *
      * Refresh Token을 무효화하여 로그아웃 처리합니다.
      *
-     * @param request 로그아웃 요청
+     * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
+     * @param request 로그아웃 요청 (선택)
      * @return ResponseEntity<Void>
      */
     @PostMapping("/logout")
     fun logout(
-        @Valid @RequestBody request: LogoutRequest
+        principal: Mono<Principal>,
+        @RequestBody(required = false) request: LogoutRequest?
     ): Mono<ResponseEntity<Void>> {
-        return Mono.fromRunnable<Void> {
-            authService.logout(request.refreshToken)
-        }.then(Mono.just(ResponseEntity.noContent().build<Void>()))
+        return if (request != null && request.refreshToken.isNotBlank()) {
+            // refreshToken이 제공된 경우 해당 토큰으로 로그아웃
+            Mono.fromRunnable<Void> {
+                authService.logout(request.refreshToken)
+            }.then(Mono.just(ResponseEntity.noContent().build<Void>()))
+        } else {
+            // refreshToken이 제공되지 않은 경우 Principal에서 userId를 추출하여 로그아웃
+            principal
+                .toUserId()
+                .flatMap { userId ->
+                    Mono.fromRunnable<Void> {
+                        authService.logoutByUserId(userId)
+                    }
+                }
+                .then(Mono.just(ResponseEntity.noContent().build<Void>()))
+        }
     }
 
     /**
