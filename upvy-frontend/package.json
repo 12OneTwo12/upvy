@@ -23,6 +23,7 @@
     "axios": "^1.12.2",
     "dayjs": "^1.11.18",
     "expo": "~54.0.20",
+    "expo-apple-authentication": "^8.0.8",
     "expo-application": "~7.0.8",
     "expo-auth-session": "~7.0.8",
     "expo-av": "~16.0.7",

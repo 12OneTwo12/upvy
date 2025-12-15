@@ -69,11 +69,26 @@ spring:
               - email
               - profile
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+          apple:
+            client-id: ${APPLE_CLIENT_ID} # Apple Services ID (e.g., com.upvy.app.signin)
+            client-secret: ${APPLE_CLIENT_SECRET} # JWT generated from private key
+            scope:
+              - email
+              - name
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            client-name: Apple
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+          apple:
+            authorization-uri: https://appleid.apple.com/auth/authorize?response_mode=form_post
+            token-uri: https://appleid.apple.com/auth/token
+            jwk-set-uri: https://appleid.apple.com/auth/keys
             user-name-attribute: sub
 
   # AWS S3 Configuration

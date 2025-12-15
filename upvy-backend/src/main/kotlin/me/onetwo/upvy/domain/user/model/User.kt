@@ -53,6 +53,7 @@ data class User(
  *
  * @property EMAIL 이메일 가입/로그인 (Apple App Store 심사 요구사항)
  * @property GOOGLE Google OAuth
+ * @property APPLE Apple OAuth (iOS App Store 심사 요구사항)
  * @property NAVER Naver OAuth
  * @property KAKAO Kakao OAuth
  * @property SYSTEM 시스템 계정 (AI 크롤러 등)
@@ -60,6 +61,7 @@ data class User(
 enum class OAuthProvider {
     EMAIL,   // 이메일 가입/로그인
     GOOGLE,
+    APPLE,   // Sign in with Apple (iOS App Store 심사 요구사항)
     NAVER,
     KAKAO,
     SYSTEM  // AI 크롤러 등 시스템 계정용

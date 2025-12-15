@@ -4,7 +4,7 @@
 export interface User {
   id: string;
   email: string;
-  provider: 'EMAIL' | 'GOOGLE' | 'NAVER' | 'KAKAO';
+  provider: 'EMAIL' | 'GOOGLE' | 'APPLE' | 'NAVER' | 'KAKAO';
   role: 'USER' | 'CREATOR' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
