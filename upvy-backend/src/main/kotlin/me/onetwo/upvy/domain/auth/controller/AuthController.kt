@@ -74,11 +74,11 @@ class AuthController(
         principal: Mono<Principal>,
         @RequestBody(required = false) request: LogoutRequest?
     ): Mono<ResponseEntity<Void>> {
-        return if (request != null && request.refreshToken.isNotBlank()) {
+        val logoutOperation = if (request != null && request.refreshToken.isNotBlank()) {
             // refreshToken이 제공된 경우 해당 토큰으로 로그아웃
             Mono.fromRunnable<Void> {
                 authService.logout(request.refreshToken)
-            }.then(Mono.just(ResponseEntity.noContent().build<Void>()))
+            }
         } else {
             // refreshToken이 제공되지 않은 경우 Principal에서 userId를 추출하여 로그아웃
             principal
@@ -88,8 +88,8 @@ class AuthController(
                         authService.logoutByUserId(userId)
                     }
                 }
-                .then(Mono.just(ResponseEntity.noContent().build<Void>()))
         }
+        return logoutOperation.then(Mono.just(ResponseEntity.noContent().build<Void>()))
     }
 
     /**
