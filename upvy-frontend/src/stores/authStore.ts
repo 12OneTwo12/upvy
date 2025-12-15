@@ -13,6 +13,7 @@ import {
 } from '@/utils/storage';
 import { getCurrentUser, getMyProfile, logout as apiLogout } from '@/api/auth.api';
 import { setSentryUser, clearSentryUser } from '@/config/sentry';
+import { queryClient } from '../../App';
 
 interface AuthState {
   // State
@@ -97,6 +98,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Clear Sentry user context
       clearSentryUser();
+
+      // Clear React Query cache
+      queryClient.clear();
 
       // Clear state
       set({

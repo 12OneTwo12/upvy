@@ -14,7 +14,7 @@ import './src/locales'; // Initialize i18n
 initializeSentry();
 
 // React Query Client
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5분

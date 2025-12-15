@@ -2,22 +2,43 @@
   "network": {
     "title": "ネットワークエラー",
     "message": "インターネット接続を確認してください",
-    "offline": "現在オフラインです"
+    "offline": "現在オフラインです",
+    "timeout": "リクエストがタイムアウトしました\nしばらくしてから再度お試しください"
   },
   "auth": {
     "loginFailed": "ログインに失敗しました",
     "unauthorized": "権限がありません",
-    "sessionExpired": "セッションが期限切れです。再度ログインしてください"
+    "sessionExpired": "セッションが期限切れです。再度ログインしてください",
+    "invalidCredentials": "メールアドレスまたはパスワードが正しくありません",
+    "emailNotVerified": "メール認証が完了していません。\n認証メールをご確認ください",
+    "emailAlreadyExists": "このメールアドレスは既に使用されています",
+    "invalidVerificationToken": "無効な認証トークンです",
+    "tokenExpired": "認証トークンが期限切れです。\n新しい認証メールをリクエストしてください",
+    "tooManyRequests": "しばらくしてから再度お試しください\n(1分後に再送信可能)",
+    "oauthOnlyUser": "OAuth専用アカウントではこの機能を使用できません。\nメール認証を追加してください"
   },
   "validation": {
     "required": "この項目は必須です",
     "invalidFormat": "形式が正しくありません",
     "tooShort": "短すぎます",
-    "tooLong": "長すぎます"
+    "tooLong": "長すぎます",
+    "validationError": "入力内容を再度ご確認ください"
+  },
+  "block": {
+    "selfBlockNotAllowed": "自分自身をブロックすることはできません",
+    "duplicateUserBlock": "既にブロックしているユーザーです",
+    "duplicateContentBlock": "既に非表示にしたコンテンツです",
+    "userBlockNotFound": "ブロック情報が見つかりません",
+    "contentBlockNotFound": "ブロック情報が見つかりません"
+  },
+  "server": {
+    "error": "サーバーエラーが発生しました\nしばらくしてから再度お試しください",
+    "notFound": "要求された情報が見つかりません"
   },
   "general": {
     "title": "エラー",
     "message": "エラーが発生しました",
-    "tryAgain": "もう一度お試しください"
+    "tryAgain": "もう一度お試しください",
+    "unknown": "不明なエラーが発生しました"
   }
 }

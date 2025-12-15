@@ -94,12 +94,12 @@ data class RefreshTokenResponse(
  * 로그아웃 요청
  *
  * Refresh Token을 무효화합니다.
+ * Refresh Token이 제공되지 않으면 JWT를 사용하여 로그아웃합니다.
  *
- * @property refreshToken JWT Refresh Token
+ * @property refreshToken JWT Refresh Token (선택)
  */
 data class LogoutRequest(
-    @field:NotBlank(message = "Refresh Token은 필수입니다")
-    val refreshToken: String
+    val refreshToken: String = ""
 )
 
 /**

@@ -1,6 +1,7 @@
 import { AxiosError } from 'axios';
 import { Alert } from 'react-native';
 import { captureException, setSentryContext, addSentryBreadcrumb } from '@/config/sentry';
+import i18n from '@/locales';
 
 /**
  * API 에러 응답 타입
@@ -12,42 +13,41 @@ export interface ApiErrorResponse {
 }
 
 /**
- * 사용자 친화적인 에러 메시지
+ * 백엔드 에러 코드를 i18n 키로 매핑
+ *
+ * 백엔드는 에러 코드를 SCREAMING_SNAKE_CASE로 반환하고,
+ * 프론트엔드는 이를 camelCase i18n 키로 변환하여 다국어 메시지를 표시합니다.
  */
-const ERROR_MESSAGES: Record<string, string> = {
-  // Network Errors
-  NETWORK_ERROR: '인터넷 연결 상태를 확인해주세요',
-  TIMEOUT_ERROR: '요청 시간이 초과되었어요\n잠시 후 다시 시도해주세요',
-
-  // Auth Errors
-  UNAUTHORIZED: '로그인이 만료되었어요\n다시 로그인해주세요',
-  FORBIDDEN: '접근 권한이 없어요',
+const ERROR_CODE_TO_I18N_KEY: Record<string, string> = {
+  // Auth Errors (백엔드 AuthException)
+  'INVALID_CREDENTIALS': 'errors:auth.invalidCredentials',
+  'EMAIL_NOT_VERIFIED': 'errors:auth.emailNotVerified',
+  'EMAIL_ALREADY_EXISTS': 'errors:auth.emailAlreadyExists',
+  'INVALID_VERIFICATION_TOKEN': 'errors:auth.invalidVerificationToken',
+  'TOKEN_EXPIRED': 'errors:auth.tokenExpired',
+  'TOO_MANY_REQUESTS': 'errors:auth.tooManyRequests',
+  'OAUTH_ONLY_USER': 'errors:auth.oauthOnlyUser',
 
   // Validation Errors
-  VALIDATION_ERROR: '입력 정보를 다시 확인해주세요',
-  DUPLICATE_NICKNAME: '이미 사용 중인 닉네임이에요',
+  'VALIDATION_ERROR': 'errors:validation.validationError',
 
   // Block Errors
-  SELF_BLOCK_NOT_ALLOWED: '자기 자신은 차단할 수 없어요',
-  DUPLICATE_USER_BLOCK: '이미 차단한 사용자예요',
-  DUPLICATE_CONTENT_BLOCK: '이미 숨긴 콘텐츠예요',
-  USER_BLOCK_NOT_FOUND: '차단 정보를 찾을 수 없어요',
-  CONTENT_BLOCK_NOT_FOUND: '차단 정보를 찾을 수 없어요',
-
-  // Server Errors
-  SERVER_ERROR: '서버에 문제가 생겼어요\n잠시 후 다시 시도해주세요',
-  NOT_FOUND: '요청하신 정보를 찾을 수 없어요',
-
-  // Default
-  UNKNOWN_ERROR: '알 수 없는 문제가 발생했어요',
+  'SELF_BLOCK_NOT_ALLOWED': 'errors:block.selfBlockNotAllowed',
+  'DUPLICATE_USER_BLOCK': 'errors:block.duplicateUserBlock',
+  'DUPLICATE_CONTENT_BLOCK': 'errors:block.duplicateContentBlock',
+  'USER_BLOCK_NOT_FOUND': 'errors:block.userBlockNotFound',
+  'CONTENT_BLOCK_NOT_FOUND': 'errors:block.contentBlockNotFound',
 };
 
 /**
  * 에러에서 사용자 친화적인 메시지 추출
+ *
+ * 다국어 지원을 위해 i18n을 사용합니다.
+ * 백엔드 에러 코드를 i18n 키로 매핑하여 현재 언어에 맞는 메시지를 반환합니다.
  */
 export const getErrorMessage = (error: unknown): string => {
   if (!error) {
-    return ERROR_MESSAGES.UNKNOWN_ERROR;
+    return i18n.t('errors:general.unknown');
   }
 
   // Axios Error
@@ -55,9 +55,9 @@ export const getErrorMessage = (error: unknown): string => {
     // Network Error
     if (!error.response) {
       if (error.code === 'ECONNABORTED') {
-        return ERROR_MESSAGES.TIMEOUT_ERROR;
+        return i18n.t('errors:network.timeout');
       }
-      return ERROR_MESSAGES.NETWORK_ERROR;
+      return i18n.t('errors:network.message');
     }
 
     // HTTP Status Code
@@ -65,31 +65,33 @@ export const getErrorMessage = (error: unknown): string => {
     const data = error.response.data as ApiErrorResponse | undefined;
     const errorCode = data?.code;
 
-    // 1순위: errorCode 기반 메시지 (백엔드 에러 코드)
-    if (errorCode && ERROR_MESSAGES[errorCode]) {
-      return ERROR_MESSAGES[errorCode];
+    // 1순위: 백엔드 에러 코드를 i18n 키로 변환
+    if (errorCode && ERROR_CODE_TO_I18N_KEY[errorCode]) {
+      return i18n.t(ERROR_CODE_TO_I18N_KEY[errorCode]);
     }
 
-    // 2순위: data.message (백엔드에서 제공하는 구체적 에러 메시지)
-    // 3순위: HTTP Status Code 기반 메시지
+    // 2순위: HTTP Status Code 기반 다국어 메시지
     switch (status) {
       case 400:
-        return data?.message || ERROR_MESSAGES.VALIDATION_ERROR;
+        return i18n.t('errors:validation.validationError');
       case 401:
-        return ERROR_MESSAGES.UNAUTHORIZED;
+        return i18n.t('errors:auth.sessionExpired');
       case 403:
-        return ERROR_MESSAGES.FORBIDDEN;
+        return i18n.t('errors:auth.unauthorized');
       case 404:
-        return data?.message || ERROR_MESSAGES.NOT_FOUND;
+        return i18n.t('errors:server.notFound');
       case 409:
-        return data?.message || ERROR_MESSAGES.DUPLICATE_NICKNAME;
+        // 409는 보통 중복 에러이지만, 구체적인 에러 코드가 없으면 일반 메시지 표시
+        return i18n.t('errors:validation.validationError');
+      case 429:
+        return i18n.t('errors:auth.tooManyRequests');
       case 500:
       case 502:
       case 503:
       case 504:
-        return ERROR_MESSAGES.SERVER_ERROR;
+        return i18n.t('errors:server.error');
       default:
-        return data?.message || ERROR_MESSAGES.UNKNOWN_ERROR;
+        return i18n.t('errors:general.unknown');
     }
   }
 
@@ -103,15 +105,19 @@ export const getErrorMessage = (error: unknown): string => {
     return error;
   }
 
-  return ERROR_MESSAGES.UNKNOWN_ERROR;
+  return i18n.t('errors:general.unknown');
 };
 
 /**
  * 에러 알림 표시
+ *
+ * 다국어 지원을 위해 i18n을 사용합니다.
  */
-export const showErrorAlert = (error: unknown, title = '오류'): void => {
+export const showErrorAlert = (error: unknown, title?: string): void => {
   const message = getErrorMessage(error);
-  Alert.alert(title, message, [{ text: '확인' }]);
+  const alertTitle = title || i18n.t('errors:general.title');
+  const confirmText = i18n.t('common:button.confirm');
+  Alert.alert(alertTitle, message, [{ text: confirmText }]);
 };
 
 /**
