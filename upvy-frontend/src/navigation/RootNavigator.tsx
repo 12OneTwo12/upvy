@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/components/common';
 import { useNotifications } from '@/hooks/useNotifications';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
+import TermsAgreementScreen from '@/screens/auth/TermsAgreementScreen';
 import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
@@ -15,6 +16,7 @@ import LanguageSelectorScreen from '@/screens/settings/LanguageSelectorScreen';
 import PasswordChangeScreen from '@/screens/settings/PasswordChangeScreen';
 import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
+import CommunityGuidelinesScreen from '@/screens/settings/CommunityGuidelinesScreen';
 import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
 import { BlockManagementScreen } from '@/screens/settings/BlockManagementScreen';
 import NotificationListScreen from '@/screens/notification/NotificationListScreen';
@@ -49,6 +51,7 @@ function NotificationHandler() {
 export default function RootNavigator() {
   const { t } = useTranslation('common');
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasAgreedToTerms = useAuthStore((state) => state.hasAgreedToTerms);
   const profile = useAuthStore((state) => state.profile);
   const isLoading = useAuthStore((state) => state.isLoading);
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -73,10 +76,22 @@ export default function RootNavigator() {
         }}
       >
         {!isAuthenticated ? (
+          // 1. 로그인하지 않은 경우 → Auth (Login screens)
           <Stack.Screen name="Auth" component={AuthNavigator} />
+        ) : !hasAgreedToTerms ? (
+          // 2. 로그인했지만 약관 동의하지 않은 경우 → TermsAgreement
+          <>
+            <Stack.Screen name="TermsAgreement" component={TermsAgreementScreen} />
+            {/* 약관 보기 화면들 */}
+            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="CommunityGuidelines" component={CommunityGuidelinesScreen} />
+          </>
         ) : !profile ? (
+          // 3. 로그인하고 약관 동의했지만 프로필 없는 경우 → ProfileSetup
           <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
         ) : (
+          // 4. 모든 설정 완료 → Main (Home)
           <>
             <Stack.Screen name="Main" component={MainNavigator} />
             <Stack.Screen
@@ -89,6 +104,7 @@ export default function RootNavigator() {
             <Stack.Screen name="PasswordChange" component={PasswordChangeScreen} />
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="CommunityGuidelines" component={CommunityGuidelinesScreen} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
             <Stack.Screen
               name="BlockManagement"

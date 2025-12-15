@@ -30,6 +30,8 @@ export const API_ENDPOINTS = {
     PASSWORD_RESET_REQUEST: '/auth/password/reset/request',
     PASSWORD_RESET_VERIFY_CODE: '/auth/password/reset/verify-code',
     PASSWORD_RESET_CONFIRM: '/auth/password/reset/confirm',
+    // Terms Agreement
+    TERMS_AGREEMENT: '/auth/terms-agreement',
   },
 
   // User

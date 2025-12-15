@@ -6,6 +6,7 @@ import type { Category } from './content.types';
  */
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
+  TermsAgreement: undefined;
   ProfileSetup: undefined;
   Main: NavigatorScreenParams<MainTabParamList>;
   EditProfile: undefined;
@@ -14,6 +15,7 @@ export type RootStackParamList = {
   LanguageSelector: undefined;
   TermsOfService: undefined;
   PrivacyPolicy: undefined;
+  CommunityGuidelines: undefined;
   HelpSupport: undefined;
   BlockManagement: undefined;
   NotificationList: undefined;
