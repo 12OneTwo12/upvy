@@ -11,6 +11,7 @@ import org.springframework.security.web.server.authentication.ServerAuthenticati
 import org.springframework.stereotype.Component
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 import java.net.URI
 
 /**
@@ -42,7 +43,7 @@ class OAuth2AuthenticationSuccessHandler(
      * 1. CustomOAuth2User에서 사용자 정보 추출
      * 2. JWT Access Token과 Refresh Token 생성
      * 3. Refresh Token을 Redis에 저장
-     * 4. state 파라미터로 플랫폼 구분 (웹 vs 모바일)
+     * 4. WebSession에서 플랫폼 구분 (웹 vs 모바일)
      * 5. 플랫폼에 따라 웹 프론트엔드 또는 모바일 딥링크로 리다이렉트
      *
      * @param webFilterExchange WebFilterExchange
@@ -65,40 +66,50 @@ class OAuth2AuthenticationSuccessHandler(
 
         val refreshToken = jwtTokenProvider.generateRefreshToken(customOAuth2User.userId)
 
-        // Refresh Token을 Redis에 저장
-        refreshTokenRepository.save(customOAuth2User.userId, refreshToken)
+        // Refresh Token을 Redis에 저장 (blocking 코드를 별도 스레드에서 실행)
+        return Mono.fromRunnable<Void> {
+                try {
+                    refreshTokenRepository.save(customOAuth2User.userId, refreshToken)
+                } catch (error: Exception) {
+                    // Redis 저장 실패 시에도 로그인 진행 (리프레시 토큰 없이)
+                    logger.error("Failed to save refresh token to Redis for user: ${customOAuth2User.userId}", error)
+                }
+            }
+            .subscribeOn(Schedulers.boundedElastic()) // blocking 작업을 별도 스레드풀에서 실행
+            .then(exchange.session)
+            .flatMap { session ->
+                // 플랫폼 구분: WebSession에서 isMobile 플래그 확인
+                val isMobile = session.attributes[OAuth2AuthorizationRequestCustomizer.SESSION_ATTR_IS_MOBILE] as? Boolean ?: false
 
-        // 플랫폼 구분: User-Agent 헤더로 모바일 여부 확인
-        val userAgent = exchange.request.headers.getFirst("User-Agent") ?: ""
-        val isMobile = userAgent.contains("Mobile", ignoreCase = true) ||
-                       userAgent.contains("Android", ignoreCase = true) ||
-                       userAgent.contains("iPhone", ignoreCase = true)
+                logger.info("OAuth2 success - userId: {}, email: {}, isMobile: {}",
+                    customOAuth2User.userId, customOAuth2User.email, isMobile)
 
-        // 플랫폼에 따라 리다이렉트 URL 생성
-        val redirectUrl = if (isMobile) {
-            // 모바일: 딥링크로 리다이렉트
-            UriComponentsBuilder.fromUriString(mobileDeeplinkUrl)
-                .queryParam("accessToken", accessToken)
-                .queryParam("refreshToken", refreshToken)
-                .queryParam("userId", customOAuth2User.userId.toString())
-                .queryParam("email", customOAuth2User.email)
-                .build()
-                .toUriString()
-        } else {
-            // 웹: 프론트엔드 URL로 리다이렉트
-            UriComponentsBuilder.fromUriString(frontendUrl)
-                .path("/auth/oauth2/redirect")
-                .queryParam("accessToken", accessToken)
-                .queryParam("refreshToken", refreshToken)
-                .queryParam("userId", customOAuth2User.userId.toString())
-                .queryParam("email", customOAuth2User.email)
-                .build()
-                .toUriString()
-        }
+                // 플랫폼에 따라 리다이렉트 URL 생성
+                val redirectUrl = if (isMobile) {
+                    // 모바일: 딥링크로 리다이렉트
+                    UriComponentsBuilder.fromUriString(mobileDeeplinkUrl)
+                        .queryParam("accessToken", accessToken)
+                        .queryParam("refreshToken", refreshToken)
+                        .queryParam("userId", customOAuth2User.userId.toString())
+                        .queryParam("email", customOAuth2User.email)
+                        .build()
+                        .toUriString()
+                } else {
+                    // 웹: 프론트엔드 URL로 리다이렉트
+                    UriComponentsBuilder.fromUriString(frontendUrl)
+                        .path("/auth/oauth2/redirect")
+                        .queryParam("accessToken", accessToken)
+                        .queryParam("refreshToken", refreshToken)
+                        .queryParam("userId", customOAuth2User.userId.toString())
+                        .queryParam("email", customOAuth2User.email)
+                        .build()
+                        .toUriString()
+                }
 
-        exchange.response.statusCode = HttpStatus.FOUND
-        exchange.response.headers.location = URI.create(redirectUrl)
+                exchange.response.statusCode = HttpStatus.FOUND
+                exchange.response.headers.location = URI.create(redirectUrl)
 
-        return exchange.response.setComplete()
+                exchange.response.setComplete()
+            }
     }
 }
