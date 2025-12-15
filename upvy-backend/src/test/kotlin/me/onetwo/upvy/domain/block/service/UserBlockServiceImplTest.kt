@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.block.dto.BlockedUserItemResponse
 import me.onetwo.upvy.domain.block.exception.BlockException
 import me.onetwo.upvy.domain.block.model.UserBlock
@@ -26,7 +27,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("사용자 차단 Service 테스트")
-class UserBlockServiceImplTest {
+class UserBlockServiceImplTest : BaseReactiveTest() {
 
     private val userBlockRepository: UserBlockRepository = mockk()
     private val userBlockService: UserBlockService = UserBlockServiceImpl(userBlockRepository)

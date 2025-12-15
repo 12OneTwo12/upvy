@@ -1,5 +1,6 @@
 package me.onetwo.upvy.infrastructure.storage
 
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import io.mockk.*
 import io.mockk.junit5.MockKExtension
 import me.onetwo.upvy.infrastructure.config.ImageUploadProperties
@@ -24,7 +25,7 @@ import javax.imageio.ImageIO
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("이미지 업로드 Service 테스트")
-class ImageUploadServiceImplTest {
+class ImageUploadServiceImplTest : BaseReactiveTest() {
 
     private lateinit var s3Client: S3Client
     private lateinit var imageResizer: ImageResizer

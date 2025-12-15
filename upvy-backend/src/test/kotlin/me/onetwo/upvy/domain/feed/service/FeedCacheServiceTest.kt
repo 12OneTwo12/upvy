@@ -20,6 +20,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 
 /**
  * 피드 캐시 서비스 테스트
@@ -29,7 +30,7 @@ import kotlin.test.assertTrue
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("피드 캐시 Service 테스트")
-class FeedCacheServiceTest {
+class FeedCacheServiceTest : BaseReactiveTest() {
 
     private lateinit var reactiveRedisTemplate: ReactiveRedisTemplate<String, String>
     private lateinit var listOps: ReactiveListOperations<String, String>

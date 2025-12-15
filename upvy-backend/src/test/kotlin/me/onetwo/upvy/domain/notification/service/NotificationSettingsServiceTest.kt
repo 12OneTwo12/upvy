@@ -3,6 +3,7 @@ package me.onetwo.upvy.domain.notification.service
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.notification.dto.UpdateNotificationSettingsRequest
 import me.onetwo.upvy.domain.notification.model.NotificationSettings
 import me.onetwo.upvy.domain.notification.repository.NotificationSettingsRepository
@@ -19,7 +20,7 @@ import java.util.UUID
  * NotificationSettingsService 단위 테스트
  */
 @DisplayName("알림 설정 Service 테스트")
-class NotificationSettingsServiceTest {
+class NotificationSettingsServiceTest : BaseReactiveTest() {
 
     private lateinit var notificationSettingsRepository: NotificationSettingsRepository
     private lateinit var notificationSettingsService: NotificationSettingsService

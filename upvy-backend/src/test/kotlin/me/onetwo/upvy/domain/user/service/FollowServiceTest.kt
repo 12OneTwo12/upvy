@@ -16,6 +16,7 @@ import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.repository.FollowRepository
 import me.onetwo.upvy.domain.user.repository.UserProfileRepository
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -31,7 +32,7 @@ import reactor.core.publisher.Flux
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("팔로우 Service 테스트")
-class FollowServiceTest {
+class FollowServiceTest : BaseReactiveTest() {
 
     private lateinit var followRepository: FollowRepository
     private lateinit var userService: UserService

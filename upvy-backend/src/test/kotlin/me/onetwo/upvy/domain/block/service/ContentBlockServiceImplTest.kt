@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.block.dto.BlockedContentItemResponse
 import me.onetwo.upvy.domain.block.exception.BlockException
 import me.onetwo.upvy.domain.block.model.ContentBlock
@@ -26,7 +27,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 차단 Service 테스트")
-class ContentBlockServiceImplTest {
+class ContentBlockServiceImplTest : BaseReactiveTest() {
 
     private val contentBlockRepository: ContentBlockRepository = mockk()
     private val contentBlockService: ContentBlockService = ContentBlockServiceImpl(contentBlockRepository)

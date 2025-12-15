@@ -10,6 +10,7 @@ import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
 import me.onetwo.upvy.domain.interaction.model.UserLike
 import me.onetwo.upvy.domain.interaction.repository.UserLikeRepository
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
@@ -28,7 +29,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("LikeService 단위 테스트")
-class LikeServiceTest {
+class LikeServiceTest : BaseReactiveTest() {
 
     @MockK
     private lateinit var userLikeRepository: UserLikeRepository

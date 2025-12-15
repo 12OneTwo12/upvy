@@ -6,6 +6,7 @@ import io.mockk.verify
 import me.onetwo.upvy.config.TestSecurityConfig
 import me.onetwo.upvy.domain.analytics.dto.ViewEventRequest
 import me.onetwo.upvy.domain.analytics.service.AnalyticsService
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
@@ -38,7 +39,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("Analytics Controller 테스트")
-class AnalyticsControllerTest {
+class AnalyticsControllerTest : BaseReactiveTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

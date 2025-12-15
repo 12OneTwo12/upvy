@@ -8,6 +8,7 @@ import io.mockk.justRun
 import io.mockk.verify
 import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
@@ -25,7 +26,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("ShareService 단위 테스트")
-class ShareServiceTest {
+class ShareServiceTest : BaseReactiveTest() {
 
     @MockK
     private lateinit var contentInteractionService: ContentInteractionService

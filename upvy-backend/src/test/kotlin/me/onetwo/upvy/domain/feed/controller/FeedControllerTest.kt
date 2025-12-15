@@ -10,6 +10,7 @@ import me.onetwo.upvy.domain.feed.dto.FeedItemResponse
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.upvy.domain.feed.service.FeedCacheService
 import me.onetwo.upvy.domain.feed.service.FeedService
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.util.mockUser
@@ -39,7 +40,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("피드 Controller 테스트")
-class FeedControllerTest {
+class FeedControllerTest : BaseReactiveTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

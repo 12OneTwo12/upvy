@@ -21,6 +21,7 @@ import me.onetwo.upvy.domain.user.repository.UserAuthenticationMethodRepository
 import me.onetwo.upvy.domain.user.repository.UserProfileRepository
 import me.onetwo.upvy.domain.user.repository.UserRepository
 import me.onetwo.upvy.domain.user.repository.UserStatusHistoryRepository
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -43,7 +44,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("사용자 Service 단위 테스트")
-class UserServiceTest {
+class UserServiceTest : BaseReactiveTest() {
 
     private lateinit var userRepository: UserRepository
     private lateinit var authMethodRepository: UserAuthenticationMethodRepository

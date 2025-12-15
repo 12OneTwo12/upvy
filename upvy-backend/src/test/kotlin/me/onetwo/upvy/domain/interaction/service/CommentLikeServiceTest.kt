@@ -7,6 +7,7 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import me.onetwo.upvy.domain.interaction.model.CommentLike
 import me.onetwo.upvy.domain.interaction.repository.CommentLikeRepository
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import org.jooq.exception.DataAccessException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
@@ -25,7 +26,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("CommentLikeService 단위 테스트")
-class CommentLikeServiceTest {
+class CommentLikeServiceTest : BaseReactiveTest() {
 
     @MockK
     private lateinit var commentLikeRepository: CommentLikeRepository

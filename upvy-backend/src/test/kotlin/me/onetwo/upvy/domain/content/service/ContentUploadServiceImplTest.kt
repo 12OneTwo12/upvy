@@ -5,6 +5,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.model.UploadSession
 import me.onetwo.upvy.domain.content.repository.UploadSessionRepository
@@ -25,7 +26,7 @@ import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 업로드 Service 테스트")
-class ContentUploadServiceImplTest {
+class ContentUploadServiceImplTest : BaseReactiveTest() {
 
     @MockK
     private lateinit var s3Presigner: S3Presigner

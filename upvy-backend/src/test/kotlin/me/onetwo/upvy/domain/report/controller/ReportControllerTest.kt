@@ -12,6 +12,7 @@ import me.onetwo.upvy.domain.report.model.ReportType
 import me.onetwo.upvy.domain.report.model.TargetType
 import me.onetwo.upvy.domain.report.service.ReportService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.util.mockUser
 import org.junit.jupiter.api.DisplayName
@@ -42,7 +43,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("신고 Controller 테스트")
-class ReportControllerTest {
+class ReportControllerTest : BaseReactiveTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

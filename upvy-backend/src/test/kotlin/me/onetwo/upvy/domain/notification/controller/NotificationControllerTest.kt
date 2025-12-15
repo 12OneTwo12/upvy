@@ -11,6 +11,7 @@ import me.onetwo.upvy.domain.notification.model.NotificationTargetType
 import me.onetwo.upvy.domain.notification.model.NotificationType
 import me.onetwo.upvy.domain.notification.service.NotificationService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.util.mockUser
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -40,7 +41,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("알림 Controller 테스트")
-class NotificationControllerTest {
+class NotificationControllerTest : BaseReactiveTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

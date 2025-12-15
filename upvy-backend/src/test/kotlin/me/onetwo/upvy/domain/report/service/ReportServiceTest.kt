@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.repository.ContentMetadataRepository
 import me.onetwo.upvy.domain.report.dto.ReportRequest
@@ -25,7 +26,7 @@ import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("ReportService 단위 테스트")
-class ReportServiceTest {
+class ReportServiceTest : BaseReactiveTest() {
 
     private val reportRepository: ReportRepository = mockk()
     private val contentMetadataRepository: ContentMetadataRepository = mockk()

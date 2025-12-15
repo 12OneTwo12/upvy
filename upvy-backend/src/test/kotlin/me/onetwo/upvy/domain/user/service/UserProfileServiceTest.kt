@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.user.exception.DuplicateNicknameException
 import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.upvy.domain.user.model.User
@@ -26,7 +27,7 @@ import reactor.core.publisher.Mono
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("사용자 프로필 Service 테스트")
-class UserProfileServiceTest {
+class UserProfileServiceTest : BaseReactiveTest() {
 
     private lateinit var userProfileRepository: UserProfileRepository
     private lateinit var userService: UserService

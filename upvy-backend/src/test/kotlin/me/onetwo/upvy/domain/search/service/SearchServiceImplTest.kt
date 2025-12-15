@@ -16,6 +16,7 @@ import me.onetwo.upvy.domain.search.model.SearchType
 import me.onetwo.upvy.domain.search.repository.SearchRepository
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.repository.UserProfileRepository
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -38,7 +39,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("SearchService 테스트")
-class SearchServiceImplTest {
+class SearchServiceImplTest : BaseReactiveTest() {
 
     private val searchRepository: SearchRepository = mockk()
     private val searchHistoryRepository: me.onetwo.upvy.domain.search.repository.SearchHistoryRepository = mockk()

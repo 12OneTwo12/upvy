@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.analytics.dto.InteractionType
 import me.onetwo.upvy.domain.analytics.dto.UserInteraction
 import me.onetwo.upvy.domain.analytics.repository.UserContentInteractionRepository
@@ -45,7 +46,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("Collaborative Filtering Service 테스트")
-class CollaborativeFilteringServiceTest {
+class CollaborativeFilteringServiceTest : BaseReactiveTest() {
 
     private lateinit var userContentInteractionRepository: UserContentInteractionRepository
     private lateinit var contentRepository: ContentRepository

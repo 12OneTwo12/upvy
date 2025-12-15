@@ -3,6 +3,7 @@ package me.onetwo.upvy.domain.notification.service
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.notification.dto.RegisterPushTokenRequest
 import me.onetwo.upvy.domain.notification.model.DeviceType
 import me.onetwo.upvy.domain.notification.model.PushProvider
@@ -21,7 +22,7 @@ import java.util.UUID
  * PushTokenService 단위 테스트
  */
 @DisplayName("푸시 토큰 Service 테스트")
-class PushTokenServiceTest {
+class PushTokenServiceTest : BaseReactiveTest() {
 
     private lateinit var pushTokenRepository: PushTokenRepository
     private lateinit var pushTokenService: PushTokenService

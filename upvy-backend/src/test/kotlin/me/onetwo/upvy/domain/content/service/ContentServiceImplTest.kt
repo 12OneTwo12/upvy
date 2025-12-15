@@ -21,6 +21,7 @@ import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.model.UploadSession
 import me.onetwo.upvy.domain.content.repository.ContentRepository
 import me.onetwo.upvy.domain.content.repository.UploadSessionRepository
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -42,7 +43,7 @@ import java.util.function.Consumer
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 Service 테스트")
-class ContentServiceImplTest {
+class ContentServiceImplTest : BaseReactiveTest() {
 
     @MockK
     private lateinit var contentUploadService: ContentUploadService

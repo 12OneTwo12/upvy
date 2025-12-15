@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.analytics.dto.ViewEventRequest
 import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.analytics.repository.UserViewHistoryRepository
@@ -23,7 +24,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("Analytics Service 테스트")
-class AnalyticsServiceTest {
+class AnalyticsServiceTest : BaseReactiveTest() {
 
     private lateinit var userViewHistoryRepository: UserViewHistoryRepository
     private lateinit var contentInteractionRepository: ContentInteractionRepository

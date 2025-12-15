@@ -9,9 +9,10 @@ import me.onetwo.upvy.domain.interaction.dto.CommentRequest
 import me.onetwo.upvy.domain.interaction.dto.CommentResponse
 import me.onetwo.upvy.domain.interaction.exception.CommentException
 import me.onetwo.upvy.domain.interaction.service.CommentService
+import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.util.mockUser
-import me.onetwo.upvy.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -35,7 +36,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("댓글 Controller 테스트")
-class CommentControllerTest {
+class CommentControllerTest : BaseReactiveTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

@@ -9,6 +9,7 @@ import me.onetwo.upvy.domain.interaction.dto.CommentLikeResponse
 import me.onetwo.upvy.domain.interaction.dto.CommentLikeStatusResponse
 import me.onetwo.upvy.domain.interaction.service.CommentLikeService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.util.mockUser
 import org.junit.jupiter.api.DisplayName
@@ -32,7 +33,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("댓글 좋아요 Controller 테스트")
-class CommentLikeControllerTest {
+class CommentLikeControllerTest : BaseReactiveTest() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

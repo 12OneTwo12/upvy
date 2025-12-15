@@ -12,6 +12,7 @@ import me.onetwo.upvy.domain.content.repository.ContentMetadataRepository
 import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.domain.interaction.model.UserSave
 import me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
@@ -31,7 +32,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("SaveService 단위 테스트")
-class SaveServiceTest {
+class SaveServiceTest : BaseReactiveTest() {
 
     @MockK
     private lateinit var userSaveRepository: UserSaveRepository
