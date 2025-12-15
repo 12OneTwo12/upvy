@@ -220,4 +220,28 @@ interface AuthService {
      * @throws me.onetwo.upvy.domain.auth.exception.OAuthOnlyUserException OAuth 전용 사용자인 경우
      */
     fun resetPasswordConfirm(email: String, code: String, newPassword: String): Mono<Void>
+
+    /**
+     * Apple Identity Token 검증 및 로그인
+     *
+     * expo-apple-authentication에서 받은 identityToken을 검증하고 로그인 처리합니다.
+     *
+     * ### 비즈니스 로직
+     * 1. Apple Public Key로 identityToken 검증 (JWT)
+     * 2. JWT에서 사용자 정보 추출 (sub, email)
+     * 3. 사용자 조회 또는 생성 (findOrCreateOAuthUser)
+     * 4. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     * 5. AppleTokenResponse 생성
+     *
+     * @param identityToken Apple Identity Token (JWT)
+     * @param familyName 성 (첫 로그인 시에만 제공됨)
+     * @param givenName 이름 (첫 로그인 시에만 제공됨)
+     * @return Mono<me.onetwo.upvy.domain.auth.dto.AppleTokenResponse> JWT 토큰과 사용자 정보
+     * @throws me.onetwo.upvy.domain.auth.exception.InvalidAppleTokenException Identity Token이 유효하지 않은 경우
+     */
+    fun authenticateWithApple(
+        identityToken: String,
+        familyName: String?,
+        givenName: String?
+    ): Mono<me.onetwo.upvy.domain.auth.dto.AppleTokenResponse>
 }

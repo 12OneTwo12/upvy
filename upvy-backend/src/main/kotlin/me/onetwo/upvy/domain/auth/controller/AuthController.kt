@@ -1,6 +1,8 @@
 package me.onetwo.upvy.domain.auth.controller
 
 import jakarta.validation.Valid
+import me.onetwo.upvy.domain.auth.dto.AppleTokenRequest
+import me.onetwo.upvy.domain.auth.dto.AppleTokenResponse
 import me.onetwo.upvy.domain.auth.dto.ChangePasswordRequest
 import me.onetwo.upvy.domain.auth.dto.EmailSigninRequest
 import me.onetwo.upvy.domain.auth.dto.EmailSignupRequest
@@ -236,5 +238,31 @@ class AuthController(
     ): Mono<ResponseEntity<Void>> {
         return authService.resetPasswordConfirm(request.email, request.code, request.newPassword)
             .then(Mono.just(ResponseEntity.noContent().build<Void>()))
+    }
+
+    /**
+     * Apple 네이티브 로그인
+     *
+     * expo-apple-authentication에서 받은 identityToken을 검증하여 로그인합니다.
+     * 인증 불필요 (public 엔드포인트)
+     *
+     * ### 처리 순서
+     * 1. Apple Public Key로 identityToken 검증 (JWT)
+     * 2. JWT에서 사용자 정보 추출 (sub, email)
+     * 3. 사용자 조회 또는 생성
+     * 4. JWT 토큰 발급 및 Redis에 Refresh Token 저장
+     *
+     * @param request Apple 토큰 요청 (identityToken, user info)
+     * @return AppleTokenResponse JWT 토큰과 사용자 정보
+     */
+    @PostMapping("/apple/token")
+    fun authenticateWithApple(
+        @Valid @RequestBody request: AppleTokenRequest
+    ): Mono<ResponseEntity<AppleTokenResponse>> {
+        return authService.authenticateWithApple(
+            identityToken = request.identityToken,
+            familyName = request.user?.familyName,
+            givenName = request.user?.givenName
+        ).map { response -> ResponseEntity.ok(response) }
     }
 }

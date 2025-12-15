@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.security.oauth2.jwt.JwtDecoder
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
@@ -55,6 +56,7 @@ class AuthServiceImplTest {
     private lateinit var emailVerificationTokenRepository: EmailVerificationTokenRepository
     private lateinit var emailVerificationService: EmailVerificationService
     private lateinit var passwordEncoder: BCryptPasswordEncoder
+    private lateinit var appleJwtDecoder: JwtDecoder
     private lateinit var authService: AuthServiceImpl
 
     private lateinit var testUserId: UUID
@@ -70,6 +72,7 @@ class AuthServiceImplTest {
         emailVerificationTokenRepository = mockk()
         emailVerificationService = mockk()
         passwordEncoder = BCryptPasswordEncoder()
+        appleJwtDecoder = mockk()
 
         authService = AuthServiceImpl(
             jwtTokenProvider,
@@ -79,7 +82,8 @@ class AuthServiceImplTest {
             authMethodRepository,
             emailVerificationTokenRepository,
             emailVerificationService,
-            passwordEncoder
+            passwordEncoder,
+            appleJwtDecoder
         )
 
         testUserId = UUID.randomUUID()
