@@ -244,5 +244,85 @@
         "button": "Open GitHub Issues"
       }
     }
+  },
+  "communityGuidelines": {
+    "title": "Community Guidelines",
+    "lastUpdate": "Last Updated: December 15, 2025",
+    "sections": {
+      "welcome": {
+        "title": "Welcome to Upvy Community",
+        "content": "Upvy is a learning platform where users grow together. Please follow these community guidelines when creating and sharing content to create a safe and positive environment.",
+        "valuesTitle": "Our Core Values",
+        "values": [
+          {"icon": "📚", "label": "Learning First", "description": "Share content that helps others grow"},
+          {"icon": "🤝", "label": "Respect", "description": "Treat all community members with kindness"},
+          {"icon": "🛡️", "label": "Safety", "description": "Keep the platform safe for everyone"},
+          {"icon": "🌍", "label": "Diversity", "description": "Embrace different perspectives and cultures"}
+        ]
+      },
+      "encouraged": {
+        "title": "✅ Encouraged Content",
+        "intro": "We welcome content that:",
+        "items": [
+          "Provides educational value (tutorials, tips, insights)",
+          "Shares personal growth experiences and lessons learned",
+          "Offers constructive feedback and discussions",
+          "Celebrates achievements and milestones"
+        ]
+      },
+      "prohibited": {
+        "title": "❌ Prohibited Content",
+        "intro": "The following content is strictly prohibited:",
+        "categories": [
+          {
+            "title": "Violence & Harm",
+            "items": ["Content that promotes or glorifies violence", "Self-harm or suicide-related content"]
+          },
+          {
+            "title": "Hate Speech & Discrimination",
+            "items": ["Content that attacks individuals or groups based on race, ethnicity, religion, gender, etc.", "Slurs, derogatory language"]
+          },
+          {
+            "title": "Sexual Content",
+            "items": ["Sexually explicit content", "Content that sexualizes minors"]
+          },
+          {
+            "title": "Illegal Activities",
+            "items": ["Promoting illegal drugs", "Sale of regulated goods"]
+          }
+        ]
+      },
+      "reporting": {
+        "title": "Reporting & Enforcement",
+        "intro": "If you encounter content or behavior that violates these guidelines:",
+        "steps": [
+          "Select 'Report' from the '...' menu on content",
+          "Choose the violation type and provide details",
+          "Receive updates on your report within 24-48 hours"
+        ]
+      },
+      "enforcement": {
+        "title": "Enforcement Actions",
+        "intro": "Depending on the severity of violations, we may take the following actions:",
+        "actions": [
+          {"title": "First Violation", "description": "Warning notification, content removal"},
+          {"title": "Repeat Violations", "description": "Temporary account suspension (3-7 days)"},
+          {"title": "Severe Violations", "description": "Permanent account ban"}
+        ]
+      },
+      "safety": {
+        "title": "User Safety Tools",
+        "intro": "Protect yourself with these features:",
+        "tools": [
+          "Block Users: Prevent specific users from interacting with you",
+          "Content Filters: Customize what content you see",
+          "Comment Controls: Control who can comment on your content"
+        ]
+      },
+      "contact": {
+        "title": "Contact & Support",
+        "content": "Questions about these guidelines? Contact us via GitHub Issues or in-app help."
+      }
+    }
   }
 }

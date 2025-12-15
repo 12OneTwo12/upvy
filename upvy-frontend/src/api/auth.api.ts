@@ -19,6 +19,8 @@ import {
   ResetPasswordRequest,
   ResetPasswordVerifyCodeRequest,
   ResetPasswordConfirmRequest,
+  TermsAgreementRequest,
+  TermsAgreementResponse,
 } from '@/types/auth.types';
 
 /**
@@ -300,4 +302,34 @@ export const resetPasswordConfirm = async (
   data: ResetPasswordConfirmRequest
 ): Promise<void> => {
   await apiClient.post(API_ENDPOINTS.AUTH.PASSWORD_RESET_CONFIRM, data);
+};
+
+/**
+ * 약관 동의
+ * 백엔드: POST /api/v1/auth/terms-agreement
+ *
+ * @param data 약관 동의 정보 (서비스 약관, 개인정보 처리방침, 커뮤니티 가이드라인, 마케팅 동의)
+ * @returns 약관 동의 응답 (사용자 ID, 동의 여부, 버전, 동의 시각)
+ */
+export const agreeToTerms = async (
+  data: TermsAgreementRequest
+): Promise<TermsAgreementResponse> => {
+  const response = await apiClient.post<TermsAgreementResponse>(
+    API_ENDPOINTS.AUTH.TERMS_AGREEMENT,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * 약관 동의 조회
+ * 백엔드: GET /api/v1/auth/terms-agreement
+ *
+ * @returns 약관 동의 응답 (사용자 ID, 동의 여부, 버전, 동의 시각)
+ */
+export const getTermsAgreement = async (): Promise<TermsAgreementResponse> => {
+  const response = await apiClient.get<TermsAgreementResponse>(
+    API_ENDPOINTS.AUTH.TERMS_AGREEMENT
+  );
+  return response.data;
 };

@@ -189,3 +189,35 @@ export interface ResetPasswordConfirmRequest {
   code: string;
   newPassword: string;
 }
+
+/**
+ * 약관 동의 요청
+ * 백엔드: TermsAgreementRequest
+ */
+export interface TermsAgreementRequest {
+  serviceTermsAgreed: boolean;
+  privacyPolicyAgreed: boolean;
+  communityGuidelinesAgreed: boolean;
+  marketingAgreed: boolean;
+}
+
+/**
+ * 약관 동의 응답
+ * 백엔드: TermsAgreementResponse
+ */
+export interface TermsAgreementResponse {
+  userId: string;
+  serviceTermsAgreed: boolean;
+  serviceTermsVersion: string | null;
+  serviceTermsAgreedAt: string | null;
+  privacyPolicyAgreed: boolean;
+  privacyPolicyVersion: string | null;
+  privacyPolicyAgreedAt: string | null;
+  communityGuidelinesAgreed: boolean;
+  communityGuidelinesVersion: string | null;
+  communityGuidelinesAgreedAt: string | null;
+  marketingAgreed: boolean;
+  marketingVersion: string | null;
+  marketingAgreedAt: string | null;
+  isAllRequiredAgreed: boolean;
+}

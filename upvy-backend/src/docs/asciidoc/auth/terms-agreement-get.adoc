@@ -1,0 +1,74 @@
+[[auth-terms-agreement-get]]
+=== UGC 약관 동의 조회
+
+사용자의 현재 약관 동의 상태를 조회합니다.
+
+==== Request
+
+include::{snippets}/auth/terms-agreement-get/http-request.adoc[]
+
+==== Response
+
+include::{snippets}/auth/terms-agreement-get/http-response.adoc[]
+include::{snippets}/auth/terms-agreement-get/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/auth/terms-agreement \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 인증된 사용자만 호출 가능합니다 (JWT Access Token 필요)
+* 약관 동의가 존재하지 않는 경우, 모든 필드가 false/null인 기본값을 반환합니다
+* `isAllRequiredAgreed` 필드로 모든 필수 약관 동의 여부를 확인할 수 있습니다
+* 프로필 생성 전 약관 동의 여부를 확인하는 용도로 사용됩니다
+
+==== Response Examples
+
+**약관 동의 완료 시:**
+
+[source,json]
+----
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "serviceTermsAgreed": true,
+  "serviceTermsVersion": "v1.0",
+  "serviceTermsAgreedAt": "2025-12-15T07:30:00.123456Z",
+  "privacyPolicyAgreed": true,
+  "privacyPolicyVersion": "v1.0",
+  "privacyPolicyAgreedAt": "2025-12-15T07:30:00.123456Z",
+  "communityGuidelinesAgreed": true,
+  "communityGuidelinesVersion": "v1.0",
+  "communityGuidelinesAgreedAt": "2025-12-15T07:30:00.123456Z",
+  "marketingAgreed": false,
+  "marketingVersion": null,
+  "marketingAgreedAt": null,
+  "isAllRequiredAgreed": true
+}
+----
+
+**약관 미동의 시 (기본값):**
+
+[source,json]
+----
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "serviceTermsAgreed": false,
+  "serviceTermsVersion": null,
+  "serviceTermsAgreedAt": null,
+  "privacyPolicyAgreed": false,
+  "privacyPolicyVersion": null,
+  "privacyPolicyAgreedAt": null,
+  "communityGuidelinesAgreed": false,
+  "communityGuidelinesVersion": null,
+  "communityGuidelinesAgreedAt": null,
+  "marketingAgreed": false,
+  "marketingVersion": null,
+  "marketingAgreedAt": null,
+  "isAllRequiredAgreed": false
+}
+----

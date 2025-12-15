@@ -1,0 +1,54 @@
+[[auth-terms-agreement-agree]]
+=== UGC 약관 동의
+
+사용자 생성 콘텐츠(UGC) 관련 약관에 동의합니다.
+
+Apple App Store 심사 가이드라인 1.2 준수를 위한 필수 약관 동의 API입니다.
+
+==== Request
+
+include::{snippets}/auth/terms-agreement-agree/http-request.adoc[]
+include::{snippets}/auth/terms-agreement-agree/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/auth/terms-agreement-agree/http-response.adoc[]
+include::{snippets}/auth/terms-agreement-agree/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/auth/terms-agreement \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {access_token}" \
+  -d '{
+    "serviceTermsAgreed": true,
+    "privacyPolicyAgreed": true,
+    "communityGuidelinesAgreed": true,
+    "marketingAgreed": false
+  }'
+----
+
+==== Notes
+
+* 인증된 사용자만 호출 가능합니다 (JWT Access Token 필요)
+* 약관 동의 성공 시 201 Created 상태 코드를 반환합니다
+* **필수 약관 3가지**: 서비스 이용약관, 개인정보 처리방침, 커뮤니티 가이드라인
+* **선택 약관 1가지**: 마케팅 정보 수신 동의
+* 필수 약관 중 하나라도 false일 경우 400 Bad Request를 반환합니다
+* 사용자당 하나의 약관 동의 레코드만 유지되며, 재요청 시 업데이트됩니다 (Upsert)
+* 약관 버전은 현재 v1.0이며, 향후 약관 변경 시 버전이 업데이트됩니다
+* IP 주소와 User Agent가 자동으로 기록되어 법적 증빙용으로 사용됩니다 (GDPR, CCPA 준수)
+* 동의 이력은 user_terms_agreement_history 테이블에 별도로 저장됩니다
+* 동의 액션 타입: AGREED(최초 동의), UPDATED(재동의), REVOKED(철회)
+
+==== UX Flow
+
+권장 사용자 플로우:
+
+1. OAuth2 로그인 성공 → JWT 토큰 획득
+2. 약관 동의 여부 조회 (`GET /api/v1/auth/terms-agreement`)
+3. 약관 미동의 시 → 약관 동의 화면 표시
+4. 필수 약관 3개 체크 + 선택 약관 1개 체크 → 이 API 호출
+5. 약관 동의 완료 → 프로필 생성 화면으로 이동

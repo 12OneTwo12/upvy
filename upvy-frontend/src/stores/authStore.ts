@@ -11,7 +11,7 @@ import {
   removeItem,
   STORAGE_KEYS,
 } from '@/utils/storage';
-import { getCurrentUser, getMyProfile, logout as apiLogout } from '@/api/auth.api';
+import { getCurrentUser, getMyProfile, getTermsAgreement, logout as apiLogout } from '@/api/auth.api';
 import { setSentryUser, clearSentryUser } from '@/config/sentry';
 import { queryClient } from '../../App';
 
@@ -21,10 +21,12 @@ interface AuthState {
   profile: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasAgreedToTerms: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
   setProfile: (profile: UserProfile | null) => void;
+  setHasAgreedToTerms: (hasAgreed: boolean) => void;
   login: (accessToken: string, refreshToken: string, user: User, profile?: UserProfile) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -41,6 +43,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profile: null,
   isAuthenticated: false,
   isLoading: true, // 앱 시작 시 자동 로그인 체크
+  hasAgreedToTerms: false,
 
   // Set User
   setUser: (user) => {
@@ -50,6 +53,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // Set Profile
   setProfile: (profile) => {
     set({ profile });
+  },
+
+  // Set Has Agreed To Terms
+  setHasAgreedToTerms: (hasAgreed) => {
+    set({ hasAgreedToTerms: hasAgreed });
   },
 
   // Login
@@ -108,6 +116,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         profile: null,
         isAuthenticated: false,
         isLoading: false,
+        hasAgreedToTerms: false,
       });
     } catch (error) {
       // Logout error silently ignored
@@ -132,6 +141,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         const user = await getCurrentUser();
 
+        // 약관 동의 여부 조회
+        let hasAgreedToTerms = false;
+        try {
+          const termsAgreement = await getTermsAgreement();
+          hasAgreedToTerms = termsAgreement.isAllRequiredAgreed;
+        } catch (termsError) {
+          // 약관 동의 정보가 없는 경우 (첫 로그인)
+        }
+
         // 프로필 조회 (프로필이 없는 경우 404 에러 발생)
         let profile: UserProfile | null = null;
         try {
@@ -152,6 +170,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           profile,
           isAuthenticated: true,
           isLoading: false,
+          hasAgreedToTerms,
         });
       } catch (error) {
         // Token expired or invalid
