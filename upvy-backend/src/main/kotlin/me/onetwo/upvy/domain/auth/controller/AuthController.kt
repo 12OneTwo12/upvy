@@ -63,9 +63,9 @@ class AuthController(
     /**
      * 로그아웃
      *
-     * Refresh Token을 무효화하여 로그아웃 처리합니다.
+     * Refresh Token 또는 JWT를 사용하여 로그아웃 처리합니다.
      *
-     * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
+     * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입, optional)
      * @param request 로그아웃 요청 (선택)
      * @return ResponseEntity<Void>
      */
@@ -88,6 +88,9 @@ class AuthController(
                         authService.logoutByUserId(userId)
                     }
                 }
+                .switchIfEmpty(Mono.fromRunnable<Void> {
+                    // Principal도 없는 경우 - 아무것도 하지 않음 (이미 로그아웃된 상태)
+                })
         }
         return logoutOperation.then(Mono.just(ResponseEntity.noContent().build<Void>()))
     }
