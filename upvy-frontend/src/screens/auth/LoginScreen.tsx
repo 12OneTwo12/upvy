@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useTranslation, Trans } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAppleAuth } from '@/hooks/useAppleAuth';
 import { useAuthStore } from '@/stores/authStore';
@@ -157,29 +157,6 @@ export default function LoginScreen() {
               {t('login.appleLogin')}
             </Button>
           )}
-
-          {/* 약관 동의 */}
-          <Text style={styles.termsText}>
-            <Trans
-              i18nKey="login.termsAgree"
-              t={t}
-              components={{
-                terms: (
-                  <Text
-                    style={styles.termsLink}
-                    onPress={() => navigation.navigate('TermsOfService')}
-                  />
-                ),
-                policy: (
-                  <Text
-                    style={styles.termsLink}
-                    onPress={() => navigation.navigate('PrivacyPolicy')}
-                  />
-                ),
-              }}
-            />
-          </Text>
-
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -334,19 +311,5 @@ const useStyles = createStyleSheet({
   appleButton: {
     ...theme.shadows.sm,
     backgroundColor: '#000000', // Apple 브랜드 가이드라인: 검정 배경
-  },
-
-  termsText: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.xs,
-    paddingHorizontal: theme.spacing[2],
-  },
-
-  termsLink: {
-    color: theme.colors.primary[500],
-    fontWeight: theme.typography.fontWeight.medium,
-    textDecorationLine: 'underline',
   },
 });

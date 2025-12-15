@@ -36,7 +36,6 @@ export default function TermsAgreementScreen() {
   const [serviceTermsAgreed, setServiceTermsAgreed] = useState(false);
   const [privacyPolicyAgreed, setPrivacyPolicyAgreed] = useState(false);
   const [communityGuidelinesAgreed, setCommunityGuidelinesAgreed] = useState(false);
-  const [marketingAgreed, setMarketingAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
@@ -45,8 +44,7 @@ export default function TermsAgreementScreen() {
   const isAllAgreed =
     serviceTermsAgreed &&
     privacyPolicyAgreed &&
-    communityGuidelinesAgreed &&
-    marketingAgreed;
+    communityGuidelinesAgreed;
 
   /**
    * 필수 약관 동의 여부
@@ -62,7 +60,6 @@ export default function TermsAgreementScreen() {
     setServiceTermsAgreed(newValue);
     setPrivacyPolicyAgreed(newValue);
     setCommunityGuidelinesAgreed(newValue);
-    setMarketingAgreed(newValue);
   };
 
   /**
@@ -105,7 +102,7 @@ export default function TermsAgreementScreen() {
           serviceTermsAgreed,
           privacyPolicyAgreed,
           communityGuidelinesAgreed,
-          marketingAgreed,
+          marketingAgreed: false, // 마케팅 기능 없음 - 항상 false
         }),
       {
         showAlert: true,
@@ -256,30 +253,6 @@ export default function TermsAgreementScreen() {
                 {t('termsAgreement.checkboxes.communityGuidelines.viewLink')}
               </Text>
             </TouchableOpacity>
-          </View>
-
-          {/* 마케팅 정보 수신 동의 (선택) */}
-          <View style={styles.termItem}>
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => setMarketingAgreed(!marketingAgreed)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[styles.checkbox, marketingAgreed && styles.checkboxChecked]}
-              >
-                {marketingAgreed && (
-                  <Ionicons name="checkmark" size={18} color={theme.colors.white} />
-                )}
-              </View>
-              <Text style={styles.termLabel}>
-                {t('termsAgreement.checkboxes.marketing.label')}{' '}
-                <Text style={styles.optional}>
-                  {t('termsAgreement.checkboxes.marketing.optional')}
-                </Text>
-              </Text>
-            </TouchableOpacity>
-            <View style={{ width: 40 }} />
           </View>
         </View>
 
