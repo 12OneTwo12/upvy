@@ -4,10 +4,10 @@ import {
   Text,
   SafeAreaView,
   ScrollView,
-  Dimensions,
   Image,
   TouchableOpacity,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -26,28 +26,24 @@ import type { AuthStackParamList } from '@/types/navigation.types';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
-const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 /**
  * 화면 높이 기반 간격 계산
  * 작은 화면일수록 간격을 줄여서 스크롤 없이 모든 요소가 보이도록 함
  */
-const getSpacingScale = () => {
-  if (SCREEN_HEIGHT < 700) return 0.6; // 매우 작은 화면 (iPhone SE)
-  if (SCREEN_HEIGHT < 800) return 0.75; // 작은 화면
-  if (SCREEN_HEIGHT < 900) return 0.9; // 중간 화면
+const getSpacingScale = (screenHeight: number) => {
+  if (screenHeight < 700) return 0.6; // 매우 작은 화면 (iPhone SE)
+  if (screenHeight < 800) return 0.75; // 작은 화면
+  if (screenHeight < 900) return 0.9; // 중간 화면
   return 1.0; // 큰 화면 (Pro Max 등)
 };
-
-const SPACING_SCALE = getSpacingScale();
 
 /**
  * 로그인 화면 (인스타그램 스타일)
  * 깔끔하고 미니멀한 디자인으로 전문적인 느낌
  */
 export default function LoginScreen() {
+  const { height: screenHeight } = useWindowDimensions();
   const { t } = useTranslation('auth');
-  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const { handleGoogleLogin, isLoading, error, isReady } = useGoogleAuth();
@@ -58,6 +54,11 @@ export default function LoginScreen() {
     isAvailable: isAppleAvailable
   } = useAppleAuth();
   // const { checkAuth } = useAuthStore(); // MVP: Auto-login disabled
+
+  // 화면 높이에 따른 동적 간격 계산 (화면 회전 대응)
+  const SPACING_SCALE = useMemo(() => getSpacingScale(screenHeight), [screenHeight]);
+
+  const styles = useStyles(SPACING_SCALE);
 
   // MVP: Auto-login disabled for now
   // useEffect(() => {
@@ -112,14 +113,17 @@ export default function LoginScreen() {
             <ValueProp
               title={t('login.valueProps.shorts.title')}
               description={t('login.valueProps.shorts.description')}
+              styles={styles}
             />
             <ValueProp
               title={t('login.valueProps.habit.title')}
               description={t('login.valueProps.habit.description')}
+              styles={styles}
             />
             <ValueProp
               title={t('login.valueProps.journey.title')}
               description={t('login.valueProps.journey.description')}
+              styles={styles}
             />
           </View>
         </View>
@@ -177,10 +181,10 @@ export default function LoginScreen() {
 interface ValuePropProps {
   title: string;
   description: string;
+  styles: ReturnType<typeof useStyles>;
 }
 
-function ValueProp({ title, description }: ValuePropProps) {
-  const styles = useStyles();
+function ValueProp({ title, description, styles }: ValuePropProps) {
   return (
     <View style={styles.valueProp}>
       <View style={styles.valuePropDot} />
@@ -192,7 +196,7 @@ function ValueProp({ title, description }: ValuePropProps) {
   );
 }
 
-const useStyles = createStyleSheet({
+const useStyles = (spacingScale: number) => createStyleSheet({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -207,13 +211,13 @@ const useStyles = createStyleSheet({
   content: {
     // OAuth 버튼이 스크롤 없이 보여야 함
     justifyContent: 'center',
-    paddingTop: Math.round(theme.spacing[4] * SPACING_SCALE),
+    paddingTop: Math.round(theme.spacing[4] * spacingScale),
   },
 
   // Logo Section
   logoSection: {
     alignItems: 'center',
-    marginBottom: Math.round(theme.spacing[8] * SPACING_SCALE),
+    marginBottom: Math.round(theme.spacing[8] * spacingScale),
   },
 
   logoContainer: {
@@ -221,7 +225,7 @@ const useStyles = createStyleSheet({
     height: responsive({ xs: 120, md: 140, default: 160 }),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Math.round(theme.spacing[4] * SPACING_SCALE),
+    marginBottom: Math.round(theme.spacing[4] * spacingScale),
   },
 
   logoImage: {
@@ -237,7 +241,7 @@ const useStyles = createStyleSheet({
     }),
     fontWeight: '700',
     color: theme.colors.text.primary,
-    marginBottom: Math.round(theme.spacing[2] * SPACING_SCALE),
+    marginBottom: Math.round(theme.spacing[2] * spacingScale),
     letterSpacing: -0.5,
   },
 
@@ -253,9 +257,9 @@ const useStyles = createStyleSheet({
 
   // Value Props
   valuePropsContainer: {
-    gap: Math.round(theme.spacing[4] * SPACING_SCALE),
+    gap: Math.round(theme.spacing[4] * spacingScale),
     paddingHorizontal: theme.spacing[2],
-    marginBottom: Math.round(theme.spacing[2] * SPACING_SCALE),
+    marginBottom: Math.round(theme.spacing[2] * spacingScale),
   },
 
   valueProp: {
@@ -280,7 +284,7 @@ const useStyles = createStyleSheet({
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
-    marginBottom: Math.round(theme.spacing[1] * SPACING_SCALE),
+    marginBottom: Math.round(theme.spacing[1] * spacingScale),
   },
 
   valuePropDescription: {
@@ -291,8 +295,8 @@ const useStyles = createStyleSheet({
 
   // Bottom Section
   bottomSection: {
-    gap: Math.round(theme.spacing[3] * SPACING_SCALE),
-    paddingTop: Math.round(theme.spacing[4] * SPACING_SCALE),
+    gap: Math.round(theme.spacing[3] * spacingScale),
+    paddingTop: Math.round(theme.spacing[4] * spacingScale),
   },
 
   dividerContainer: {
