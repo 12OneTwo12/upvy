@@ -126,31 +126,12 @@ export default function LoginScreen() {
 
         {/* 하단: 로그인 버튼 */}
         <View style={styles.bottomSection}>
-          {/* 이메일 로그인 버튼 */}
-          <Button
-            variant="outline"
-            size="lg"
-            fullWidth
-            onPress={() => navigation.navigate('EmailSignIn')}
-            style={styles.emailButton}
-          >
-            {t('login.emailLogin')}
-          </Button>
-
-          {/* OR 구분선 */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>{t('login.or')}</Text>
-            <View style={styles.divider} />
-          </View>
-
           {/* Google 로그인 버튼 */}
           <OAuthButton
             provider="google"
             onPress={handleGoogleLogin}
             disabled={!isReady}
             loading={isLoading}
-            style={styles.googleButton}
           >
             {t('login.googleLogin')}
           </OAuthButton>
@@ -162,11 +143,28 @@ export default function LoginScreen() {
               onPress={handleAppleLogin}
               disabled={!isAppleAvailable}
               loading={isAppleLoading}
-              style={styles.appleButton}
             >
               {t('login.appleLogin')}
             </OAuthButton>
           )}
+
+          {/* OR 구분선 */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>{t('login.or')}</Text>
+            <View style={styles.divider} />
+          </View>
+
+          {/* 이메일 로그인 버튼 */}
+          <Button
+            variant="outline"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.navigate('EmailSignIn')}
+            style={styles.emailButton}
+          >
+            {t('login.emailLogin')}
+          </Button>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -297,11 +295,6 @@ const useStyles = createStyleSheet({
     paddingTop: Math.round(theme.spacing[4] * SPACING_SCALE),
   },
 
-  emailButton: {
-    borderWidth: 2,
-    borderColor: theme.colors.primary[500],
-  },
-
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -319,11 +312,9 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.tertiary,
   },
 
-  googleButton: {
-    // OAuthButton 컴포넌트에서 스타일 처리
-  },
-
-  appleButton: {
-    // OAuthButton 컴포넌트에서 스타일 처리
+  // 이메일 버튼 - outline이지만 명확하게
+  emailButton: {
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary[500],
   },
 });
