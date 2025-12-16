@@ -14,6 +14,7 @@ import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.upvy.domain.user.dto.CreateProfileRequest
 import me.onetwo.upvy.domain.user.dto.UpdateProfileRequest
+import me.onetwo.upvy.domain.user.dto.UserProfileWithContentCountResponse
 import me.onetwo.upvy.domain.user.exception.DuplicateNicknameException
 import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.upvy.domain.user.model.UserProfile
@@ -209,7 +210,8 @@ class UserProfileControllerTest : BaseReactiveTest {
     @DisplayName("내 프로필 조회 성공")
     fun getMyProfile_Success() {
         // Given
-        every { userProfileService.getProfileByUserId(testUserId) } returns Mono.just(testProfile)
+        val profileResponse = UserProfileWithContentCountResponse.from(testProfile, contentCount = 15)
+        every { userProfileService.getProfileWithContentCount(testUserId) } returns Mono.just(profileResponse)
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))
@@ -221,6 +223,7 @@ class UserProfileControllerTest : BaseReactiveTest {
             .jsonPath("$.nickname").isEqualTo("testnick")
             .jsonPath("$.followerCount").isEqualTo(10)
             .jsonPath("$.followingCount").isEqualTo(5)
+            .jsonPath("$.contentCount").isEqualTo(15)
             .consumeWith(
                 document(
                     "profile-get-me",
@@ -233,6 +236,7 @@ class UserProfileControllerTest : BaseReactiveTest {
                         fieldWithPath("bio").description("자기소개"),
                         fieldWithPath("followerCount").description("팔로워 수"),
                         fieldWithPath("followingCount").description("팔로잉 수"),
+                        fieldWithPath("contentCount").description("콘텐츠 개수"),
                         fieldWithPath("createdAt").description("생성일시"),
                         fieldWithPath("updatedAt").description("수정일시")
                     )
@@ -245,7 +249,8 @@ class UserProfileControllerTest : BaseReactiveTest {
     fun getProfileByUserId_Success() {
         // Given
         val targetUserId = UUID.randomUUID()
-        every { userProfileService.getProfileByUserId(targetUserId) } returns Mono.just(testProfile)
+        val profileResponse = UserProfileWithContentCountResponse.from(testProfile, contentCount = 15)
+        every { userProfileService.getProfileWithContentCount(targetUserId) } returns Mono.just(profileResponse)
         // When & Then
         webTestClient.get()
             .uri("${ApiPaths.API_V1_PROFILES}/{targetUserId}", targetUserId)
@@ -253,6 +258,7 @@ class UserProfileControllerTest : BaseReactiveTest {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.nickname").isEqualTo("testnick")
+            .jsonPath("$.contentCount").isEqualTo(15)
             .consumeWith(
                 document(
                     "profile-get-by-userid",
@@ -268,6 +274,7 @@ class UserProfileControllerTest : BaseReactiveTest {
                         fieldWithPath("bio").description("자기소개"),
                         fieldWithPath("followerCount").description("팔로워 수"),
                         fieldWithPath("followingCount").description("팔로잉 수"),
+                        fieldWithPath("contentCount").description("콘텐츠 개수"),
                         fieldWithPath("createdAt").description("생성일시"),
                         fieldWithPath("updatedAt").description("수정일시")
                     )
@@ -315,7 +322,7 @@ class UserProfileControllerTest : BaseReactiveTest {
     fun getProfile_NotFound() {
         // Given
         val nonExistentId = UUID.randomUUID()
-        every { userProfileService.getProfileByUserId(nonExistentId) } throws
+        every { userProfileService.getProfileWithContentCount(nonExistentId) } throws
                 UserProfileNotFoundException("프로필을 찾을 수 없습니다.")
 
         // When & Then

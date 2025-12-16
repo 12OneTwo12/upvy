@@ -50,6 +50,12 @@ data class UserProfileResponse(
     val updatedAt: Instant
 ) {
     companion object {
+        /**
+         * UserProfile 모델로부터 응답 DTO를 생성합니다.
+         *
+         * @param profile 사용자 프로필
+         * @return 프로필 응답 DTO
+         */
         fun from(profile: UserProfile): UserProfileResponse {
             return UserProfileResponse(
                 id = profile.id!!,
@@ -59,6 +65,48 @@ data class UserProfileResponse(
                 bio = profile.bio,
                 followerCount = profile.followerCount,
                 followingCount = profile.followingCount,
+                createdAt = profile.createdAt,
+                updatedAt = profile.updatedAt
+            )
+        }
+    }
+}
+
+/**
+ * 프로필 응답 DTO (콘텐츠 개수 포함)
+ *
+ * 내 프로필 조회, 사용자 프로필 조회 시 사용
+ */
+data class UserProfileWithContentCountResponse(
+    val id: Long,
+    val userId: UUID,
+    val nickname: String,
+    val profileImageUrl: String?,
+    val bio: String?,
+    val followerCount: Int,
+    val followingCount: Int,
+    val contentCount: Long,
+    val createdAt: Instant,
+    val updatedAt: Instant
+) {
+    companion object {
+        /**
+         * UserProfile 모델과 콘텐츠 개수로부터 응답 DTO를 생성합니다.
+         *
+         * @param profile 사용자 프로필
+         * @param contentCount 콘텐츠 개수
+         * @return 프로필 응답 DTO
+         */
+        fun from(profile: UserProfile, contentCount: Long): UserProfileWithContentCountResponse {
+            return UserProfileWithContentCountResponse(
+                id = profile.id!!,
+                userId = profile.userId,
+                nickname = profile.nickname,
+                profileImageUrl = profile.profileImageUrl,
+                bio = profile.bio,
+                followerCount = profile.followerCount,
+                followingCount = profile.followingCount,
+                contentCount = contentCount,
                 createdAt = profile.createdAt,
                 updatedAt = profile.updatedAt
             )

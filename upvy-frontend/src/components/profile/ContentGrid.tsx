@@ -11,6 +11,9 @@ interface ContentGridProps {
   loading?: boolean;
   onContentPress?: (content: ContentResponse) => void;
   numColumns?: number;
+  onEndReached?: () => void;
+  onEndReachedThreshold?: number;
+  isFetchingMore?: boolean;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -233,6 +236,10 @@ const useStyles = createStyleSheet({
     justifyContent: 'center',
     paddingVertical: theme.spacing[12],
   },
+  footerLoader: {
+    paddingVertical: theme.spacing[4],
+    alignItems: 'center',
+  },
 });
 
 export const ContentGrid: React.FC<ContentGridProps> = ({
@@ -240,6 +247,9 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
   loading = false,
   onContentPress,
   numColumns = 3,
+  onEndReached,
+  onEndReachedThreshold = 0.5,
+  isFetchingMore = false,
 }) => {
   const styles = useStyles();
   const { t } = useTranslation('profile');
@@ -254,6 +264,15 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
       onPress={() => onContentPress?.(item)}
     />
   );
+
+  const renderFooter = () => {
+    if (!isFetchingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+      </View>
+    );
+  };
 
   // Loading state
   if (loading && contents.length === 0) {
@@ -289,6 +308,9 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
       scrollEnabled={false}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.container}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={onEndReachedThreshold}
+      ListFooterComponent={renderFooter}
     />
   );
 };

@@ -8,6 +8,7 @@ import me.onetwo.upvy.domain.user.dto.ImageUploadResponse
 import me.onetwo.upvy.domain.user.dto.NicknameCheckResponse
 import me.onetwo.upvy.domain.user.dto.UpdateProfileRequest
 import me.onetwo.upvy.domain.user.dto.UserProfileResponse
+import me.onetwo.upvy.domain.user.dto.UserProfileWithContentCountResponse
 import me.onetwo.upvy.domain.user.service.UserProfileService
 import me.onetwo.upvy.infrastructure.security.util.toUserId
 import me.onetwo.upvy.infrastructure.common.ApiPaths
@@ -76,30 +77,32 @@ class UserProfileController(
      * 내 프로필 조회
      *
      * @param principal 인증된 사용자 Principal (Spring Security에서 자동 주입)
-     * @return 프로필 정보
+     * @return 프로필 정보 (콘텐츠 개수 포함)
      */
     @GetMapping("/me")
     fun getMyProfile(
         principal: Mono<Principal>
-    ): Mono<ResponseEntity<UserProfileResponse>> {
+    ): Mono<ResponseEntity<UserProfileWithContentCountResponse>> {
         return principal
             .toUserId()
-            .flatMap { userId -> userProfileService.getProfileByUserId(userId) }
-            .map { profile -> ResponseEntity.ok(UserProfileResponse.from(profile)) }
+            .flatMap { userId ->
+                userProfileService.getProfileWithContentCount(userId)
+            }
+            .map { ResponseEntity.ok(it) }
     }
 
     /**
      * 사용자 ID로 프로필 조회
      *
      * @param targetUserId 조회할 사용자 ID
-     * @return 프로필 정보
+     * @return 프로필 정보 (콘텐츠 개수 포함)
      */
     @GetMapping("/{targetUserId}")
     fun getProfileByUserId(
         @PathVariable targetUserId: UUID
-    ): Mono<ResponseEntity<UserProfileResponse>> {
-        return userProfileService.getProfileByUserId(targetUserId)
-            .map { profile -> ResponseEntity.ok(UserProfileResponse.from(profile)) }
+    ): Mono<ResponseEntity<UserProfileWithContentCountResponse>> {
+        return userProfileService.getProfileWithContentCount(targetUserId)
+            .map { ResponseEntity.ok(it) }
     }
 
     /**

@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList, ProfileStackParamList } from '@/types/navigation.types';
 import { ProfileHeader, ContentGrid } from '@/components/profile';
@@ -20,7 +20,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { getMyProfile } from '@/api/auth.api';
 import { getMyContents } from '@/api/content.api';
-import { getSavedContents } from '@/api/interaction.api';
+import { getSavedContentList } from '@/api/save.api';
 import { theme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
@@ -195,27 +195,45 @@ export default function ProfileScreen() {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  // 콘텐츠 목록 로드 (React Query - 캐싱 활성화, 커서 기반 페이징)
-  const { data: contentsResponse, isLoading: contentsLoading, refetch: refetchContents } = useQuery({
+  // 콘텐츠 목록 로드 (React Query - 무한 스크롤, 커서 기반 페이징)
+  const {
+    data: contentsData,
+    isLoading: contentsLoading,
+    refetch: refetchContents,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['myContents'],
-    queryFn: getMyContents,
-    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지 (다시 로드하지 않음)
-    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+    queryFn: ({ pageParam }) => getMyContents(pageParam ? { cursor: pageParam } : undefined),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.hasNext ? lastPage.nextCursor : undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
-  const contents = contentsResponse?.content || [];
+  const contents = contentsData?.pages.flatMap(page => page.content) || [];
 
-  // 저장한 콘텐츠 목록 로드 (React Query, 커서 기반 페이징)
-  const { data: savedContentsResponse, isLoading: savedContentsLoading, refetch: refetchSavedContents } = useQuery({
+  // 저장한 콘텐츠 목록 로드 (React Query - 무한 스크롤, 커서 기반 페이징)
+  const {
+    data: savedContentsData,
+    isLoading: savedContentsLoading,
+    refetch: refetchSavedContents,
+    fetchNextPage: fetchNextSavedPage,
+    hasNextPage: hasNextSavedPage,
+    isFetchingNextPage: isFetchingNextSavedPage,
+  } = useInfiniteQuery({
     queryKey: ['savedContents'],
-    queryFn: getSavedContents,
-    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
-    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+    queryFn: ({ pageParam }) => getSavedContentList(pageParam ? { cursor: pageParam } : undefined),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.hasNext ? lastPage.nextCursor : undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
-  const savedContents = savedContentsResponse?.content || [];
+  const savedContents = savedContentsData?.pages.flatMap(page => page.content) || [];
 
   // 백엔드에서 이제 ContentResponse를 직접 반환하므로 변환 불필요
 
@@ -307,7 +325,7 @@ export default function ProfileScreen() {
         <ProfileHeader
           profile={profile}
           isOwnProfile={true}
-          contentCount={contents.length}
+          contentCount={profile.contentCount}
           onFollowersPress={handleFollowersPress}
           onFollowingPress={handleFollowingPress}
         />
@@ -372,6 +390,12 @@ export default function ProfileScreen() {
                   contents={contents}
                   loading={contentsLoading}
                   onContentPress={handleContentPress}
+                  onEndReached={() => {
+                    if (hasNextPage && !isFetchingNextPage) {
+                      fetchNextPage();
+                    }
+                  }}
+                  isFetchingMore={isFetchingNextPage}
                 />
               )}
             </>
@@ -397,6 +421,12 @@ export default function ProfileScreen() {
                   contents={savedContents}
                   loading={savedContentsLoading}
                   onContentPress={handleContentPress}
+                  onEndReached={() => {
+                    if (hasNextSavedPage && !isFetchingNextSavedPage) {
+                      fetchNextSavedPage();
+                    }
+                  }}
+                  isFetchingMore={isFetchingNextSavedPage}
                 />
               )}
             </>

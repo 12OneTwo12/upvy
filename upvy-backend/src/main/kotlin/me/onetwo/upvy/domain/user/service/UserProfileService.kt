@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.user.service
 
+import me.onetwo.upvy.domain.user.dto.UserProfileWithContentCountResponse
 import me.onetwo.upvy.domain.user.model.UserProfile
 import org.springframework.http.codec.multipart.FilePart
 import reactor.core.publisher.Mono
@@ -127,4 +128,16 @@ interface UserProfileService {
      * @throws IllegalArgumentException 이미지 유효성 검증 실패 시
      */
     fun uploadProfileImage(userId: UUID, filePart: FilePart): Mono<String>
+
+    /**
+     * 사용자 ID로 프로필과 콘텐츠 개수를 함께 조회합니다.
+     *
+     * 프로필 정보와 콘텐츠 개수를 병렬로 조회하여 UserProfileWithContentCountResponse DTO로 반환합니다.
+     * 프로필 화면에서 사용됩니다.
+     *
+     * @param userId 사용자 ID
+     * @return 콘텐츠 개수가 포함된 프로필 응답 DTO
+     * @throws me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException 프로필을 찾을 수 없는 경우
+     */
+    fun getProfileWithContentCount(userId: UUID): Mono<UserProfileWithContentCountResponse>
 }

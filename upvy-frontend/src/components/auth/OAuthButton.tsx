@@ -28,6 +28,31 @@ export interface OAuthButtonProps {
 }
 
 /**
+ * 제공자별 브랜딩 설정
+ * 컴포넌트 외부에 위치하여 리렌더링 시 불필요한 재생성 방지
+ */
+const providerConfig = {
+  google: {
+    backgroundColor: '#FFFFFF',
+    textColor: '#1F1F1F',
+    borderColor: '#DADADA', // 더 진한 회색으로 변경
+    borderWidth: 1.5, // 테두리 두께 증가
+    logo: require('@/../assets/images/oauth/google-logo.png'),
+    logoTintColor: undefined, // Google 로고는 원본 색상 유지
+    loadingColor: theme.colors.text.primary,
+  },
+  apple: {
+    backgroundColor: '#000000',
+    textColor: '#FFFFFF',
+    borderColor: '#000000',
+    borderWidth: 1,
+    logo: require('@/../assets/images/oauth/apple-logo.png'),
+    logoTintColor: undefined, // Apple 로고는 이미 흰색 이미지
+    loadingColor: theme.colors.text.inverse,
+  },
+} as const;
+
+/**
  * OAuth 로그인 버튼 컴포넌트
  * Apple, Google 등의 OAuth 제공자 브랜딩 가이드라인을 준수
  */
@@ -41,28 +66,6 @@ export const OAuthButton: React.FC<OAuthButtonProps> = ({
 }) => {
   const styles = useStyles();
   const isDisabled = disabled || loading;
-
-  // 제공자별 설정
-  const providerConfig = {
-    google: {
-      backgroundColor: '#FFFFFF',
-      textColor: '#1F1F1F',
-      borderColor: '#DADADA', // 더 진한 회색으로 변경
-      borderWidth: 1.5, // 테두리 두께 증가
-      logo: require('@/../assets/images/oauth/google-logo.png'),
-      logoTintColor: undefined, // Google 로고는 원본 색상 유지
-      loadingColor: theme.colors.text.primary,
-    },
-    apple: {
-      backgroundColor: '#000000',
-      textColor: '#FFFFFF',
-      borderColor: '#000000',
-      borderWidth: 1,
-      logo: require('@/../assets/images/oauth/apple-logo.png'),
-      logoTintColor: undefined, // Apple 로고는 이미 흰색 이미지
-      loadingColor: theme.colors.text.inverse,
-    },
-  };
 
   const config = providerConfig[provider];
 

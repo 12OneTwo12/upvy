@@ -7,6 +7,7 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
+import me.onetwo.upvy.domain.content.repository.ContentRepository
 import me.onetwo.upvy.domain.user.exception.DuplicateNicknameException
 import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.upvy.domain.user.model.User
@@ -32,6 +33,7 @@ class UserProfileServiceTest : BaseReactiveTest {
     private lateinit var userProfileRepository: UserProfileRepository
     private lateinit var userService: UserService
     private lateinit var imageUploadService: ImageUploadService
+    private lateinit var contentRepository: ContentRepository
     private lateinit var userProfileService: UserProfileService
 
     private lateinit var testUser: User
@@ -42,7 +44,8 @@ class UserProfileServiceTest : BaseReactiveTest {
         userProfileRepository = mockk()
         userService = mockk()
         imageUploadService = mockk()
-        userProfileService = UserProfileServiceImpl(userProfileRepository, userService, imageUploadService)
+        contentRepository = mockk()
+        userProfileService = UserProfileServiceImpl(userProfileRepository, userService, imageUploadService, contentRepository)
 
         val testUserId = UUID.randomUUID()
 
@@ -367,5 +370,62 @@ class UserProfileServiceTest : BaseReactiveTest {
         assertEquals(0, result.followingCount)
         verify(exactly = 1) { userProfileRepository.findByUserId(userId) }
         verify(exactly = 1) { userProfileRepository.update(any()) }
+    }
+
+    @Test
+    @DisplayName("프로필과 콘텐츠 개수 함께 조회 성공")
+    fun getProfileWithContentCount_Success() {
+        // Given
+        val userId = UUID.randomUUID()
+        val contentCount = 15L
+
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
+        every { contentRepository.countByCreatorId(userId) } returns Mono.just(contentCount)
+
+        // When
+        val result = userProfileService.getProfileWithContentCount(userId).block()!!
+
+        // Then
+        assertEquals(testProfile.userId, result.userId)
+        assertEquals(testProfile.nickname, result.nickname)
+        assertEquals(contentCount, result.contentCount)
+        verify(exactly = 1) { userProfileRepository.findByUserId(userId) }
+        verify(exactly = 1) { contentRepository.countByCreatorId(userId) }
+    }
+
+    @Test
+    @DisplayName("프로필과 콘텐츠 개수 함께 조회 - 콘텐츠 0개")
+    fun getProfileWithContentCount_ZeroContents() {
+        // Given
+        val userId = UUID.randomUUID()
+
+        every { userProfileRepository.findByUserId(userId) } returns Mono.just(testProfile)
+        every { contentRepository.countByCreatorId(userId) } returns Mono.just(0L)
+
+        // When
+        val result = userProfileService.getProfileWithContentCount(userId).block()!!
+
+        // Then
+        assertEquals(0L, result.contentCount)
+        verify(exactly = 1) { userProfileRepository.findByUserId(userId) }
+        verify(exactly = 1) { contentRepository.countByCreatorId(userId) }
+    }
+
+    @Test
+    @DisplayName("프로필과 콘텐츠 개수 함께 조회 실패 - 프로필 없음")
+    fun getProfileWithContentCount_ProfileNotFound_ThrowsException() {
+        // Given
+        val userId = UUID.randomUUID()
+
+        every { userProfileRepository.findByUserId(userId) } returns Mono.empty()
+        every { contentRepository.countByCreatorId(userId) } returns Mono.just(0L)
+
+        // When & Then
+        val exception = assertThrows<UserProfileNotFoundException> {
+            userProfileService.getProfileWithContentCount(userId).block()!!
+        }
+
+        assertTrue(exception.message!!.contains("$userId"))
+        verify(exactly = 1) { userProfileRepository.findByUserId(userId) }
     }
 }

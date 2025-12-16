@@ -685,4 +685,26 @@ class ContentRepositoryImpl(
                 .limit(limit + 1)  // hasNext 확인을 위해 +1
         ).map { record -> UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)) }
     }
+
+    /**
+     * 크리에이터의 총 콘텐츠 개수를 조회합니다.
+     *
+     * 프로필 화면에서 사용자의 총 콘텐츠 개수를 표시하기 위해 사용됩니다.
+     * Soft Delete되지 않은 콘텐츠만 카운트합니다.
+     *
+     * @param creatorId 크리에이터 ID
+     * @return 콘텐츠 개수 (Mono)
+     */
+    override fun countByCreatorId(creatorId: UUID): Mono<Long> {
+        return Mono.from(
+            dslContext
+                .selectCount()
+                .from(CONTENTS)
+                .where(CONTENTS.CREATOR_ID.eq(creatorId.toString()))
+                .and(CONTENTS.DELETED_AT.isNull)
+        ).map { record ->
+            record.getValue(0, Long::class.java) ?: 0L
+        }
+            .defaultIfEmpty(0L)
+    }
 }
