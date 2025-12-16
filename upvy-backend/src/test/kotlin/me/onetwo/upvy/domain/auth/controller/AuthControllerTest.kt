@@ -22,6 +22,7 @@ import me.onetwo.upvy.domain.auth.dto.ResetPasswordVerifyCodeRequest
 import me.onetwo.upvy.domain.auth.service.AuthService
 import me.onetwo.upvy.domain.user.service.UserService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.security.jwt.JwtTokenProvider
 import me.onetwo.upvy.util.mockUser
 import java.util.UUID
@@ -48,7 +49,7 @@ import reactor.core.publisher.Mono
 @Import(TestSecurityConfig::class)
 @ActiveProfiles("test")
 @DisplayName("인증 컨트롤러 REST Docs 테스트")
-class AuthControllerTest {
+class AuthControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

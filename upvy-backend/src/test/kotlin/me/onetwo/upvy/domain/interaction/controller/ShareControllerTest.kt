@@ -7,9 +7,10 @@ import me.onetwo.upvy.config.TestSecurityConfig
 import me.onetwo.upvy.domain.interaction.dto.ShareLinkResponse
 import me.onetwo.upvy.domain.interaction.dto.ShareResponse
 import me.onetwo.upvy.domain.interaction.service.ShareService
+import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.util.mockUser
-import me.onetwo.upvy.infrastructure.common.ApiPaths
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -31,7 +32,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("공유 Controller 테스트")
-class ShareControllerTest {
+class ShareControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

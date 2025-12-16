@@ -6,6 +6,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.content.model.ContentInteraction
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -22,7 +23,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 인터랙션 Service 단위 테스트")
-class ContentInteractionServiceImplTest {
+class ContentInteractionServiceImplTest : BaseReactiveTest {
 
     @MockK
     private lateinit var contentInteractionRepository: ContentInteractionRepository

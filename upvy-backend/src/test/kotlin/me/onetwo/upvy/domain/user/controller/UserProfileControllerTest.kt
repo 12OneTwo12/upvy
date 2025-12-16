@@ -20,6 +20,7 @@ import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.service.UserProfileService
 import me.onetwo.upvy.util.mockUser
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -46,7 +47,7 @@ import reactor.core.publisher.Mono
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("사용자 프로필 Controller 테스트")
-class UserProfileControllerTest {
+class UserProfileControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

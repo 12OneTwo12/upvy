@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.notification.model.DeliveryStatus
 import me.onetwo.upvy.domain.notification.model.DeviceType
 import me.onetwo.upvy.domain.notification.model.Notification
@@ -32,7 +33,7 @@ import java.util.UUID
  * PushNotificationService 단위 테스트
  */
 @DisplayName("푸시 알림 발송 Service 테스트")
-class PushNotificationServiceTest {
+class PushNotificationServiceTest : BaseReactiveTest {
 
     private lateinit var notificationService: NotificationService
     private lateinit var notificationSettingsService: NotificationSettingsService

@@ -9,6 +9,7 @@ import me.onetwo.upvy.domain.block.dto.ContentBlockResponse
 import me.onetwo.upvy.domain.block.exception.BlockException
 import me.onetwo.upvy.domain.block.service.ContentBlockService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.util.mockUser
@@ -39,7 +40,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 차단 Controller 테스트")
-class ContentBlockControllerTest {
+class ContentBlockControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

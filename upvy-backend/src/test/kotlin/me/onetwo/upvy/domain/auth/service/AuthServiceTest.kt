@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.auth.repository.EmailVerificationTokenRepository
 import me.onetwo.upvy.domain.user.model.OAuthProvider
 import me.onetwo.upvy.domain.user.model.User
@@ -30,7 +31,7 @@ import reactor.core.publisher.Mono
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("인증 Service 테스트")
-class AuthServiceTest {
+class AuthServiceTest : BaseReactiveTest {
 
     private lateinit var jwtTokenProvider: JwtTokenProvider
     private lateinit var refreshTokenRepository: RefreshTokenRepository

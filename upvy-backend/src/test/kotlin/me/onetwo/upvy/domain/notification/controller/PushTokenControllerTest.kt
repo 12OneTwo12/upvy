@@ -10,6 +10,7 @@ import me.onetwo.upvy.domain.notification.model.DeviceType
 import me.onetwo.upvy.domain.notification.model.PushProvider
 import me.onetwo.upvy.domain.notification.service.PushTokenService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.util.mockUser
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -40,7 +41,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("푸시 토큰 Controller 테스트")
-class PushTokenControllerTest {
+class PushTokenControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

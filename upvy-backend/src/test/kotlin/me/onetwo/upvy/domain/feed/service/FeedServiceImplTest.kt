@@ -11,6 +11,7 @@ import me.onetwo.upvy.domain.feed.dto.FeedItemResponse
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.upvy.domain.feed.repository.FeedRepository
 import me.onetwo.upvy.domain.feed.service.recommendation.RecommendationService
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -34,7 +35,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("피드 Service 테스트")
-class FeedServiceImplTest {
+class FeedServiceImplTest : BaseReactiveTest {
 
     private lateinit var feedRepository: FeedRepository
     private lateinit var recommendationService: RecommendationService
