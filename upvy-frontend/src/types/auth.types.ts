@@ -21,6 +21,7 @@ export interface UserProfile {
   bio?: string;
   followerCount: number;
   followingCount: number;
+  contentCount: number;
   createdAt: string;
   updatedAt: string;
 }

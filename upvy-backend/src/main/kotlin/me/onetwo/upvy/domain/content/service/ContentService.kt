@@ -114,4 +114,15 @@ interface ContentService {
         userId: UUID,
         contentId: UUID
     ): Mono<Void>
+
+    /**
+     * 크리에이터의 총 콘텐츠 개수를 조회합니다.
+     *
+     * 프로필 화면에서 사용자의 총 콘텐츠 개수를 표시하기 위해 사용됩니다.
+     * Soft Delete되지 않은 콘텐츠만 카운트합니다.
+     *
+     * @param creatorId 크리에이터 ID
+     * @return 콘텐츠 개수를 담은 Mono
+     */
+    fun countContentsByCreatorId(creatorId: UUID): Mono<Long>
 }

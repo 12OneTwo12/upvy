@@ -1,5 +1,7 @@
 package me.onetwo.upvy.domain.user.service
 
+import me.onetwo.upvy.domain.content.repository.ContentRepository
+import me.onetwo.upvy.domain.user.dto.UserProfileWithContentCountResponse
 import me.onetwo.upvy.domain.user.exception.DuplicateNicknameException
 import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.upvy.domain.user.model.UserProfile
@@ -19,13 +21,15 @@ import java.util.UUID
  * @property userProfileRepository 사용자 프로필 Repository
  * @property userService 사용자 서비스 (사용자 존재 여부 확인용)
  * @property imageUploadService 이미지 업로드 서비스
+ * @property contentRepository 콘텐츠 레포지토리 (콘텐츠 개수 조회용)
  */
 @Service
 @Transactional(readOnly = true)
 class UserProfileServiceImpl(
     private val userProfileRepository: UserProfileRepository,
     private val userService: UserService,
-    private val imageUploadService: ImageUploadService
+    private val imageUploadService: ImageUploadService,
+    private val contentRepository: ContentRepository
 ) : UserProfileService {
 
     /**
@@ -251,5 +255,26 @@ class UserProfileServiceImpl(
                 val contentType = filePart.headers().contentType?.toString() ?: "application/octet-stream"
                 imageUploadService.uploadProfileImage(userId, imageBytes, contentType)
             }
+    }
+
+    /**
+     * 사용자 ID로 프로필과 콘텐츠 개수를 함께 조회합니다.
+     *
+     * 프로필 정보와 콘텐츠 개수를 병렬로 조회하여 UserProfileWithContentCountResponse DTO로 반환합니다.
+     * 프로필 화면에서 사용됩니다.
+     *
+     * @param userId 사용자 ID
+     * @return 콘텐츠 개수가 포함된 프로필 응답 DTO
+     * @throws UserProfileNotFoundException 프로필을 찾을 수 없는 경우
+     */
+    override fun getProfileWithContentCount(userId: UUID): Mono<UserProfileWithContentCountResponse> {
+        return Mono.zip(
+            getProfileByUserId(userId),
+            contentRepository.countByCreatorId(userId)
+        ).map { tuple ->
+            val profile = tuple.t1
+            val contentCount = tuple.t2
+            UserProfileWithContentCountResponse.from(profile, contentCount)
+        }
     }
 }

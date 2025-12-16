@@ -12,6 +12,7 @@ describe('ProfileHeader', () => {
     profileImageUrl: 'https://example.com/profile.jpg',
     followerCount: 100,
     followingCount: 50,
+    contentCount: 25,
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
   };

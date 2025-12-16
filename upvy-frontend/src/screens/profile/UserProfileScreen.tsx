@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { ProfileHeader, FollowButton, ContentGrid } from '@/components/profile';
@@ -150,17 +150,26 @@ export default function UserProfileScreen() {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  // 사용자 콘텐츠 목록 조회 (React Query, 커서 기반 페이징)
-  const { data: userContentsResponse, isLoading: contentsLoading, refetch: refetchContents } = useQuery({
+  // 사용자 콘텐츠 목록 조회 (React Query - 무한 스크롤, 커서 기반 페이징)
+  const {
+    data: userContentsData,
+    isLoading: contentsLoading,
+    refetch: refetchContents,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['userContents', userId],
-    queryFn: () => getUserContents(userId),
-    enabled: !!userId, // userId가 있으면 즉시 조회
-    staleTime: 1000 * 60 * 5, // 5분간 신선한 상태 유지
-    gcTime: 1000 * 60 * 30, // 30분간 캐시 유지
+    queryFn: ({ pageParam }) => getUserContents(userId, pageParam ? { cursor: pageParam } : undefined),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.hasNext ? lastPage.nextCursor : undefined,
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
-  const userContents = userContentsResponse?.content || [];
+  const userContents = userContentsData?.pages.flatMap(page => page.content) || [];
 
   // 팔로우 상태 로드
   const loadFollowStatus = async () => {
@@ -316,7 +325,7 @@ export default function UserProfileScreen() {
         <ProfileHeader
           profile={profile}
           isOwnProfile={false}
-          contentCount={userContents.length}
+          contentCount={profile.contentCount}
           onFollowersPress={handleFollowersPress}
           onFollowingPress={handleFollowingPress}
         />
@@ -348,6 +357,12 @@ export default function UserProfileScreen() {
             contents={userContents}
             loading={contentsLoading}
             onContentPress={handleContentPress}
+            onEndReached={() => {
+              if (hasNextPage && !isFetchingNextPage) {
+                fetchNextPage();
+              }
+            }}
+            isFetchingMore={isFetchingNextPage}
           />
         </View>
       </ScrollView>
