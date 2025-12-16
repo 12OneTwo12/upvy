@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useAppleAuth } from '@/hooks/useAppleAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/common';
+import { OAuthButton } from '@/components/auth/OAuthButton';
 import { theme } from '@/theme';
 import { showErrorAlert, logError } from '@/utils/errorHandler';
 import { responsive, isSmallDevice } from '@/utils/responsive';
@@ -25,7 +26,20 @@ import type { AuthStackParamList } from '@/types/navigation.types';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
-const { width } = Dimensions.get('window');
+const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+/**
+ * 화면 높이 기반 간격 계산
+ * 작은 화면일수록 간격을 줄여서 스크롤 없이 모든 요소가 보이도록 함
+ */
+const getSpacingScale = () => {
+  if (SCREEN_HEIGHT < 700) return 0.6; // 매우 작은 화면 (iPhone SE)
+  if (SCREEN_HEIGHT < 800) return 0.75; // 작은 화면
+  if (SCREEN_HEIGHT < 900) return 0.9; // 중간 화면
+  return 1.0; // 큰 화면 (Pro Max 등)
+};
+
+const SPACING_SCALE = getSpacingScale();
 
 /**
  * 로그인 화면 (인스타그램 스타일)
@@ -131,31 +145,27 @@ export default function LoginScreen() {
           </View>
 
           {/* Google 로그인 버튼 */}
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
+          <OAuthButton
+            provider="google"
             onPress={handleGoogleLogin}
             disabled={!isReady}
             loading={isLoading}
             style={styles.googleButton}
           >
             {t('login.googleLogin')}
-          </Button>
+          </OAuthButton>
 
           {/* Apple 로그인 버튼 (iOS만) */}
           {Platform.OS === 'ios' && isAppleAvailable && (
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
+            <OAuthButton
+              provider="apple"
               onPress={handleAppleLogin}
               disabled={!isAppleAvailable}
               loading={isAppleLoading}
               style={styles.appleButton}
             >
               {t('login.appleLogin')}
-            </Button>
+            </OAuthButton>
           )}
         </View>
       </ScrollView>
@@ -197,23 +207,23 @@ const useStyles = createStyleSheet({
   },
 
   content: {
-    flex: 1,
+    // OAuth 버튼이 스크롤 없이 보여야 함
     justifyContent: 'center',
-    paddingTop: theme.spacing[12],
+    paddingTop: Math.round(theme.spacing[4] * SPACING_SCALE),
   },
 
   // Logo Section
   logoSection: {
     alignItems: 'center',
-    marginBottom: theme.spacing[12],
+    marginBottom: Math.round(theme.spacing[8] * SPACING_SCALE),
   },
 
   logoContainer: {
-    width: responsive({ xs: 140, md: 160, default: 140 }),
-    height: responsive({ xs: 140, md: 160, default: 140 }),
+    width: responsive({ xs: 120, md: 140, default: 160 }),
+    height: responsive({ xs: 120, md: 140, default: 160 }),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing[5],
+    marginBottom: Math.round(theme.spacing[4] * SPACING_SCALE),
   },
 
   logoImage: {
@@ -225,24 +235,29 @@ const useStyles = createStyleSheet({
     fontSize: responsive({
       xs: 32,
       md: 36,
-      default: 32,
+      default: 40,
     }),
     fontWeight: '700',
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[2],
+    marginBottom: Math.round(theme.spacing[2] * SPACING_SCALE),
     letterSpacing: -0.5,
   },
 
   tagline: {
-    fontSize: theme.typography.fontSize.base,
+    fontSize: responsive({
+      xs: theme.typography.fontSize.base,
+      md: theme.typography.fontSize.base,
+      default: theme.typography.fontSize.lg,
+    }),
     color: theme.colors.text.secondary,
     textAlign: 'center',
   },
 
   // Value Props
   valuePropsContainer: {
-    gap: theme.spacing[5],
+    gap: Math.round(theme.spacing[4] * SPACING_SCALE),
     paddingHorizontal: theme.spacing[2],
+    marginBottom: Math.round(theme.spacing[2] * SPACING_SCALE),
   },
 
   valueProp: {
@@ -255,7 +270,7 @@ const useStyles = createStyleSheet({
     height: 6,
     borderRadius: 3,
     backgroundColor: theme.colors.primary[500],
-    marginTop: 8,
+    marginTop: 7,
     marginRight: theme.spacing[3],
   },
 
@@ -267,19 +282,19 @@ const useStyles = createStyleSheet({
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
+    marginBottom: Math.round(theme.spacing[1] * SPACING_SCALE),
   },
 
   valuePropDescription: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight: theme.typography.lineHeight.normal * theme.typography.fontSize.sm,
   },
 
   // Bottom Section
   bottomSection: {
-    gap: theme.spacing[4],
-    paddingTop: theme.spacing[8],
+    gap: Math.round(theme.spacing[3] * SPACING_SCALE),
+    paddingTop: Math.round(theme.spacing[4] * SPACING_SCALE),
   },
 
   emailButton: {
@@ -290,7 +305,7 @@ const useStyles = createStyleSheet({
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing[3],
+    gap: theme.spacing[2],
   },
 
   divider: {
@@ -305,11 +320,10 @@ const useStyles = createStyleSheet({
   },
 
   googleButton: {
-    ...theme.shadows.sm,
+    // OAuthButton 컴포넌트에서 스타일 처리
   },
 
   appleButton: {
-    ...theme.shadows.sm,
-    backgroundColor: '#000000', // Apple 브랜드 가이드라인: 검정 배경
+    // OAuthButton 컴포넌트에서 스타일 처리
   },
 });
