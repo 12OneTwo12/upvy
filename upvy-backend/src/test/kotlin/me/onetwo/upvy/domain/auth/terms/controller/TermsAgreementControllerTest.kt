@@ -9,6 +9,7 @@ import me.onetwo.upvy.domain.auth.terms.dto.TermsAgreementResponse
 import me.onetwo.upvy.domain.auth.terms.model.TermsVersions
 import me.onetwo.upvy.domain.auth.terms.service.TermsAgreementService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.util.mockUser
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -38,7 +39,7 @@ import java.util.UUID
 @Import(TestSecurityConfig::class)
 @ActiveProfiles("test")
 @DisplayName("약관 동의 컨트롤러 REST Docs 테스트")
-class TermsAgreementControllerTest {
+class TermsAgreementControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.Runs
 import io.mockk.slot
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.auth.exception.EmailAlreadyExistsException
 import me.onetwo.upvy.domain.auth.exception.EmailNotVerifiedException
 import me.onetwo.upvy.domain.auth.exception.InvalidCredentialsException
@@ -46,7 +47,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("인증 Service 단위 테스트")
-class AuthServiceImplTest {
+class AuthServiceImplTest : BaseReactiveTest {
 
     private lateinit var jwtTokenProvider: JwtTokenProvider
     private lateinit var refreshTokenRepository: RefreshTokenRepository

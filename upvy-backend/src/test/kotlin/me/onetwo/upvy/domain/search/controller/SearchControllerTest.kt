@@ -14,6 +14,7 @@ import me.onetwo.upvy.domain.search.dto.TrendingKeyword
 import me.onetwo.upvy.domain.search.dto.TrendingSearchResponse
 import me.onetwo.upvy.domain.search.dto.UserSearchResult
 import me.onetwo.upvy.domain.search.service.SearchService
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.config.TestSecurityConfig
@@ -55,7 +56,7 @@ import java.util.UUID
 @ActiveProfiles("test")
 @AutoConfigureRestDocs
 @DisplayName("SearchController 단위 테스트")
-class SearchControllerTest {
+class SearchControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

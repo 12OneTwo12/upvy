@@ -15,6 +15,7 @@ import me.onetwo.upvy.domain.interaction.repository.CommentLikeRepository
 import me.onetwo.upvy.domain.interaction.repository.CommentRepository
 import me.onetwo.upvy.domain.user.dto.UserInfo
 import me.onetwo.upvy.domain.user.repository.UserProfileRepository
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -35,7 +36,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("CommentService 단위 테스트")
-class CommentServiceTest {
+class CommentServiceTest : BaseReactiveTest {
 
     @MockK
     private lateinit var commentRepository: CommentRepository

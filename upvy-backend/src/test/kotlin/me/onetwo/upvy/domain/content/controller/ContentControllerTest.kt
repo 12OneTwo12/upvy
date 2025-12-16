@@ -13,6 +13,7 @@ import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.config.TestSecurityConfig
 import me.onetwo.upvy.util.mockUser
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -42,7 +43,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 Controller 테스트")
-class ContentControllerTest {
+class ContentControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

@@ -5,6 +5,7 @@ import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.domain.auth.terms.dto.TermsAgreementRequest
 import me.onetwo.upvy.domain.auth.terms.model.AgreementAction
 import me.onetwo.upvy.domain.auth.terms.model.TermsType
@@ -30,7 +31,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("약관 동의 Service 단위 테스트")
-class TermsAgreementServiceImplTest {
+class TermsAgreementServiceImplTest : BaseReactiveTest {
 
     private lateinit var termsAgreementRepository: TermsAgreementRepository
     private lateinit var termsAgreementService: TermsAgreementService

@@ -16,6 +16,7 @@ import me.onetwo.upvy.domain.user.model.Follow
 import me.onetwo.upvy.domain.user.service.FollowService
 import me.onetwo.upvy.util.mockUser
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -39,7 +40,7 @@ import reactor.core.publisher.Flux
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("팔로우 Controller 테스트")
-class FollowControllerTest {
+class FollowControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

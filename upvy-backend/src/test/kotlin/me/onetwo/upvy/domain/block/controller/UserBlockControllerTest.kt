@@ -9,6 +9,7 @@ import me.onetwo.upvy.domain.block.dto.UserBlockResponse
 import me.onetwo.upvy.domain.block.exception.BlockException
 import me.onetwo.upvy.domain.block.service.UserBlockService
 import me.onetwo.upvy.infrastructure.common.ApiPaths
+import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
 import me.onetwo.upvy.util.mockUser
@@ -39,7 +40,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("사용자 차단 Controller 테스트")
-class UserBlockControllerTest {
+class UserBlockControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient
