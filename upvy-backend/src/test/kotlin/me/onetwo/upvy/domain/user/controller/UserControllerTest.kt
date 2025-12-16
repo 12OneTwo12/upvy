@@ -35,7 +35,7 @@ import reactor.core.publisher.Mono
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("사용자 Controller 테스트")
-class UserControllerTest : BaseReactiveTest() {
+class UserControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

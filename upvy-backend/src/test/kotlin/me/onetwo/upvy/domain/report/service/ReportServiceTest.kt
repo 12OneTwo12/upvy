@@ -26,7 +26,7 @@ import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("ReportService 단위 테스트")
-class ReportServiceTest : BaseReactiveTest() {
+class ReportServiceTest : BaseReactiveTest {
 
     private val reportRepository: ReportRepository = mockk()
     private val contentMetadataRepository: ContentMetadataRepository = mockk()

@@ -30,7 +30,7 @@ import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("피드 캐시 Service 테스트")
-class FeedCacheServiceTest : BaseReactiveTest() {
+class FeedCacheServiceTest : BaseReactiveTest {
 
     private lateinit var reactiveRedisTemplate: ReactiveRedisTemplate<String, String>
     private lateinit var listOps: ReactiveListOperations<String, String>

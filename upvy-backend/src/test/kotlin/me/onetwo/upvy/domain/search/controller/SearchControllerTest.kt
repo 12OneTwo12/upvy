@@ -56,7 +56,7 @@ import java.util.UUID
 @ActiveProfiles("test")
 @AutoConfigureRestDocs
 @DisplayName("SearchController 단위 테스트")
-class SearchControllerTest : BaseReactiveTest() {
+class SearchControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

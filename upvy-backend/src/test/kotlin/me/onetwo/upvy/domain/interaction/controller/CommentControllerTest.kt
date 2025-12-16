@@ -36,7 +36,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("댓글 Controller 테스트")
-class CommentControllerTest : BaseReactiveTest() {
+class CommentControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

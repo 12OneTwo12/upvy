@@ -44,7 +44,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("사용자 Service 단위 테스트")
-class UserServiceTest : BaseReactiveTest() {
+class UserServiceTest : BaseReactiveTest {
 
     private lateinit var userRepository: UserRepository
     private lateinit var authMethodRepository: UserAuthenticationMethodRepository

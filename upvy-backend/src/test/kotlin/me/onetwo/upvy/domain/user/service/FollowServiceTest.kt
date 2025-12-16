@@ -32,7 +32,7 @@ import reactor.core.publisher.Flux
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("팔로우 Service 테스트")
-class FollowServiceTest : BaseReactiveTest() {
+class FollowServiceTest : BaseReactiveTest {
 
     private lateinit var followRepository: FollowRepository
     private lateinit var userService: UserService

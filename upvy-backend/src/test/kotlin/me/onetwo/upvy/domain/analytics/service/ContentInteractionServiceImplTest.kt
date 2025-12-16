@@ -23,7 +23,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 인터랙션 Service 단위 테스트")
-class ContentInteractionServiceImplTest : BaseReactiveTest() {
+class ContentInteractionServiceImplTest : BaseReactiveTest {
 
     @MockK
     private lateinit var contentInteractionRepository: ContentInteractionRepository

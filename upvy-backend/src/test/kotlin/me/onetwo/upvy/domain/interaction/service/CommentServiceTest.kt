@@ -36,7 +36,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("CommentService 단위 테스트")
-class CommentServiceTest : BaseReactiveTest() {
+class CommentServiceTest : BaseReactiveTest {
 
     @MockK
     private lateinit var commentRepository: CommentRepository

@@ -30,7 +30,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("추천 서비스 단위 테스트")
-class RecommendationServiceImplTest : BaseReactiveTest() {
+class RecommendationServiceImplTest : BaseReactiveTest {
 
     private lateinit var feedRepository: FeedRepository
     private lateinit var collaborativeFilteringService: CollaborativeFilteringService

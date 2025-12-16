@@ -29,7 +29,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("LikeService 단위 테스트")
-class LikeServiceTest : BaseReactiveTest() {
+class LikeServiceTest : BaseReactiveTest {
 
     @MockK
     private lateinit var userLikeRepository: UserLikeRepository

@@ -26,7 +26,7 @@ import java.util.UUID
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 업로드 Service 테스트")
-class ContentUploadServiceImplTest : BaseReactiveTest() {
+class ContentUploadServiceImplTest : BaseReactiveTest {
 
     @MockK
     private lateinit var s3Presigner: S3Presigner

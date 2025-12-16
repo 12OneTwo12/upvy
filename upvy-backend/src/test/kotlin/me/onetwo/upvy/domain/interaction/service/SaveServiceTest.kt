@@ -32,7 +32,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("SaveService 단위 테스트")
-class SaveServiceTest : BaseReactiveTest() {
+class SaveServiceTest : BaseReactiveTest {
 
     @MockK
     private lateinit var userSaveRepository: UserSaveRepository

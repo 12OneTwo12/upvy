@@ -47,7 +47,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("인증 Service 단위 테스트")
-class AuthServiceImplTest : BaseReactiveTest() {
+class AuthServiceImplTest : BaseReactiveTest {
 
     private lateinit var jwtTokenProvider: JwtTokenProvider
     private lateinit var refreshTokenRepository: RefreshTokenRepository

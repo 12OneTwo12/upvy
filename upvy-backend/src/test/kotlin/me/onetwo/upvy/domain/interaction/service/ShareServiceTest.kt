@@ -26,7 +26,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("ShareService 단위 테스트")
-class ShareServiceTest : BaseReactiveTest() {
+class ShareServiceTest : BaseReactiveTest {
 
     @MockK
     private lateinit var contentInteractionService: ContentInteractionService

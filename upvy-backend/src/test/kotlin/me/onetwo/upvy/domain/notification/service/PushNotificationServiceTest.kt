@@ -33,7 +33,7 @@ import java.util.UUID
  * PushNotificationService 단위 테스트
  */
 @DisplayName("푸시 알림 발송 Service 테스트")
-class PushNotificationServiceTest : BaseReactiveTest() {
+class PushNotificationServiceTest : BaseReactiveTest {
 
     private lateinit var notificationService: NotificationService
     private lateinit var notificationSettingsService: NotificationSettingsService

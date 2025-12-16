@@ -27,7 +27,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 차단 Service 테스트")
-class ContentBlockServiceImplTest : BaseReactiveTest() {
+class ContentBlockServiceImplTest : BaseReactiveTest {
 
     private val contentBlockRepository: ContentBlockRepository = mockk()
     private val contentBlockService: ContentBlockService = ContentBlockServiceImpl(contentBlockRepository)

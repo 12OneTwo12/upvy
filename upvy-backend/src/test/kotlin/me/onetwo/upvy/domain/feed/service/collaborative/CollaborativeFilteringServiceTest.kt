@@ -46,7 +46,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("Collaborative Filtering Service 테스트")
-class CollaborativeFilteringServiceTest : BaseReactiveTest() {
+class CollaborativeFilteringServiceTest : BaseReactiveTest {
 
     private lateinit var userContentInteractionRepository: UserContentInteractionRepository
     private lateinit var contentRepository: ContentRepository

@@ -27,7 +27,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("사용자 차단 Service 테스트")
-class UserBlockServiceImplTest : BaseReactiveTest() {
+class UserBlockServiceImplTest : BaseReactiveTest {
 
     private val userBlockRepository: UserBlockRepository = mockk()
     private val userBlockService: UserBlockService = UserBlockServiceImpl(userBlockRepository)

@@ -39,7 +39,7 @@ import java.util.UUID
 @Import(TestSecurityConfig::class)
 @ActiveProfiles("test")
 @DisplayName("약관 동의 컨트롤러 REST Docs 테스트")
-class TermsAgreementControllerTest : BaseReactiveTest() {
+class TermsAgreementControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

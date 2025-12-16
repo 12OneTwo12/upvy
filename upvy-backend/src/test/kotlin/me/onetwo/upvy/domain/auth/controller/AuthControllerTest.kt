@@ -49,7 +49,7 @@ import reactor.core.publisher.Mono
 @Import(TestSecurityConfig::class)
 @ActiveProfiles("test")
 @DisplayName("인증 컨트롤러 REST Docs 테스트")
-class AuthControllerTest : BaseReactiveTest() {
+class AuthControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

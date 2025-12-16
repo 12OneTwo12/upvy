@@ -39,7 +39,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("SearchService 테스트")
-class SearchServiceImplTest : BaseReactiveTest() {
+class SearchServiceImplTest : BaseReactiveTest {
 
     private val searchRepository: SearchRepository = mockk()
     private val searchHistoryRepository: me.onetwo.upvy.domain.search.repository.SearchHistoryRepository = mockk()

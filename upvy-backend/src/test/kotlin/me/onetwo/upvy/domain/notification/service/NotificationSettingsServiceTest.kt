@@ -20,7 +20,7 @@ import java.util.UUID
  * NotificationSettingsService 단위 테스트
  */
 @DisplayName("알림 설정 Service 테스트")
-class NotificationSettingsServiceTest : BaseReactiveTest() {
+class NotificationSettingsServiceTest : BaseReactiveTest {
 
     private lateinit var notificationSettingsRepository: NotificationSettingsRepository
     private lateinit var notificationSettingsService: NotificationSettingsService

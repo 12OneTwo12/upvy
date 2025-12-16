@@ -40,7 +40,7 @@ import reactor.core.publisher.Flux
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("팔로우 Controller 테스트")
-class FollowControllerTest : BaseReactiveTest() {
+class FollowControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

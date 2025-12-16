@@ -40,7 +40,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("피드 Controller 테스트")
-class FeedControllerTest : BaseReactiveTest() {
+class FeedControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

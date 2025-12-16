@@ -22,7 +22,7 @@ import java.util.UUID
  * PushTokenService 단위 테스트
  */
 @DisplayName("푸시 토큰 Service 테스트")
-class PushTokenServiceTest : BaseReactiveTest() {
+class PushTokenServiceTest : BaseReactiveTest {
 
     private lateinit var pushTokenRepository: PushTokenRepository
     private lateinit var pushTokenService: PushTokenService

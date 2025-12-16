@@ -43,7 +43,7 @@ import java.util.function.Consumer
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("콘텐츠 Service 테스트")
-class ContentServiceImplTest : BaseReactiveTest() {
+class ContentServiceImplTest : BaseReactiveTest {
 
     @MockK
     private lateinit var contentUploadService: ContentUploadService

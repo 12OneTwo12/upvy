@@ -33,7 +33,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("저장 Controller 테스트")
-class SaveControllerTest : BaseReactiveTest() {
+class SaveControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

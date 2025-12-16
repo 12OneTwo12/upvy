@@ -24,7 +24,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("카테고리 Controller 테스트")
-class CategoryControllerTest : BaseReactiveTest() {
+class CategoryControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

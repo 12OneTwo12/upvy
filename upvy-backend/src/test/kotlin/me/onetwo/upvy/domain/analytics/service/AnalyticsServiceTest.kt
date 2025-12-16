@@ -24,7 +24,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("Analytics Service 테스트")
-class AnalyticsServiceTest : BaseReactiveTest() {
+class AnalyticsServiceTest : BaseReactiveTest {
 
     private lateinit var userViewHistoryRepository: UserViewHistoryRepository
     private lateinit var contentInteractionRepository: ContentInteractionRepository

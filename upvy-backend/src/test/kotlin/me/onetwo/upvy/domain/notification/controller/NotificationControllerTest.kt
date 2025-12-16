@@ -41,7 +41,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("알림 Controller 테스트")
-class NotificationControllerTest : BaseReactiveTest() {
+class NotificationControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

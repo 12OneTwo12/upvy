@@ -55,7 +55,7 @@ import java.time.Duration
  * @see <a href="https://github.com/12OneTwo12/upvy/issues/177">ISSUE-177</a>
  */
 @Suppress("UtilityClassWithPublicConstructor")
-abstract class AbstractIntegrationTest : BaseReactiveTest() {
+abstract class AbstractIntegrationTest : BaseReactiveTest {
 
     @Autowired
     protected lateinit var dslContext: DSLContext

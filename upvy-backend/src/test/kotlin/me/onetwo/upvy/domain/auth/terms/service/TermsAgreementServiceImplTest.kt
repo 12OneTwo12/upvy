@@ -31,7 +31,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("약관 동의 Service 단위 테스트")
-class TermsAgreementServiceImplTest : BaseReactiveTest() {
+class TermsAgreementServiceImplTest : BaseReactiveTest {
 
     private lateinit var termsAgreementRepository: TermsAgreementRepository
     private lateinit var termsAgreementService: TermsAgreementService

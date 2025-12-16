@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("사용자 프로필 Service 테스트")
-class UserProfileServiceTest : BaseReactiveTest() {
+class UserProfileServiceTest : BaseReactiveTest {
 
     private lateinit var userProfileRepository: UserProfileRepository
     private lateinit var userService: UserService

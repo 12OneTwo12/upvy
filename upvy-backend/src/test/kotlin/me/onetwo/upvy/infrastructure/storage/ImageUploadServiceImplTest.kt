@@ -25,7 +25,7 @@ import javax.imageio.ImageIO
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("이미지 업로드 Service 테스트")
-class ImageUploadServiceImplTest : BaseReactiveTest() {
+class ImageUploadServiceImplTest : BaseReactiveTest {
 
     private lateinit var s3Client: S3Client
     private lateinit var imageResizer: ImageResizer

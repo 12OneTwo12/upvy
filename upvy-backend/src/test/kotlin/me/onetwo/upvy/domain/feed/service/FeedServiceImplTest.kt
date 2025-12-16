@@ -35,7 +35,7 @@ import java.util.UUID
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("피드 Service 테스트")
-class FeedServiceImplTest : BaseReactiveTest() {
+class FeedServiceImplTest : BaseReactiveTest {
 
     private lateinit var feedRepository: FeedRepository
     private lateinit var recommendationService: RecommendationService

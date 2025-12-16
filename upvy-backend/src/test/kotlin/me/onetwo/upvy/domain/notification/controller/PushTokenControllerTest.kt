@@ -41,7 +41,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("푸시 토큰 Controller 테스트")
-class PushTokenControllerTest : BaseReactiveTest() {
+class PushTokenControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient

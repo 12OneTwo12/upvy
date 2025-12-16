@@ -31,7 +31,7 @@ import reactor.core.publisher.Mono
  */
 @ExtendWith(MockKExtension::class)
 @DisplayName("인증 Service 테스트")
-class AuthServiceTest : BaseReactiveTest() {
+class AuthServiceTest : BaseReactiveTest {
 
     private lateinit var jwtTokenProvider: JwtTokenProvider
     private lateinit var refreshTokenRepository: RefreshTokenRepository

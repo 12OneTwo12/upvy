@@ -40,7 +40,7 @@ import java.util.UUID
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @DisplayName("콘텐츠 차단 Controller 테스트")
-class ContentBlockControllerTest : BaseReactiveTest() {
+class ContentBlockControllerTest : BaseReactiveTest {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient
