@@ -41,15 +41,21 @@ import java.time.Duration
  * Redis와 MySQL Testcontainer를 static으로 관리하여 모든 통합 테스트에서 재사용합니다.
  * @DynamicPropertySource를 사용하여 동적 포트를 Spring 설정에 주입합니다.
  *
+ * BaseReactiveTest를 상속하여 StepVerifier 타임아웃 보호를 제공합니다.
+ *
  * 베스트 프랙티스:
  * - static container: 모든 테스트에서 동일한 컨테이너 재사용 (성능 향상)
  * - @DynamicPropertySource: 동적 포트를 확실하게 전달
  * - companion object: Kotlin에서 static 멤버를 정의하는 방법
  * - 즉시 초기화: @DynamicPropertySource 호출 전에 컨테이너 시작 보장
  * - @BeforeEach: 각 테스트 전에 데이터베이스 정리 (테스트 간 격리)
+ * - BaseReactiveTest 상속: StepVerifier 기본 타임아웃 10초 적용 (MockK 무한 대기 방지)
+ *
+ * @see BaseReactiveTest
+ * @see <a href="https://github.com/12OneTwo12/upvy/issues/177">ISSUE-177</a>
  */
 @Suppress("UtilityClassWithPublicConstructor")
-abstract class AbstractIntegrationTest {
+abstract class AbstractIntegrationTest : BaseReactiveTest() {
 
     @Autowired
     protected lateinit var dslContext: DSLContext

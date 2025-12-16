@@ -118,12 +118,12 @@ kotlin {
 tasks.withType<Test> {
     useJUnitPlatform()
 
-    // 전체 테스트 suite 최대 타임아웃: 15분
+    // 전체 테스트 suite 최대 타임아웃: 20분
     // MockK mocking 실수로 인한 무한 대기 방지 (최후의 방어선)
     // 개별 테스트 메서드는 BaseReactiveTest에서 10초 타임아웃 적용
-    // 전체 테스트 실행 시간: ~10-11분 (CI/CD 변동성 고려하여 15분 설정)
+    // 전체 테스트 실행 시간: ~10-11분 (CI/CD 변동성 고려하여 20분 설정)
     // @see <a href="https://github.com/12OneTwo12/upvy/issues/177">ISSUE-177</a>
-    timeout.set(Duration.ofMinutes(15))
+    timeout.set(Duration.ofMinutes(20))
 
     testLogging {
         events("passed", "skipped", "failed")

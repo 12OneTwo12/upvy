@@ -1,6 +1,7 @@
 package me.onetwo.upvy.infrastructure.config
 
 import org.junit.jupiter.api.BeforeAll
+import org.slf4j.LoggerFactory
 import reactor.test.StepVerifier
 import java.time.Duration
 
@@ -45,11 +46,13 @@ abstract class BaseReactiveTest {
          */
         private val DEFAULT_TIMEOUT = Duration.ofSeconds(10)
 
+        private val log = LoggerFactory.getLogger(BaseReactiveTest::class.java)
+
         @BeforeAll
         @JvmStatic
         fun setupStepVerifier() {
             StepVerifier.setDefaultTimeout(DEFAULT_TIMEOUT)
-            println("⏱️ [BaseReactiveTest] StepVerifier 기본 타임아웃: ${DEFAULT_TIMEOUT.seconds}초 설정 완료")
+            log.debug("[BaseReactiveTest] StepVerifier 기본 타임아웃: ${DEFAULT_TIMEOUT.seconds}초 설정 완료")
         }
     }
 }
