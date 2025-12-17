@@ -130,6 +130,13 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
     extrapolate: 'clamp',
   });
 
+  // 확장 배경 overlay opacity (댓글 모달처럼 fade in)
+  const expandedBackgroundOpacity = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   // 확장/축소 애니메이션 - isExpanded 변경 시 Animated.timing 실행
   useEffect(() => {
     Animated.timing(expandAnim, {
@@ -205,10 +212,14 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 
   return (
     <>
-      {/* 하단 그라디언트 오버레이 */}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.6)']}
-        style={styles.gradient}
+      {/* 확장 시 전체 화면 어두운 overlay - 댓글 모달처럼 */}
+      <Animated.View
+        style={[
+          styles.fullScreenOverlay,
+          {
+            opacity: expandedBackgroundOpacity,
+          }
+        ]}
         pointerEvents="none"
       />
 
@@ -463,12 +474,13 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 };
 
 const styles = StyleSheet.create({
-  gradient: {
+  fullScreenOverlay: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    height: 250,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   container: {
     position: 'absolute',
