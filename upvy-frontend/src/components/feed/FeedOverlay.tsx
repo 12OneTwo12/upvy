@@ -295,10 +295,16 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                     }}
                     pointerEvents={isExpanded ? 'none' : 'auto'}
                   >
-                    <Text style={styles.description} numberOfLines={2}>
-                      <Text style={styles.titleText}>{title}</Text>
-                      {description && `\n${description}`}
-                    </Text>
+                    <TouchableOpacity
+                      onPress={() => shouldShowMore && setIsExpanded(true)}
+                      activeOpacity={shouldShowMore ? 0.7 : 1}
+                      disabled={!shouldShowMore}
+                    >
+                      <Text style={styles.description} numberOfLines={2}>
+                        <Text style={styles.titleText}>{title}</Text>
+                        {description && `\n${description}`}
+                      </Text>
+                    </TouchableOpacity>
                   </Animated.View>
 
                   {/* 확장 콘텐츠 - 높이가 늘어나면서 위로 확장 */}
@@ -328,19 +334,6 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                       )}
                     </ScrollView>
                   </Animated.View>
-
-                  {/* 더보기/접기 버튼 - 내용이 길 때만 표시 */}
-                  {shouldShowMore && (
-                    <TouchableOpacity
-                      style={styles.moreButton}
-                      onPress={() => setIsExpanded(!isExpanded)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.moreText}>
-                        {isExpanded ? t('actions.less', '접기') : t('actions.more')}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
 
                   {/* 태그 - 축소 상태에서 별도로 표시 (확장 시 fade out & 높이 축소) */}
                   {tags && tags.length > 0 && (
