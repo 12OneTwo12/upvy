@@ -123,6 +123,13 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
     extrapolate: 'clamp',
   });
 
+  // 축소 상태 태그 높이 (0 = 정상, 1 = 높이 0)
+  const collapsedTagHeight = expandAnim.interpolate({
+    inputRange: [0, 0.3],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   // 확장 상태 opacity (70~100% 구간에서 빠르게 나타남)
   const expandedOpacity = expandAnim.interpolate({
     inputRange: [0.7, 1],
@@ -335,9 +342,18 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                     </TouchableOpacity>
                   )}
 
-                  {/* 태그 - 축소 상태에서 별도로 표시 (확장 시 fade out) */}
+                  {/* 태그 - 축소 상태에서 별도로 표시 (확장 시 fade out & 높이 축소) */}
                   {tags && tags.length > 0 && (
-                    <Animated.View style={{ opacity: collapsedOpacity }}>
+                    <Animated.View
+                      style={{
+                        opacity: collapsedOpacity,
+                        transform: [{ scaleY: collapsedTagHeight }],
+                        height: collapsedTagHeight.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 24], // 태그 높이 (marginTop 6 + lineHeight 18)
+                        }),
+                      }}
+                    >
                       <View style={styles.tagsContainer}>
                         <Text style={styles.tagsText} numberOfLines={1}>
                           {tags.map((tag) => `#${tag}`).join(' ')}

@@ -27,6 +27,7 @@ interface VideoPlayerProps {
   shouldPreload?: boolean;
   hasBeenLoaded?: boolean;
   isDragging?: boolean;
+  isExpanded?: boolean;
   onVideoLoaded?: () => void;
   onDoubleTap?: () => void;
   onTap?: () => boolean;
@@ -47,6 +48,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     shouldPreload = false,
     hasBeenLoaded = false,
     isDragging: externalIsDragging = false,
+    isExpanded = false,
     onVideoLoaded,
     onDoubleTap,
     onTap,
@@ -373,6 +375,12 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
   // 탭 이벤트 처리 (싱글/더블 구분)
   const handleTap = () => {
+    // 더보기가 열려있으면 즉시 닫기 (더블탭 감지 불필요)
+    if (isExpanded) {
+      onTap?.();
+      return;
+    }
+
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
 
