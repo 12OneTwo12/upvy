@@ -63,13 +63,12 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   const isSubmitEnabled = content.trim().length > 0;
 
   const defaultPadding = insets.bottom || theme.spacing[4];
+  const additionalOffset = 20; // 입력창을 키보드보다 조금 더 올림
 
-  // 키보드가 내려가 있으면(0~defaultPadding) defaultPadding 유지
-  // 키보드가 올라오면(defaultPadding 이상) 실제 keyboardHeight 사용
+  // 키보드가 내려가 있으면 defaultPadding, 올라오면 keyboardHeight + offset 사용
   const animatedPaddingBottom = keyboardHeight.interpolate({
-    inputRange: [0, defaultPadding, 1000],
-    outputRange: [defaultPadding, defaultPadding, 1000],
-    extrapolate: 'clamp',
+    inputRange: [0, 0.1, 1000],
+    outputRange: [defaultPadding, 0.1 + additionalOffset, 1000 + additionalOffset],
   });
 
   return (
