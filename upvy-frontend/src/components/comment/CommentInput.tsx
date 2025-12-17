@@ -10,12 +10,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { useAuthStore } from '@/stores/authStore';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 interface CommentInputProps {
   onSubmit: (content: string, parentCommentId?: string) => void;
@@ -35,6 +36,7 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   const profile = useAuthStore((state) => state.profile);
   const [content, setContent] = useState('');
   const inputRef = useRef<TextInput>(null);
+  const keyboardHeight = useKeyboardHeight();
 
   // 답글 모드일 때 자동으로 포커스
   useEffect(() => {
@@ -60,70 +62,82 @@ export const CommentInput: React.FC<CommentInputProps> = ({
 
   const isSubmitEnabled = content.trim().length > 0;
 
+  const defaultPadding = insets.bottom || theme.spacing[4];
+
+  // 키보드가 내려가 있으면(0~defaultPadding) defaultPadding 유지
+  // 키보드가 올라오면(defaultPadding 이상) 실제 keyboardHeight 사용
+  const animatedPaddingBottom = keyboardHeight.interpolate({
+    inputRange: [0, defaultPadding, 1000],
+    outputRange: [defaultPadding, defaultPadding, 1000],
+    extrapolate: 'clamp',
+  });
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          paddingBottom: animatedPaddingBottom,
+        }
+      ]}
     >
-      <View style={[styles.container, { paddingBottom: insets.bottom || theme.spacing[4] }]}>
-        {/* 답글 모드 표시 */}
-        {replyTo && (
-          <View style={styles.replyIndicator}>
-            <Ionicons name="return-down-forward" size={14} color={theme.colors.text.secondary} />
-            <View style={{ marginLeft: theme.spacing[2], flex: 1 }}>
-              <Text style={styles.replyText}>{t('comment.replyWriting', { name: replyTo.nickname })}</Text>
-            </View>
-            {onCancelReply && (
-              <TouchableOpacity onPress={onCancelReply} style={styles.cancelButton}>
-                <Ionicons name="close-circle" size={18} color={theme.colors.text.tertiary} />
-              </TouchableOpacity>
-            )}
+      {/* 답글 모드 표시 */}
+      {replyTo && (
+        <View style={styles.replyIndicator}>
+          <Ionicons name="return-down-forward" size={14} color={theme.colors.text.secondary} />
+          <View style={{ marginLeft: theme.spacing[2], flex: 1 }}>
+            <Text style={styles.replyText}>{t('comment.replyWriting', { name: replyTo.nickname })}</Text>
+          </View>
+          {onCancelReply && (
+            <TouchableOpacity onPress={onCancelReply} style={styles.cancelButton}>
+              <Ionicons name="close-circle" size={18} color={theme.colors.text.tertiary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* 입력 필드 */}
+      <View style={styles.inputWrapper}>
+        {/* 프로필 이미지 */}
+        {profile?.profileImageUrl ? (
+          <Image
+            source={{ uri: profile.profileImageUrl }}
+            style={styles.profileImage}
+          />
+        ) : (
+          <View style={[styles.profileImage, styles.profileImagePlaceholder]}>
+            <Ionicons name="person" size={16} color={theme.colors.text.tertiary} />
           </View>
         )}
 
-        {/* 입력 필드 */}
-        <View style={styles.inputWrapper}>
-          {/* 프로필 이미지 */}
-          {profile?.profileImageUrl ? (
-            <Image
-              source={{ uri: profile.profileImageUrl }}
-              style={styles.profileImage}
-            />
-          ) : (
-            <View style={[styles.profileImage, styles.profileImagePlaceholder]}>
-              <Ionicons name="person" size={16} color={theme.colors.text.tertiary} />
-            </View>
-          )}
+        {/* 텍스트 입력 */}
+        <TextInput
+          ref={inputRef}
+          style={styles.textInput}
+          placeholder={placeholder || t('comment.placeholder')}
+          placeholderTextColor={theme.colors.text.tertiary}
+          value={content}
+          onChangeText={setContent}
+          multiline
+          maxLength={1000}
+          returnKeyType="default"
+          blurOnSubmit={false}
+        />
 
-          {/* 텍스트 입력 */}
-          <TextInput
-            ref={inputRef}
-            style={styles.textInput}
-            placeholder={placeholder || t('comment.placeholder')}
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={content}
-            onChangeText={setContent}
-            multiline
-            maxLength={1000}
-            returnKeyType="default"
-            blurOnSubmit={false}
+        {/* 게시 버튼 */}
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={!isSubmitEnabled}
+          style={styles.submitButton}
+        >
+          <Ionicons
+            name="send"
+            size={20}
+            color={isSubmitEnabled ? theme.colors.primary[500] : theme.colors.text.tertiary}
           />
-
-          {/* 게시 버튼 */}
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!isSubmitEnabled}
-            style={styles.submitButton}
-          >
-            <Ionicons
-              name="send"
-              size={20}
-              color={isSubmitEnabled ? theme.colors.primary[500] : theme.colors.text.tertiary}
-            />
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </Animated.View>
   );
 };
 
