@@ -65,6 +65,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
   const [showRetryButton, setShowRetryButton] = useState(false);
   const [videoKey, setVideoKey] = useState(0);
   const [isLongPressing, setIsLongPressing] = useState(false);
+  const [userPaused, setUserPaused] = useState(false); // 사용자가 수동으로 일시정지했는지 추적
   const lastTap = useRef<number>(0);
   const wasPlayingBeforeLongPress = useRef<boolean>(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -144,8 +145,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               onVideoLoaded();
             }
 
-            if (isFocused && !externalIsDragging) {
-              // 포커스 시 재생
+            if (isFocused && !externalIsDragging && !userPaused) {
+              // 포커스 시 재생 (사용자가 수동으로 일시정지하지 않았을 때만)
               if (!status.isPlaying) {
                 await videoRef.current.playAsync();
               }
@@ -154,8 +155,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               if (status.isPlaying) {
                 await videoRef.current.pauseAsync();
               }
-              // 포커스 해제 시 위치 리셋 (드래그 중이 아닐 때만)
-              if (!externalIsDragging) {
+              // 포커스 해제 시에만 위치 리셋 (드래그 중이 아닐 때만)
+              if (!isFocused && !externalIsDragging) {
                 await videoRef.current.setPositionAsync(0);
                 setProgress(0);
                 progressAnim.setValue(0);
@@ -169,12 +170,16 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     };
 
     controlPlayback();
-  }, [isFocused, isLoadingSkeleton, externalIsDragging, hasBeenLoaded, onVideoLoaded, clearAllTimers]);
+  }, [isFocused, isLoadingSkeleton, externalIsDragging, userPaused, hasBeenLoaded, onVideoLoaded, clearAllTimers]);
 
-  // 포커스 해제 시 롱프레스 상태 리셋
+  // 포커스 해제 시 롱프레스 상태 및 수동 일시정지 상태 리셋
   useEffect(() => {
-    if (!isFocused && isLongPressing) {
-      setIsLongPressing(false);
+    if (!isFocused) {
+      if (isLongPressing) {
+        setIsLongPressing(false);
+      }
+      // 포커스 해제 시 userPaused 리셋 (다음 콘텐츠는 자동 재생되도록)
+      setUserPaused(false);
     }
   }, [isFocused, isLongPressing]);
 
@@ -324,10 +329,12 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     if (isPlaying) {
       // 일시정지 -> play 아이콘 표시
       await videoRef.current.pauseAsync();
+      setUserPaused(true); // 사용자가 수동으로 일시정지
       setShowPlayIcon('play');
     } else {
       // 재생 -> pause 아이콘 표시
       await videoRef.current.playAsync();
+      setUserPaused(false); // 사용자가 수동으로 재생
       setShowPlayIcon('pause');
     }
 
@@ -355,20 +362,11 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
       try {
         const positionMillis = Math.floor(seekProgress * targetDuration);
 
-        // seek 전에 현재 재생 상태 확인
-        const status = await videoRef.current.getStatusAsync();
-        const wasPlaying = status.isLoaded && status.isPlaying;
-
-        // 1. tolerance 0으로 정확한 seek
+        // tolerance 0으로 정확한 seek (재생 여부는 useEffect가 제어)
         await videoRef.current.setPositionAsync(positionMillis, {
           toleranceMillisBefore: 0,
           toleranceMillisAfter: 0,
         });
-
-        // 2. seek 전에 재생 중이었다면 재생 재개
-        if (wasPlaying) {
-          await videoRef.current.playAsync();
-        }
 
         setProgress(seekProgress);
         progressAnim.setValue(seekProgress);
@@ -428,7 +426,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               style={{ width: SCREEN_WIDTH, height: videoContainerHeight }}
               resizeMode={ResizeMode.CONTAIN}
               isLooping
-              shouldPlay={isFocused && !externalIsDragging}
+              shouldPlay={isFocused && !externalIsDragging && !userPaused}
               isMuted={false}
               onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
               onError={(error) => handleVideoError(error)}
