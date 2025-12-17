@@ -355,14 +355,20 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
       try {
         const positionMillis = Math.floor(seekProgress * targetDuration);
 
+        // seek 전에 현재 재생 상태 확인
+        const status = await videoRef.current.getStatusAsync();
+        const wasPlaying = status.isLoaded && status.isPlaying;
+
         // 1. tolerance 0으로 정확한 seek
         await videoRef.current.setPositionAsync(positionMillis, {
           toleranceMillisBefore: 0,
           toleranceMillisAfter: 0,
         });
 
-        // 2. seek 후 명시적으로 재생 (일시정지 방지)
-        await videoRef.current.playAsync();
+        // 2. seek 전에 재생 중이었다면 재생 재개
+        if (wasPlaying) {
+          await videoRef.current.playAsync();
+        }
 
         setProgress(seekProgress);
         progressAnim.setValue(seekProgress);
