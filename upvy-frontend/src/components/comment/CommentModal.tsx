@@ -88,20 +88,45 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        const threshold = SCREEN_HEIGHT * 0.5; // 50% 이상 내리면 닫기
+        const threshold = SCREEN_HEIGHT * 0.3; // 30% 이상 내리면 닫기
         const velocity = gestureState.vy; // 속도 고려
 
-        // 빠르게 아래로 스와이프하거나, 50% 이상 내리면 닫기
+        // 빠르게 아래로 스와이프하거나, 30% 이상 내리면 닫기
         if (gestureState.dy > threshold || (velocity > 0.5 && gestureState.dy > 100)) {
-          // 모달 닫기
-          handleClose();
+          // 현재 위치에서 화면 아래까지 애니메이션
+          Animated.parallel([
+            Animated.timing(backdropOpacity, {
+              toValue: 0,
+              duration: 250,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.ease),
+            }),
+            Animated.timing(slideAnim, {
+              toValue: SCREEN_HEIGHT,
+              duration: 300,
+              easing: Easing.in(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            // 애니메이션 완료 후 모달 닫기
+            onClose();
+
+            // 데이터 초기화
+            setReplyTo(null);
+            setCommentLikes({});
+            setNewComments([]);
+            setNewReplies({});
+            loadedCommentIdsRef.current.clear();
+            processedCommentIdsRef.current.clear();
+            queryClient.removeQueries({ queryKey: ['comments', contentId] });
+          });
         } else {
           // 원래 위치로 스냅백
           Animated.spring(slideAnim, {
             toValue: 0,
             useNativeDriver: true,
-            tension: 20,
-            friction: 15,
+            tension: 65,
+            friction: 11,
           }).start();
         }
       },
@@ -135,51 +160,30 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     ...loadedComments.filter((c) => !newComments.some((nc) => nc.id === c.id)),
   ];
 
-  // 모달 열기/닫기 애니메이션
+  // 모달 열기 애니메이션
   useEffect(() => {
     if (visible) {
-      // 모달 열기
+      // 애니메이션 값을 초기 위치로 리셋
+      backdropOpacity.setValue(0);
+      slideAnim.setValue(SCREEN_HEIGHT);
+
+      // 모달 열기 애니메이션 시작
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 600,
+          duration: 300,
           useNativeDriver: true,
+          easing: Easing.out(Easing.ease),
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
-          duration: 900,
+          duration: 400,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]).start();
-    } else {
-      // 모달 닫기 시 데이터 초기화
-      setReplyTo(null);
-      setCommentLikes({});
-      setNewComments([]);
-      setNewReplies({});
-      loadedCommentIdsRef.current.clear();
-      processedCommentIdsRef.current.clear();
-
-      // 댓글 쿼리 캐시 제거 (다음에 열 때 새로 로드)
-      queryClient.removeQueries({ queryKey: ['comments', contentId] });
-
-      // 애니메이션
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 700,
-          easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]).start();
     }
-  }, [visible, backdropOpacity, slideAnim, contentId, queryClient]);
+  }, [visible, backdropOpacity, slideAnim]);
 
   // 로드된 댓글 ID 추적 (무한 루프 방지)
   const loadedCommentIdsRef = useRef<Set<string>>(new Set());
@@ -453,8 +457,36 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 
   // 모달 닫기 핸들러
   const handleClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
+    // 닫기 애니메이션 실행
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.ease),
+      }),
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 350,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 애니메이션 완료 후 모달 닫기
+      onClose();
+
+      // 데이터 초기화 (다음 열기를 위해)
+      setReplyTo(null);
+      setCommentLikes({});
+      setNewComments([]);
+      setNewReplies({});
+      loadedCommentIdsRef.current.clear();
+      processedCommentIdsRef.current.clear();
+
+      // 댓글 쿼리 캐시 제거 (다음에 열 때 새로 로드)
+      queryClient.removeQueries({ queryKey: ['comments', contentId] });
+    });
+  }, [onClose, backdropOpacity, slideAnim, contentId, queryClient]);
 
 
   // 무한 스크롤: 스크롤 끝에 도달하면 다음 페이지 로드
