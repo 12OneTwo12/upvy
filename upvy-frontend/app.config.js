@@ -64,14 +64,7 @@ module.exports = {
       'expo-video',
       'expo-apple-authentication',
       '@react-native-firebase/app',
-      [
-        'expo-build-properties',
-        {
-          ios: {
-            useFrameworks: 'static',
-          },
-        },
-      ],
+      './plugins/withFirebasePodfile',
       [
         '@sentry/react-native/expo',
         {
