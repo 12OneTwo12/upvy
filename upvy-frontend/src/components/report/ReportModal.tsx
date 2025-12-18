@@ -15,14 +15,14 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  StyleSheet,
   Dimensions,
   ActivityIndicator,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { reportTarget } from '@/api/report.api';
 import { ReportType, TargetType } from '@/types/report.types';
 import type { Category } from '@/types/content.types';
@@ -46,6 +46,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   targetName,
   contentCategory,
 }) => {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation('interactions');
   const { t: tCommon } = useTranslation('common');
   const [selectedReason, setSelectedReason] = useState<ReportType | null>(null);
@@ -144,7 +146,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           <View style={styles.header}>
             <Text style={styles.title}>{t('report.title')}</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              <Ionicons name="close" size={24} color={dynamicTheme.colors.text.primary} />
             </TouchableOpacity>
           </View>
 
@@ -188,7 +190,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                     <Ionicons
                       name="checkmark-circle"
                       size={24}
-                      color={theme.colors.primary[500]}
+                      color={dynamicTheme.colors.primary[500]}
                     />
                   )}
                 </View>
@@ -201,7 +203,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               <TextInput
                 style={styles.descriptionInput}
                 placeholder={t('report.detailsPlaceholder')}
-                placeholderTextColor={theme.colors.text.tertiary}
+                placeholderTextColor={dynamicTheme.colors.text.tertiary}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -225,7 +227,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               disabled={!selectedReason || isSubmitting}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={dynamicTheme.colors.text.inverse} />
               ) : (
                 <Text style={styles.submitButtonText}>{t('report.submit')}</Text>
               )}
@@ -237,7 +239,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -246,7 +248,11 @@ const styles = StyleSheet.create({
     padding: theme.spacing[4],
   },
   overlayTouchable: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modalContainer: {
     backgroundColor: theme.colors.background.primary,
@@ -370,6 +376,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: theme.colors.text.inverse,
   },
-});
+}));
