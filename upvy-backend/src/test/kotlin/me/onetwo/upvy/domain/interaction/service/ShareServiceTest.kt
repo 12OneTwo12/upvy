@@ -1,7 +1,6 @@
 package me.onetwo.upvy.domain.interaction.service
 
 import io.mockk.every
-import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.justRun
@@ -11,6 +10,7 @@ import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -37,11 +37,21 @@ class ShareServiceTest : BaseReactiveTest {
     @MockK
     private lateinit var eventPublisher: ReactiveEventPublisher
 
-    @InjectMockKs
     private lateinit var shareService: ShareServiceImpl
 
     private val testUserId = UUID.randomUUID()
     private val testContentId = UUID.randomUUID()
+    private val shareBaseUrl = "https://api.upvy.org"
+
+    @BeforeEach
+    fun setUp() {
+        shareService = ShareServiceImpl(
+            contentInteractionService = contentInteractionService,
+            contentInteractionRepository = contentInteractionRepository,
+            eventPublisher = eventPublisher,
+            shareBaseUrl = shareBaseUrl
+        )
+    }
 
     @Nested
     @DisplayName("shareContent - 콘텐츠 공유")
@@ -86,7 +96,7 @@ class ShareServiceTest : BaseReactiveTest {
             StepVerifier.create(result)
                 .assertNext { response ->
                     assertEquals(testContentId.toString(), response.contentId)
-                    assertEquals("https://upvy.com/watch/$testContentId", response.shareUrl)
+                    assertEquals("https://api.upvy.org/watch/$testContentId", response.shareUrl)
                 }
                 .verifyComplete()
         }
