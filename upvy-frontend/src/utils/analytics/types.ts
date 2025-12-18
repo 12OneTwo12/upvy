@@ -171,6 +171,7 @@ export interface VideoCompleteParams {
 // ===== 화면 추적 파라미터 =====
 
 export type ScreenName =
+  // Main screens
   | 'Home'
   | 'Feed'
   | 'Upload'
@@ -178,12 +179,31 @@ export type ScreenName =
   | 'ContentViewer'
   | 'Search'
   | 'Notifications'
+  // Settings screens
   | 'Settings'
+  | 'LanguageSelector'
+  | 'PasswordChange'
+  | 'HelpSupport'
+  // Auth screens
   | 'Login'
+  | 'EmailSignUp'
+  | 'EmailSignIn'
+  | 'EmailVerification'
+  | 'PasswordReset'
+  | 'PasswordResetConfirm'
+  // Profile screens
   | 'ProfileSetup'
   | 'EditProfile'
+  | 'UserProfile'
   | 'FollowerList'
-  | 'FollowingList';
+  | 'FollowingList'
+  // Legal screens
+  | 'TermsAgreement'
+  | 'TermsOfService'
+  | 'PrivacyPolicy'
+  | 'CommunityGuidelines'
+  // Explore screens
+  | 'CategoryFeed';
 
 export interface ScreenViewParams {
   screen_name: ScreenName;

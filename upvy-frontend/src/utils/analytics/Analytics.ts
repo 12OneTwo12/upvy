@@ -65,6 +65,27 @@ class AnalyticsService {
     }
   }
 
+  /**
+   * Private 헬퍼 메서드: 공통 이벤트 로깅 로직을 처리
+   * @param eventName 이벤트 이름
+   * @param params 이벤트 파라미터
+   * @param logMessage 개발 환경 로그 메시지
+   */
+  private logCustomEvent(eventName: string, params: object, logMessage: string): void {
+    if (!this.enabled) return;
+
+    try {
+      const fullParams = { ...params, environment: this.environment };
+      analytics().logEvent(eventName, fullParams);
+
+      if (__DEV__) {
+        console.log(`[Analytics] ${logMessage}:`, fullParams);
+      }
+    } catch (error) {
+      console.error(`[Analytics] Failed to log ${eventName}:`, error);
+    }
+  }
+
   // ===== 인증 이벤트 =====
 
   /**
@@ -107,17 +128,7 @@ class AnalyticsService {
    * 로그아웃 이벤트
    */
   logLogout(): void {
-    if (!this.enabled) return;
-
-    try {
-      analytics().logEvent(AnalyticsEvents.LOGOUT, { environment: this.environment });
-
-      if (__DEV__) {
-        console.log('[Analytics] Logout:', { environment: this.environment });
-      }
-    } catch (error) {
-      console.error('[Analytics] Failed to log logout:', error);
-    }
+    this.logCustomEvent(AnalyticsEvents.LOGOUT, {}, 'Logout');
   }
 
   /**
@@ -204,23 +215,12 @@ class AnalyticsService {
    * @param contentType 콘텐츠 타입
    */
   logUnlike(contentId: string, contentType: ContentType): void {
-    if (!this.enabled) return;
+    const params: UnlikeParams = {
+      content_id: contentId,
+      content_type: contentType,
+    };
 
-    try {
-      const params: UnlikeParams = {
-        content_id: contentId,
-        content_type: contentType,
-        environment: this.environment,
-      };
-
-      analytics().logEvent(AnalyticsEvents.UNLIKE, params);
-
-      if (__DEV__) {
-        console.log('[Analytics] Unlike:', params);
-      }
-    } catch (error) {
-      console.error('[Analytics] Failed to log unlike:', error);
-    }
+    this.logCustomEvent(AnalyticsEvents.UNLIKE, params, 'Unlike');
   }
 
   /**
@@ -229,23 +229,12 @@ class AnalyticsService {
    * @param contentType 콘텐츠 타입
    */
   logSave(contentId: string, contentType: ContentType): void {
-    if (!this.enabled) return;
+    const params: SaveParams = {
+      content_id: contentId,
+      content_type: contentType,
+    };
 
-    try {
-      const params: SaveParams = {
-        content_id: contentId,
-        content_type: contentType,
-        environment: this.environment,
-      };
-
-      analytics().logEvent(AnalyticsEvents.SAVE, params);
-
-      if (__DEV__) {
-        console.log('[Analytics] Save:', params);
-      }
-    } catch (error) {
-      console.error('[Analytics] Failed to log save:', error);
-    }
+    this.logCustomEvent(AnalyticsEvents.SAVE, params, 'Save');
   }
 
   /**
@@ -254,23 +243,12 @@ class AnalyticsService {
    * @param contentType 콘텐츠 타입
    */
   logUnsave(contentId: string, contentType: ContentType): void {
-    if (!this.enabled) return;
+    const params: UnsaveParams = {
+      content_id: contentId,
+      content_type: contentType,
+    };
 
-    try {
-      const params: UnsaveParams = {
-        content_id: contentId,
-        content_type: contentType,
-        environment: this.environment,
-      };
-
-      analytics().logEvent(AnalyticsEvents.UNSAVE, params);
-
-      if (__DEV__) {
-        console.log('[Analytics] Unsave:', params);
-      }
-    } catch (error) {
-      console.error('[Analytics] Failed to log unsave:', error);
-    }
+    this.logCustomEvent(AnalyticsEvents.UNSAVE, params, 'Unsave');
   }
 
   /**
@@ -384,22 +362,11 @@ class AnalyticsService {
    * @param userId 팔로우할 사용자 ID
    */
   logFollow(userId: string): void {
-    if (!this.enabled) return;
+    const params: FollowParams = {
+      user_id: userId,
+    };
 
-    try {
-      const params: FollowParams = {
-        user_id: userId,
-        environment: this.environment,
-      };
-
-      analytics().logEvent(AnalyticsEvents.FOLLOW, params);
-
-      if (__DEV__) {
-        console.log('[Analytics] Follow:', params);
-      }
-    } catch (error) {
-      console.error('[Analytics] Failed to log follow:', error);
-    }
+    this.logCustomEvent(AnalyticsEvents.FOLLOW, params, 'Follow');
   }
 
   /**
@@ -407,22 +374,11 @@ class AnalyticsService {
    * @param userId 언팔로우할 사용자 ID
    */
   logUnfollow(userId: string): void {
-    if (!this.enabled) return;
+    const params: UnfollowParams = {
+      user_id: userId,
+    };
 
-    try {
-      const params: UnfollowParams = {
-        user_id: userId,
-        environment: this.environment,
-      };
-
-      analytics().logEvent(AnalyticsEvents.UNFOLLOW, params);
-
-      if (__DEV__) {
-        console.log('[Analytics] Unfollow:', params);
-      }
-    } catch (error) {
-      console.error('[Analytics] Failed to log unfollow:', error);
-    }
+    this.logCustomEvent(AnalyticsEvents.UNFOLLOW, params, 'Unfollow');
   }
 
   // ===== 콘텐츠 업로드 이벤트 =====

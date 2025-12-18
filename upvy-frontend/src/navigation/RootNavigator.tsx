@@ -63,6 +63,25 @@ function getActiveRouteName(state: NavigationState | undefined): string | undefi
 }
 
 /**
+ * ScreenName 타입에 포함되는지 확인하는 Type Guard
+ * Navigator 이름(Auth, Main 등)은 제외하고 실제 화면 이름만 필터링
+ */
+function isValidScreenName(name: string | undefined): name is ScreenName {
+  if (!name) return false;
+
+  const validScreenNames: ScreenName[] = [
+    'Home', 'Feed', 'Upload', 'Profile', 'ContentViewer', 'Search', 'Notifications',
+    'Settings', 'LanguageSelector', 'PasswordChange', 'HelpSupport',
+    'Login', 'EmailSignUp', 'EmailSignIn', 'EmailVerification', 'PasswordReset', 'PasswordResetConfirm',
+    'ProfileSetup', 'EditProfile', 'UserProfile', 'FollowerList', 'FollowingList',
+    'TermsAgreement', 'TermsOfService', 'PrivacyPolicy', 'CommunityGuidelines',
+    'CategoryFeed',
+  ];
+
+  return validScreenNames.includes(name as ScreenName);
+}
+
+/**
  * Root Navigator
  * 인증 상태와 프로필 존재 여부에 따라 화면을 표시합니다.
  */
@@ -92,17 +111,17 @@ export default function RootNavigator() {
       onReady={() => {
         // 앱 시작 시 초기 화면 기록
         const initialRoute = routeNameRef.current;
-        if (initialRoute) {
-          Analytics.logScreenView(initialRoute as ScreenName);
+        if (isValidScreenName(initialRoute)) {
+          Analytics.logScreenView(initialRoute);
         }
       }}
       onStateChange={(state) => {
         const previousRouteName = routeNameRef.current;
         const currentRouteName = getActiveRouteName(state);
 
-        if (previousRouteName !== currentRouteName && currentRouteName) {
+        if (previousRouteName !== currentRouteName && isValidScreenName(currentRouteName)) {
           // 화면이 변경되면 Analytics 로깅 (Fire-and-Forget - await 없음)
-          Analytics.logScreenView(currentRouteName as ScreenName);
+          Analytics.logScreenView(currentRouteName);
         }
 
         // 다음 변경을 위해 현재 화면 이름 저장
