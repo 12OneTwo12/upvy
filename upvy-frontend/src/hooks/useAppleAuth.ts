@@ -109,12 +109,19 @@ export const useAppleAuth = () => {
 
       setIsLoading(false);
     } catch (err: any) {
-      // 사용자가 취소한 경우 (ERR_REQUEST_CANCELED)
-      if (err.code === 'ERR_REQUEST_CANCELED') {
+      // 사용자가 취소한 경우 (조용히 처리)
+      // ERR_REQUEST_CANCELED: 사용자가 명시적으로 취소 버튼 클릭
+      // ERR_REQUEST_UNKNOWN: 사용자가 취소하거나 앱을 백그라운드로 보냄
+      if (
+        err.code === 'ERR_REQUEST_CANCELED' ||
+        err.code === 'ERR_CANCELED' ||
+        err.code === 'ERR_REQUEST_UNKNOWN'
+      ) {
         setIsLoading(false);
         return;
       }
 
+      // 실제 에러인 경우만 로깅하고 사용자에게 표시
       const message = getErrorMessage(err);
       setError(message);
       logError(err, 'useAppleAuth.handleAppleLogin');
