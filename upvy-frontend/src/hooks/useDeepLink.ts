@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation.types';
+import * as Sentry from '@sentry/react-native';
 
 /**
  * Universal Links (iOS) and App Links (Android) handler
@@ -69,6 +70,10 @@ export const useDeepLink = () => {
       }
     } catch (error) {
       console.error('[useDeepLink] Failed to handle deep link:', url, error);
+      Sentry.captureException(error, {
+        extra: { url },
+        tags: { feature: 'deep-link' },
+      });
     }
   };
 };
