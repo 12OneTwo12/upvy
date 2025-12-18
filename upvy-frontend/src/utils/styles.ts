@@ -1,36 +1,45 @@
 import { StyleSheet } from 'react-native';
+import { useTheme } from '@/theme';
+import type { Theme } from '@/theme';
 
 /**
- * Lazy StyleSheet creator for New Architecture compatibility
- *
- * New Architecture (Bridgeless)에서는 StyleSheet.create()가 네이티브 모듈이
- * 준비되기 전에 호출되면 "runtime not ready" 에러가 발생합니다.
- *
- * 이 함수는 StyleSheet를 lazy evaluation으로 생성하여
- * 실제로 필요할 때만 StyleSheet.create()를 호출합니다.
+ * Lazy StyleSheet creator for New Architecture compatibility with Dynamic Theme support
  *
  * @example
- * const useStyles = createStyleSheet({
+ * // 동적 스타일 (테마 변경 시 자동 업데이트)
+ * const useStyles = createStyleSheet((theme) => ({
  *   container: {
  *     flex: 1,
- *     backgroundColor: '#fff',
+ *     backgroundColor: theme.colors.background.primary,
  *   },
- * });
- *
- * function MyComponent() {
- *   const styles = useStyles();
- *   return <View style={styles.container} />;
- * }
+ * }));
  */
 export function createStyleSheet<T extends StyleSheet.NamedStyles<T>>(
-  styles: T | StyleSheet.NamedStyles<T>
+  stylesOrFactory: T | StyleSheet.NamedStyles<T> | ((theme: Theme) => T | StyleSheet.NamedStyles<T>)
 ): () => T {
-  let cached: T | null = null;
+  // 정적 스타일 (기존 방식)
+  if (typeof stylesOrFactory !== 'function') {
+    let cached: T | null = null;
+    return () => {
+      if (cached === null) {
+        cached = StyleSheet.create(stylesOrFactory) as T;
+      }
+      return cached as T;
+    };
+  }
+
+  // 동적 스타일 (테마별 캐싱)
+  const caches = new Map<boolean, T>();
 
   return () => {
-    if (cached === null) {
-      cached = StyleSheet.create(styles) as T;
+    const theme = useTheme();
+    const isDarkMode = theme.colors === require('@/theme/dark').darkColors;
+
+    if (!caches.has(isDarkMode)) {
+      const styleObject = stylesOrFactory(theme);
+      caches.set(isDarkMode, StyleSheet.create(styleObject) as T);
     }
-    return cached as T;
+
+    return caches.get(isDarkMode)!;
   };
 }

@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { theme, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import { useThemeStore, ThemeMode } from '@/stores/themeStore';
 
@@ -21,7 +21,7 @@ const themeIcons: Record<ThemeMode, keyof typeof Ionicons.glyphMap> = {
   system: 'phone-portrait-outline',
 };
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -83,7 +83,7 @@ const useStyles = createStyleSheet({
   checkIcon: {
     marginLeft: theme.spacing[3],
   },
-});
+}));
 
 export default function ThemeSelectorScreen() {
   const styles = useStyles();

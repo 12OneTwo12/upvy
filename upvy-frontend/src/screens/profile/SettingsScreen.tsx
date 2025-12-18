@@ -20,14 +20,14 @@ import { useAuthStore } from '@/stores/authStore';
 import { useLanguageStore } from '@/stores/languageStore';
 import { useThemeStore, ThemeMode } from '@/stores/themeStore';
 import { supportedLanguages } from '@/locales';
-import { theme, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import { deleteUser } from '@/api/user.api';
 import { withErrorHandling } from '@/utils/errorHandler';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -146,7 +146,7 @@ const useStyles = createStyleSheet({
     color: theme.colors.gray[400],
     textDecorationLine: 'underline',
   },
-});
+}));
 
 /**
  * Settings Screen
@@ -450,10 +450,10 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               onValueChange={setPrivateAccount}
               disabled={true}
               trackColor={{
-                false: theme.colors.gray[300],
-                true: theme.colors.primary[300],
+                false: dynamicTheme.colors.gray[300],
+                true: dynamicTheme.colors.primary[300],
               }}
-              thumbColor={privateAccount ? theme.colors.primary[500] : theme.colors.gray[200]}
+              thumbColor={privateAccount ? dynamicTheme.colors.primary[500] : dynamicTheme.colors.gray[200]}
             />
           </View>
 
@@ -465,7 +465,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="key-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -478,7 +478,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
 
@@ -490,7 +490,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="ban-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -503,7 +503,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
         </View>
@@ -522,7 +522,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="notifications-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -535,7 +535,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
         </View>
@@ -600,7 +600,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="document-text-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <Text style={styles.settingLabel}>{t('general.termsOfService')}</Text>
@@ -608,7 +608,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
 
@@ -620,7 +620,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="shield-checkmark-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <Text style={styles.settingLabel}>{t('general.privacyPolicy')}</Text>
@@ -628,7 +628,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
 
@@ -640,7 +640,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="people-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <Text style={styles.settingLabel}>{t('general.communityGuidelines')}</Text>
@@ -648,7 +648,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
 
@@ -660,7 +660,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="help-circle-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <Text style={styles.settingLabel}>{t('general.helpSupport')}</Text>
@@ -668,7 +668,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
 
@@ -677,7 +677,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="information-circle-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -712,7 +712,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
         </View>
 
         {/* Bottom spacing */}
-        <View style={{ height: theme.spacing[8] }} />
+        <View style={{ height: dynamicTheme.spacing[8] }} />
       </ScrollView>
     </SafeAreaView>
   );

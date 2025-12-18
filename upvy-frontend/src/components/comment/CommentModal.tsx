@@ -29,7 +29,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { getComments, getReplies, createComment as createCommentApi, deleteComment as deleteCommentApi } from '@/api/comment.api';
 import { createCommentLike, deleteCommentLike } from '@/api/commentLike.api';
 import { CommentItem } from './CommentItem';
@@ -53,6 +54,8 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 }) => {
   const { t } = useTranslation('interactions');
   const { t: tCommon } = useTranslation('common');
+  const theme = useTheme();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
@@ -616,7 +619,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -698,4 +701,4 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border.light,
   },
-});
+}));

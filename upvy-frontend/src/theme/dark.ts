@@ -49,7 +49,7 @@ export const darkColors = {
     primary: '#fafafa', // 매우 밝은 텍스트
     secondary: '#a1a1aa', // 회색 텍스트
     tertiary: '#71717a', // 더 어두운 회색
-    inverse: '#09090b', // 다크 배경
+    inverse: '#ffffff', // 버튼 등에서 사용하는 흰색 텍스트
   },
 
   // Border

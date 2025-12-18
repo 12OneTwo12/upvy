@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { MainTabParamList } from '@/types/navigation.types';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import ExploreNavigator from '@/navigation/ExploreNavigator';
 import FeedNavigator from '@/navigation/FeedNavigator';
 import SearchNavigator from '@/navigation/SearchNavigator';
@@ -18,6 +18,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
  */
 export default function MainNavigator() {
   const { t } = useTranslation('common');
+  const theme = useTheme();
 
   return (
     <Tab.Navigator
@@ -27,6 +28,8 @@ export default function MainNavigator() {
         tabBarStyle: {
           height: 68,
           paddingBottom: 16,
+          backgroundColor: theme.colors.background.primary,
+          borderTopColor: theme.colors.border.light,
         },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
