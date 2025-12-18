@@ -14,7 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { useAuthStore } from '@/stores/authStore';
 import { getReplies } from '@/api/comment.api';
 import type { CommentResponse } from '@/types/interaction.types';
@@ -64,6 +65,8 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   contentId,
   newReplies = [],
 }) => {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation('interactions');
   const { t: tCommon } = useTranslation('common');
   const currentUser = useAuthStore((state) => state.user);
@@ -187,7 +190,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             />
           ) : (
             <View style={[styles.profileImage, styles.profileImagePlaceholder]}>
-              <Ionicons name="person" size={16} color={theme.colors.text.tertiary} />
+              <Ionicons name="person" size={16} color={dynamicTheme.colors.text.tertiary} />
             </View>
           )}
         </TouchableOpacity>
@@ -253,7 +256,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
               size={14}
-              color={isLiked ? theme.colors.error : theme.colors.text.tertiary}
+              color={isLiked ? dynamicTheme.colors.error : dynamicTheme.colors.text.tertiary}
             />
           </TouchableOpacity>
           {likeCount > 0 && (
@@ -287,7 +290,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
         <View style={styles.repliesContainer}>
           {isLoadingReplies && (!loadedReplies || loadedReplies.length === 0) ? (
             <View style={styles.repliesLoadingContainer}>
-              <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+              <ActivityIndicator size="small" color={dynamicTheme.colors.primary[500]} />
             </View>
           ) : (
             <>
@@ -315,7 +318,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                   disabled={isLoadingReplies || isLoadingMore}
                 >
                   {(isLoadingReplies || isLoadingMore) ? (
-                    <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+                    <ActivityIndicator size="small" color={dynamicTheme.colors.primary[500]} />
                   ) : (
                     <Text style={styles.showMoreText}>{t('comment.viewMoreReplies')}</Text>
                   )}
@@ -329,7 +332,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     backgroundColor: theme.colors.background.primary,
   },
@@ -442,4 +445,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     fontWeight: theme.typography.fontWeight.medium,
   },
-});
+}));
