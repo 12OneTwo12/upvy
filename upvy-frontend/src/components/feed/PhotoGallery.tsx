@@ -27,6 +27,7 @@ interface PhotoGalleryProps {
   photoUrls: string[];
   width?: number;
   height?: number;
+  isExpanded?: boolean;
   onDoubleTap?: () => void;
   onTap?: () => boolean; // 탭 이벤트, true 반환 시 이벤트 처리됨
 }
@@ -35,6 +36,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
   photoUrls,
   width = SCREEN_WIDTH,
   height = SCREEN_HEIGHT,
+  isExpanded = false,
   onDoubleTap,
   onTap,
 }) => {
@@ -118,6 +120,12 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
 
   // 더블탭 핸들러
   const handlePress = useCallback(() => {
+    // 더보기가 열려있으면 즉시 닫기 (더블탭 감지 불필요)
+    if (isExpanded) {
+      onTap?.();
+      return;
+    }
+
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
 
@@ -134,7 +142,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
         }
       }, DOUBLE_TAP_DELAY);
     }
-  }, [onDoubleTap, onTap]);
+  }, [isExpanded, onDoubleTap, onTap]);
 
   return (
     <View style={[styles.container, { width, height }]}>

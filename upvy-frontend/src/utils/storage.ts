@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   ACCESS_TOKEN: '@upvy/access-token',
   REFRESH_TOKEN: '@upvy/refresh-token',
   USER_INFO: '@upvy/user-info',
+  THEME_MODE: '@upvy/theme-mode',
 } as const;
 
 /**

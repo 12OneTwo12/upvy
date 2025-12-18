@@ -10,7 +10,7 @@ layout: hextra-home
 
 {{< hextra/hero-badge >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>ベータ版リリース準備中</span>
+  <span>iOS版リリース完了 / Android版準備中</span>
 {{< /hextra/hero-badge >}}
 
 <div class="hx:mt-8 hx:mb-2">
@@ -163,7 +163,7 @@ layout: hextra-home
 <div class="hx:mt-16 hx:mb-8 hx:text-center">
 <h2 class="hx:text-2xl hx:font-bold hx:mb-6">今すぐ始めましょう</h2>
 <div class="hx:flex hx:gap-4 hx:justify-center hx:flex-wrap">
-{{< hextra/hero-button text="App Store" link="https://apps.apple.com/app/upvy" >}}
+{{< hextra/hero-button text="App Store" link="https://apps.apple.com/jp/app/upvy-%E5%AD%A6%E3%81%B9%E3%82%8B%E3%82%B7%E3%83%A7%E3%83%BC%E3%83%88%E5%8B%95%E7%94%BB/id6756291696" >}}
 {{< hextra/hero-button text="Google Play" link="https://play.google.com/store/apps/details?id=com.upvy" >}}
 </div>
 </div>

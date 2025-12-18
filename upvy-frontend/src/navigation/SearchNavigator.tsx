@@ -9,6 +9,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { SearchStackParamList } from '@/types/navigation.types';
+import { useThemeStore } from '@/stores/themeStore';
 
 import SearchScreen from '@/screens/search/SearchScreen';
 import ContentViewerScreen from '@/screens/content/ContentViewerScreen';
@@ -19,12 +20,13 @@ const Stack = createNativeStackNavigator<SearchStackParamList>();
 
 export default function SearchNavigator() {
   const { t } = useTranslation(['search', 'common', 'profile']);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        statusBarStyle: 'dark',
+        statusBarStyle: isDarkMode ? 'light' : 'dark',
       }}
     >
       <Stack.Screen

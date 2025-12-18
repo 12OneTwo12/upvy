@@ -125,6 +125,8 @@ export const FeedItem: React.FC<FeedItemProps> = ({
 
   // 재생바 드래그
   const dragStartDuration = useRef<number>(0);
+  const lastSeekTime = useRef<number>(0);
+  const isSeeking = useRef<boolean>(false);
 
   // progress 계산 헬퍼 함수
   const calculateProgress = (pageX: number): number => {
@@ -140,14 +142,40 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         // VideoPlayer에서 직접 duration 가져오기
         const videoDuration = videoPlayerRef.current?.getDuration() || 0;
         dragStartDuration.current = videoDuration;
+        lastSeekTime.current = 0;
+        isSeeking.current = false;
       },
-      onPanResponderMove: (event, gestureState) => {
+      onPanResponderMove: async (event, gestureState) => {
         // pageX: 화면 전체 기준 X 좌표 사용
         const pageX = event.nativeEvent.pageX;
         const newProgress = calculateProgress(pageX);
 
-        // 애니메이션만 업데이트 (성능 최적화)
+        // 애니메이션 업데이트 (항상)
         progressAnim.setValue(newProgress);
+
+        // Throttle: 100ms마다 한 번씩만 seek (성능 최적화)
+        const now = Date.now();
+        const timeSinceLastSeek = now - lastSeekTime.current;
+        const SEEK_THROTTLE_MS = 100;
+
+        if (timeSinceLastSeek >= SEEK_THROTTLE_MS && !isSeeking.current) {
+          lastSeekTime.current = now;
+          isSeeking.current = true;
+
+          const seekDuration = dragStartDuration.current;
+          if (videoPlayerRef.current && seekDuration > 0) {
+            try {
+              await videoPlayerRef.current.seek(newProgress, seekDuration);
+              setProgress(newProgress);
+            } catch (error) {
+              // 드래그 중 seek 에러는 무시 (성능상 일부 프레임 스킵 가능)
+            } finally {
+              isSeeking.current = false;
+            }
+          } else {
+            isSeeking.current = false;
+          }
+        }
       },
       onPanResponderRelease: async (event, gestureState) => {
         // pageX: 화면 전체 기준 X 좌표 사용
@@ -155,7 +183,12 @@ export const FeedItem: React.FC<FeedItemProps> = ({
         const newProgress = calculateProgress(pageX);
         const seekDuration = dragStartDuration.current;
 
-        // 저장된 duration 사용해서 seek
+        // 진행 중인 seek가 완료될 때까지 대기
+        while (isSeeking.current) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+
+        // 최종 위치로 seek
         if (videoPlayerRef.current && seekDuration > 0) {
           try {
             await videoPlayerRef.current.seek(newProgress, seekDuration);
@@ -184,6 +217,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           shouldPreload={shouldPreload}
           hasBeenLoaded={hasBeenLoaded}
           isDragging={isDragging}
+          isExpanded={isExpanded}
           onVideoLoaded={onVideoLoaded}
           onDoubleTap={handleLike}
           onTap={handleContentTap}
@@ -195,6 +229,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           photoUrls={item.photoUrls}
           width={SCREEN_WIDTH}
           height={SCREEN_HEIGHT}
+          isExpanded={isExpanded}
           onDoubleTap={handleLike}
           onTap={handleContentTap}
         />

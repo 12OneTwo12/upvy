@@ -22,7 +22,7 @@ module.exports = {
   expo: {
     name: 'Upvy',
     slug: 'upvy',
-    version: '1.2.0',
+    version: '1.4.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -35,6 +35,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.upvy.app',
+      googleServicesFile: './GoogleService-Info.plist',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         UIViewControllerBasedStatusBarAppearance: true,
@@ -42,6 +43,7 @@ module.exports = {
         NSCameraUsageDescription: PERMISSION_STRINGS.NSCameraUsageDescription.en,
       },
       usesAppleSignIn: true,
+      associatedDomains: ['applinks:api.upvy.org'],
     },
     android: {
       adaptiveIcon: {
@@ -49,8 +51,23 @@ module.exports = {
         backgroundColor: '#ffffff',
       },
       package: 'com.upvy.app',
+      googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: 'api.upvy.org',
+              pathPrefix: '/watch',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     web: {
       favicon: './assets/favicon.png',
@@ -61,6 +78,8 @@ module.exports = {
       'expo-dev-client',
       'expo-video',
       'expo-apple-authentication',
+      '@react-native-firebase/app',
+      './plugins/withFirebasePodfile',
       [
         '@sentry/react-native/expo',
         {
@@ -94,7 +113,7 @@ module.exports = {
       policy: 'appVersion',
     },
     extra: {
-      otaVersion: '1.2.1',
+      otaVersion: '1.4.0',
       apiUrl: 'https://api.upvy.org',
       eas: {
         projectId: '4eeab4c9-332d-496a-a23d-f63e4726f221',
@@ -103,6 +122,9 @@ module.exports = {
       sentryEnvironment: process.env.SENTRY_ENVIRONMENT || 'development',
       sentryDsn: process.env.SENTRY_DSN,
       sentryEnabled: process.env.SENTRY_ENABLED !== 'false',
+      // Firebase Analytics 설정
+      firebaseAnalyticsEnabled: process.env.FIREBASE_ANALYTICS_ENABLED !== 'false',
+      environment: process.env.APP_ENV || 'development',
     },
     owner: 'grow-snap',
   },

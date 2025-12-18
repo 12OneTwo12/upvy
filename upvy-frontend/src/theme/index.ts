@@ -1,68 +1,13 @@
 import { scaleFontSize, scaleSpacing } from '@/utils/responsive';
+import { useThemeStore } from '@/stores/themeStore';
+import { lightColors } from './light';
+import { darkColors } from './dark';
 
 /**
  * 색상 팔레트
+ * @deprecated Use useTheme() hook instead for dynamic theme support
  */
-export const colors = {
-  // Primary (Green)
-  primary: {
-    50: '#f0fdf4',
-    100: '#dcfce7',
-    200: '#bbf7d0',
-    300: '#86efac',
-    400: '#4ade80',
-    500: '#22c55e', // Main
-    600: '#16a34a',
-    700: '#15803d',
-    800: '#166534',
-    900: '#14532d',
-  },
-
-  // Gray Scale
-  gray: {
-    50: '#fafafa',
-    100: '#f5f5f5',
-    200: '#e5e5e5',
-    300: '#d4d4d4',
-    400: '#a3a3a3',
-    500: '#737373',
-    600: '#525252',
-    700: '#404040',
-    800: '#262626',
-    900: '#171717',
-  },
-
-  // Semantic Colors
-  success: '#22c55e',
-  error: '#ef4444',
-  warning: '#f59e0b',
-  info: '#3b82f6',
-
-  // Background
-  background: {
-    primary: '#ffffff',
-    secondary: '#fafafa',
-    tertiary: '#f5f5f5',
-  },
-
-  // Text
-  text: {
-    primary: '#171717',
-    secondary: '#525252',
-    tertiary: '#a3a3a3',
-    inverse: '#ffffff',
-  },
-
-  // Border
-  border: {
-    light: '#e5e5e5',
-    medium: '#d4d4d4',
-    dark: '#a3a3a3',
-  },
-
-  // Overlay
-  overlay: 'rgba(0, 0, 0, 0.5)',
-} as const;
+export const colors = lightColors;
 
 /**
  * 타이포그래피
@@ -209,7 +154,8 @@ export const layout = {
 } as const;
 
 /**
- * Theme 객체
+ * Theme 객체 (Static - Light Mode Only)
+ * @deprecated Use useTheme() hook instead for dynamic theme support
  */
 export const theme = {
   colors,
@@ -222,7 +168,37 @@ export const theme = {
   layout,
 } as const;
 
+/**
+ * useTheme Hook
+ * 현재 테마 모드에 따라 동적으로 theme 객체를 반환합니다.
+ *
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const theme = useTheme();
+ *   return <View style={{ backgroundColor: theme.colors.background.primary }} />;
+ * }
+ * ```
+ */
+export function useTheme() {
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
+  const mode = useThemeStore((state) => state.mode);
+
+  return {
+    colors: isDarkMode ? darkColors : lightColors,
+    typography,
+    spacing,
+    borderRadius,
+    shadows,
+    duration,
+    zIndex,
+    layout,
+    isDarkMode,
+    mode,
+  };
+}
+
 export type Theme = typeof theme;
-export type Colors = typeof colors;
+export type Colors = typeof lightColors;
 export type Typography = typeof typography;
 export type Spacing = typeof spacing;

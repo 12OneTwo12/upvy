@@ -21,7 +21,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { getMyContents, deleteContent } from '@/api/content.api';
 import type { ContentResponse, ContentType } from '@/types/content.types';
 import { LoadingSpinner } from '@/components/common';
@@ -34,6 +35,8 @@ type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'VIDEO' | 'PHOTO';
 
 export default function ContentManagementScreen({ navigation }: any) {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation(['upload', 'common']);
   const [contents, setContents] = useState<ContentResponse[]>([]);
   const [filteredContents, setFilteredContents] = useState<ContentResponse[]>([]);
@@ -283,7 +286,7 @@ export default function ContentManagementScreen({ navigation }: any) {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={theme.colors.primary[500]}
+              tintColor={dynamicTheme.colors.primary[500]}
             />
           }
         />
@@ -292,7 +295,7 @@ export default function ContentManagementScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -467,4 +470,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textAlign: 'center',
   },
-});
+}));

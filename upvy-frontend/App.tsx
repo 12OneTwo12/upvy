@@ -3,15 +3,21 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Updates from 'expo-updates';
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/components/common';
 import { logError } from './src/utils/errorHandler';
 import { useLanguageStore } from './src/stores/languageStore';
+import { useThemeStore } from './src/stores/themeStore';
 import { initializeSentry, Sentry } from './src/config/sentry';
+import { Analytics } from './src/utils/analytics';
 import './src/locales'; // Initialize i18n
 
 // Sentry 초기화 (환경별 설정 적용)
 initializeSentry();
+
+// Firebase Analytics 초기화
+Analytics.initialize();
 
 // React Query Client
 export const queryClient = new QueryClient({
@@ -29,6 +35,29 @@ export default Sentry.wrap(function App() {
   // Initialize language on app start
   useEffect(() => {
     useLanguageStore.getState().initializeLanguage();
+  }, []);
+
+  // Initialize theme on app start
+  useEffect(() => {
+    useThemeStore.getState().initializeTheme();
+  }, []);
+
+  // Configure audio mode to interrupt background audio (music, etc.)
+  useEffect(() => {
+    async function configureAudio() {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true, // 무음 모드에서도 비디오 소리 재생
+          staysActiveInBackground: false, // 백그라운드에서 오디오 활성 상태 유지 안 함
+          interruptionModeIOS: InterruptionModeIOS.DoNotMix, // iOS: 기존 오디오 중단
+          interruptionModeAndroid: InterruptionModeAndroid.DoNotMix, // Android: 기존 오디오 중단
+        });
+      } catch (error) {
+        logError(error as Error, 'App.configureAudio');
+      }
+    }
+
+    configureAudio();
   }, []);
 
   // MVP: Auto-login disabled for now

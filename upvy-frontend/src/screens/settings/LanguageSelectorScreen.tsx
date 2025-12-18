@@ -9,13 +9,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import { useLanguageStore } from '@/stores/languageStore';
 import { supportedLanguages } from '@/locales';
 import type { SupportedLanguage } from '@/locales';
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -69,7 +69,7 @@ const useStyles = createStyleSheet({
   checkIcon: {
     marginLeft: theme.spacing[3],
   },
-});
+}));
 
 /**
  * Language Selector Screen
@@ -77,6 +77,7 @@ const useStyles = createStyleSheet({
  */
 export default function LanguageSelectorScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const navigation = useNavigation();
   const { t } = useTranslation('settings');
   const { currentLanguage, setLanguage } = useLanguageStore();
@@ -101,7 +102,7 @@ export default function LanguageSelectorScreen() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.colors.text.primary}
+            color={dynamicTheme.colors.text.primary}
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('general.language')}</Text>
@@ -122,7 +123,7 @@ export default function LanguageSelectorScreen() {
               <Ionicons
                 name="checkmark"
                 size={24}
-                color={theme.colors.primary[500]}
+                color={dynamicTheme.colors.primary[500]}
                 style={styles.checkIcon}
               />
             )}

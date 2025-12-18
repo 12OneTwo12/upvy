@@ -123,9 +123,23 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
     extrapolate: 'clamp',
   });
 
+  // 축소 상태 태그 높이 (0 = 정상, 1 = 높이 0)
+  const collapsedTagHeight = expandAnim.interpolate({
+    inputRange: [0, 0.3],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   // 확장 상태 opacity (70~100% 구간에서 빠르게 나타남)
   const expandedOpacity = expandAnim.interpolate({
     inputRange: [0.7, 1],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  // 확장 배경 overlay opacity (댓글 모달처럼 fade in)
+  const expandedBackgroundOpacity = expandAnim.interpolate({
+    inputRange: [0, 1],
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
@@ -205,10 +219,14 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 
   return (
     <>
-      {/* 하단 그라디언트 오버레이 */}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.6)']}
-        style={styles.gradient}
+      {/* 확장 시 전체 화면 어두운 overlay - 댓글 모달처럼 */}
+      <Animated.View
+        style={[
+          styles.fullScreenOverlay,
+          {
+            opacity: expandedBackgroundOpacity,
+          }
+        ]}
         pointerEvents="none"
       />
 
@@ -277,10 +295,16 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                     }}
                     pointerEvents={isExpanded ? 'none' : 'auto'}
                   >
-                    <Text style={styles.description} numberOfLines={2}>
-                      <Text style={styles.titleText}>{title}</Text>
-                      {description && `\n${description}`}
-                    </Text>
+                    <TouchableOpacity
+                      onPress={() => shouldShowMore && setIsExpanded(true)}
+                      activeOpacity={shouldShowMore ? 0.7 : 1}
+                      disabled={!shouldShowMore}
+                    >
+                      <Text style={styles.description} numberOfLines={2}>
+                        <Text style={styles.titleText}>{title}</Text>
+                        {description && `\n${description}`}
+                      </Text>
+                    </TouchableOpacity>
                   </Animated.View>
 
                   {/* 확장 콘텐츠 - 높이가 늘어나면서 위로 확장 */}
@@ -311,22 +335,18 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                     </ScrollView>
                   </Animated.View>
 
-                  {/* 더보기/접기 버튼 - 내용이 길 때만 표시 */}
-                  {shouldShowMore && (
-                    <TouchableOpacity
-                      style={styles.moreButton}
-                      onPress={() => setIsExpanded(!isExpanded)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.moreText}>
-                        {isExpanded ? t('actions.less', '접기') : t('actions.more')}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* 태그 - 축소 상태에서 별도로 표시 (확장 시 fade out) */}
+                  {/* 태그 - 축소 상태에서 별도로 표시 (확장 시 fade out & 높이 축소) */}
                   {tags && tags.length > 0 && (
-                    <Animated.View style={{ opacity: collapsedOpacity }}>
+                    <Animated.View
+                      style={{
+                        opacity: collapsedOpacity,
+                        transform: [{ scaleY: collapsedTagHeight }],
+                        height: collapsedTagHeight.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 24], // 태그 높이 (marginTop 6 + lineHeight 18)
+                        }),
+                      }}
+                    >
                       <View style={styles.tagsContainer}>
                         <Text style={styles.tagsText} numberOfLines={1}>
                           {tags.map((tag) => `#${tag}`).join(' ')}
@@ -463,12 +483,13 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 };
 
 const styles = StyleSheet.create({
-  gradient: {
+  fullScreenOverlay: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    height: 250,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   container: {
     position: 'absolute',

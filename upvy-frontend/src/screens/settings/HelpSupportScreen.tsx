@@ -6,14 +6,14 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types/navigation.types';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'HelpSupport'>;
 
 const SUPPORT_EMAIL = 'app.upvy@gmail.com';
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -156,7 +156,7 @@ const useStyles = createStyleSheet({
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
   },
-});
+}));
 
 /**
  * Help & Support Screen
@@ -164,6 +164,7 @@ const useStyles = createStyleSheet({
  */
 export default function HelpSupportScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation('legal');
 
@@ -198,7 +199,7 @@ export default function HelpSupportScreen() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.colors.text.primary}
+            color={dynamicTheme.colors.text.primary}
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('helpSupport.title')}</Text>
@@ -216,7 +217,7 @@ export default function HelpSupportScreen() {
               <Ionicons
                 name="play-circle"
                 size={24}
-                color={theme.colors.primary[500]}
+                color={dynamicTheme.colors.primary[500]}
                 style={styles.helpIcon}
               />
               <View style={styles.helpContent}>
@@ -229,7 +230,7 @@ export default function HelpSupportScreen() {
               <Ionicons
                 name="search"
                 size={24}
-                color={theme.colors.primary[500]}
+                color={dynamicTheme.colors.primary[500]}
                 style={styles.helpIcon}
               />
               <View style={styles.helpContent}>
@@ -242,7 +243,7 @@ export default function HelpSupportScreen() {
               <Ionicons
                 name="cloud-upload"
                 size={24}
-                color={theme.colors.primary[500]}
+                color={dynamicTheme.colors.primary[500]}
                 style={styles.helpIcon}
               />
               <View style={styles.helpContent}>
@@ -255,7 +256,7 @@ export default function HelpSupportScreen() {
               <Ionicons
                 name="people"
                 size={24}
-                color={theme.colors.primary[500]}
+                color={dynamicTheme.colors.primary[500]}
                 style={styles.helpIcon}
               />
               <View style={styles.helpContent}>
@@ -315,7 +316,7 @@ export default function HelpSupportScreen() {
               style={styles.emailButton}
               onPress={handleEmailContact}
             >
-              <Ionicons name="mail-outline" size={20} color={theme.colors.text.primary} />
+              <Ionicons name="mail-outline" size={20} color={dynamicTheme.colors.text.primary} />
               <Text style={styles.emailButtonText}>{t('helpSupport.contact.email.button')}</Text>
             </TouchableOpacity>
 
@@ -329,12 +330,12 @@ export default function HelpSupportScreen() {
               style={styles.contactButton}
               onPress={handleContactSupport}
             >
-              <Ionicons name="logo-github" size={20} color={theme.colors.text.inverse} />
+              <Ionicons name="logo-github" size={20} color={dynamicTheme.colors.text.inverse} />
               <Text style={styles.contactButtonText}>{t('helpSupport.contact.github.button')}</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={{ height: theme.spacing[8] }} />
+          <View style={{ height: dynamicTheme.spacing[8] }} />
         </View>
       </ScrollView>
     </SafeAreaView>

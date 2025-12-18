@@ -17,6 +17,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { CATEGORIES, type Category } from '@/types/content.types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ExploreStackParamList } from '@/types/navigation.types';
@@ -51,7 +53,53 @@ type ExploreScreenNavigationProp = NativeStackNavigationProp<
   'ExploreMain'
 >;
 
+const useStyles = createStyleSheet((theme) => ({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+  },
+  header: {
+    paddingHorizontal: theme.spacing[4],
+    paddingBottom: theme.spacing[4],
+  },
+  title: {
+    color: theme.colors.text.primary,
+    fontWeight: '700' as const,
+  },
+  subtitle: {
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing[1],
+  },
+  scrollContent: {
+    paddingHorizontal: theme.spacing[4],
+  },
+  gridContainer: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: theme.spacing[4],
+  },
+  categoryCard: {
+    aspectRatio: 1,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing[4],
+    justifyContent: 'space-between' as const,
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+  },
+  categoryName: {
+    color: theme.colors.text.primary,
+    fontWeight: '700' as const,
+    marginBottom: theme.spacing[1],
+  },
+  categoryDesc: {
+    color: theme.colors.text.tertiary,
+  },
+}));
+
 export default function ExploreScreen() {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ExploreScreenNavigationProp>();
   const { width: screenWidth, fontScale } = useWindowDimensions();
@@ -68,83 +116,45 @@ export default function ExploreScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={styles.container}>
       {/* 헤더 */}
-      <View style={{
-        paddingTop: insets.top + 16,
-        paddingHorizontal: 16,
-        paddingBottom: 16,
-      }}>
-        <Text style={{
-          color: '#000000',
-          fontSize: 28 * adjustedFontScale,
-          fontWeight: '700',
-        }}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <Text style={[styles.title, { fontSize: 28 * adjustedFontScale }]}>
           {t('explore.title')}
         </Text>
-        <Text style={{
-          color: '#666666',
-          fontSize: 14 * adjustedFontScale,
-          marginTop: 4,
-        }}>
+        <Text style={[styles.subtitle, { fontSize: 14 * adjustedFontScale }]}>
           {t('explore.selectCategory')}
         </Text>
       </View>
 
       {/* 카테고리 그리드 */}
       <ScrollView
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingBottom: insets.bottom + 80,
-        }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}>
+        <View style={styles.gridContainer}>
           {CATEGORIES.map((categoryInfo) => (
             <TouchableOpacity
               key={categoryInfo.value}
               onPress={() => handleCategoryPress(categoryInfo.value)}
               activeOpacity={0.7}
-              style={{
-                width: CARD_WIDTH,
-                aspectRatio: 1,
-                backgroundColor: '#F8F9FA',
-                borderRadius: 12,
-                padding: 16,
-                justifyContent: 'space-between',
-                borderWidth: 1,
-                borderColor: '#E9ECEF',
-              }}
+              style={[styles.categoryCard, { width: CARD_WIDTH }]}
             >
               {/* 아이콘 */}
               <View>
                 <Ionicons
                   name={CATEGORY_ICON_MAP[categoryInfo.value] || 'grid'}
                   size={32}
-                  color="#22c55e"
+                  color={dynamicTheme.colors.primary[500]}
                 />
               </View>
 
               {/* 카테고리 정보 */}
               <View>
-                <Text style={{
-                  color: '#000000',
-                  fontSize: 17 * adjustedFontScale,
-                  fontWeight: '700',
-                  marginBottom: 4,
-                }}>
+                <Text style={[styles.categoryName, { fontSize: 17 * adjustedFontScale }]}>
                   {t(`category.${categoryInfo.value}.name`, categoryInfo.displayName)}
                 </Text>
-                <Text style={{
-                  color: '#6C757D',
-                  fontSize: 13 * adjustedFontScale,
-                }}
-                numberOfLines={2}
-                >
+                <Text style={[styles.categoryDesc, { fontSize: 13 * adjustedFontScale }]} numberOfLines={2}>
                   {t(`category.${categoryInfo.value}.desc`, categoryInfo.description)}
                 </Text>
               </View>

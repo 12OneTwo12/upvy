@@ -14,6 +14,7 @@ import {
 import { getCurrentUser, getMyProfile, getTermsAgreement, logout as apiLogout } from '@/api/auth.api';
 import { setSentryUser, clearSentryUser } from '@/config/sentry';
 import { queryClient } from '../../App';
+import { Analytics } from '@/utils/analytics';
 
 interface AuthState {
   // State
@@ -110,6 +111,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.warn('Backend logout failed:', error);
       }
 
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      Analytics.logLogout();
+      Analytics.setUserId(null);
+
       // Remove tokens
       await removeTokens();
       await removeItem(STORAGE_KEYS.USER_INFO);
@@ -174,6 +179,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           email: user.email,
           username: profile?.nickname || user.email,
         });
+
+        // Analytics 이벤트 (Fire-and-Forget - await 없음)
+        Analytics.setUserId(user.id);
 
         set({
           user,
