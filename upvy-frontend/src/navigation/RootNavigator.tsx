@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import type { NavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
 import { LoadingSpinner } from '@/components/common';
 import { useNotifications } from '@/hooks/useNotifications';
+import { Analytics, type ScreenName } from '@/utils/analytics';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import TermsAgreementScreen from '@/screens/auth/TermsAgreementScreen';
@@ -45,6 +47,22 @@ function NotificationHandler() {
 }
 
 /**
+ * 현재 화면 이름 추출
+ */
+function getActiveRouteName(state: NavigationState | undefined): string | undefined {
+  if (!state) return undefined;
+
+  const route = state.routes[state.index];
+
+  if (route.state) {
+    // Nested navigator가 있는 경우 재귀적으로 탐색
+    return getActiveRouteName(route.state as NavigationState);
+  }
+
+  return route.name;
+}
+
+/**
  * Root Navigator
  * 인증 상태와 프로필 존재 여부에 따라 화면을 표시합니다.
  */
@@ -55,6 +73,9 @@ export default function RootNavigator() {
   const profile = useAuthStore((state) => state.profile);
   const isLoading = useAuthStore((state) => state.isLoading);
   const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  // 화면 추적을 위한 ref
+  const routeNameRef = useRef<string>();
 
   // 앱 시작 시 자동 로그인 체크
   useEffect(() => {
@@ -67,7 +88,27 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      onReady={() => {
+        // 앱 시작 시 초기 화면 기록
+        const initialRoute = routeNameRef.current;
+        if (initialRoute) {
+          Analytics.logScreenView(initialRoute as ScreenName);
+        }
+      }}
+      onStateChange={(state) => {
+        const previousRouteName = routeNameRef.current;
+        const currentRouteName = getActiveRouteName(state);
+
+        if (previousRouteName !== currentRouteName && currentRouteName) {
+          // 화면이 변경되면 Analytics 로깅 (Fire-and-Forget - await 없음)
+          Analytics.logScreenView(currentRouteName as ScreenName);
+        }
+
+        // 다음 변경을 위해 현재 화면 이름 저장
+        routeNameRef.current = currentRouteName;
+      }}
+    >
       <NotificationHandler />
       <Stack.Navigator
         screenOptions={{

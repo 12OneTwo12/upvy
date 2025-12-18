@@ -18,6 +18,7 @@ import { createLike, deleteLike } from '@/api/like.api';
 import { createSave, deleteSave } from '@/api/save.api';
 import { shareContent, getShareLink } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
+import { Analytics } from '@/utils/analytics';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -123,6 +124,13 @@ export default function ContentViewerScreen() {
       }
     },
     onSuccess: (response) => {
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      if (response.isLiked) {
+        Analytics.logLike(contentId, 'video');
+      } else {
+        Analytics.logUnlike(contentId, 'video');
+      }
+
       // 콘텐츠의 인터랙션 정보 업데이트
       queryClient.setQueryData(['content', contentId], (oldData: any) => {
         if (!oldData) return oldData;
@@ -148,6 +156,13 @@ export default function ContentViewerScreen() {
       }
     },
     onSuccess: (response) => {
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      if (response.isSaved) {
+        Analytics.logSave(contentId, 'video');
+      } else {
+        Analytics.logUnsave(contentId, 'video');
+      }
+
       // 콘텐츠의 인터랙션 정보 업데이트
       queryClient.setQueryData(['content', contentId], (oldData: any) => {
         if (!oldData) return oldData;
@@ -174,8 +189,16 @@ export default function ContentViewerScreen() {
       } else {
         await followUser(userId);
       }
+      return { userId, isFollowing: !isFollowing };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      if (result.isFollowing) {
+        Analytics.logFollow(result.userId);
+      } else {
+        Analytics.logUnfollow(result.userId);
+      }
+
       // 프로필 다시 로드
       queryClient.invalidateQueries({ queryKey: ['profile', content?.creatorId] });
     },
@@ -204,6 +227,9 @@ export default function ContentViewerScreen() {
       return { previousData };
     },
     onSuccess: (response) => {
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      Analytics.logShare(contentId, 'video', 'link');
+
       // 콘텐츠의 인터랙션 정보 업데이트
       queryClient.setQueryData(['content', contentId], (oldData: any) => {
         if (!oldData) return oldData;

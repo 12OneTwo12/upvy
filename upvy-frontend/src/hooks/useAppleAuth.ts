@@ -6,6 +6,7 @@ import { getErrorMessage, logError } from '@/utils/errorHandler';
 import { API_HOST } from '@/constants/api';
 import { removeTokens, removeItem, STORAGE_KEYS, setAccessToken } from '@/utils/storage';
 import { getMyProfile } from '@/api/auth.api';
+import { Analytics } from '@/utils/analytics';
 
 /**
  * Apple OAuth Hook (Sign in with Apple)
@@ -106,6 +107,14 @@ export const useAppleAuth = () => {
         },
         profile || undefined
       );
+
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      if (profile) {
+        Analytics.logLogin('apple');
+      } else {
+        Analytics.logSignUp('apple');
+      }
+      Analytics.setUserId(userId || null);
 
       setIsLoading(false);
     } catch (err: any) {

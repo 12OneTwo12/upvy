@@ -6,6 +6,7 @@ import { getErrorMessage, logError } from '@/utils/errorHandler';
 import { API_HOST } from '@/constants/api';
 import { removeTokens, removeItem, STORAGE_KEYS, setAccessToken } from '@/utils/storage';
 import { getMyProfile } from '@/api/auth.api';
+import { Analytics } from '@/utils/analytics';
 
 /**
  * Google OAuth Hook (Custom Tabs 방식)
@@ -77,6 +78,14 @@ export const useGoogleAuth = () => {
             },
             profile || undefined
           );
+
+          // Analytics 이벤트 (Fire-and-Forget - await 없음)
+          if (profile) {
+            Analytics.logLogin('google');
+          } else {
+            Analytics.logSignUp('google');
+          }
+          Analytics.setUserId(userId || null);
 
           setIsLoading(false);
         }
