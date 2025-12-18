@@ -26,7 +26,7 @@ import {
 import { getUserContents } from '@/api/content.api';
 import { UserProfile } from '@/types/auth.types';
 import type { ContentResponse } from '@/types/content.types';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 import { ReportModal } from '@/components/report/ReportModal';
@@ -38,7 +38,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'UserProfile
  * 다른 사용자 프로필 화면
  * 인스타그램 스타일의 사용자 프로필 보기
  */
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -121,10 +121,11 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.secondary,
     textAlign: 'center',
   },
-});
+}));
 
 export default function UserProfileScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'UserProfile'>>();
@@ -302,7 +303,7 @@ export default function UserProfileScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+          <Ionicons name="arrow-back" size={24} color={dynamicTheme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{profile.nickname}</Text>
         {!isOwnProfile && (
@@ -310,7 +311,7 @@ export default function UserProfileScreen() {
             style={styles.headerRight}
             onPress={() => setShowActionSheet(true)}
           >
-            <Ionicons name="ellipsis-vertical" size={24} color={theme.colors.text.primary} />
+            <Ionicons name="ellipsis-vertical" size={24} color={dynamicTheme.colors.text.primary} />
           </TouchableOpacity>
         )}
         {isOwnProfile && <View style={styles.headerRight} />}
@@ -343,7 +344,7 @@ export default function UserProfileScreen() {
               style={styles.messageButton}
               activeOpacity={0.7}
             >
-              <Ionicons name="mail-outline" size={20} color={theme.colors.text.primary} />
+              <Ionicons name="mail-outline" size={20} color={dynamicTheme.colors.text.primary} />
             </TouchableOpacity>
           </View>
         )}
@@ -351,7 +352,7 @@ export default function UserProfileScreen() {
         {/* 콘텐츠 그리드 */}
         <View style={styles.contentSection}>
           <View style={styles.contentHeader}>
-            <Ionicons name="grid-outline" size={24} color={theme.colors.text.primary} />
+            <Ionicons name="grid-outline" size={24} color={dynamicTheme.colors.text.primary} />
           </View>
           <ContentGrid
             contents={userContents}

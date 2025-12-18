@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
 interface FollowButtonProps {
@@ -22,6 +22,7 @@ export default function FollowButton({
   disabled = false,
 }: FollowButtonProps) {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation('profile');
 
   return (
@@ -40,7 +41,7 @@ export default function FollowButton({
         <ActivityIndicator
           testID="follow-button-loading"
           size="small"
-          color={isFollowing ? theme.colors.text.primary : theme.colors.text.inverse}
+          color={isFollowing ? dynamicTheme.colors.text.primary : dynamicTheme.colors.text.inverse}
         />
       ) : (
         <Text
@@ -56,7 +57,7 @@ export default function FollowButton({
   );
 }
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   button: {
     paddingHorizontal: theme.spacing[6],
     paddingVertical: theme.spacing[2],
@@ -87,4 +88,4 @@ const useStyles = createStyleSheet({
   buttonTextFollowing: {
     color: theme.colors.text.primary,
   },
-});
+}));
