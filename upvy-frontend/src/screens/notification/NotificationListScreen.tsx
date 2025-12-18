@@ -27,7 +27,7 @@ import { Image } from 'expo-image';
 import { Swipeable } from 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { RootStackParamList } from '@/types/navigation.types';
@@ -42,7 +42,7 @@ import type { NotificationResponse, NotificationType, NotificationTargetType } f
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'NotificationList'>;
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -184,12 +184,12 @@ const useStyles = createStyleSheet({
     justifyContent: 'center',
     alignItems: 'center',
   },
-});
+}));
 
 /**
  * 알림 타입에 따른 아이콘 정보 반환
  */
-function getNotificationIcon(type: NotificationType): {
+function getNotificationIcon(type: NotificationType, isDarkMode: boolean): {
   name: keyof typeof Ionicons.glyphMap;
   color: string;
   backgroundColor: string;
@@ -199,31 +199,31 @@ function getNotificationIcon(type: NotificationType): {
       return {
         name: 'heart',
         color: '#ef4444',
-        backgroundColor: '#fee2e2',
+        backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2',
       };
     case 'COMMENT':
       return {
         name: 'chatbubble',
         color: '#3b82f6',
-        backgroundColor: '#dbeafe',
+        backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
       };
     case 'REPLY':
       return {
         name: 'chatbubble-ellipses',
         color: '#8b5cf6',
-        backgroundColor: '#ede9fe',
+        backgroundColor: isDarkMode ? 'rgba(139, 92, 246, 0.2)' : '#ede9fe',
       };
     case 'FOLLOW':
       return {
         name: 'person-add',
         color: '#22c55e',
-        backgroundColor: '#dcfce7',
+        backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.2)' : '#dcfce7',
       };
     default:
       return {
         name: 'notifications',
-        color: theme.colors.gray[500],
-        backgroundColor: theme.colors.gray[100],
+        color: isDarkMode ? '#9ca3af' : '#6b7280',
+        backgroundColor: isDarkMode ? 'rgba(156, 163, 175, 0.2)' : '#f3f4f6',
       };
   }
 }
@@ -263,6 +263,7 @@ function formatRelativeTime(dateString: string): string {
  */
 export default function NotificationListScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation('notification');
 
@@ -445,7 +446,7 @@ export default function NotificationListScreen() {
    */
   const renderNotificationItem = useCallback(
     ({ item }: { item: NotificationResponse }) => {
-      const iconInfo = getNotificationIcon(item.type);
+      const iconInfo = getNotificationIcon(item.type, dynamicTheme.mode === 'dark');
 
       return (
         <Swipeable
@@ -469,11 +470,11 @@ export default function NotificationListScreen() {
                   contentFit="cover"
                 />
               ) : (
-                <View style={[styles.avatar, { backgroundColor: theme.colors.gray[300] }]}>
+                <View style={[styles.avatar, { backgroundColor: dynamicTheme.colors.gray[300] }]}>
                   <Ionicons
                     name="person"
                     size={24}
-                    color={theme.colors.gray[500]}
+                    color={dynamicTheme.colors.gray[500]}
                   />
                 </View>
               )}
@@ -510,7 +511,7 @@ export default function NotificationListScreen() {
         </Swipeable>
       );
     },
-    [styles, handleNotificationPress, renderRightActions]
+    [styles, handleNotificationPress, renderRightActions, dynamicTheme.mode]
   );
 
   /**
@@ -522,14 +523,14 @@ export default function NotificationListScreen() {
         <Ionicons
           name="notifications-off-outline"
           size={64}
-          color={theme.colors.gray[300]}
+          color={dynamicTheme.colors.gray[300]}
           style={styles.emptyIcon}
         />
         <Text style={styles.emptyTitle}>{t('empty.title')}</Text>
         <Text style={styles.emptySubtitle}>{t('empty.subtitle')}</Text>
       </View>
     ),
-    [styles, t]
+    [styles, t, dynamicTheme.colors.gray]
   );
 
   /**
@@ -539,10 +540,10 @@ export default function NotificationListScreen() {
     if (!isLoadingMore) return null;
     return (
       <View style={styles.loadingFooter}>
-        <ActivityIndicator color={theme.colors.primary[500]} />
+        <ActivityIndicator color={dynamicTheme.colors.primary[500]} />
       </View>
     );
-  }, [isLoadingMore, styles]);
+  }, [isLoadingMore, styles, dynamicTheme.colors.primary]);
 
   if (isLoading) {
     return (
@@ -556,14 +557,14 @@ export default function NotificationListScreen() {
               <Ionicons
                 name="arrow-back"
                 size={24}
-                color={theme.colors.text.primary}
+                color={dynamicTheme.colors.text.primary}
               />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{t('title')}</Text>
           </View>
         </View>
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+          <ActivityIndicator size="large" color={dynamicTheme.colors.primary[500]} />
         </View>
       </SafeAreaView>
     );
@@ -582,7 +583,7 @@ export default function NotificationListScreen() {
               <Ionicons
                 name="arrow-back"
                 size={24}
-                color={theme.colors.text.primary}
+                color={dynamicTheme.colors.text.primary}
               />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{t('title')}</Text>
@@ -603,7 +604,7 @@ export default function NotificationListScreen() {
               <Ionicons
                 name="settings-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
               />
             </TouchableOpacity>
           </View>
@@ -619,7 +620,7 @@ export default function NotificationListScreen() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={theme.colors.primary[500]}
+              tintColor={dynamicTheme.colors.primary[500]}
             />
           }
           onEndReached={handleLoadMore}
