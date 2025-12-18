@@ -35,6 +35,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.upvy.app',
+      googleServicesFile: './GoogleService-Info.plist',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         UIViewControllerBasedStatusBarAppearance: true,
@@ -49,6 +50,7 @@ module.exports = {
         backgroundColor: '#ffffff',
       },
       package: 'com.upvy.app',
+      googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
     },
@@ -61,6 +63,8 @@ module.exports = {
       'expo-dev-client',
       'expo-video',
       'expo-apple-authentication',
+      '@react-native-firebase/app',
+      './plugins/withFirebasePodfile',
       [
         '@sentry/react-native/expo',
         {
@@ -103,6 +107,9 @@ module.exports = {
       sentryEnvironment: process.env.SENTRY_ENVIRONMENT || 'development',
       sentryDsn: process.env.SENTRY_DSN,
       sentryEnabled: process.env.SENTRY_ENABLED !== 'false',
+      // Firebase Analytics 설정
+      firebaseAnalyticsEnabled: process.env.FIREBASE_ANALYTICS_ENABLED !== 'false',
+      environment: process.env.APP_ENV || 'development',
     },
     owner: 'grow-snap',
   },

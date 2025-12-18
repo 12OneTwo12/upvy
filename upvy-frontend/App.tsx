@@ -9,10 +9,14 @@ import { ErrorBoundary } from './src/components/common';
 import { logError } from './src/utils/errorHandler';
 import { useLanguageStore } from './src/stores/languageStore';
 import { initializeSentry, Sentry } from './src/config/sentry';
+import { Analytics } from './src/utils/analytics';
 import './src/locales'; // Initialize i18n
 
 // Sentry 초기화 (환경별 설정 적용)
 initializeSentry();
+
+// Firebase Analytics 초기화
+Analytics.initialize();
 
 // React Query Client
 export const queryClient = new QueryClient({

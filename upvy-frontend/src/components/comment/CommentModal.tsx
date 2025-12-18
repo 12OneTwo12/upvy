@@ -35,6 +35,7 @@ import { createCommentLike, deleteCommentLike } from '@/api/commentLike.api';
 import { CommentItem } from './CommentItem';
 import { CommentInput } from './CommentInput';
 import { useAuthStore } from '@/stores/authStore';
+import { Analytics } from '@/utils/analytics';
 import type { CommentResponse } from '@/types/interaction.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -302,6 +303,10 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     },
     onSuccess: (newComment, variables, context) => {
       const isReply = !!variables.parentCommentId;
+
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      const commentLength = variables.content?.length || 0;
+      Analytics.logComment(contentId, commentLength);
 
       if (isReply && variables.parentCommentId) {
         // 백엔드 데이터와 동기화를 위해 답글 쿼리 invalidate
