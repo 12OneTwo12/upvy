@@ -37,7 +37,10 @@
     "title": "Theme Settings",
     "light": "Light Mode",
     "dark": "Dark Mode",
-    "system": "Follow System Settings"
+    "system": "Follow System Settings",
+    "lightDescription": "Display with bright screen",
+    "darkDescription": "Display with dark screen",
+    "systemDescription": "Auto-adjust based on device settings"
   },
   "logout": {
     "title": "Logout",

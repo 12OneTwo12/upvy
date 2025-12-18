@@ -159,7 +159,7 @@ export default function SettingsScreen() {
   const { t } = useTranslation('settings');
   const { logout} = useAuthStore();
   const { currentLanguage } = useLanguageStore();
-  const { theme: themeMode, setTheme } = useThemeStore();
+  const { theme: themeMode } = useThemeStore();
 
   // 백엔드 API 준비 후 실제 값으로 대체될 임시 상태
   const [privateAccount, setPrivateAccount] = useState(false);
@@ -282,34 +282,10 @@ export default function SettingsScreen() {
   };
 
   /**
-   * 테마 선택
+   * 테마 선택 화면으로 이동
    */
   const handleThemeSelector = () => {
-    Alert.alert(
-      t('theme.title'),
-      '',
-      [
-        {
-          text: t('theme.light'),
-          onPress: () => setTheme('light'),
-          style: themeMode === 'light' ? 'default' : 'cancel',
-        },
-        {
-          text: t('theme.dark'),
-          onPress: () => setTheme('dark'),
-          style: themeMode === 'dark' ? 'default' : 'cancel',
-        },
-        {
-          text: t('theme.system'),
-          onPress: () => setTheme('system'),
-          style: themeMode === 'system' ? 'default' : 'cancel',
-        },
-        {
-          text: t('common:button.cancel'),
-          style: 'cancel',
-        },
-      ]
-    );
+    navigation.navigate('ThemeSelector');
   };
 
   /**

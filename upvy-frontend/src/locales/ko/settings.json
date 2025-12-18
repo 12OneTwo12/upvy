@@ -37,7 +37,10 @@
     "title": "테마 설정",
     "light": "라이트 모드",
     "dark": "다크 모드",
-    "system": "시스템 설정 따르기"
+    "system": "시스템 설정 따르기",
+    "lightDescription": "밝은 화면으로 표시",
+    "darkDescription": "어두운 화면으로 표시",
+    "systemDescription": "기기 설정에 따라 자동 변경"
   },
   "logout": {
     "title": "로그아웃",

@@ -37,7 +37,10 @@
     "title": "テーマ設定",
     "light": "ライトモード",
     "dark": "ダークモード",
-    "system": "システム設定に従う"
+    "system": "システム設定に従う",
+    "lightDescription": "明るい画面で表示",
+    "darkDescription": "暗い画面で表示",
+    "systemDescription": "デバイス設定に従って自動変更"
   },
   "logout": {
     "title": "ログアウト",

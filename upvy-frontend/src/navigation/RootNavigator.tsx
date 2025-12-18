@@ -16,6 +16,7 @@ import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
 import LanguageSelectorScreen from '@/screens/settings/LanguageSelectorScreen';
+import ThemeSelectorScreen from '@/screens/settings/ThemeSelectorScreen';
 import PasswordChangeScreen from '@/screens/settings/PasswordChangeScreen';
 import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
@@ -163,6 +164,7 @@ export default function RootNavigator() {
             />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="LanguageSelector" component={LanguageSelectorScreen} />
+            <Stack.Screen name="ThemeSelector" component={ThemeSelectorScreen} />
             <Stack.Screen name="PasswordChange" component={PasswordChangeScreen} />
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
