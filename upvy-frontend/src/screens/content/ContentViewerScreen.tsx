@@ -281,7 +281,6 @@ export default function ContentViewerScreen() {
       // 2. 네이티브 공유 시트 열기
       const result = await Share.share({
         message: t('share.message', { url: shareUrl }),
-        url: shareUrl,
         title: t('share.title'),
       });
 

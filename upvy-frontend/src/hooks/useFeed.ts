@@ -518,7 +518,6 @@ export function useFeed(options: UseFeedOptions) {
         // 2. 네이티브 공유 시트 열기
         const result = await Share.share({
           message: `Upvy에서 흥미로운 콘텐츠를 발견했어요! 같이 봐요 😊\n\n${shareUrl}`,
-          url: shareUrl,
           title: 'Upvy 콘텐츠 공유',
         });
 
