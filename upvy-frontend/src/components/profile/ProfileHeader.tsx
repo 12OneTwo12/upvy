@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import ProfileAvatar from './ProfileAvatar';
 import ProfileStats from './ProfileStats';
@@ -17,7 +16,7 @@ interface ProfileHeaderProps {
   showStats?: boolean;
 }
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     backgroundColor: theme.colors.background.primary,
     paddingHorizontal: theme.spacing[4],
@@ -49,7 +48,7 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.primary,
     lineHeight: theme.typography.fontSize.base * 1.5,
   },
-});
+}));
 
 /**
  * 프로필 헤더 컴포넌트
