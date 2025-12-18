@@ -33,7 +33,7 @@ export function createStyleSheet<T extends StyleSheet.NamedStyles<T>>(
 
   return () => {
     const theme = useTheme();
-    const isDarkMode = theme.colors === require('@/theme/dark').darkColors;
+    const isDarkMode = theme.isDarkMode;
 
     if (!caches.has(isDarkMode)) {
       const styleObject = stylesOrFactory(theme);
