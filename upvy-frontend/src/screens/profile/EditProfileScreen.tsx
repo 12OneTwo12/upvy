@@ -469,7 +469,7 @@ export default function EditProfileScreen() {
                   value={nickname}
                   onChangeText={setNickname}
                   placeholder={t('edit.nicknamePlaceholder')}
-                  placeholderTextColor={theme.colors.text.tertiary}
+                  placeholderTextColor={dynamicTheme.colors.text.tertiary}
                   maxLength={20}
                   style={styles.input}
                   autoCapitalize="none"
@@ -520,7 +520,7 @@ export default function EditProfileScreen() {
                   value={bio}
                   onChangeText={setBio}
                   placeholder={t('edit.bioPlaceholder')}
-                  placeholderTextColor={theme.colors.text.tertiary}
+                  placeholderTextColor={dynamicTheme.colors.text.tertiary}
                   multiline
                   maxLength={150}
                   style={styles.bioInput}

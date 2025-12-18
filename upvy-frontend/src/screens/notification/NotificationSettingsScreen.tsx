@@ -23,7 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -31,7 +31,7 @@ import { checkNotificationPermission, showSettingsAlert } from '@/hooks/useNotif
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'NotificationSettings'>;
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -149,13 +149,14 @@ const useStyles = createStyleSheet({
     color: theme.colors.primary[500],
     fontWeight: theme.typography.fontWeight.medium,
   },
-});
+}));
 
 /**
  * 알림 설정 화면
  */
 export default function NotificationSettingsScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation('notification');
 
@@ -235,13 +236,13 @@ export default function NotificationSettingsScreen() {
             <Ionicons
               name="arrow-back"
               size={24}
-              color={theme.colors.text.primary}
+              color={dynamicTheme.colors.text.primary}
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('settings.title')}</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+          <ActivityIndicator size="large" color={dynamicTheme.colors.primary[500]} />
         </View>
       </SafeAreaView>
     );
@@ -258,7 +259,7 @@ export default function NotificationSettingsScreen() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.colors.text.primary}
+            color={dynamicTheme.colors.text.primary}
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('settings.title')}</Text>
@@ -271,7 +272,7 @@ export default function NotificationSettingsScreen() {
             <Ionicons
               name="warning-outline"
               size={20}
-              color={theme.colors.warning}
+              color={dynamicTheme.colors.warning}
               style={styles.permissionWarningIcon}
             />
             <Text style={styles.permissionWarningText}>
@@ -297,7 +298,7 @@ export default function NotificationSettingsScreen() {
               <Ionicons
                 name="notifications-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -311,13 +312,13 @@ export default function NotificationSettingsScreen() {
               value={settings.allNotificationsEnabled}
               onValueChange={handleAllNotificationsToggle}
               trackColor={{
-                false: theme.colors.gray[300],
-                true: theme.colors.primary[300],
+                false: dynamicTheme.colors.gray[300],
+                true: dynamicTheme.colors.primary[300],
               }}
               thumbColor={
                 settings.allNotificationsEnabled
-                  ? theme.colors.primary[500]
-                  : theme.colors.gray[200]
+                  ? dynamicTheme.colors.primary[500]
+                  : dynamicTheme.colors.gray[200]
               }
             />
           </View>
@@ -335,7 +336,7 @@ export default function NotificationSettingsScreen() {
               <Ionicons
                 name="heart-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -350,13 +351,13 @@ export default function NotificationSettingsScreen() {
               onValueChange={handleLikeNotificationsToggle}
               disabled={isIndividualSettingsDisabled}
               trackColor={{
-                false: theme.colors.gray[300],
-                true: theme.colors.primary[300],
+                false: dynamicTheme.colors.gray[300],
+                true: dynamicTheme.colors.primary[300],
               }}
               thumbColor={
                 settings.likeNotificationsEnabled
-                  ? theme.colors.primary[500]
-                  : theme.colors.gray[200]
+                  ? dynamicTheme.colors.primary[500]
+                  : dynamicTheme.colors.gray[200]
               }
             />
           </View>
@@ -367,7 +368,7 @@ export default function NotificationSettingsScreen() {
               <Ionicons
                 name="chatbubble-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -382,13 +383,13 @@ export default function NotificationSettingsScreen() {
               onValueChange={handleCommentNotificationsToggle}
               disabled={isIndividualSettingsDisabled}
               trackColor={{
-                false: theme.colors.gray[300],
-                true: theme.colors.primary[300],
+                false: dynamicTheme.colors.gray[300],
+                true: dynamicTheme.colors.primary[300],
               }}
               thumbColor={
                 settings.commentNotificationsEnabled
-                  ? theme.colors.primary[500]
-                  : theme.colors.gray[200]
+                  ? dynamicTheme.colors.primary[500]
+                  : dynamicTheme.colors.gray[200]
               }
             />
           </View>
@@ -399,7 +400,7 @@ export default function NotificationSettingsScreen() {
               <Ionicons
                 name="person-add-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -414,13 +415,13 @@ export default function NotificationSettingsScreen() {
               onValueChange={handleFollowNotificationsToggle}
               disabled={isIndividualSettingsDisabled}
               trackColor={{
-                false: theme.colors.gray[300],
-                true: theme.colors.primary[300],
+                false: dynamicTheme.colors.gray[300],
+                true: dynamicTheme.colors.primary[300],
               }}
               thumbColor={
                 settings.followNotificationsEnabled
-                  ? theme.colors.primary[500]
-                  : theme.colors.gray[200]
+                  ? dynamicTheme.colors.primary[500]
+                  : dynamicTheme.colors.gray[200]
               }
             />
           </View>
@@ -432,7 +433,7 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {/* 하단 여백 */}
-        <View style={{ height: theme.spacing[8] }} />
+        <View style={{ height: dynamicTheme.spacing[8] }} />
       </ScrollView>
     </SafeAreaView>
   );
