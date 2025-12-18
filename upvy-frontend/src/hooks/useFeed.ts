@@ -36,6 +36,7 @@ import { shareContent, getShareLink } from '@/api/share.api';
 import { followUser, unfollowUser } from '@/api/follow.api';
 import { trackView } from '@/api/analytics.api';
 import { useLanguageStore } from '@/stores/languageStore';
+import { Analytics } from '@/utils/analytics';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -149,6 +150,13 @@ export function useFeed(options: UseFeedOptions) {
       return { previousData };
     },
     onSuccess: (response) => {
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      if (response.isLiked) {
+        Analytics.logLike(response.contentId, 'video');
+      } else {
+        Analytics.logUnlike(response.contentId, 'video');
+      }
+
       queryClient.setQueryData<InfiniteData<FeedResponse>>(queryKey, (old) => {
         if (!old) return old;
         return {
@@ -218,6 +226,13 @@ export function useFeed(options: UseFeedOptions) {
       return { previousData };
     },
     onSuccess: (response) => {
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      if (response.isSaved) {
+        Analytics.logSave(response.contentId, 'video');
+      } else {
+        Analytics.logUnsave(response.contentId, 'video');
+      }
+
       queryClient.setQueryData<InfiniteData<FeedResponse>>(queryKey, (old) => {
         if (!old) return old;
         return {
@@ -258,6 +273,7 @@ export function useFeed(options: UseFeedOptions) {
       } else {
         await followUser(userId);
       }
+      return { userId, isFollowing: !isFollowing };
     },
     onMutate: async ({ userId }) => {
       await queryClient.cancelQueries({ queryKey });
@@ -285,6 +301,14 @@ export function useFeed(options: UseFeedOptions) {
       });
 
       return { previousData };
+    },
+    onSuccess: (result) => {
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      if (result.isFollowing) {
+        Analytics.logFollow(result.userId);
+      } else {
+        Analytics.logUnfollow(result.userId);
+      }
     },
     onError: (err, variables, context) => {
       if (context?.previousData) {
@@ -326,6 +350,9 @@ export function useFeed(options: UseFeedOptions) {
       return { previousData };
     },
     onSuccess: (response) => {
+      // Analytics 이벤트 (Fire-and-Forget - await 없음)
+      Analytics.logShare(response.contentId, 'video', 'link');
+
       queryClient.setQueryData<InfiniteData<FeedResponse>>(queryKey, (old) => {
         if (!old) return old;
         return {

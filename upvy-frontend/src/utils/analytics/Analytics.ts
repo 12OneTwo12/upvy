@@ -44,22 +44,23 @@ import {
 
 class AnalyticsService {
   private enabled: boolean = false;
+  private environment: 'development' | 'production' = 'development';
 
   /**
    * Analytics 초기화
-   * 프로덕션 환경에서만 활성화
+   * 모든 환경에서 활성화하되, environment 파라미터로 구분
    */
   initialize(): void {
     const firebaseAnalyticsEnabled =
       Constants.expoConfig?.extra?.firebaseAnalyticsEnabled ?? false;
-    const environment = Constants.expoConfig?.extra?.environment ?? 'development';
+    this.environment = (Constants.expoConfig?.extra?.environment ?? 'development') as 'development' | 'production';
 
-    // 개발 환경에서는 비활성화
-    this.enabled = firebaseAnalyticsEnabled && environment === 'production';
+    // Firebase Analytics가 활성화된 경우에만 작동
+    this.enabled = firebaseAnalyticsEnabled;
 
     if (__DEV__) {
       console.log(
-        `[Analytics] Initialized - Enabled: ${this.enabled}, Environment: ${environment}`
+        `[Analytics] Initialized - Enabled: ${this.enabled}, Environment: ${this.environment}`
       );
     }
   }
@@ -74,10 +75,10 @@ class AnalyticsService {
     if (!this.enabled) return;
 
     try {
-      analytics().logLogin({ method });
+      analytics().logLogin({ method, environment: this.environment });
 
       if (__DEV__) {
-        console.log('[Analytics] Login:', { method });
+        console.log('[Analytics] Login:', { method, environment: this.environment });
       }
     } catch (error) {
       console.error('[Analytics] Failed to log login:', error);
@@ -92,10 +93,10 @@ class AnalyticsService {
     if (!this.enabled) return;
 
     try {
-      analytics().logSignUp({ method });
+      analytics().logSignUp({ method, environment: this.environment });
 
       if (__DEV__) {
-        console.log('[Analytics] Sign up:', { method });
+        console.log('[Analytics] Sign up:', { method, environment: this.environment });
       }
     } catch (error) {
       console.error('[Analytics] Failed to log sign up:', error);
@@ -109,10 +110,10 @@ class AnalyticsService {
     if (!this.enabled) return;
 
     try {
-      analytics().logEvent(AnalyticsEvents.LOGOUT);
+      analytics().logEvent(AnalyticsEvents.LOGOUT, { environment: this.environment });
 
       if (__DEV__) {
-        console.log('[Analytics] Logout');
+        console.log('[Analytics] Logout:', { environment: this.environment });
       }
     } catch (error) {
       console.error('[Analytics] Failed to log logout:', error);
@@ -156,6 +157,7 @@ class AnalyticsService {
       const params: ContentViewParams = {
         content_id: contentId,
         content_type: contentType,
+        environment: this.environment,
         ...additionalParams,
       };
 
@@ -183,6 +185,7 @@ class AnalyticsService {
         content_id: contentId,
         content_type: contentType,
         creator_id: creatorId,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.LIKE, params);
@@ -207,6 +210,7 @@ class AnalyticsService {
       const params: UnlikeParams = {
         content_id: contentId,
         content_type: contentType,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.UNLIKE, params);
@@ -231,6 +235,7 @@ class AnalyticsService {
       const params: SaveParams = {
         content_id: contentId,
         content_type: contentType,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.SAVE, params);
@@ -255,6 +260,7 @@ class AnalyticsService {
       const params: UnsaveParams = {
         content_id: contentId,
         content_type: contentType,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.UNSAVE, params);
@@ -279,6 +285,7 @@ class AnalyticsService {
       const params: CommentParams = {
         content_id: contentId,
         comment_length: commentLength,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.COMMENT, params);
@@ -305,6 +312,7 @@ class AnalyticsService {
         content_id: contentId,
         content_type: contentType,
         method,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.SHARE, params);
@@ -333,6 +341,7 @@ class AnalyticsService {
         search_term: searchTerm,
         result_count: resultCount,
         category,
+        environment: this.environment,
       };
 
       analytics().logSearch(params);
@@ -357,6 +366,7 @@ class AnalyticsService {
       const params: ProfileViewParams = {
         user_id: userId,
         is_self: isSelf,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.PROFILE_VIEW, params);
@@ -379,6 +389,7 @@ class AnalyticsService {
     try {
       const params: FollowParams = {
         user_id: userId,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.FOLLOW, params);
@@ -401,6 +412,7 @@ class AnalyticsService {
     try {
       const params: UnfollowParams = {
         user_id: userId,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.UNFOLLOW, params);
@@ -427,6 +439,7 @@ class AnalyticsService {
       const params: ContentUploadStartParams = {
         content_type: contentType,
         category,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.CONTENT_UPLOAD_START, params);
@@ -456,6 +469,7 @@ class AnalyticsService {
       const params: ContentUploadCompleteParams = {
         content_type: contentType,
         category,
+        environment: this.environment,
         ...additionalParams,
       };
 
@@ -479,6 +493,7 @@ class AnalyticsService {
     try {
       const params: ContentUploadFailedParams = {
         error_message: errorMessage,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.CONTENT_UPLOAD_FAILED, params);
@@ -507,6 +522,7 @@ class AnalyticsService {
         content_id: contentId,
         position,
         duration,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.VIDEO_PLAY, params);
@@ -531,6 +547,7 @@ class AnalyticsService {
       const params: VideoPauseParams = {
         content_id: contentId,
         position,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.VIDEO_PAUSE, params);
@@ -557,6 +574,7 @@ class AnalyticsService {
         content_id: contentId,
         watch_time: watchTime,
         duration,
+        environment: this.environment,
       };
 
       analytics().logEvent(AnalyticsEvents.VIDEO_COMPLETE, params);
@@ -582,10 +600,11 @@ class AnalyticsService {
       analytics().logScreenView({
         screen_name: screenName,
         screen_class: screenName,
+        environment: this.environment,
       });
 
       if (__DEV__) {
-        console.log('[Analytics] Screen view:', screenName);
+        console.log('[Analytics] Screen view:', { screen_name: screenName, environment: this.environment });
       }
     } catch (error) {
       console.error('[Analytics] Failed to log screen view:', error);
@@ -605,6 +624,7 @@ class AnalyticsService {
     try {
       const params: ErrorParams = {
         error_message: errorMessage,
+        environment: this.environment,
         ...additionalParams,
       };
 
