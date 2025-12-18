@@ -29,7 +29,8 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { cleanIOSVideoUri } from '@/utils/videoUtils';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -45,6 +46,8 @@ const VIDEO_HEIGHT = SCREEN_HEIGHT * 0.6;
 const MAX_VIDEO_DURATION = 60;
 
 export default function VideoEditScreen({ navigation, route }: Props) {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation(['upload', 'common']);
   const { asset } = route.params;
 
@@ -880,7 +883,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       {/* 헤더 - PhotoEditScreen 스타일 */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <Ionicons name="arrow-back" size={28} color={theme.colors.text.primary} />
+          <Ionicons name="arrow-back" size={28} color={dynamicTheme.colors.text.primary} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{t('upload:edit.title')}</Text>
@@ -910,7 +913,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         <View style={styles.videoContainer}>
           {isLoadingVideo ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+              <ActivityIndicator size="large" color={dynamicTheme.colors.primary[500]} />
               <Text style={styles.loadingText}>{t('upload:edit.videoLoading')}</Text>
               <Text style={styles.loadingSubtext}>
                 {asset.uri?.startsWith('ph://')
@@ -927,7 +930,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
             />
           ) : (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+              <ActivityIndicator size="large" color={dynamicTheme.colors.primary[500]} />
               <Text style={styles.loadingText}>{t('upload:edit.videoLoading')}</Text>
             </View>
           )}
@@ -1123,7 +1126,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
           {isGeneratingThumbnails ? (
             <ActivityIndicator
               size="large"
-              color={theme.colors.primary[500]}
+              color={dynamicTheme.colors.primary[500]}
               style={styles.loader}
             />
           ) : (
@@ -1207,7 +1210,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -1509,4 +1512,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing[1],
   },
-});
+}));

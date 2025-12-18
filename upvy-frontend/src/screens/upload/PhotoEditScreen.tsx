@@ -24,7 +24,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { generateUploadUrl, uploadFileToS3 } from '@/api/content.api';
@@ -110,6 +111,8 @@ const ASPECT_RATIOS: AspectRatioOption[] = [
 ];
 
 export default function PhotoEditScreen({ navigation, route }: Props) {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation(['upload', 'common']);
   const { assets: initialAssets } = route.params;
 
@@ -269,7 +272,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
       {/* 헤더 */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <Ionicons name="arrow-back" size={28} color={theme.colors.text.primary} />
+          <Ionicons name="arrow-back" size={28} color={dynamicTheme.colors.text.primary} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{t('upload:edit.title')}</Text>
@@ -344,7 +347,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
                 <Ionicons
                   name={option.icon as any}
                   size={20}
-                  color={aspectRatio === option.value ? theme.colors.primary[500] : theme.colors.text.secondary}
+                  color={aspectRatio === option.value ? dynamicTheme.colors.primary[500] : dynamicTheme.colors.text.secondary}
                 />
                 <Text
                   style={[
@@ -446,7 +449,7 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -634,4 +637,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing[1],
   },
-});
+}));
