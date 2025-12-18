@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { LoadingSpinner } from '@/components/common';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Analytics, type ScreenName } from '@/utils/analytics';
@@ -92,6 +93,7 @@ export default function RootNavigator() {
   const profile = useAuthStore((state) => state.profile);
   const isLoading = useAuthStore((state) => state.isLoading);
   const checkAuth = useAuthStore((state) => state.checkAuth);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   // 화면 추적을 위한 ref
   const routeNameRef = useRef<string>();
@@ -132,7 +134,7 @@ export default function RootNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          statusBarStyle: 'dark',
+          statusBarStyle: isDarkMode ? 'light' : 'dark',
         }}
       >
         {!isAuthenticated ? (

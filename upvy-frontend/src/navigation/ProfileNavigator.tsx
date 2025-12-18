@@ -9,6 +9,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { ProfileStackParamList } from '@/types/navigation.types';
+import { useThemeStore } from '@/stores/themeStore';
 
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 import ContentViewerScreen from '@/screens/content/ContentViewerScreen';
@@ -19,12 +20,13 @@ const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 export default function ProfileNavigator() {
   const { t } = useTranslation(['common', 'profile']);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        statusBarStyle: 'dark',
+        statusBarStyle: isDarkMode ? 'light' : 'dark',
       }}
     >
       <Stack.Screen

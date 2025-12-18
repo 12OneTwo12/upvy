@@ -9,6 +9,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { FeedStackParamList } from '@/types/navigation.types';
+import { useThemeStore } from '@/stores/themeStore';
 
 import FeedScreen from '@/screens/feed/FeedScreen';
 import ContentViewerScreen from '@/screens/content/ContentViewerScreen';
@@ -19,12 +20,13 @@ const Stack = createNativeStackNavigator<FeedStackParamList>();
 
 export default function FeedNavigator() {
   const { t } = useTranslation(['feed', 'common', 'profile']);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        statusBarStyle: 'light',
+        statusBarStyle: 'light', // ContentViewer는 항상 어두운 배경이므로 light 유지
       }}
     >
       <Stack.Screen
@@ -46,7 +48,7 @@ export default function FeedNavigator() {
         options={{
           title: t('common:navigation.profile'),
           animation: 'simple_push',
-          statusBarStyle: 'dark',
+          statusBarStyle: isDarkMode ? 'light' : 'dark',
         }}
       />
       <Stack.Screen
@@ -54,7 +56,7 @@ export default function FeedNavigator() {
         component={FollowListScreen}
         options={{
           title: t('profile:follow.followList'),
-          statusBarStyle: 'dark',
+          statusBarStyle: isDarkMode ? 'light' : 'dark',
         }}
       />
     </Stack.Navigator>

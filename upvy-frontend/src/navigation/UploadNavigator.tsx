@@ -8,6 +8,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { UploadStackParamList } from '@/types/navigation.types';
+import { useThemeStore } from '@/stores/themeStore';
 
 import UploadMainScreen from '@/screens/upload/UploadMainScreen';
 import VideoEditScreen from '@/screens/upload/VideoEditScreen';
@@ -19,12 +20,13 @@ const Stack = createNativeStackNavigator<UploadStackParamList>();
 
 export default function UploadNavigator() {
   const { t } = useTranslation(['upload']);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        statusBarStyle: 'dark',
+        statusBarStyle: isDarkMode ? 'light' : 'dark',
         // simple_push: iOS에서 모서리 둥글어짐 방지
         animation: 'simple_push',
       }}

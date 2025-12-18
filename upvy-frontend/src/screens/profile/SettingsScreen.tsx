@@ -18,8 +18,9 @@ import Constants from 'expo-constants';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
 import { useLanguageStore } from '@/stores/languageStore';
+import { useThemeStore, ThemeMode } from '@/stores/themeStore';
 import { supportedLanguages } from '@/locales';
-import { theme } from '@/theme';
+import { theme, useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import { deleteUser } from '@/api/user.api';
 import { withErrorHandling } from '@/utils/errorHandler';
@@ -153,13 +154,23 @@ const useStyles = createStyleSheet({
  */
 export default function SettingsScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation('settings');
   const { logout} = useAuthStore();
   const { currentLanguage } = useLanguageStore();
+  const { theme: themeMode, setTheme } = useThemeStore();
 
   // 백엔드 API 준비 후 실제 값으로 대체될 임시 상태
   const [privateAccount, setPrivateAccount] = useState(false);
+
+  // 테마 표시 텍스트
+  const themeDisplayTexts: Record<ThemeMode, string> = {
+    light: t('theme.light'),
+    dark: t('theme.dark'),
+    system: t('theme.system'),
+  };
+  const currentThemeDisplay = themeDisplayTexts[themeMode];
 
   // 버전 터치 카운트 (디버그용)
   const versionTapCount = useRef(0);
@@ -271,6 +282,37 @@ export default function SettingsScreen() {
   };
 
   /**
+   * 테마 선택
+   */
+  const handleThemeSelector = () => {
+    Alert.alert(
+      t('theme.title'),
+      '',
+      [
+        {
+          text: t('theme.light'),
+          onPress: () => setTheme('light'),
+          style: themeMode === 'light' ? 'default' : 'cancel',
+        },
+        {
+          text: t('theme.dark'),
+          onPress: () => setTheme('dark'),
+          style: themeMode === 'dark' ? 'default' : 'cancel',
+        },
+        {
+          text: t('theme.system'),
+          onPress: () => setTheme('system'),
+          style: themeMode === 'system' ? 'default' : 'cancel',
+        },
+        {
+          text: t('common:button.cancel'),
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  /**
    * 언어 선택 화면으로 이동
    */
   const handleLanguageSelector = () => {
@@ -367,7 +409,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.colors.text.primary}
+            color={dynamicTheme.colors.text.primary}
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('title')}</Text>
@@ -383,7 +425,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="person-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -394,7 +436,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
         </View>
@@ -412,7 +454,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
               <Ionicons
                 name="lock-closed-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -530,13 +572,36 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
 
           <TouchableOpacity
             style={styles.settingRow}
+            onPress={handleThemeSelector}
+          >
+            <View style={styles.settingLeft}>
+              <Ionicons
+                name="moon-outline"
+                size={22}
+                color={dynamicTheme.colors.text.secondary}
+                style={styles.settingIcon}
+              />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>{t('general.theme')}</Text>
+                <Text style={styles.settingSubtitle}>{currentThemeDisplay}</Text>
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={dynamicTheme.colors.gray[400]}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingRow}
             onPress={handleLanguageSelector}
           >
             <View style={styles.settingLeft}>
               <Ionicons
                 name="language-outline"
                 size={22}
-                color={theme.colors.text.secondary}
+                color={dynamicTheme.colors.text.secondary}
                 style={styles.settingIcon}
               />
               <View style={styles.settingContent}>
@@ -547,7 +612,7 @@ Is Embedded Launch: ${Updates.isEmbeddedLaunch ? 'Yes' : 'No'}
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={theme.colors.gray[400]}
+              color={dynamicTheme.colors.gray[400]}
             />
           </TouchableOpacity>
 

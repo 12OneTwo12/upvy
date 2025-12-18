@@ -23,6 +23,8 @@
     "notificationsSubtitle": "좋아요, 댓글, 팔로우 알림"
   },
   "general": {
+    "theme": "테마",
+    "themeSubtitle": "라이트 / 다크 모드",
     "language": "언어",
     "languageSubtitle": "앱 언어 선택",
     "termsOfService": "서비스 약관",
@@ -30,6 +32,12 @@
     "communityGuidelines": "커뮤니티 가이드라인",
     "helpSupport": "도움말 및 지원",
     "version": "버전 정보"
+  },
+  "theme": {
+    "title": "테마 설정",
+    "light": "라이트 모드",
+    "dark": "다크 모드",
+    "system": "시스템 설정 따르기"
   },
   "logout": {
     "title": "로그아웃",
