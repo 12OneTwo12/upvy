@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { scaleSpacing } from '@/utils/responsive';
 import { createStyleSheet } from '@/utils/styles';
 import {
@@ -163,6 +163,7 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
     setRetryCount(0);
   }, [clearAllTimers]);
 
+  const dynamicTheme = useTheme();
   const styles = useStyles();
 
   return (
@@ -204,7 +205,7 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
       {/* 로딩 스피너 */}
       {mediaLoading && !showRetryButton && (
         <View style={styles.exploreLoadingOverlay}>
-          <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+          <ActivityIndicator size="small" color={dynamicTheme.colors.primary[500]} />
         </View>
       )}
 
@@ -222,14 +223,14 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
       {/* 비디오 타입 인디케이터 */}
       {!mediaLoading && !showRetryButton && item.contentType === 'VIDEO' && (
         <View style={styles.exploreVideoIndicator}>
-          <Ionicons name="play" size={16} color={theme.colors.text.inverse} />
+          <Ionicons name="play" size={16} color={dynamicTheme.colors.text.inverse} />
         </View>
       )}
 
       {/* 멀티 포토 인디케이터 */}
       {!mediaLoading && !showRetryButton && item.contentType === 'PHOTO' && item.photoUrls && item.photoUrls.length > 1 && (
         <View style={styles.explorePhotoIndicator}>
-          <Ionicons name="copy-outline" size={16} color={theme.colors.text.inverse} />
+          <Ionicons name="copy-outline" size={16} color={dynamicTheme.colors.text.inverse} />
         </View>
       )}
     </TouchableOpacity>
@@ -238,6 +239,7 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
 
 export default function SearchScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation(['search', 'common']);
@@ -479,8 +481,8 @@ export default function SearchScreen() {
         case 'USER':
           return {
             name: 'person' as const,
-            backgroundColor: theme.colors.primary[100],
-            iconColor: theme.colors.primary[500],
+            backgroundColor: dynamicTheme.colors.primary[100],
+            iconColor: dynamicTheme.colors.primary[500],
           };
         case 'TAG':
           return {
@@ -491,8 +493,8 @@ export default function SearchScreen() {
         default:
           return {
             name: 'search' as const,
-            backgroundColor: theme.colors.gray[100],
-            iconColor: theme.colors.text.tertiary,
+            backgroundColor: dynamicTheme.colors.gray[100],
+            iconColor: dynamicTheme.colors.text.tertiary,
           };
       }
     };
@@ -531,7 +533,7 @@ export default function SearchScreen() {
         </View>
 
         {/* 화살표 아이콘 */}
-        <Ionicons name="arrow-up-outline" size={20} color={theme.colors.text.tertiary} />
+        <Ionicons name="arrow-up-outline" size={20} color={dynamicTheme.colors.text.tertiary} />
       </TouchableOpacity>
     );
   };
@@ -556,11 +558,11 @@ export default function SearchScreen() {
         style={styles.historyItemLeft}
         onPress={() => handleKeywordPress(item.keyword)}
       >
-        <Ionicons name="time-outline" size={20} color={theme.colors.text.tertiary} />
+        <Ionicons name="time-outline" size={20} color={dynamicTheme.colors.text.tertiary} />
         <Text style={styles.historyKeyword}>{item.keyword}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => handleDeleteHistory(item.keyword)}>
-        <Ionicons name="close-outline" size={20} color={theme.colors.text.tertiary} />
+        <Ionicons name="close-outline" size={20} color={dynamicTheme.colors.text.tertiary} />
       </TouchableOpacity>
     </View>
   );
@@ -656,7 +658,7 @@ export default function SearchScreen() {
     if (loadingResults) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+          <ActivityIndicator size="large" color={dynamicTheme.colors.primary[500]} />
         </View>
       );
     }
@@ -771,15 +773,15 @@ export default function SearchScreen() {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+          <Ionicons name="arrow-back" size={24} color={dynamicTheme.colors.text.primary} />
         </TouchableOpacity>
 
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search-outline" size={18} color={theme.colors.text.tertiary} />
+          <Ionicons name="search-outline" size={18} color={dynamicTheme.colors.text.tertiary} />
           <TextInput
             style={styles.searchInput}
             placeholder={t('search:placeholder')}
-            placeholderTextColor={theme.colors.text.tertiary}
+            placeholderTextColor={dynamicTheme.colors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={() => handleSearch(searchQuery)}
@@ -790,7 +792,7 @@ export default function SearchScreen() {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={handleClearSearch}>
-              <Ionicons name="close-circle" size={18} color={theme.colors.text.tertiary} />
+              <Ionicons name="close-circle" size={18} color={dynamicTheme.colors.text.tertiary} />
             </TouchableOpacity>
           )}
         </View>
@@ -843,7 +845,7 @@ export default function SearchScreen() {
                   {loadingTrending ? (
                     <ActivityIndicator
                       size="small"
-                      color={theme.colors.primary[500]}
+                      color={dynamicTheme.colors.primary[500]}
                       style={styles.loadingIndicator}
                     />
                   ) : (
@@ -863,7 +865,7 @@ export default function SearchScreen() {
   );
 }
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -1229,4 +1231,4 @@ const useStyles = createStyleSheet({
     top: theme.spacing[2],
     right: theme.spacing[2],
   },
-});
+}));
