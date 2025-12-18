@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/common';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { showErrorAlert, logError } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 import { changePassword } from '@/api/auth.api';
@@ -31,6 +31,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'PasswordCha
 export default function PasswordChangeScreen() {
   const { t } = useTranslation('settings');
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
 
@@ -139,8 +140,8 @@ export default function PasswordChangeScreen() {
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop: Math.max(insets.top, theme.spacing[4]),
-              paddingBottom: Math.max(insets.bottom, theme.spacing[6]),
+              paddingTop: Math.max(insets.top, dynamicTheme.spacing[4]),
+              paddingBottom: Math.max(insets.bottom, dynamicTheme.spacing[6]),
             },
           ]}
           showsVerticalScrollIndicator={false}
@@ -226,7 +227,7 @@ export default function PasswordChangeScreen() {
   );
 }
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -308,4 +309,4 @@ const useStyles = createStyleSheet({
   buttonContainer: {
     gap: theme.spacing[4],
   },
-});
+}));

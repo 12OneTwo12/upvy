@@ -10,13 +10,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   Dimensions,
   Animated,
   Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -41,6 +41,8 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
   options,
   title,
 }) => {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
 
@@ -145,10 +147,10 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
                     size={24}
                     color={
                       option.destructive
-                        ? theme.colors.error
+                        ? dynamicTheme.colors.error
                         : option.disabled
-                        ? theme.colors.text.tertiary
-                        : theme.colors.text.primary
+                        ? dynamicTheme.colors.text.tertiary
+                        : dynamicTheme.colors.text.primary
                     }
                     style={styles.optionIcon}
                   />
@@ -176,9 +178,13 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   overlayTouchable: {
@@ -263,4 +269,4 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
   },
-});
+}));

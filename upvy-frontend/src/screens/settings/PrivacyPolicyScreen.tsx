@@ -6,12 +6,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types/navigation.types';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'PrivacyPolicy'>;
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -99,7 +99,7 @@ const useStyles = createStyleSheet({
   tableCellHeader: {
     fontWeight: theme.typography.fontWeight.semibold,
   },
-});
+}));
 
 /**
  * Privacy Policy Screen
@@ -107,6 +107,7 @@ const useStyles = createStyleSheet({
  */
 export default function PrivacyPolicyScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation('legal');
 
@@ -121,7 +122,7 @@ export default function PrivacyPolicyScreen() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.colors.text.primary}
+            color={dynamicTheme.colors.text.primary}
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('privacyPolicy.title')}</Text>
@@ -246,7 +247,7 @@ export default function PrivacyPolicyScreen() {
             <Text style={styles.listItem}>• {t('privacyPolicy.sections.contactInfo.app')}</Text>
           </View>
 
-          <View style={{ height: theme.spacing[8] }} />
+          <View style={{ height: dynamicTheme.spacing[8] }} />
         </View>
       </ScrollView>
     </SafeAreaView>

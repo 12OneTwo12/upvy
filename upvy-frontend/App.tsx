@@ -8,6 +8,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/components/common';
 import { logError } from './src/utils/errorHandler';
 import { useLanguageStore } from './src/stores/languageStore';
+import { useThemeStore } from './src/stores/themeStore';
 import { initializeSentry, Sentry } from './src/config/sentry';
 import { Analytics } from './src/utils/analytics';
 import './src/locales'; // Initialize i18n
@@ -34,6 +35,11 @@ export default Sentry.wrap(function App() {
   // Initialize language on app start
   useEffect(() => {
     useLanguageStore.getState().initializeLanguage();
+  }, []);
+
+  // Initialize theme on app start
+  useEffect(() => {
+    useThemeStore.getState().initializeTheme();
   }, []);
 
   // Configure audio mode to interrupt background audio (music, etc.)

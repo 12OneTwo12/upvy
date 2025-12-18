@@ -25,7 +25,7 @@ import {
   getProfileByUserId,
 } from '@/api/auth.api';
 import { UserProfile } from '@/types/auth.types';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 
@@ -42,7 +42,7 @@ type UserWithFollowState = UserProfile & {
  * 팔로워/팔로잉 목록 화면
  * 인스타그램 스타일의 사용자 목록
  */
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -146,10 +146,11 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.secondary,
     textAlign: 'center',
   },
-});
+}));
 
 export default function FollowListScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'FollowList'>>();
@@ -337,7 +338,7 @@ export default function FollowListScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+          <Ionicons name="arrow-back" size={24} color={dynamicTheme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {userNickname ? `@${userNickname}` : t('follow.followList')}
@@ -387,7 +388,7 @@ export default function FollowListScreen() {
             <Ionicons
               name="people-outline"
               size={64}
-              color={theme.colors.gray[300]}
+              color={dynamicTheme.colors.gray[300]}
               style={styles.emptyIcon}
             />
             <Text style={styles.emptyText}>

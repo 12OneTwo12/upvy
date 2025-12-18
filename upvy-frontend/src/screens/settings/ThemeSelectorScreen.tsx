@@ -11,9 +11,15 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
-import { useLanguageStore } from '@/stores/languageStore';
-import { supportedLanguages } from '@/locales';
-import type { SupportedLanguage } from '@/locales';
+import { useThemeStore, ThemeMode } from '@/stores/themeStore';
+
+const themeModes: ThemeMode[] = ['light', 'dark', 'system'];
+
+const themeIcons: Record<ThemeMode, keyof typeof Ionicons.glyphMap> = {
+  light: 'sunny-outline',
+  dark: 'moon-outline',
+  system: 'phone-portrait-outline',
+};
 
 const useStyles = createStyleSheet((theme) => ({
   container: {
@@ -43,7 +49,7 @@ const useStyles = createStyleSheet((theme) => ({
   scrollView: {
     flex: 1,
   },
-  languageItem: {
+  themeItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -53,15 +59,23 @@ const useStyles = createStyleSheet((theme) => ({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border.light,
   },
-  languageInfo: {
+  themeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  languageName: {
+  themeIcon: {
+    marginRight: theme.spacing[3],
+  },
+  themeInfo: {
+    flex: 1,
+  },
+  themeName: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
     fontWeight: theme.typography.fontWeight.medium,
   },
-  languageNameEn: {
+  themeDescription: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
     marginTop: theme.spacing[1],
@@ -71,23 +85,27 @@ const useStyles = createStyleSheet((theme) => ({
   },
 }));
 
-/**
- * Language Selector Screen
- * Allows users to choose their preferred language
- */
-export default function LanguageSelectorScreen() {
+export default function ThemeSelectorScreen() {
   const styles = useStyles();
   const dynamicTheme = useTheme();
   const navigation = useNavigation();
   const { t } = useTranslation('settings');
-  const { currentLanguage, setLanguage } = useLanguageStore();
+  const { theme: currentTheme, setTheme } = useThemeStore();
 
-  /**
-   * Handle language selection
-   */
-  const handleSelectLanguage = async (languageCode: string) => {
-    await setLanguage(languageCode as SupportedLanguage);
-    // Go back after language is changed
+  const getThemeDescription = (mode: ThemeMode): string => {
+    switch (mode) {
+      case 'light':
+        return t('theme.lightDescription') || '밝은 화면으로 표시';
+      case 'dark':
+        return t('theme.darkDescription') || '어두운 화면으로 표시';
+      case 'system':
+        return t('theme.systemDescription') || '기기 설정에 따라 자동 변경';
+    }
+  };
+
+  const handleSelectTheme = async (themeMode: ThemeMode) => {
+    await setTheme(themeMode);
+    // Go back after theme is changed
     navigation.goBack();
   };
 
@@ -105,21 +123,29 @@ export default function LanguageSelectorScreen() {
             color={dynamicTheme.colors.text.primary}
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('general.language')}</Text>
+        <Text style={styles.headerTitle}>{t('general.theme')}</Text>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {supportedLanguages.map((language) => (
+        {themeModes.map((mode) => (
           <TouchableOpacity
-            key={language.code}
-            style={styles.languageItem}
-            onPress={() => handleSelectLanguage(language.code)}
+            key={mode}
+            style={styles.themeItem}
+            onPress={() => handleSelectTheme(mode)}
           >
-            <View style={styles.languageInfo}>
-              <Text style={styles.languageName}>{language.name}</Text>
-              <Text style={styles.languageNameEn}>{language.nameEn}</Text>
+            <View style={styles.themeLeft}>
+              <Ionicons
+                name={themeIcons[mode]}
+                size={24}
+                color={dynamicTheme.colors.text.secondary}
+                style={styles.themeIcon}
+              />
+              <View style={styles.themeInfo}>
+                <Text style={styles.themeName}>{t(`theme.${mode}`)}</Text>
+                <Text style={styles.themeDescription}>{getThemeDescription(mode)}</Text>
+              </View>
             </View>
-            {currentLanguage === language.code && (
+            {currentTheme === mode && (
               <Ionicons
                 name="checkmark"
                 size={24}

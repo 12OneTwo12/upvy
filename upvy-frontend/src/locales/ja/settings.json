@@ -23,6 +23,8 @@
     "notificationsSubtitle": "いいね、コメント、フォロー通知"
   },
   "general": {
+    "theme": "テーマ",
+    "themeSubtitle": "ライト / ダークモード",
     "language": "言語",
     "languageSubtitle": "アプリの言語を選択",
     "termsOfService": "利用規約",
@@ -30,6 +32,15 @@
     "communityGuidelines": "コミュニティガイドライン",
     "helpSupport": "ヘルプとサポート",
     "version": "バージョン情報"
+  },
+  "theme": {
+    "title": "テーマ設定",
+    "light": "ライトモード",
+    "dark": "ダークモード",
+    "system": "システム設定に従う",
+    "lightDescription": "明るい画面で表示",
+    "darkDescription": "暗い画面で表示",
+    "systemDescription": "デバイス設定に従って自動変更"
   },
   "logout": {
     "title": "ログアウト",

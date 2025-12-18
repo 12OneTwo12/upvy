@@ -24,7 +24,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { useLanguageStore } from '@/stores/languageStore';
 import type { UploadStackParamList } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -35,6 +36,8 @@ import { CATEGORIES } from '@/types/content.types';
 type Props = NativeStackScreenProps<UploadStackParamList, 'ContentMetadata'>;
 
 export default function ContentMetadataScreen({ navigation, route }: Props) {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation(['upload', 'common', 'search']);
   const { contentId, contentType, mediaInfo } = route.params;
   const queryClient = useQueryClient();
@@ -179,7 +182,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
       {/* 헤더 */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <Ionicons name="arrow-back" size={28} color={theme.colors.text.primary} />
+          <Ionicons name="arrow-back" size={28} color={dynamicTheme.colors.text.primary} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{t('upload:metadata.title')}</Text>
@@ -190,7 +193,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           style={styles.headerButton}
         >
           {isPublishing ? (
-            <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+            <ActivityIndicator size="small" color={dynamicTheme.colors.primary[500]} />
           ) : (
             <Text style={styles.publishButtonText}>{t('upload:metadata.publish')}</Text>
           )}
@@ -210,7 +213,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           <TextInput
             style={styles.input}
             placeholder={t('upload:metadata.captionPlaceholder')}
-            placeholderTextColor={theme.colors.text.tertiary}
+            placeholderTextColor={dynamicTheme.colors.text.tertiary}
             value={title}
             onChangeText={setTitle}
             maxLength={200}
@@ -225,7 +228,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder={t('upload:metadata.descriptionPlaceholder')}
-            placeholderTextColor={theme.colors.text.tertiary}
+            placeholderTextColor={dynamicTheme.colors.text.tertiary}
             value={description}
             onChangeText={setDescription}
             maxLength={2000}
@@ -300,7 +303,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
             <TextInput
               style={styles.tagInput}
               placeholder={t('upload:metadata.tagsPlaceholder')}
-              placeholderTextColor={theme.colors.text.tertiary}
+              placeholderTextColor={dynamicTheme.colors.text.tertiary}
               value={tagInput}
               onChangeText={setTagInput}
               onSubmitEditing={handleAddTag}
@@ -415,7 +418,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -633,4 +636,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing[1],
   },
-});
+}));

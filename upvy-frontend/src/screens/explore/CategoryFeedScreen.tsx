@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, useIsFocused, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/theme';
 import type { ExploreStackParamList } from '@/types/navigation.types';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
@@ -29,6 +30,7 @@ import { CATEGORIES } from '@/types/content.types';
 type CategoryFeedScreenRouteProp = RouteProp<ExploreStackParamList, 'CategoryFeed'>;
 
 export default function CategoryFeedScreen() {
+  const dynamicTheme = useTheme();
   const route = useRoute<CategoryFeedScreenRouteProp>();
   const { category } = route.params;
 
@@ -121,7 +123,7 @@ export default function CategoryFeedScreen() {
               pointerEvents: 'none',
             }}
           >
-            <ActivityIndicator size="large" color="#FFFFFF" />
+            <ActivityIndicator size="large" color={dynamicTheme.colors.text.inverse} />
           </View>
         )}
       </View>
@@ -171,7 +173,7 @@ export default function CategoryFeedScreen() {
         >
           <Text
             style={{
-              color: '#FFFFFF',
+              color: dynamicTheme.colors.text.inverse,
               fontSize: 28,
               textShadowColor: 'rgba(0, 0, 0, 0.8)',
               textShadowOffset: { width: 0, height: 1 },
@@ -185,7 +187,7 @@ export default function CategoryFeedScreen() {
         {/* 카테고리 이름 */}
         <Text
           style={{
-            color: '#FFFFFF',
+            color: dynamicTheme.colors.text.inverse,
             fontSize: 20,
             fontWeight: '700',
             textShadowColor: 'rgba(0, 0, 0, 0.8)',
@@ -237,7 +239,7 @@ export default function CategoryFeedScreen() {
           <Text style={{ fontSize: 48, marginBottom: 16 }}>📭</Text>
           <Text
             style={{
-              color: '#FFFFFF',
+              color: dynamicTheme.colors.text.inverse,
               fontSize: 18,
               fontWeight: '600',
               textAlign: 'center',
@@ -248,7 +250,7 @@ export default function CategoryFeedScreen() {
           </Text>
           <Text
             style={{
-              color: '#666666',
+              color: dynamicTheme.colors.text.secondary,
               fontSize: 14,
               textAlign: 'center',
               lineHeight: 20,
@@ -282,7 +284,7 @@ export default function CategoryFeedScreen() {
           ListFooterComponent={
             isFetchingNextPage && feedItems.length > 0 ? (
               <View style={{ paddingVertical: 16, backgroundColor: '#000000' }}>
-                <ActivityIndicator size="large" color="#FFFFFF" />
+                <ActivityIndicator size="large" color={dynamicTheme.colors.text.inverse} />
               </View>
             ) : null
           }

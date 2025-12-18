@@ -23,6 +23,8 @@
     "notificationsSubtitle": "Likes, comments, follow notifications"
   },
   "general": {
+    "theme": "Theme",
+    "themeSubtitle": "Light / Dark mode",
     "language": "Language",
     "languageSubtitle": "Select app language",
     "termsOfService": "Terms of Service",
@@ -30,6 +32,15 @@
     "communityGuidelines": "Community Guidelines",
     "helpSupport": "Help & Support",
     "version": "Version Info"
+  },
+  "theme": {
+    "title": "Theme Settings",
+    "light": "Light Mode",
+    "dark": "Dark Mode",
+    "system": "Follow System Settings",
+    "lightDescription": "Display with bright screen",
+    "darkDescription": "Display with dark screen",
+    "systemDescription": "Auto-adjust based on device settings"
   },
   "logout": {
     "title": "Logout",

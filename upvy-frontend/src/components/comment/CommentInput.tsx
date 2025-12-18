@@ -14,7 +14,8 @@ import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Platform, A
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { useAuthStore } from '@/stores/authStore';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
@@ -25,122 +26,7 @@ interface CommentInputProps {
   placeholder?: string;
 }
 
-export const CommentInput: React.FC<CommentInputProps> = ({
-  onSubmit,
-  replyTo,
-  onCancelReply,
-  placeholder,
-}) => {
-  const { t } = useTranslation('interactions');
-  const insets = useSafeAreaInsets();
-  const profile = useAuthStore((state) => state.profile);
-  const [content, setContent] = useState('');
-  const inputRef = useRef<TextInput>(null);
-  const keyboardHeight = useKeyboardHeight();
-
-  // 답글 모드일 때 자동으로 포커스
-  useEffect(() => {
-    if (replyTo) {
-      inputRef.current?.focus();
-    }
-  }, [replyTo]);
-
-  const handleSubmit = () => {
-    const trimmedContent = content.trim();
-    if (!trimmedContent) return;
-
-    // 답글인 경우 parentCommentId 전달
-    if (replyTo) {
-      onSubmit(trimmedContent, replyTo.commentId);
-    } else {
-      onSubmit(trimmedContent);
-    }
-
-    // 입력 필드 초기화
-    setContent('');
-  };
-
-  const isSubmitEnabled = content.trim().length > 0;
-
-  const defaultPadding = insets.bottom || theme.spacing[4];
-  const additionalOffset = 20; // 입력창을 키보드보다 조금 더 올림
-
-  // 키보드가 내려가 있으면 defaultPadding, 올라오면 keyboardHeight + offset 사용
-  const animatedPaddingBottom = keyboardHeight.interpolate({
-    inputRange: [0, 0.1, 1000],
-    outputRange: [defaultPadding, 0.1 + additionalOffset, 1000 + additionalOffset],
-  });
-
-  return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          paddingBottom: animatedPaddingBottom,
-        }
-      ]}
-    >
-      {/* 답글 모드 표시 */}
-      {replyTo && (
-        <View style={styles.replyIndicator}>
-          <Ionicons name="return-down-forward" size={14} color={theme.colors.text.secondary} />
-          <View style={{ marginLeft: theme.spacing[2], flex: 1 }}>
-            <Text style={styles.replyText}>{t('comment.replyWriting', { name: replyTo.nickname })}</Text>
-          </View>
-          {onCancelReply && (
-            <TouchableOpacity onPress={onCancelReply} style={styles.cancelButton}>
-              <Ionicons name="close-circle" size={18} color={theme.colors.text.tertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* 입력 필드 */}
-      <View style={styles.inputWrapper}>
-        {/* 프로필 이미지 */}
-        {profile?.profileImageUrl ? (
-          <Image
-            source={{ uri: profile.profileImageUrl }}
-            style={styles.profileImage}
-          />
-        ) : (
-          <View style={[styles.profileImage, styles.profileImagePlaceholder]}>
-            <Ionicons name="person" size={16} color={theme.colors.text.tertiary} />
-          </View>
-        )}
-
-        {/* 텍스트 입력 */}
-        <TextInput
-          ref={inputRef}
-          style={styles.textInput}
-          placeholder={placeholder || t('comment.placeholder')}
-          placeholderTextColor={theme.colors.text.tertiary}
-          value={content}
-          onChangeText={setContent}
-          multiline
-          maxLength={1000}
-          returnKeyType="default"
-          blurOnSubmit={false}
-        />
-
-        {/* 게시 버튼 */}
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={!isSubmitEnabled}
-          style={styles.submitButton}
-        >
-          <Ionicons
-            name="send"
-            size={20}
-            color={isSubmitEnabled ? theme.colors.primary[500] : theme.colors.text.tertiary}
-          />
-        </TouchableOpacity>
-      </View>
-    </Animated.View>
-  );
-};
-
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     backgroundColor: theme.colors.background.primary,
     borderTopWidth: 1,
@@ -190,4 +76,121 @@ const styles = StyleSheet.create({
   submitButton: {
     padding: theme.spacing[2],
   },
-});
+}));
+
+export const CommentInput: React.FC<CommentInputProps> = ({
+  onSubmit,
+  replyTo,
+  onCancelReply,
+  placeholder,
+}) => {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
+  const { t } = useTranslation('interactions');
+  const insets = useSafeAreaInsets();
+  const profile = useAuthStore((state) => state.profile);
+  const [content, setContent] = useState('');
+  const inputRef = useRef<TextInput>(null);
+  const keyboardHeight = useKeyboardHeight();
+
+  // 답글 모드일 때 자동으로 포커스
+  useEffect(() => {
+    if (replyTo) {
+      inputRef.current?.focus();
+    }
+  }, [replyTo]);
+
+  const handleSubmit = () => {
+    const trimmedContent = content.trim();
+    if (!trimmedContent) return;
+
+    // 답글인 경우 parentCommentId 전달
+    if (replyTo) {
+      onSubmit(trimmedContent, replyTo.commentId);
+    } else {
+      onSubmit(trimmedContent);
+    }
+
+    // 입력 필드 초기화
+    setContent('');
+  };
+
+  const isSubmitEnabled = content.trim().length > 0;
+
+  const defaultPadding = insets.bottom || dynamicTheme.spacing[4];
+  const additionalOffset = 20; // 입력창을 키보드보다 조금 더 올림
+
+  // 키보드가 내려가 있으면 defaultPadding, 올라오면 keyboardHeight + offset 사용
+  const animatedPaddingBottom = keyboardHeight.interpolate({
+    inputRange: [0, 0.1, 1000],
+    outputRange: [defaultPadding, 0.1 + additionalOffset, 1000 + additionalOffset],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          paddingBottom: animatedPaddingBottom,
+        }
+      ]}
+    >
+      {/* 답글 모드 표시 */}
+      {replyTo && (
+        <View style={styles.replyIndicator}>
+          <Ionicons name="return-down-forward" size={14} color={dynamicTheme.colors.text.secondary} />
+          <View style={{ marginLeft: dynamicTheme.spacing[2], flex: 1 }}>
+            <Text style={styles.replyText}>{t('comment.replyWriting', { name: replyTo.nickname })}</Text>
+          </View>
+          {onCancelReply && (
+            <TouchableOpacity onPress={onCancelReply} style={styles.cancelButton}>
+              <Ionicons name="close-circle" size={18} color={dynamicTheme.colors.text.tertiary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* 입력 필드 */}
+      <View style={styles.inputWrapper}>
+        {/* 프로필 이미지 */}
+        {profile?.profileImageUrl ? (
+          <Image
+            source={{ uri: profile.profileImageUrl }}
+            style={styles.profileImage}
+          />
+        ) : (
+          <View style={[styles.profileImage, styles.profileImagePlaceholder]}>
+            <Ionicons name="person" size={16} color={dynamicTheme.colors.text.tertiary} />
+          </View>
+        )}
+
+        {/* 텍스트 입력 */}
+        <TextInput
+          ref={inputRef}
+          style={styles.textInput}
+          placeholder={placeholder || t('comment.placeholder')}
+          placeholderTextColor={dynamicTheme.colors.text.tertiary}
+          value={content}
+          onChangeText={setContent}
+          multiline
+          maxLength={1000}
+          returnKeyType="default"
+          blurOnSubmit={false}
+        />
+
+        {/* 게시 버튼 */}
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={!isSubmitEnabled}
+          style={styles.submitButton}
+        >
+          <Ionicons
+            name="send"
+            size={20}
+            color={isSubmitEnabled ? dynamicTheme.colors.primary[500] : dynamicTheme.colors.text.tertiary}
+          />
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+};

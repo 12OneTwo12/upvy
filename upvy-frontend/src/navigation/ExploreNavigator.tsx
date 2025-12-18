@@ -9,6 +9,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { ExploreStackParamList } from '@/types/navigation.types';
+import { useThemeStore } from '@/stores/themeStore';
 
 import ExploreScreen from '@/screens/explore/ExploreScreen';
 import CategoryFeedScreen from '@/screens/explore/CategoryFeedScreen';
@@ -20,12 +21,13 @@ const Stack = createNativeStackNavigator<ExploreStackParamList>();
 
 export default function ExploreNavigator() {
   const { t } = useTranslation(['common', 'profile']);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        statusBarStyle: 'dark',
+        statusBarStyle: isDarkMode ? 'light' : 'dark',
       }}
     >
       <Stack.Screen
@@ -39,7 +41,7 @@ export default function ExploreNavigator() {
         options={{
           title: t('common:screen.category'),
           animation: 'simple_push',
-          statusBarStyle: 'light',
+          statusBarStyle: 'light', // 비디오 피드는 항상 어두운 배경
         }}
       />
       <Stack.Screen

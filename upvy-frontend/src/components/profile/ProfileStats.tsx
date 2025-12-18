@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { theme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
 interface StatItem {
@@ -54,7 +53,7 @@ export default function ProfileStats({ stats }: ProfileStatsProps) {
   );
 }
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -76,4 +75,4 @@ const useStyles = createStyleSheet({
     fontWeight: theme.typography.fontWeight.normal,
     color: theme.colors.text.secondary,
   },
-});
+}));

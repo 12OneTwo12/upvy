@@ -21,7 +21,7 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { getMyProfile } from '@/api/auth.api';
 import { getMyContents } from '@/api/content.api';
 import { getSavedContentList } from '@/api/save.api';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 import type { ContentResponse } from '@/types/content.types';
@@ -36,7 +36,7 @@ type NavigationProp = CompositeNavigationProp<
  * 내 프로필 화면
  * 인스타그램 스타일의 프로필 관리 화면
  */
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -164,12 +164,13 @@ const useStyles = createStyleSheet({
     color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
-});
+}));
 
 type TabType = 'my' | 'saved';
 
 export default function ProfileScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const { profile: storeProfile, user, updateProfile } = useAuthStore();
@@ -301,7 +302,7 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>{profile.nickname}</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity onPress={handleNotifications} style={styles.iconButton}>
-            <Ionicons name="notifications-outline" size={24} color={theme.colors.text.primary} />
+            <Ionicons name="notifications-outline" size={24} color={dynamicTheme.colors.text.primary} />
             {unreadCount > 0 && (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationBadgeText}>
@@ -311,7 +312,7 @@ export default function ProfileScreen() {
             )}
           </TouchableOpacity>
           <TouchableOpacity onPress={handleSettings} style={styles.iconButton}>
-            <Ionicons name="settings-outline" size={24} color={theme.colors.text.primary} />
+            <Ionicons name="settings-outline" size={24} color={dynamicTheme.colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -379,7 +380,7 @@ export default function ProfileScreen() {
                   <Ionicons
                     name="images-outline"
                     size={64}
-                    color={theme.colors.gray[300]}
+                    color={dynamicTheme.colors.gray[300]}
                     style={styles.emptyIcon}
                   />
                   <Text style={styles.emptyText}>{t('content.noPosts')}</Text>
@@ -410,7 +411,7 @@ export default function ProfileScreen() {
                   <Ionicons
                     name="bookmark-outline"
                     size={64}
-                    color={theme.colors.gray[300]}
+                    color={dynamicTheme.colors.gray[300]}
                     style={styles.emptyIcon}
                   />
                   <Text style={styles.emptyText}>{t('content.noSaved')}</Text>

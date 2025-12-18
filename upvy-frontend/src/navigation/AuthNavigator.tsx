@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/types/navigation.types';
+import { useThemeStore } from '@/stores/themeStore';
 import LoginScreen from '@/screens/auth/LoginScreen';
 import EmailSignUpScreen from '@/screens/auth/EmailSignUpScreen';
 import EmailSignInScreen from '@/screens/auth/EmailSignInScreen';
@@ -17,8 +18,10 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
  * 로그인 화면 및 약관/정책 화면을 포함합니다.
  */
 export default function AuthNavigator() {
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, statusBarStyle: 'dark' }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, statusBarStyle: isDarkMode ? 'light' : 'dark' }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="EmailSignUp" component={EmailSignUpScreen} />
       <Stack.Screen name="EmailSignIn" component={EmailSignInScreen} />

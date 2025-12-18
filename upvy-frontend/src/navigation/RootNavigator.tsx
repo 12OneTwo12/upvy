@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/types/navigation.types';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { LoadingSpinner } from '@/components/common';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Analytics, type ScreenName } from '@/utils/analytics';
@@ -15,6 +16,7 @@ import ProfileSetupScreen from '@/screens/auth/ProfileSetupScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
 import LanguageSelectorScreen from '@/screens/settings/LanguageSelectorScreen';
+import ThemeSelectorScreen from '@/screens/settings/ThemeSelectorScreen';
 import PasswordChangeScreen from '@/screens/settings/PasswordChangeScreen';
 import TermsOfServiceScreen from '@/screens/settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from '@/screens/settings/PrivacyPolicyScreen';
@@ -92,6 +94,7 @@ export default function RootNavigator() {
   const profile = useAuthStore((state) => state.profile);
   const isLoading = useAuthStore((state) => state.isLoading);
   const checkAuth = useAuthStore((state) => state.checkAuth);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   // 화면 추적을 위한 ref
   const routeNameRef = useRef<string>();
@@ -132,7 +135,7 @@ export default function RootNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          statusBarStyle: 'dark',
+          statusBarStyle: isDarkMode ? 'light' : 'dark',
         }}
       >
         {!isAuthenticated ? (
@@ -161,6 +164,7 @@ export default function RootNavigator() {
             />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="LanguageSelector" component={LanguageSelectorScreen} />
+            <Stack.Screen name="ThemeSelector" component={ThemeSelectorScreen} />
             <Stack.Screen name="PasswordChange" component={PasswordChangeScreen} />
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />

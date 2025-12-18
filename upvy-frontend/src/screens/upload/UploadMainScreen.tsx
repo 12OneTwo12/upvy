@@ -26,7 +26,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { cleanIOSVideoUri } from '@/utils/videoUtils';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -40,7 +41,182 @@ const GRID_IMAGE_SIZE = SCREEN_WIDTH / GRID_COLUMNS;
 const PREVIEW_HEIGHT = SCREEN_WIDTH; // 정사각형 미리보기
 const PAGE_SIZE = 50; // 한 번에 로드할 미디어 개수
 
+const useStyles = createStyleSheet((theme) => ({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background.primary,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  headerButton: {
+    padding: theme.spacing[1],
+    minWidth: 60,
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
+  },
+  nextButtonText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.primary[500],
+    textAlign: 'right',
+  },
+  disabledText: {
+    color: theme.colors.text.tertiary,
+  },
+  controlsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[2],
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    gap: theme.spacing[2],
+  },
+  typeTab: {
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[1],
+  },
+  typeTabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.primary[500],
+  },
+  typeTabText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.tertiary,
+  },
+  typeTabTextActive: {
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.semibold,
+  },
+  selectionCount: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  previewContainer: {
+    width: SCREEN_WIDTH,
+    height: PREVIEW_HEIGHT,
+    backgroundColor: theme.colors.gray[900],
+    position: 'relative',
+  },
+  previewImage: {
+    width: SCREEN_WIDTH,
+    height: PREVIEW_HEIGHT,
+  },
+  previewIndicator: {
+    position: 'absolute',
+    bottom: theme.spacing[3],
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing[1],
+  },
+  indicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    // 흰 배경에서도 보이도록 그림자 추가
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  indicatorDotActive: {
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridContainer: {
+    paddingBottom: theme.spacing[20],
+  },
+  gridItem: {
+    width: GRID_IMAGE_SIZE,
+    height: GRID_IMAGE_SIZE,
+    padding: 1,
+    position: 'relative',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cameraButton: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: theme.colors.gray[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraButtonText: {
+    marginTop: theme.spacing[1],
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.secondary,
+  },
+  durationBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+  },
+  durationText: {
+    color: theme.colors.text.inverse,
+    fontSize: 10,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  selectedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary[500],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  selectedText: {
+    color: theme.colors.text.inverse,
+    fontSize: 12,
+    fontWeight: theme.typography.fontWeight.bold,
+  },
+  loadingMore: {
+    paddingVertical: theme.spacing[4],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+}));
+
 export default function UploadMainScreen({ navigation }: Props) {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation(['upload', 'common']);
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
@@ -330,7 +506,7 @@ export default function UploadMainScreen({ navigation }: Props) {
       {/* 헤더 */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <Ionicons name="close" size={28} color={theme.colors.text.primary} />
+          <Ionicons name="close" size={28} color={dynamicTheme.colors.text.primary} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{t('upload:main.title')}</Text>
@@ -387,7 +563,7 @@ export default function UploadMainScreen({ navigation }: Props) {
       {/* 갤러리 그리드 (미리보기 포함 - 스크롤 시 같이 올라감) */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+          <ActivityIndicator size="large" color={dynamicTheme.colors.primary[500]} />
         </View>
       ) : (
         <FlatList
@@ -401,8 +577,8 @@ export default function UploadMainScreen({ navigation }: Props) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={theme.colors.primary[500]}
-              colors={[theme.colors.primary[500]]}
+              tintColor={dynamicTheme.colors.primary[500]}
+              colors={[dynamicTheme.colors.primary[500]]}
             />
           }
           onEndReached={loadMoreAssets}
@@ -455,7 +631,7 @@ export default function UploadMainScreen({ navigation }: Props) {
               {/* 카메라 버튼 */}
               <TouchableOpacity style={styles.gridItem} onPress={handleCameraCapture}>
                 <View style={styles.cameraButton}>
-                  <Ionicons name="camera" size={32} color={theme.colors.text.secondary} />
+                  <Ionicons name="camera" size={32} color={dynamicTheme.colors.text.secondary} />
                   <Text style={styles.cameraButtonText}>{t('upload:main.camera')}</Text>
                 </View>
               </TouchableOpacity>
@@ -464,7 +640,7 @@ export default function UploadMainScreen({ navigation }: Props) {
           ListFooterComponent={
             isLoadingMore ? (
               <View style={styles.loadingMore}>
-                <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+                <ActivityIndicator size="small" color={dynamicTheme.colors.primary[500]} />
               </View>
             ) : null
           }
@@ -473,176 +649,3 @@ export default function UploadMainScreen({ navigation }: Props) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  headerButton: {
-    padding: theme.spacing[1],
-    minWidth: 60,
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.text.primary,
-  },
-  nextButtonText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.primary[500],
-    textAlign: 'right',
-  },
-  disabledText: {
-    color: theme.colors.text.tertiary,
-  },
-  controlsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  typeSelector: {
-    flexDirection: 'row',
-    gap: theme.spacing[2],
-  },
-  typeTab: {
-    paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[1],
-  },
-  typeTabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.primary[500],
-  },
-  typeTabText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.tertiary,
-  },
-  typeTabTextActive: {
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.fontWeight.semibold,
-  },
-  selectionCount: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-  previewContainer: {
-    width: SCREEN_WIDTH,
-    height: PREVIEW_HEIGHT,
-    backgroundColor: theme.colors.gray[900],
-    position: 'relative',
-  },
-  previewImage: {
-    width: SCREEN_WIDTH,
-    height: PREVIEW_HEIGHT,
-  },
-  previewIndicator: {
-    position: 'absolute',
-    bottom: theme.spacing[3],
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: theme.spacing[1],
-  },
-  indicatorDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    // 흰 배경에서도 보이도록 그림자 추가
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  indicatorDotActive: {
-    backgroundColor: '#fff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gridContainer: {
-    paddingBottom: theme.spacing[20],
-  },
-  gridItem: {
-    width: GRID_IMAGE_SIZE,
-    height: GRID_IMAGE_SIZE,
-    padding: 1,
-    position: 'relative',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-  },
-  cameraButton: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: theme.colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraButtonText: {
-    marginTop: theme.spacing[1],
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.text.secondary,
-  },
-  durationBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-  },
-  durationText: {
-    color: theme.colors.text.inverse,
-    fontSize: 10,
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-  selectedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  selectedBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: theme.colors.primary[500],
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  selectedText: {
-    color: theme.colors.text.inverse,
-    fontSize: 12,
-    fontWeight: theme.typography.fontWeight.bold,
-  },
-  loadingMore: {
-    paddingVertical: theme.spacing[4],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
