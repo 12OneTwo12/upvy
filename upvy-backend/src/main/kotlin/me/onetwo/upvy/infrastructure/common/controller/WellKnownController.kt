@@ -12,6 +12,42 @@ import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 import java.net.URI
 
+/**
+ * Apple App Site Association (AASA) 파일 구조
+ */
+data class AppleAppSiteAssociation(
+    val applinks: AppLinks,
+    val webcredentials: WebCredentials
+) {
+    data class AppLinks(
+        val apps: List<String> = emptyList(),
+        val details: List<AppLinkDetail>
+    )
+
+    data class AppLinkDetail(
+        val appID: String,
+        val paths: List<String>
+    )
+
+    data class WebCredentials(
+        val apps: List<String>
+    )
+}
+
+/**
+ * Android Asset Links 파일 구조
+ */
+data class AndroidAssetLink(
+    val relation: List<String>,
+    val target: Target
+) {
+    data class Target(
+        val namespace: String,
+        val package_name: String,
+        val sha256_cert_fingerprints: List<String>
+    )
+}
+
 @RestController
 class WellKnownController(
     @Value("\${upvy.universal-links.apple-team-id:PLACEHOLDER_TEAM_ID}")
@@ -25,58 +61,45 @@ class WellKnownController(
         path = ["/.well-known/apple-app-site-association"],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    fun getAppleAppSiteAssociation(): Mono<ResponseEntity<String>> {
+    fun getAppleAppSiteAssociation(): Mono<AppleAppSiteAssociation> {
         logger.debug("Serving apple-app-site-association for Universal Links")
 
         val appId = "$appleTeamId.com.upvy.app"
 
-        val aasaJson = """
-            {
-              "applinks": {
-                "apps": [],
-                "details": [{
-                  "appID": "$appId",
-                  "paths": ["/watch/*"]
-                }]
-              },
-              "webcredentials": {
-                "apps": ["$appId"]
-              }
-            }
-        """.trimIndent()
-
-        return Mono.just(
-            ResponseEntity
-                .ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(aasaJson)
+        val aasa = AppleAppSiteAssociation(
+            applinks = AppleAppSiteAssociation.AppLinks(
+                details = listOf(
+                    AppleAppSiteAssociation.AppLinkDetail(
+                        appID = appId,
+                        paths = listOf("/watch/*")
+                    )
+                )
+            ),
+            webcredentials = AppleAppSiteAssociation.WebCredentials(
+                apps = listOf(appId)
+            )
         )
+
+        return Mono.just(aasa)
     }
 
     @GetMapping(
         path = ["/.well-known/assetlinks.json"],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    fun getAssetLinks(): Mono<ResponseEntity<String>> {
+    fun getAssetLinks(): Mono<List<AndroidAssetLink>> {
         logger.debug("Serving assetlinks.json for Android App Links")
 
-        val assetLinksJson = """
-            [{
-              "relation": ["delegate_permission/common.handle_all_urls"],
-              "target": {
-                "namespace": "android_app",
-                "package_name": "com.upvy.app",
-                "sha256_cert_fingerprints": ["$androidSha256Fingerprint"]
-              }
-            }]
-        """.trimIndent()
-
-        return Mono.just(
-            ResponseEntity
-                .ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(assetLinksJson)
+        val assetLink = AndroidAssetLink(
+            relation = listOf("delegate_permission/common.handle_all_urls"),
+            target = AndroidAssetLink.Target(
+                namespace = "android_app",
+                package_name = "com.upvy.app",
+                sha256_cert_fingerprints = listOf(androidSha256Fingerprint)
+            )
         )
+
+        return Mono.just(listOf(assetLink))
     }
 
     @GetMapping("/watch/{contentId}")
@@ -89,7 +112,9 @@ class WellKnownController(
         logger.debug("Handling /watch redirect: contentId={}, userAgent={}", contentId, userAgent)
 
         val redirectUrl = when {
-            userAgent.contains("iPhone", ignoreCase = true) || userAgent.contains("iPad", ignoreCase = true) -> {
+            userAgent.contains("iPhone", ignoreCase = true) ||
+            userAgent.contains("iPad", ignoreCase = true) ||
+            userAgent.contains("iPod", ignoreCase = true) -> {
                 logger.debug("Redirecting iOS device to App Store")
                 APP_STORE_URL
             }

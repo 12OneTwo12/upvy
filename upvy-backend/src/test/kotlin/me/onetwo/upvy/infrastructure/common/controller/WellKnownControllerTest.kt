@@ -172,6 +172,23 @@ class WellKnownControllerTest : BaseReactiveTest {
         }
 
         @Test
+        @DisplayName("iPod User-Agent로 접근 시, App Store로 302 리다이렉트한다")
+        fun watchRedirect_WithIPodUserAgent_RedirectsToAppStore() {
+            // Given: iPod touch에서 브라우저로 링크를 연 경우
+            val contentId = "test-content-id"
+            val userAgent = "Mozilla/5.0 (iPod; CPU iPhone OS 17_0 like Mac OS X)"
+
+            // When & Then: App Store로 리다이렉트
+            webTestClient
+                .get()
+                .uri("/watch/{contentId}", contentId)
+                .header("User-Agent", userAgent)
+                .exchange()
+                .expectStatus().isFound
+                .expectHeader().location("https://apps.apple.com/app/upvy/id6756291696")
+        }
+
+        @Test
         @DisplayName("Android User-Agent로 접근 시, Play Store로 302 리다이렉트한다")
         fun watchRedirect_WithAndroidUserAgent_RedirectsToPlayStore() {
             // Given: Android에서 브라우저로 링크를 연 경우
