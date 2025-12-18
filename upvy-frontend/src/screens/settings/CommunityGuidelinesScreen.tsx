@@ -6,12 +6,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types/navigation.types';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'CommunityGuidelines'>;
 
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -102,7 +102,7 @@ const useStyles = createStyleSheet({
   coreValueLabel: {
     fontWeight: theme.typography.fontWeight.bold,
   },
-});
+}));
 
 /**
  * Community Guidelines Screen
@@ -110,6 +110,7 @@ const useStyles = createStyleSheet({
  */
 export default function CommunityGuidelinesScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation('legal');
 
@@ -124,7 +125,7 @@ export default function CommunityGuidelinesScreen() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.colors.text.primary}
+            color={dynamicTheme.colors.text.primary}
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('communityGuidelines.title')}</Text>
@@ -213,7 +214,7 @@ export default function CommunityGuidelinesScreen() {
             <Text style={styles.paragraph}>{t('communityGuidelines.sections.contact.content')}</Text>
           </View>
 
-          <View style={{ height: theme.spacing[8] }} />
+          <View style={{ height: dynamicTheme.spacing[8] }} />
         </View>
       </ScrollView>
     </SafeAreaView>

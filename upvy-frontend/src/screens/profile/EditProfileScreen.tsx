@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -25,7 +24,7 @@ import {
   createProfile,
   uploadProfileImage,
 } from '@/api/auth.api';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
 import { showErrorAlert, withErrorHandling } from '@/utils/errorHandler';
 import { createStyleSheet } from '@/utils/styles';
 
@@ -33,7 +32,7 @@ import { createStyleSheet } from '@/utils/styles';
  * 프로필 수정 화면
  * 인스타그램 스타일의 모던하고 깔끔한 프로필 수정
  */
-const useStyles = createStyleSheet({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -221,12 +220,13 @@ const useStyles = createStyleSheet({
     lineHeight: 20,
     letterSpacing: -0.2,
   },
-});
+}));
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditProfile'>;
 
 export default function EditProfileScreen() {
   const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation('profile');
   const navigation = useNavigation<NavigationProp>();
   const { profile: storeProfile, updateProfile } = useAuthStore();
@@ -414,7 +414,7 @@ export default function EditProfileScreen() {
           disabled={isSaving}
         >
           {isSaving ? (
-            <ActivityIndicator size="small" color={theme.colors.primary[600]} />
+            <ActivityIndicator size="small" color={dynamicTheme.colors.primary[600]} />
           ) : (
             <Text style={styles.headerButtonText}>{t('common:button.done')}</Text>
           )}
@@ -441,9 +441,9 @@ export default function EditProfileScreen() {
               />
               <View style={styles.avatarOverlay}>
                 {isUploadingImage ? (
-                  <ActivityIndicator size="small" color={theme.colors.text.inverse} />
+                  <ActivityIndicator size="small" color={dynamicTheme.colors.text.inverse} />
                 ) : (
-                  <Ionicons name="camera" size={20} color={theme.colors.text.inverse} />
+                  <Ionicons name="camera" size={20} color={dynamicTheme.colors.text.inverse} />
                 )}
               </View>
             </TouchableOpacity>
@@ -477,7 +477,7 @@ export default function EditProfileScreen() {
                 {nickname !== storeProfile?.nickname && nickname.length >= 2 && (
                   <>
                     {isCheckingNickname ? (
-                      <ActivityIndicator size="small" color={theme.colors.primary[600]} />
+                      <ActivityIndicator size="small" color={dynamicTheme.colors.primary[600]} />
                     ) : nicknameAvailable === null ? (
                       <TouchableOpacity
                         style={styles.checkButton}
@@ -491,7 +491,7 @@ export default function EditProfileScreen() {
                         <Ionicons
                           name="checkmark-circle"
                           size={18}
-                          color={theme.colors.success}
+                          color={dynamicTheme.colors.success}
                           style={styles.statusIcon}
                         />
                         <Text style={styles.successText}>{t('edit.nickname.available')}</Text>
@@ -501,7 +501,7 @@ export default function EditProfileScreen() {
                         <Ionicons
                           name="close-circle"
                           size={18}
-                          color={theme.colors.error}
+                          color={dynamicTheme.colors.error}
                           style={styles.statusIcon}
                         />
                         <Text style={styles.errorText}>{t('edit.nickname.duplicated')}</Text>

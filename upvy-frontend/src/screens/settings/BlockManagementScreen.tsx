@@ -13,7 +13,6 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
-  StyleSheet,
   Image,
   ActivityIndicator,
   Alert,
@@ -23,13 +22,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { theme } from '@/theme';
+import { useTheme } from '@/theme';
+import { createStyleSheet } from '@/utils/styles';
 import { getBlockedUsers, getBlockedContents, unblockUser, unblockContent } from '@/api/block.api';
 import type { BlockedUser, BlockedContent } from '@/types/block.types';
 
 type TabType = 'users' | 'contents';
 
 export const BlockManagementScreen: React.FC = () => {
+  const styles = useStyles();
+  const dynamicTheme = useTheme();
   const { t } = useTranslation('interactions');
   const { t: tCommon } = useTranslation('common');
   const navigation = useNavigation();
@@ -173,7 +175,7 @@ export const BlockManagementScreen: React.FC = () => {
           <Image source={{ uri: item.profileImageUrl }} style={styles.profileImage} />
         ) : (
           <View style={styles.profilePlaceholder}>
-            <Ionicons name="person" size={24} color={theme.colors.text.tertiary} />
+            <Ionicons name="person" size={24} color={dynamicTheme.colors.text.tertiary} />
           </View>
         )}
         <View style={styles.itemInfo}>
@@ -220,7 +222,7 @@ export const BlockManagementScreen: React.FC = () => {
       <Ionicons
         name={selectedTab === 'users' ? 'people-outline' : 'grid-outline'}
         size={64}
-        color={theme.colors.text.tertiary}
+        color={dynamicTheme.colors.text.tertiary}
       />
       <Text style={styles.emptyText}>
         {t(`blockManagement.empty.${selectedTab}`)}
@@ -239,7 +241,7 @@ export const BlockManagementScreen: React.FC = () => {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={theme.colors.text.primary}
+            color={dynamicTheme.colors.text.primary}
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('blockManagement.title')}</Text>
@@ -305,7 +307,7 @@ export const BlockManagementScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = createStyleSheet((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
@@ -425,4 +427,4 @@ const styles = StyleSheet.create({
   loader: {
     paddingVertical: theme.spacing[4],
   },
-});
+}));
