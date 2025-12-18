@@ -75,12 +75,12 @@ class SearchContextCollectorImpl(
 
         // 인기 키워드 (향후 분석 데이터 기반으로 개선 예정)
         val popularKeywords = listOf(
-            "생산성", "프로그래밍", "AI", "투자", "건강", "동기부여", "언어"
+            "생산성", "프로그래밍", "AI", "한국사", "역사", "동기부여", "언어", "영어", "공부", "수능", "자격증"
         )
 
         // 인기 태그 (향후 분석 데이터 기반으로 개선 예정)
         val topPerformingTags = listOf(
-            "꿀팁", "10분완성", "초보자가이드", "실전노하우", "트렌드"
+            "한국사", "동기부여", "역사", "영어", "트렌드", "AI", "공부"
         )
 
         val context = SearchContext(

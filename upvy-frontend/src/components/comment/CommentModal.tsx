@@ -24,7 +24,6 @@ import {
   Easing,
   PanResponder,
   Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -501,10 +500,6 @@ export const CommentModal: React.FC<CommentModalProps> = ({
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // 스크롤 시작 시 키보드 닫기
-  const handleScrollBeginDrag = useCallback(() => {
-    Keyboard.dismiss();
-  }, []);
 
   return (
     <Modal
@@ -545,33 +540,29 @@ export const CommentModal: React.FC<CommentModalProps> = ({
           </View>
 
           {/* 헤더 */}
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <TouchableOpacity activeOpacity={1} onPress={Keyboard.dismiss}>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>{t('comment.title')}</Text>
               <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                 <Ionicons name="close" size={28} color={theme.colors.text.primary} />
               </TouchableOpacity>
             </View>
-          </TouchableWithoutFeedback>
+          </TouchableOpacity>
 
           {/* 구분선 */}
           <View style={styles.divider} />
 
           {/* 댓글 목록 */}
           {isLoading ? (
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary[500]} />
-              </View>
-            </TouchableWithoutFeedback>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+            </View>
           ) : !data || allComments.length === 0 ? (
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyEmoji}>🌱</Text>
-                <Text style={styles.emptyText}>{t('comment.emptyTitle', '아직 댓글이 없습니다')}</Text>
-                <Text style={styles.emptySubtext}>{t('comment.emptySubtitle', '첫 번째 댓글을 남겨보세요!')}</Text>
-              </View>
-            </TouchableWithoutFeedback>
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>🌱</Text>
+              <Text style={styles.emptyText}>{t('comment.emptyTitle', '아직 댓글이 없습니다')}</Text>
+              <Text style={styles.emptySubtext}>{t('comment.emptySubtitle', '첫 번째 댓글을 남겨보세요!')}</Text>
+            </View>
           ) : (
             <FlatList
               ref={flatListRef}
@@ -598,8 +589,6 @@ export const CommentModal: React.FC<CommentModalProps> = ({
               maintainVisibleContentPosition={{
                 minIndexForVisible: 0,
               }}
-              keyboardDismissMode="on-drag"
-              onScrollBeginDrag={handleScrollBeginDrag}
             />
           )}
 
