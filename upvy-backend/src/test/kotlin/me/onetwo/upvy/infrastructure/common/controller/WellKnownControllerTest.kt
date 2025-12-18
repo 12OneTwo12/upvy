@@ -3,10 +3,12 @@ package me.onetwo.upvy.infrastructure.common.controller
 import me.onetwo.upvy.config.TestSecurityConfig
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.config.RestDocsConfiguration
+import me.onetwo.upvy.infrastructure.config.UniversalLinksProperties
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
 import org.springframework.context.annotation.Import
@@ -28,6 +30,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 @Import(RestDocsConfiguration::class, TestSecurityConfig::class)
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
+@EnableConfigurationProperties(UniversalLinksProperties::class)
 @DisplayName("Well-Known Controller 테스트")
 class WellKnownControllerTest : BaseReactiveTest {
 

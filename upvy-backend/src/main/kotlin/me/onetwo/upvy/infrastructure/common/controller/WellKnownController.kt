@@ -1,7 +1,8 @@
 package me.onetwo.upvy.infrastructure.common.controller
 
+import com.fasterxml.jackson.annotation.JsonProperty
+import me.onetwo.upvy.infrastructure.config.UniversalLinksProperties
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -43,18 +44,16 @@ data class AndroidAssetLink(
 ) {
     data class Target(
         val namespace: String,
-        val package_name: String,
-        val sha256_cert_fingerprints: List<String>
+        @JsonProperty("package_name")
+        val packageName: String,
+        @JsonProperty("sha256_cert_fingerprints")
+        val sha256CertFingerprints: List<String>
     )
 }
 
 @RestController
 class WellKnownController(
-    @Value("\${upvy.universal-links.apple-team-id:PLACEHOLDER_TEAM_ID}")
-    private val appleTeamId: String,
-
-    @Value("\${upvy.universal-links.android-sha256-fingerprint:PLACEHOLDER_FINGERPRINT}")
-    private val androidSha256Fingerprint: String
+    private val properties: UniversalLinksProperties
 ) {
 
     @GetMapping(
@@ -64,7 +63,7 @@ class WellKnownController(
     fun getAppleAppSiteAssociation(): Mono<AppleAppSiteAssociation> {
         logger.debug("Serving apple-app-site-association for Universal Links")
 
-        val appId = "$appleTeamId.com.upvy.app"
+        val appId = "${properties.universalLinks.appleTeamId}.${properties.universalLinks.appleBundleId}"
 
         val aasa = AppleAppSiteAssociation(
             applinks = AppleAppSiteAssociation.AppLinks(
@@ -94,8 +93,8 @@ class WellKnownController(
             relation = listOf("delegate_permission/common.handle_all_urls"),
             target = AndroidAssetLink.Target(
                 namespace = "android_app",
-                package_name = "com.upvy.app",
-                sha256_cert_fingerprints = listOf(androidSha256Fingerprint)
+                packageName = properties.universalLinks.androidPackageName,
+                sha256CertFingerprints = listOf(properties.universalLinks.androidSha256Fingerprint)
             )
         )
 
@@ -116,15 +115,15 @@ class WellKnownController(
             userAgent.contains("iPad", ignoreCase = true) ||
             userAgent.contains("iPod", ignoreCase = true) -> {
                 logger.debug("Redirecting iOS device to App Store")
-                APP_STORE_URL
+                properties.redirectUrls.appStore
             }
             userAgent.contains("Android", ignoreCase = true) -> {
                 logger.debug("Redirecting Android device to Play Store")
-                PLAY_STORE_URL
+                properties.redirectUrls.playStore
             }
             else -> {
                 logger.debug("Redirecting desktop/unknown device to Docs homepage")
-                DOCS_HOMEPAGE_URL
+                properties.redirectUrls.docsHomepage
             }
         }
 
@@ -138,9 +137,5 @@ class WellKnownController(
 
     companion object {
         private val logger = LoggerFactory.getLogger(WellKnownController::class.java)
-
-        private const val APP_STORE_URL = "https://apps.apple.com/app/upvy/id6756291696"
-        private const val PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.upvy.app"
-        private const val DOCS_HOMEPAGE_URL = "https://upvy.org"
     }
 }
