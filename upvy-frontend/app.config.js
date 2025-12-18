@@ -43,6 +43,7 @@ module.exports = {
         NSCameraUsageDescription: PERMISSION_STRINGS.NSCameraUsageDescription.en,
       },
       usesAppleSignIn: true,
+      associatedDomains: ['applinks:api.upvy.org'],
     },
     android: {
       adaptiveIcon: {
@@ -53,6 +54,20 @@ module.exports = {
       googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: 'api.upvy.org',
+              pathPrefix: '/watch',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     web: {
       favicon: './assets/favicon.png',

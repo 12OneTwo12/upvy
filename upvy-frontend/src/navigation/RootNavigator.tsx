@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { LoadingSpinner } from '@/components/common';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useDeepLink } from '@/hooks/useDeepLink';
 import { Analytics, type ScreenName } from '@/utils/analytics';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
@@ -25,6 +26,7 @@ import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
 import { BlockManagementScreen } from '@/screens/settings/BlockManagementScreen';
 import NotificationListScreen from '@/screens/notification/NotificationListScreen';
 import NotificationSettingsScreen from '@/screens/notification/NotificationSettingsScreen';
+import ContentViewerScreen from '@/screens/content/ContentViewerScreen';
 import { SentryTestScreen } from '@/screens/dev/SentryTestScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -99,6 +101,9 @@ export default function RootNavigator() {
   // 화면 추적을 위한 ref
   const routeNameRef = useRef<string>();
 
+  // Universal Links / App Links 핸들링
+  useDeepLink();
+
   // 앱 시작 시 자동 로그인 체크
   useEffect(() => {
     checkAuth();
@@ -157,6 +162,10 @@ export default function RootNavigator() {
           // 4. 모든 설정 완료 → Main (Home)
           <>
             <Stack.Screen name="Main" component={MainNavigator} />
+            <Stack.Screen
+              name="ContentViewer"
+              component={ContentViewerScreen}
+            />
             <Stack.Screen
               name="EditProfile"
               component={EditProfileScreen}
