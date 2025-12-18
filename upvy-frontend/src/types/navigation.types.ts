@@ -9,6 +9,7 @@ export type RootStackParamList = {
   TermsAgreement: undefined;
   ProfileSetup: undefined;
   Main: NavigatorScreenParams<MainTabParamList>;
+  ContentViewer: { contentId: string };
   EditProfile: undefined;
   Settings: undefined;
   PasswordChange: undefined;

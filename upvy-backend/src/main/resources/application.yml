@@ -135,6 +135,17 @@ manticore:
       user: user_index
       autocomplete: autocomplete_index
 
+# Universal Links & App Links Configuration
+upvy:
+  universal-links:
+    # Apple Team ID (Apple Developer Console > Membership > Team ID)
+    apple-team-id: ${APPLE_TEAM_ID:PLACEHOLDER_TEAM_ID}
+    # Android SHA-256 fingerprint (keytool -list -v -keystore <keystore> -alias <alias>)
+    android-sha256-fingerprint: ${ANDROID_SHA256_FINGERPRINT:PLACEHOLDER_FINGERPRINT}
+  share:
+    # Base URL for share links (used in ShareServiceImpl)
+    base-url: ${SHARE_BASE_URL:https://api.upvy.org}
+
 # Server Configuration
 server:
   port: 8080

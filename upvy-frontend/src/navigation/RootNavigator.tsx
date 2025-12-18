@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { LoadingSpinner } from '@/components/common';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useDeepLink } from '@/hooks/useDeepLink';
 import { Analytics, type ScreenName } from '@/utils/analytics';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
@@ -25,6 +26,7 @@ import HelpSupportScreen from '@/screens/settings/HelpSupportScreen';
 import { BlockManagementScreen } from '@/screens/settings/BlockManagementScreen';
 import NotificationListScreen from '@/screens/notification/NotificationListScreen';
 import NotificationSettingsScreen from '@/screens/notification/NotificationSettingsScreen';
+import ContentViewerScreen from '@/screens/content/ContentViewerScreen';
 import { SentryTestScreen } from '@/screens/dev/SentryTestScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -45,6 +47,16 @@ function NotificationHandler() {
     }
   }, [isAuthenticated, profile, registerToken]);
 
+  return null;
+}
+
+/**
+ * Deep Link 처리 컴포넌트
+ * Universal Links (iOS) 및 App Links (Android)를 처리합니다.
+ * NavigationContainer 내부에서 렌더링되어야 합니다.
+ */
+function DeepLinkHandler() {
+  useDeepLink();
   return null;
 }
 
@@ -132,6 +144,7 @@ export default function RootNavigator() {
       }}
     >
       <NotificationHandler />
+      <DeepLinkHandler />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -157,6 +170,10 @@ export default function RootNavigator() {
           // 4. 모든 설정 완료 → Main (Home)
           <>
             <Stack.Screen name="Main" component={MainNavigator} />
+            <Stack.Screen
+              name="ContentViewer"
+              component={ContentViewerScreen}
+            />
             <Stack.Screen
               name="EditProfile"
               component={EditProfileScreen}

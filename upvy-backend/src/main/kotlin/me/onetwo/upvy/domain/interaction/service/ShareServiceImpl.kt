@@ -8,6 +8,7 @@ import me.onetwo.upvy.domain.interaction.dto.ShareLinkResponse
 import me.onetwo.upvy.domain.interaction.dto.ShareResponse
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
@@ -24,13 +25,16 @@ import java.util.UUID
  * @property contentInteractionService 콘텐츠 인터랙션 서비스
  * @property contentInteractionRepository 콘텐츠 인터랙션 레포지토리
  * @property eventPublisher Reactive 이벤트 발행자
+ * @property shareBaseUrl 공유 링크 base URL (예: https://api.upvy.org)
  */
 @Service
 @Transactional(readOnly = true)
 class ShareServiceImpl(
     private val contentInteractionService: ContentInteractionService,
     private val contentInteractionRepository: ContentInteractionRepository,
-    private val eventPublisher: ReactiveEventPublisher
+    private val eventPublisher: ReactiveEventPublisher,
+    @Value("\${upvy.share.base-url:https://api.upvy.org}")
+    private val shareBaseUrl: String
 ) : ShareService {
 
     /**
@@ -84,7 +88,7 @@ class ShareServiceImpl(
     override fun getShareLink(contentId: UUID): Mono<ShareLinkResponse> {
         logger.debug("Getting share link: contentId={}", contentId)
 
-        val shareUrl = "https://upvy.com/watch/$contentId"
+        val shareUrl = "$shareBaseUrl/watch/$contentId"
 
         return Mono.just(
             ShareLinkResponse(

@@ -21,7 +21,9 @@ object PublicApiPaths {
         "/oauth2/**",
         "/login/**",
         "/error",
-        "/actuator/health/**"
+        "/actuator/health/**",
+        "/.well-known/**",  // Universal Links/App Links verification files
+        "/watch/**"         // App deep link fallback redirects
     )
 
     /**
