@@ -10,7 +10,7 @@ layout: hextra-home
 
 {{< hextra/hero-badge >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>Beta Coming Soon</span>
+  <span>iOS Released / Android Coming Soon</span>
 {{< /hextra/hero-badge >}}
 
 <div class="hx:mt-8 hx:mb-2">
@@ -27,7 +27,7 @@ layout: hextra-home
 </div>
 
 <div class="button-container">
-{{< hextra/hero-button text="Download on App Store" link="https://apps.apple.com/app/upvy" >}}
+{{< hextra/hero-button text="Download on App Store" link="https://apps.apple.com/en/app/upvy-learn-while-you-scroll/id6756291696" >}}
 {{< hextra/hero-button text="Get it on Google Play" link="https://play.google.com/store/apps/details?id=com.upvy" >}}
 </div>
 

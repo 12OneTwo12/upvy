@@ -10,7 +10,7 @@ layout: hextra-home
 
 {{< hextra/hero-badge >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>Beta 출시 준비중</span>
+  <span>애플 출시 완료 / 안드로이드 출시 준비중</span>
 {{< /hextra/hero-badge >}}
 
 <div class="hx:mt-8 hx:mb-2">
@@ -27,7 +27,7 @@ layout: hextra-home
 </div>
 
 <div class="button-container">
-{{< hextra/hero-button text="App Store에서 다운로드" link="https://apps.apple.com/app/upvy" >}}
+{{< hextra/hero-button text="App Store에서 다운로드" link="https://apps.apple.com/kr/app/upvy-%EB%B0%B0%EC%9A%B0%EB%8A%94-%EC%88%8F%ED%8F%BC-%EA%B3%B5%EB%B6%80%ED%95%98%EB%8A%94-%EC%88%8F%EC%B8%A0/id6756291696" >}}
 {{< hextra/hero-button text="Google Play에서 다운로드" link="https://play.google.com/store/apps/details?id=com.upvy" >}}
 </div>
 
