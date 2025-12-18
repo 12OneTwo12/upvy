@@ -51,6 +51,16 @@ function NotificationHandler() {
 }
 
 /**
+ * Deep Link 처리 컴포넌트
+ * Universal Links (iOS) 및 App Links (Android)를 처리합니다.
+ * NavigationContainer 내부에서 렌더링되어야 합니다.
+ */
+function DeepLinkHandler() {
+  useDeepLink();
+  return null;
+}
+
+/**
  * 현재 화면 이름 추출
  */
 function getActiveRouteName(state: NavigationState | undefined): string | undefined {
@@ -101,9 +111,6 @@ export default function RootNavigator() {
   // 화면 추적을 위한 ref
   const routeNameRef = useRef<string>();
 
-  // Universal Links / App Links 핸들링
-  useDeepLink();
-
   // 앱 시작 시 자동 로그인 체크
   useEffect(() => {
     checkAuth();
@@ -137,6 +144,7 @@ export default function RootNavigator() {
       }}
     >
       <NotificationHandler />
+      <DeepLinkHandler />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

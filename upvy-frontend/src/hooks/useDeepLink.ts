@@ -10,14 +10,19 @@ import type { RootStackParamList } from '../types/navigation.types';
  * Handles incoming deep links from shared content:
  * - https://api.upvy.org/watch/{contentId}
  *
- * @example
- * // In RootNavigator.tsx
- * import { useDeepLink } from '../hooks/useDeepLink';
+ * IMPORTANT: This hook must be used inside NavigationContainer.
  *
- * export const RootNavigator = () => {
+ * @example
+ * // In RootNavigator.tsx - Inside NavigationContainer
+ * function DeepLinkHandler() {
  *   useDeepLink();
- *   return <NavigationContainer>...</NavigationContainer>;
- * };
+ *   return null;
+ * }
+ *
+ * <NavigationContainer>
+ *   <DeepLinkHandler />
+ *   <Stack.Navigator>...</Stack.Navigator>
+ * </NavigationContainer>
  */
 export const useDeepLink = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
