@@ -35,6 +35,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.upvy.app',
+      googleServicesFile: './GoogleService-Info.plist',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         UIViewControllerBasedStatusBarAppearance: true,
@@ -49,6 +50,7 @@ module.exports = {
         backgroundColor: '#ffffff',
       },
       package: 'com.upvy.app',
+      googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
     },
@@ -62,6 +64,14 @@ module.exports = {
       'expo-video',
       'expo-apple-authentication',
       '@react-native-firebase/app',
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            useFrameworks: 'static',
+          },
+        },
+      ],
       [
         '@sentry/react-native/expo',
         {
