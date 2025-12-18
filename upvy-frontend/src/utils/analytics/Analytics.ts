@@ -96,7 +96,8 @@ class AnalyticsService {
     if (!this.enabled) return;
 
     try {
-      analytics().logLogin({ method, environment: this.environment });
+      // Firebase 표준 이벤트는 environment 파라미터를 받지 않음
+      analytics().logLogin({ method });
 
       if (__DEV__) {
         console.log('[Analytics] Login:', { method, environment: this.environment });
@@ -114,7 +115,8 @@ class AnalyticsService {
     if (!this.enabled) return;
 
     try {
-      analytics().logSignUp({ method, environment: this.environment });
+      // Firebase 표준 이벤트는 environment 파라미터를 받지 않음
+      analytics().logSignUp({ method });
 
       if (__DEV__) {
         console.log('[Analytics] Sign up:', { method, environment: this.environment });
@@ -315,17 +317,17 @@ class AnalyticsService {
     if (!this.enabled) return;
 
     try {
-      const params: SearchParams = {
+      // Firebase 표준 이벤트는 environment 파라미터를 받지 않음
+      const params = {
         search_term: searchTerm,
         result_count: resultCount,
         category,
-        environment: this.environment,
       };
 
       analytics().logSearch(params);
 
       if (__DEV__) {
-        console.log('[Analytics] Search:', params);
+        console.log('[Analytics] Search:', { ...params, environment: this.environment });
       }
     } catch (error) {
       console.error('[Analytics] Failed to log search:', error);
@@ -553,10 +555,10 @@ class AnalyticsService {
     if (!this.enabled) return;
 
     try {
+      // Firebase 표준 이벤트는 environment 파라미터를 받지 않음
       analytics().logScreenView({
         screen_name: screenName,
         screen_class: screenName,
-        environment: this.environment,
       });
 
       if (__DEV__) {
