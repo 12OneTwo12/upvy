@@ -182,6 +182,7 @@ export const theme = {
  */
 export function useTheme() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
+  const mode = useThemeStore((state) => state.mode);
 
   return {
     colors: isDarkMode ? darkColors : lightColors,
@@ -192,6 +193,8 @@ export function useTheme() {
     duration,
     zIndex,
     layout,
+    isDarkMode,
+    mode,
   };
 }
 

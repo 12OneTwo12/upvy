@@ -446,7 +446,7 @@ export default function NotificationListScreen() {
    */
   const renderNotificationItem = useCallback(
     ({ item }: { item: NotificationResponse }) => {
-      const iconInfo = getNotificationIcon(item.type, dynamicTheme.mode === 'dark');
+      const iconInfo = getNotificationIcon(item.type, dynamicTheme.isDarkMode);
 
       return (
         <Swipeable
@@ -511,7 +511,7 @@ export default function NotificationListScreen() {
         </Swipeable>
       );
     },
-    [styles, handleNotificationPress, renderRightActions, dynamicTheme.mode]
+    [styles, handleNotificationPress, renderRightActions, dynamicTheme.isDarkMode]
   );
 
   /**
