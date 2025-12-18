@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.primary,
     borderTopLeftRadius: theme.borderRadius.lg,
     borderTopRightRadius: theme.borderRadius.lg,
-    maxHeight: SCREEN_HEIGHT * 0.85,
+    maxHeight: SCREEN_HEIGHT * 0.95,
   },
   dragHandleContainer: {
     alignItems: 'center',
