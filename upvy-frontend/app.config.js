@@ -22,7 +22,7 @@ module.exports = {
   expo: {
     name: 'Upvy',
     slug: 'upvy',
-    version: '1.4.0',
+    version: '1.4.1',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -116,7 +116,7 @@ module.exports = {
       policy: 'appVersion',
     },
     extra: {
-      otaVersion: '1.4.0',
+      otaVersion: '1.4.1',
       apiUrl: 'https://api.upvy.org',
       eas: {
         projectId: '4eeab4c9-332d-496a-a23d-f63e4726f221',
