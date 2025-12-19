@@ -75,6 +75,9 @@ class ContentServiceImplTest : BaseReactiveTest {
     @MockK
     private lateinit var userSaveRepository: me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
 
+    @MockK
+    private lateinit var tagService: me.onetwo.upvy.domain.tag.service.TagService
+
     private lateinit var contentService: ContentServiceImpl
 
     @BeforeEach
@@ -90,6 +93,7 @@ class ContentServiceImplTest : BaseReactiveTest {
             contentInteractionRepository = contentInteractionRepository,
             userLikeRepository = userLikeRepository,
             userSaveRepository = userSaveRepository,
+            tagService = tagService,
             bucketName = "test-bucket",
             region = "ap-northeast-2"
         )
@@ -212,6 +216,9 @@ class ContentServiceImplTest : BaseReactiveTest {
             every { contentRepository.save(any()) } returns Mono.just(savedContent)
             every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
 
+            // Mock TagService: 태그 연결
+            every { tagService.attachTagsToContent(contentId, request.tags!!, userId.toString()) } returns reactor.core.publisher.Flux.empty()
+
             // Mock Redis: 세션 삭제
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
 
@@ -313,6 +320,7 @@ class ContentServiceImplTest : BaseReactiveTest {
             every { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
             every { contentRepository.save(any()) } returns Mono.just(savedContent)
             every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
+            every { tagService.attachTagsToContent(contentId, request.tags!!, userId.toString()) } returns reactor.core.publisher.Flux.empty()
             every { contentPhotoRepository.save(any()) } returns Mono.empty()
             every { contentInteractionService.createContentInteraction(contentId, userId) } returns Mono.empty()
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit

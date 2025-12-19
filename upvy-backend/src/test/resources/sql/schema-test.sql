@@ -18,6 +18,8 @@ DROP TABLE IF EXISTS comments;
 DROP TABLE IF EXISTS content_subtitles;
 DROP TABLE IF EXISTS content_interactions;
 DROP TABLE IF EXISTS content_metadata;
+DROP TABLE IF EXISTS content_tags;
+DROP TABLE IF EXISTS tags;
 DROP TABLE IF EXISTS content_photos;
 DROP TABLE IF EXISTS contents;
 DROP TABLE IF EXISTS follows;
@@ -286,6 +288,42 @@ CREATE TABLE content_metadata (
 CREATE INDEX idx_metadata_content_id ON content_metadata(content_id);
 CREATE INDEX idx_category ON content_metadata(category);
 CREATE INDEX idx_metadata_deleted_at ON content_metadata(deleted_at);
+
+-- Tags Table
+CREATE TABLE IF NOT EXISTS tags (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL COMMENT '태그 이름 (원본)',
+    normalized_name VARCHAR(50) NOT NULL UNIQUE COMMENT '검색용 정규화된 이름 (소문자, # 제거)',
+    usage_count INT NOT NULL DEFAULT 0 COMMENT '사용 횟수 (인기도)',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL
+);
+
+CREATE INDEX idx_tags_normalized_name ON tags(normalized_name);
+CREATE INDEX idx_tags_usage_count ON tags(usage_count DESC);
+CREATE INDEX idx_tags_deleted_at ON tags(deleted_at);
+
+-- Content Tags Table (M:N)
+CREATE TABLE IF NOT EXISTS content_tags (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id CHAR(36) NOT NULL COMMENT '콘텐츠 ID',
+    tag_id BIGINT NOT NULL COMMENT '태그 ID',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
+    CONSTRAINT unique_content_tag UNIQUE (content_id, tag_id)
+);
+
+CREATE INDEX idx_content_tags_content_id ON content_tags(content_id);
+CREATE INDEX idx_content_tags_tag_id ON content_tags(tag_id);
+CREATE INDEX idx_content_tags_deleted_at ON content_tags(deleted_at);
 
 -- Content Interactions Table
 CREATE TABLE content_interactions (

@@ -53,6 +53,7 @@ class ContentServiceImpl(
     private val contentInteractionRepository: me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository,
     private val userLikeRepository: me.onetwo.upvy.domain.interaction.repository.UserLikeRepository,
     private val userSaveRepository: me.onetwo.upvy.domain.interaction.repository.UserSaveRepository,
+    private val tagService: me.onetwo.upvy.domain.tag.service.TagService,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -172,8 +173,22 @@ class ContentServiceImpl(
                 .flatMap { savedContent ->
                     contentRepository.saveMetadata(metadata)
                         .switchIfEmpty(Mono.error(IllegalStateException("Failed to save content metadata")))
-                        .map { savedMetadata ->
-                            Triple(savedContent, savedMetadata, contentType)
+                        .flatMap { savedMetadata ->
+                            // Tags 연결 (tags가 있는 경우에만)
+                            if (!request.tags.isNullOrEmpty()) {
+                                tagService.attachTagsToContent(
+                                    contentId = savedContent.id!!,
+                                    tagNames = request.tags!!,
+                                    userId = userId.toString()
+                                )
+                                    .collectList()
+                                    .doOnSuccess { tags ->
+                                        logger.info("Tags attached: contentId=${savedContent.id}, tags=${tags.map { it.name }}")
+                                    }
+                                    .map { Triple(savedContent, savedMetadata, contentType) }
+                            } else {
+                                Mono.just(Triple(savedContent, savedMetadata, contentType))
+                            }
                         }
                 }
         }.flatMap { (savedContent, savedMetadata, contentType) ->
@@ -642,9 +657,40 @@ class ContentServiceImpl(
                     Mono.empty()
                 }
 
-                photoUpdateMono.then(Mono.just(Triple(content, updatedMetadata, photoUrls)))
+                photoUpdateMono
+                    .then(Mono.just(content to updatedMetadata))
             }
-            .flatMap { triple ->
+            .flatMap { (content, updatedMetadata) ->
+                // Tags 업데이트 (tags가 변경된 경우에만)
+                if (request.tags != null) {
+                    // 기존 태그 제거 후 새 태그 연결
+                    tagService.detachTagsFromContent(contentId, userId.toString())
+                        .doOnSuccess { count ->
+                            logger.info("Detached tags: contentId=$contentId, count=$count")
+                        }
+                        .then(
+                            if (request.tags!!.isNotEmpty()) {
+                                tagService.attachTagsToContent(
+                                    contentId = contentId,
+                                    tagNames = request.tags!!,
+                                    userId = userId.toString()
+                                )
+                                    .collectList()
+                                    .doOnSuccess { tags ->
+                                        logger.info("Attached new tags: contentId=$contentId, tags=${tags.map { it.name }}")
+                                    }
+                            } else {
+                                Mono.just(emptyList())
+                            }
+                        )
+                        .map { Pair(content, updatedMetadata) }
+                } else {
+                    Mono.just(Pair(content, updatedMetadata))
+                }
+            }
+            .flatMap { (content, updatedMetadata) ->
+                val triple = Triple(content, updatedMetadata, request.photoUrls)
+                // 원래 로직 계속
                 val (content, metadata, updatedPhotoUrls) = triple
                 // PHOTO 타입인 경우 사진 목록 조회 (수정되었으면 수정된 것, 아니면 기존 것)
                 val photoUrlsMono: Mono<List<String>?> = if (content.contentType == ContentType.PHOTO) {
