@@ -1,5 +1,6 @@
 package me.onetwo.upvy.crawler.search
 
+import me.onetwo.upvy.crawler.backoffice.domain.Category
 import me.onetwo.upvy.crawler.domain.AiContentJobRepository
 import me.onetwo.upvy.crawler.domain.ContentLanguage
 import me.onetwo.upvy.crawler.domain.JobStatus
@@ -36,14 +37,6 @@ class SearchContextCollectorImpl(
     companion object {
         private val logger = LoggerFactory.getLogger(SearchContextCollectorImpl::class.java)
 
-        // 앱 지원 카테고리
-        private val APP_CATEGORIES = listOf(
-            "언어", "과학", "역사", "수학", "예술",
-            "스타트업", "마케팅", "프로그래밍", "디자인",
-            "생산성", "심리학", "재테크", "건강", "동기부여",
-            "육아", "요리", "여행", "취미", "트렌드", "재미"
-        )
-
         // 시즌별 키워드
         private val SEASONAL_KEYWORDS = mapOf(
             Month.JANUARY to "새해 목표, 계획, 습관 만들기, 동기부여",
@@ -75,16 +68,16 @@ class SearchContextCollectorImpl(
 
         // 인기 키워드 (향후 분석 데이터 기반으로 개선 예정)
         val popularKeywords = listOf(
-            "생산성", "프로그래밍", "AI", "한국사", "역사", "동기부여", "언어", "영어", "공부", "수능", "자격증"
+            "심리학", "심리", "프로그래밍", "AI", "한국사", "역사", "동기부여", "언어", "영어", "공부", "수능", "자격증"
         )
 
         // 인기 태그 (향후 분석 데이터 기반으로 개선 예정)
         val topPerformingTags = listOf(
-            "한국사", "동기부여", "역사", "영어", "트렌드", "AI", "공부"
+            "한국사", "심리학", "심리", "분석", "동기부여", "역사", "영어", "강의", "강좌", "AI", "공부"
         )
 
         val context = SearchContext(
-            appCategories = APP_CATEGORIES,
+            appCategories = Category.entries.map { it.name },
             popularKeywords = popularKeywords,
             topPerformingTags = topPerformingTags,
             seasonalContext = seasonalContext,
@@ -134,7 +127,7 @@ class SearchContextCollectorImpl(
                 0.0
             }
 
-            val underrepresented = APP_CATEGORIES.filter { category ->
+            val underrepresented = Category.entries.map { it.name }.filter { category ->
                 (categoryCounts[category] ?: 0) < average
             }
 
