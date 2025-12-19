@@ -44,6 +44,9 @@ module.exports = {
       },
       usesAppleSignIn: true,
       associatedDomains: ['applinks:api.upvy.org'],
+      entitlements: {
+        'com.apple.developer.associated-domains': ['applinks:api.upvy.org'],
+      },
     },
     android: {
       adaptiveIcon: {
