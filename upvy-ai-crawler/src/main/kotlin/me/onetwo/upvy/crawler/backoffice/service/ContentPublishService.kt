@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
 /**
  * 콘텐츠 게시 서비스
@@ -21,6 +22,8 @@ class ContentPublishService(
     private val publishedContentRepository: PublishedContentRepository,
     private val publishedContentMetadataRepository: PublishedContentMetadataRepository,
     private val publishedContentInteractionRepository: PublishedContentInteractionRepository,
+    private val tagRepository: TagRepository,
+    private val contentTagRepository: ContentTagRepository,
     @Value("\${crawler.system-user-id:00000000-0000-0000-0000-000000000001}")
     private val systemUserId: String,
     @Value("\${s3.bucket:upvy-ai-media}")
@@ -66,9 +69,16 @@ class ContentPublishService(
         publishedContentInteractionRepository.save(interaction)
         logger.debug("content_interactions INSERT 완료: contentId={}", contentId)
 
+        // 4. tags 및 content_tags 테이블 INSERT
+        val tagsList = pendingContent.getTagsList()
+        if (tagsList.isNotEmpty()) {
+            saveTagsAndRelations(contentId, tagsList, now)
+            logger.debug("tags 및 content_tags INSERT 완료: contentId={}, tags={}", contentId, tagsList)
+        }
+
         logger.info(
-            "콘텐츠 게시 완료: pendingContentId={}, publishedContentId={}",
-            pendingContentId, contentId
+            "콘텐츠 게시 완료: pendingContentId={}, publishedContentId={}, tags={}",
+            pendingContentId, contentId, tagsList
         )
 
         return contentId
@@ -144,6 +154,71 @@ class ContentPublishService(
             updatedAt = now,
             updatedBy = systemUserId
         )
+    }
+
+    /**
+     * 태그 및 콘텐츠-태그 관계 저장
+     *
+     * @param contentId 콘텐츠 ID
+     * @param tagNames 태그 이름 목록
+     * @param now 현재 시각
+     */
+    private fun saveTagsAndRelations(contentId: String, tagNames: List<String>, now: Instant) {
+        tagNames.forEach { tagName ->
+            // 1. 태그 찾거나 생성
+            val tag = findOrCreateTag(tagName, now)
+
+            // 2. content_tags 관계가 이미 존재하는지 확인
+            val alreadyExists = contentTagRepository.existsByContentIdAndTagIdAndDeletedAtIsNull(
+                contentId,
+                tag.id!!
+            )
+
+            if (!alreadyExists) {
+                // 3. content_tags 관계 생성
+                val contentTag = ContentTag(
+                    contentId = contentId,
+                    tagId = tag.id,
+                    createdAt = now,
+                    createdBy = systemUserId,
+                    updatedAt = now,
+                    updatedBy = systemUserId
+                )
+                contentTagRepository.save(contentTag)
+
+                // 4. tags.usage_count 증가
+                tagRepository.incrementUsageCount(tag.id)
+            }
+        }
+    }
+
+    /**
+     * 태그를 찾거나 생성합니다.
+     *
+     * @param tagName 태그 이름
+     * @param now 현재 시각
+     * @return 태그 엔티티
+     */
+    private fun findOrCreateTag(tagName: String, now: Instant): Tag {
+        val trimmedName = tagName.trim()
+        val normalizedName = Tag.normalizeTagName(trimmedName)
+
+        // 기존 태그 조회
+        return tagRepository.findByNormalizedNameAndDeletedAtIsNull(normalizedName)
+            .getOrNull()
+            ?: run {
+                // 새 태그 생성
+                val newTag = Tag(
+                    name = trimmedName,
+                    normalizedName = normalizedName,
+                    usageCount = 0,
+                    createdAt = now,
+                    createdBy = systemUserId,
+                    updatedAt = now,
+                    updatedBy = systemUserId
+                )
+                tagRepository.save(newTag)
+            }
     }
 
     /**

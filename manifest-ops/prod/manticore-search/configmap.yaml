@@ -125,7 +125,46 @@ data:
     }
 
     # ============================================
-    # Autocomplete Index (User + Content 통합)
+    # Tag Search Index (태그 자동완성 및 검색)
+    # ============================================
+    source tag_src
+    {
+        type            = mysql
+        sql_host        = ${MYSQL_HOST}
+        sql_user        = ${DB_USERNAME}
+        sql_pass        = ${DB_PASSWORD}
+        sql_db          = ${MYSQL_DATABASE}
+        sql_port        = ${MYSQL_PORT}
+        sql_query       = \
+            SELECT \
+                id, \
+                name AS text, \
+                usage_count, \
+                UNIX_TIMESTAMP(created_at) AS created_at \
+            FROM tags \
+            WHERE deleted_at IS NULL
+
+        sql_attr_uint     = usage_count
+        sql_attr_timestamp = created_at
+    }
+
+    index tag_index {
+        type = plain
+        source          = tag_src
+        path            = /var/lib/manticore/tag_index
+
+        docinfo         = extern
+        mlock           = 0
+        charset_table   = 0..9, A..Z->a..z, a..z
+        min_word_len    = 1
+        min_prefix_len  = 1
+        prefix_fields   = text
+        ngram_len       = 2
+        ngram_chars     = U+AC00..U+D7AF, U+1100..U+11FF, U+3130..U+318F, U+3040..U+309F, U+30A0..U+30FF, U+4E00..U+9FFF
+    }
+
+    # ============================================
+    # Autocomplete Index (User + Content + Tag 통합)
     # ============================================
     source autocomplete_src
     {
@@ -140,12 +179,14 @@ data:
                 (@rownum := @rownum + 1) AS id, \
                 text, \
                 type, \
-                user_id \
+                user_id, \
+                usage_count \
             FROM ( \
                 SELECT \
                     up.nickname AS text, \
                     'USER' AS type, \
-                    u.id AS user_id \
+                    u.id AS user_id, \
+                    up.follower_count AS usage_count \
                 FROM user_profiles up \
                 INNER JOIN users u ON up.user_id = u.id \
                 WHERE u.deleted_at IS NULL \
@@ -155,16 +196,27 @@ data:
                 SELECT \
                     cm.title AS text, \
                     'CONTENT' AS type, \
-                    NULL AS user_id \
+                    NULL AS user_id, \
+                    ci.view_count AS usage_count \
                 FROM content_metadata cm \
                 INNER JOIN contents c ON cm.content_id = c.id \
+                LEFT JOIN content_interactions ci ON c.id = ci.content_id \
                 WHERE c.deleted_at IS NULL \
                   AND cm.deleted_at IS NULL \
                   AND c.status = 'PUBLISHED' \
+                UNION ALL \
+                SELECT \
+                    t.name AS text, \
+                    'TAG' AS type, \
+                    NULL AS user_id, \
+                    t.usage_count AS usage_count \
+                FROM tags t \
+                WHERE t.deleted_at IS NULL \
             ) AS combined, (SELECT @rownum := 0) AS r
 
         sql_attr_string = type
         sql_attr_string = user_id
+        sql_attr_uint   = usage_count
     }
 
     index autocomplete_index {
