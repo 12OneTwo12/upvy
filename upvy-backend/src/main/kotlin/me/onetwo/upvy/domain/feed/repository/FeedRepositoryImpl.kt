@@ -12,9 +12,7 @@ import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_INTERACTIONS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_METADATA
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_PHOTOS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_SUBTITLES
-import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_TAGS
 import me.onetwo.upvy.jooq.generated.tables.references.FOLLOWS
-import me.onetwo.upvy.jooq.generated.tables.references.TAGS
 import me.onetwo.upvy.jooq.generated.tables.references.USERS
 import me.onetwo.upvy.jooq.generated.tables.references.USER_BLOCKS
 import me.onetwo.upvy.jooq.generated.tables.references.USER_LIKES
@@ -61,8 +59,6 @@ class FeedRepositoryImpl(
         cursor: UUID?,
         limit: Int
     ): Flux<FeedItemResponse> {
-        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
-
         // Build where conditions list
         val conditions = mutableListOf<Condition>()
         conditions.add(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
@@ -101,7 +97,6 @@ class FeedRepositoryImpl(
                     CONTENT_METADATA.TITLE,
                     CONTENT_METADATA.DESCRIPTION,
                     CONTENT_METADATA.CATEGORY,
-                    tagsField,
                     // CONTENT_INTERACTIONS 필요 컬럼만 명시적으로 선택
                     CONTENT_INTERACTIONS.LIKE_COUNT,
                     CONTENT_INTERACTIONS.COMMENT_COUNT,
@@ -135,39 +130,7 @@ class FeedRepositoryImpl(
                         .and(USER_SAVES.USER_ID.eq(userId.toString()))
                         .and(USER_SAVES.DELETED_AT.isNull)
                 )
-                .leftJoin(CONTENT_TAGS).on(
-                    CONTENT_METADATA.CONTENT_ID.eq(CONTENT_TAGS.CONTENT_ID)
-                        .and(CONTENT_TAGS.DELETED_AT.isNull)
-                )
-                .leftJoin(TAGS).on(
-                    CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
-                        .and(TAGS.DELETED_AT.isNull)
-                )
                 .where(conditions)
-                .groupBy(
-                    CONTENTS.ID,
-                    CONTENTS.CONTENT_TYPE,
-                    CONTENTS.URL,
-                    CONTENTS.THUMBNAIL_URL,
-                    CONTENTS.DURATION,
-                    CONTENTS.WIDTH,
-                    CONTENTS.HEIGHT,
-                    CONTENTS.CREATED_AT,
-                    CONTENT_METADATA.TITLE,
-                    CONTENT_METADATA.DESCRIPTION,
-                    CONTENT_METADATA.CATEGORY,
-                    CONTENT_INTERACTIONS.LIKE_COUNT,
-                    CONTENT_INTERACTIONS.COMMENT_COUNT,
-                    CONTENT_INTERACTIONS.SAVE_COUNT,
-                    CONTENT_INTERACTIONS.SHARE_COUNT,
-                    CONTENT_INTERACTIONS.VIEW_COUNT,
-                    USERS.ID,
-                    USER_PROFILES.NICKNAME,
-                    USER_PROFILES.PROFILE_IMAGE_URL,
-                    USER_PROFILES.FOLLOWER_COUNT,
-                    USER_LIKES.ID,
-                    USER_SAVES.ID
-                )
 
         // Execute query and collect contentIds first
         return Flux.from(query
@@ -195,7 +158,9 @@ class FeedRepositoryImpl(
                         val subtitlesMap = tuple.t1
                         val photosMap = tuple.t2
                         // 레코드를 FeedItemResponse로 변환
-                        Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
+                        Flux.fromIterable(records.map { record ->
+                            mapRecordToFeedItem(record, subtitlesMap, photosMap)
+                        })
                     }
             }
     }
@@ -236,14 +201,6 @@ class FeedRepositoryImpl(
     ): FeedItemResponse {
         val contentId = UUID.fromString(record.get(CONTENTS.ID))
 
-        // 태그 파싱 - GROUP_CONCAT으로 집계된 콤마 구분 문자열을 리스트로 변환
-        val tagsString = record.get("tag_names", String::class.java)
-        val tags = if (!tagsString.isNullOrBlank()) {
-            tagsString.split(",").filter { it.isNotBlank() }
-        } else {
-            emptyList()
-        }
-
         // 자막은 미리 조회한 맵에서 가져오기
         val subtitles = subtitlesMap[contentId] ?: emptyList()
 
@@ -262,7 +219,7 @@ class FeedRepositoryImpl(
             title = record.get(CONTENT_METADATA.TITLE)!!,
             description = record.get(CONTENT_METADATA.DESCRIPTION),
             category = Category.valueOf(record.get(CONTENT_METADATA.CATEGORY)!!),
-            tags = tags,
+            tags = emptyList(),
             creator = CreatorInfoResponse(
                 userId = UUID.fromString(record.get(USERS.ID)!!),
                 nickname = record.get(USER_PROFILES.NICKNAME)!!,
@@ -528,8 +485,6 @@ class FeedRepositoryImpl(
             return Flux.empty()
         }
 
-        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
-
         // Build where conditions list
         val conditions = mutableListOf<Condition>()
         conditions.add(CONTENTS.ID.`in`(contentIds.map { it.toString() }))
@@ -557,7 +512,6 @@ class FeedRepositoryImpl(
                 CONTENT_METADATA.TITLE,
                 CONTENT_METADATA.DESCRIPTION,
                 CONTENT_METADATA.CATEGORY,
-                tagsField,
                 // CONTENT_INTERACTIONS 필요 컬럼만 명시적으로 선택
                 CONTENT_INTERACTIONS.LIKE_COUNT,
                 CONTENT_INTERACTIONS.COMMENT_COUNT,
@@ -595,40 +549,7 @@ class FeedRepositoryImpl(
                     .and(FOLLOWS.FOLLOWING_ID.eq(CONTENTS.CREATOR_ID))
                     .and(FOLLOWS.DELETED_AT.isNull)
             )
-            .leftJoin(CONTENT_TAGS).on(
-                CONTENT_METADATA.CONTENT_ID.eq(CONTENT_TAGS.CONTENT_ID)
-                    .and(CONTENT_TAGS.DELETED_AT.isNull)
-            )
-            .leftJoin(TAGS).on(
-                CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
-                    .and(TAGS.DELETED_AT.isNull)
-            )
             .where(conditions)
-            .groupBy(
-                CONTENTS.ID,
-                CONTENTS.CONTENT_TYPE,
-                CONTENTS.URL,
-                CONTENTS.THUMBNAIL_URL,
-                CONTENTS.DURATION,
-                CONTENTS.WIDTH,
-                CONTENTS.HEIGHT,
-                CONTENTS.CREATED_AT,
-                CONTENT_METADATA.TITLE,
-                CONTENT_METADATA.DESCRIPTION,
-                CONTENT_METADATA.CATEGORY,
-                CONTENT_INTERACTIONS.LIKE_COUNT,
-                CONTENT_INTERACTIONS.COMMENT_COUNT,
-                CONTENT_INTERACTIONS.SAVE_COUNT,
-                CONTENT_INTERACTIONS.SHARE_COUNT,
-                CONTENT_INTERACTIONS.VIEW_COUNT,
-                USERS.ID,
-                USER_PROFILES.NICKNAME,
-                USER_PROFILES.PROFILE_IMAGE_URL,
-                USER_PROFILES.FOLLOWER_COUNT,
-                USER_LIKES.ID,
-                USER_SAVES.ID,
-                FOLLOWS.ID
-            )
 
         return Flux.from(query)
             .collectList()

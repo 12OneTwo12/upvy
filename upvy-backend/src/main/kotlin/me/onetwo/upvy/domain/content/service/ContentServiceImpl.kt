@@ -320,10 +320,16 @@ class ContentServiceImpl(
                 // Interaction 정보 조회
                 val interactionMono = getInteractionInfo(contentId, userId)
 
-                Mono.zip(photoUrlsMono.defaultIfEmpty(emptyList()), interactionMono)
+                // Tags 조회
+                val tagsMono = tagService.getTagsByContentId(contentId)
+                    .map { it.name }
+                    .collectList()
+
+                Mono.zip(photoUrlsMono.defaultIfEmpty(emptyList()), interactionMono, tagsMono)
                     .map { tuple ->
                         val photoUrls = tuple.t1.takeIf { it.isNotEmpty() }
                         val interactions = tuple.t2
+                        val tags = tuple.t3
 
                         ContentResponse(
                             id = content.id.toString(),
@@ -339,7 +345,7 @@ class ContentServiceImpl(
                             title = metadata.title,
                             description = metadata.description,
                             category = metadata.category,
-                            tags = metadata.tags,
+                            tags = tags,
                             language = metadata.language,
                             interactions = interactions,
                             createdAt = content.createdAt,
@@ -376,11 +382,20 @@ class ContentServiceImpl(
                     Mono.just(emptyMap())
                 }
 
-                photoUrlsMapMono.map { photoUrlsMap ->
-                    contentWithMetadataList to photoUrlsMap
-                }
+                // N+1 방지: 태그 일괄 조회
+                val contentIds = contentWithMetadataList.mapNotNull { it.content.id }
+                val tagsMapMono = tagService.getTagsByContentIds(contentIds)
+                    .collectList()
+                    .map { projections ->
+                        projections.associate { it.contentId to it.tags }
+                    }
+
+                Mono.zip(photoUrlsMapMono, tagsMapMono)
+                    .map { tuple ->
+                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                    }
             }
-            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
                 Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
@@ -389,6 +404,7 @@ class ContentServiceImpl(
                     } else {
                         null
                     }
+                    val tags = tagsMap[content.id] ?: emptyList()
 
                     // Interaction 정보 조회
                     getInteractionInfo(content.id!!, userId).map { interactions ->
@@ -406,7 +422,7 @@ class ContentServiceImpl(
                             title = metadata.title,
                             description = metadata.description,
                             category = metadata.category,
-                            tags = metadata.tags,
+                            tags = tags,
                             language = metadata.language,
                             interactions = interactions,
                             createdAt = content.createdAt,
@@ -456,11 +472,20 @@ class ContentServiceImpl(
                     Mono.just(emptyMap())
                 }
 
-                photoUrlsMapMono.map { photoUrlsMap ->
-                    contentWithMetadataList to photoUrlsMap
-                }
+                // N+1 방지: 태그 일괄 조회
+                val contentIds = contentWithMetadataList.mapNotNull { it.content.id }
+                val tagsMapMono = tagService.getTagsByContentIds(contentIds)
+                    .collectList()
+                    .map { projections ->
+                        projections.associate { it.contentId to it.tags }
+                    }
+
+                Mono.zip(photoUrlsMapMono, tagsMapMono)
+                    .map { tuple ->
+                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                    }
             }
-            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
                 Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
@@ -469,6 +494,7 @@ class ContentServiceImpl(
                     } else {
                         null
                     }
+                    val tags = tagsMap[content.id] ?: emptyList()
 
                     // Interaction 정보 조회
                     getInteractionInfo(content.id!!, userId).map { interactions ->
@@ -486,7 +512,7 @@ class ContentServiceImpl(
                             title = metadata.title,
                             description = metadata.description,
                             category = metadata.category,
-                            tags = metadata.tags,
+                            tags = tags,
                             language = metadata.language,
                             interactions = interactions,
                             createdAt = content.createdAt,
@@ -538,11 +564,20 @@ class ContentServiceImpl(
                     Mono.just(emptyMap())
                 }
 
-                photoUrlsMapMono.map { photoUrlsMap ->
-                    contentWithMetadataList to photoUrlsMap
-                }
+                // N+1 방지: 태그 일괄 조회
+                val contentIdsList = contentWithMetadataList.mapNotNull { it.content.id }
+                val tagsMapMono = tagService.getTagsByContentIds(contentIdsList)
+                    .collectList()
+                    .map { projections ->
+                        projections.associate { it.contentId to it.tags }
+                    }
+
+                Mono.zip(photoUrlsMapMono, tagsMapMono)
+                    .map { tuple ->
+                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                    }
             }
-            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
                 Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
@@ -551,6 +586,7 @@ class ContentServiceImpl(
                     } else {
                         null
                     }
+                    val tags = tagsMap[content.id] ?: emptyList()
 
                     // Interaction 정보 조회
                     getInteractionInfo(content.id!!, userId).map { interactions ->
@@ -568,7 +604,7 @@ class ContentServiceImpl(
                             title = metadata.title,
                             description = metadata.description,
                             category = metadata.category,
-                            tags = metadata.tags,
+                            tags = tags,
                             language = metadata.language,
                             interactions = interactions,
                             createdAt = content.createdAt,

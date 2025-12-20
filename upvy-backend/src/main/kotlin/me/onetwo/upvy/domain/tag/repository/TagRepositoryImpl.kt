@@ -1,6 +1,8 @@
 package me.onetwo.upvy.domain.tag.repository
 
+import me.onetwo.upvy.domain.tag.model.ContentTagsProjection
 import me.onetwo.upvy.domain.tag.model.Tag
+import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_TAGS
 import me.onetwo.upvy.jooq.generated.tables.references.TAGS
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
@@ -8,6 +10,7 @@ import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
+import java.util.UUID
 
 /**
  * 태그 레포지토리 구현체 (Reactive with JOOQ R2DBC)
@@ -266,5 +269,38 @@ class TagRepositoryImpl(
             logger.debug("Tag deleted: tagId=$tagId, success=$success")
             success
         }.defaultIfEmpty(false)
+    }
+
+    override fun findByContentIds(contentIds: List<UUID>): Flux<ContentTagsProjection> {
+        if (contentIds.isEmpty()) {
+            return Flux.empty()
+        }
+
+        return Flux.from(
+            dslContext
+                .select(
+                    CONTENT_TAGS.CONTENT_ID,
+                    TAGS.NAME
+                )
+                .from(CONTENT_TAGS)
+                .join(TAGS).on(CONTENT_TAGS.TAG_ID.eq(TAGS.ID))
+                .where(CONTENT_TAGS.CONTENT_ID.`in`(contentIds.map { it.toString() }))
+                .and(CONTENT_TAGS.DELETED_AT.isNull)
+                .and(TAGS.DELETED_AT.isNull)
+        )
+            .collectMultimap(
+                { record -> UUID.fromString(record.get(CONTENT_TAGS.CONTENT_ID)) },
+                { record -> record.get(TAGS.NAME)!! }
+            )
+            .flatMapMany { multimap ->
+                Flux.fromIterable(
+                    multimap.map { (contentId, tagNames) ->
+                        ContentTagsProjection(
+                            contentId = contentId,
+                            tags = tagNames.toList()
+                        )
+                    }
+                )
+            }
     }
 }

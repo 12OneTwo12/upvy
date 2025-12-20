@@ -8,8 +8,6 @@ import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENTS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_METADATA
-import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_TAGS
-import me.onetwo.upvy.jooq.generated.tables.references.TAGS
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
@@ -171,8 +169,6 @@ class ContentRepositoryImpl(
      * @return 콘텐츠와 메타데이터의 목록 (Flux)
      */
     override fun findWithMetadataByCreatorId(creatorId: UUID): Flux<ContentWithMetadata> {
-        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
-
         return Flux.from(
             dslContext
                 .select(
@@ -200,93 +196,59 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.CREATED_BY,
                     CONTENT_METADATA.UPDATED_AT,
                     CONTENT_METADATA.UPDATED_BY,
-                    CONTENT_METADATA.DELETED_AT,
-                    tagsField
+                    CONTENT_METADATA.DELETED_AT
                 )
                 .from(CONTENTS)
                 .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
-                .leftJoin(CONTENT_TAGS).on(
-                    CONTENTS.ID.eq(CONTENT_TAGS.CONTENT_ID)
-                        .and(CONTENT_TAGS.DELETED_AT.isNull)
-                )
-                .leftJoin(TAGS).on(
-                    CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
-                        .and(TAGS.DELETED_AT.isNull)
-                )
                 .where(CONTENTS.CREATOR_ID.eq(creatorId.toString()))
                 .and(CONTENTS.DELETED_AT.isNull)
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
-                .groupBy(
-                    CONTENTS.ID,
-                    CONTENTS.CREATOR_ID,
-                    CONTENTS.CONTENT_TYPE,
-                    CONTENTS.URL,
-                    CONTENTS.THUMBNAIL_URL,
-                    CONTENTS.DURATION,
-                    CONTENTS.WIDTH,
-                    CONTENTS.HEIGHT,
-                    CONTENTS.STATUS,
-                    CONTENTS.CREATED_AT,
-                    CONTENTS.CREATED_BY,
-                    CONTENTS.UPDATED_AT,
-                    CONTENTS.UPDATED_BY,
-                    CONTENTS.DELETED_AT,
-                    CONTENT_METADATA.ID,
-                    CONTENT_METADATA.CONTENT_ID,
-                    CONTENT_METADATA.TITLE,
-                    CONTENT_METADATA.DESCRIPTION,
-                    CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.LANGUAGE,
-                    CONTENT_METADATA.CREATED_AT,
-                    CONTENT_METADATA.CREATED_BY,
-                    CONTENT_METADATA.UPDATED_AT,
-                    CONTENT_METADATA.UPDATED_BY,
-                    CONTENT_METADATA.DELETED_AT
-                )
                 .orderBy(CONTENTS.CREATED_AT.desc())
-        ).map { record ->
-            val content = Content(
-                id = UUID.fromString(record.getValue(CONTENTS.ID)),
-                creatorId = UUID.fromString(record.getValue(CONTENTS.CREATOR_ID)),
-                contentType = ContentType.valueOf(record.getValue(CONTENTS.CONTENT_TYPE)!!),
-                url = record.getValue(CONTENTS.URL)!!,
-                thumbnailUrl = record.getValue(CONTENTS.THUMBNAIL_URL)!!,
-                duration = record.getValue(CONTENTS.DURATION),
-                width = record.getValue(CONTENTS.WIDTH)!!,
-                height = record.getValue(CONTENTS.HEIGHT)!!,
-                status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
-                createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
-                createdBy = record.getValue(CONTENTS.CREATED_BY),
-                updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
-                updatedBy = record.getValue(CONTENTS.UPDATED_BY),
-                deletedAt = record.getValue(CONTENTS.DELETED_AT)
-            )
+        )
+            .collectList()
+            .flatMapMany { records ->
+                if (records.isEmpty()) {
+                    return@flatMapMany Flux.empty<ContentWithMetadata>()
+                }
 
-            // 태그 파싱 - GROUP_CONCAT으로 가져온 tags
-            val tagsString = record.get("tag_names", String::class.java)
-            val tags = if (!tagsString.isNullOrBlank()) {
-                tagsString.split(",").filter { it.isNotBlank() }
-            } else {
-                emptyList()
+                Flux.fromIterable(records.map { record ->
+                    val contentId = UUID.fromString(record.getValue(CONTENTS.ID))
+
+                    val content = Content(
+                        id = contentId,
+                        creatorId = UUID.fromString(record.getValue(CONTENTS.CREATOR_ID)),
+                        contentType = ContentType.valueOf(record.getValue(CONTENTS.CONTENT_TYPE)!!),
+                        url = record.getValue(CONTENTS.URL)!!,
+                        thumbnailUrl = record.getValue(CONTENTS.THUMBNAIL_URL)!!,
+                        duration = record.getValue(CONTENTS.DURATION),
+                        width = record.getValue(CONTENTS.WIDTH)!!,
+                        height = record.getValue(CONTENTS.HEIGHT)!!,
+                        status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
+                        createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
+                        createdBy = record.getValue(CONTENTS.CREATED_BY),
+                        updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
+                        updatedBy = record.getValue(CONTENTS.UPDATED_BY),
+                        deletedAt = record.getValue(CONTENTS.DELETED_AT)
+                    )
+
+                    val metadata = ContentMetadata(
+                        id = record.getValue(CONTENT_METADATA.ID),
+                        contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
+                        title = record.getValue(CONTENT_METADATA.TITLE)!!,
+                        description = record.getValue(CONTENT_METADATA.DESCRIPTION),
+                        category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
+                        tags = emptyList(),
+                        language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
+                        createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
+                        createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
+                        updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
+                        updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
+                        deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
+                    )
+
+                    ContentWithMetadata(content, metadata)
+                })
             }
-
-            val metadata = ContentMetadata(
-                id = record.getValue(CONTENT_METADATA.ID),
-                contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
-                title = record.getValue(CONTENT_METADATA.TITLE)!!,
-                description = record.getValue(CONTENT_METADATA.DESCRIPTION),
-                category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = tags,
-                language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
-                createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
-                createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
-                updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
-                updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
-                deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
-            )
-
-            ContentWithMetadata(content, metadata)
-        }
     }
 
     /**
@@ -381,8 +343,6 @@ class ContentRepositoryImpl(
      * @return 조회된 메타데이터 (없으면 empty Mono)
      */
     override fun findMetadataByContentId(contentId: UUID): Mono<ContentMetadata> {
-        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
-
         return Mono.from(
             dslContext
                 .select(
@@ -397,50 +357,19 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.CREATED_BY,
                     CONTENT_METADATA.UPDATED_AT,
                     CONTENT_METADATA.UPDATED_BY,
-                    CONTENT_METADATA.DELETED_AT,
-                    tagsField
-                )
-                .from(CONTENT_METADATA)
-                .leftJoin(CONTENT_TAGS).on(
-                    CONTENT_METADATA.CONTENT_ID.eq(CONTENT_TAGS.CONTENT_ID)
-                        .and(CONTENT_TAGS.DELETED_AT.isNull)
-                )
-                .leftJoin(TAGS).on(
-                    CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
-                        .and(TAGS.DELETED_AT.isNull)
-                )
-                .where(CONTENT_METADATA.CONTENT_ID.eq(contentId.toString()))
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
-                .groupBy(
-                    CONTENT_METADATA.ID,
-                    CONTENT_METADATA.CONTENT_ID,
-                    CONTENT_METADATA.TITLE,
-                    CONTENT_METADATA.DESCRIPTION,
-                    CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.DIFFICULTY_LEVEL,
-                    CONTENT_METADATA.LANGUAGE,
-                    CONTENT_METADATA.CREATED_AT,
-                    CONTENT_METADATA.CREATED_BY,
-                    CONTENT_METADATA.UPDATED_AT,
-                    CONTENT_METADATA.UPDATED_BY,
                     CONTENT_METADATA.DELETED_AT
                 )
+                .from(CONTENT_METADATA)
+                .where(CONTENT_METADATA.CONTENT_ID.eq(contentId.toString()))
+                .and(CONTENT_METADATA.DELETED_AT.isNull)
         ).map { record ->
-            // 태그 파싱 - GROUP_CONCAT으로 가져온 tags
-            val tagsString = record.get("tag_names", String::class.java)
-            val tags = if (!tagsString.isNullOrBlank()) {
-                tagsString.split(",").filter { it.isNotBlank() }
-            } else {
-                emptyList()
-            }
-
             ContentMetadata(
                 id = record.getValue(CONTENT_METADATA.ID),
                 contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
                 title = record.getValue(CONTENT_METADATA.TITLE)!!,
                 description = record.getValue(CONTENT_METADATA.DESCRIPTION),
                 category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = tags,
+                tags = emptyList(),
                 language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                 createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
                 createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
@@ -496,8 +425,6 @@ class ContentRepositoryImpl(
         cursor: UUID?,
         limit: Int
     ): Flux<ContentWithMetadata> {
-        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
-
         var query = dslContext
             .select(
                 CONTENTS.ID,
@@ -524,19 +451,10 @@ class ContentRepositoryImpl(
                 CONTENT_METADATA.CREATED_BY,
                 CONTENT_METADATA.UPDATED_AT,
                 CONTENT_METADATA.UPDATED_BY,
-                CONTENT_METADATA.DELETED_AT,
-                tagsField
+                CONTENT_METADATA.DELETED_AT
             )
             .from(CONTENTS)
             .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
-            .leftJoin(CONTENT_TAGS).on(
-                CONTENTS.ID.eq(CONTENT_TAGS.CONTENT_ID)
-                    .and(CONTENT_TAGS.DELETED_AT.isNull)
-            )
-            .leftJoin(TAGS).on(
-                CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
-                    .and(TAGS.DELETED_AT.isNull)
-            )
             .where(CONTENTS.CREATOR_ID.eq(creatorId.toString()))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
@@ -555,33 +473,6 @@ class ContentRepositoryImpl(
 
         return Flux.from(
             query
-                .groupBy(
-                    CONTENTS.ID,
-                    CONTENTS.CREATOR_ID,
-                    CONTENTS.CONTENT_TYPE,
-                    CONTENTS.URL,
-                    CONTENTS.THUMBNAIL_URL,
-                    CONTENTS.DURATION,
-                    CONTENTS.WIDTH,
-                    CONTENTS.HEIGHT,
-                    CONTENTS.STATUS,
-                    CONTENTS.CREATED_AT,
-                    CONTENTS.CREATED_BY,
-                    CONTENTS.UPDATED_AT,
-                    CONTENTS.UPDATED_BY,
-                    CONTENTS.DELETED_AT,
-                    CONTENT_METADATA.ID,
-                    CONTENT_METADATA.CONTENT_ID,
-                    CONTENT_METADATA.TITLE,
-                    CONTENT_METADATA.DESCRIPTION,
-                    CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.LANGUAGE,
-                    CONTENT_METADATA.CREATED_AT,
-                    CONTENT_METADATA.CREATED_BY,
-                    CONTENT_METADATA.UPDATED_AT,
-                    CONTENT_METADATA.UPDATED_BY,
-                    CONTENT_METADATA.DELETED_AT
-                )
                 .orderBy(CONTENTS.CREATED_AT.desc())
                 .limit(limit)
         ).map { record ->
@@ -602,21 +493,13 @@ class ContentRepositoryImpl(
                 deletedAt = record.getValue(CONTENTS.DELETED_AT)
             )
 
-            // 태그 파싱 - GROUP_CONCAT으로 가져온 tags
-            val tagsString = record.get("tag_names", String::class.java)
-            val tags = if (!tagsString.isNullOrBlank()) {
-                tagsString.split(",").filter { it.isNotBlank() }
-            } else {
-                emptyList()
-            }
-
             val metadata = ContentMetadata(
                 id = record.getValue(CONTENT_METADATA.ID),
                 contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
                 title = record.getValue(CONTENT_METADATA.TITLE)!!,
                 description = record.getValue(CONTENT_METADATA.DESCRIPTION),
                 category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = tags,
+                tags = emptyList(),
                 language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                 createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
                 createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
@@ -644,7 +527,6 @@ class ContentRepositoryImpl(
         }
 
         val contentIdsString = contentIds.map { it.toString() }
-        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
 
         return Flux.from(
             dslContext
@@ -674,50 +556,13 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.CREATED_BY,
                     CONTENT_METADATA.UPDATED_AT,
                     CONTENT_METADATA.UPDATED_BY,
-                    CONTENT_METADATA.DELETED_AT,
-                    tagsField
+                    CONTENT_METADATA.DELETED_AT
                 )
                 .from(CONTENTS)
                 .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
-                .leftJoin(CONTENT_TAGS).on(
-                    CONTENTS.ID.eq(CONTENT_TAGS.CONTENT_ID)
-                        .and(CONTENT_TAGS.DELETED_AT.isNull)
-                )
-                .leftJoin(TAGS).on(
-                    CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
-                        .and(TAGS.DELETED_AT.isNull)
-                )
                 .where(CONTENTS.ID.`in`(contentIdsString))
                 .and(CONTENTS.DELETED_AT.isNull)
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
-                .groupBy(
-                    CONTENTS.ID,
-                    CONTENTS.CREATOR_ID,
-                    CONTENTS.CONTENT_TYPE,
-                    CONTENTS.URL,
-                    CONTENTS.THUMBNAIL_URL,
-                    CONTENTS.DURATION,
-                    CONTENTS.WIDTH,
-                    CONTENTS.HEIGHT,
-                    CONTENTS.STATUS,
-                    CONTENTS.CREATED_AT,
-                    CONTENTS.CREATED_BY,
-                    CONTENTS.UPDATED_AT,
-                    CONTENTS.UPDATED_BY,
-                    CONTENTS.DELETED_AT,
-                    CONTENT_METADATA.ID,
-                    CONTENT_METADATA.CONTENT_ID,
-                    CONTENT_METADATA.TITLE,
-                    CONTENT_METADATA.DESCRIPTION,
-                    CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.DIFFICULTY_LEVEL,
-                    CONTENT_METADATA.LANGUAGE,
-                    CONTENT_METADATA.CREATED_AT,
-                    CONTENT_METADATA.CREATED_BY,
-                    CONTENT_METADATA.UPDATED_AT,
-                    CONTENT_METADATA.UPDATED_BY,
-                    CONTENT_METADATA.DELETED_AT
-                )
         ).map { record ->
             val content = Content(
                 id = UUID.fromString(record.getValue(CONTENTS.ID)),
@@ -736,21 +581,13 @@ class ContentRepositoryImpl(
                 deletedAt = record.getValue(CONTENTS.DELETED_AT)
             )
 
-            // 태그 파싱 - GROUP_CONCAT으로 가져온 tags
-            val tagsString = record.get("tag_names", String::class.java)
-            val tags = if (!tagsString.isNullOrBlank()) {
-                tagsString.split(",").filter { it.isNotBlank() }
-            } else {
-                emptyList()
-            }
-
             val metadata = ContentMetadata(
                 id = record.getValue(CONTENT_METADATA.ID),
                 contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
                 title = record.getValue(CONTENT_METADATA.TITLE)!!,
                 description = record.getValue(CONTENT_METADATA.DESCRIPTION),
                 category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = tags,
+                tags = emptyList(),
                 language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                 createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
                 createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),

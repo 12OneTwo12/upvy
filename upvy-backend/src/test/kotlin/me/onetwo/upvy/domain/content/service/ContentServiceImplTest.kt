@@ -26,6 +26,7 @@ import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
 import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.interaction.repository.UserLikeRepository
 import me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
+import me.onetwo.upvy.domain.tag.model.Tag
 import me.onetwo.upvy.domain.tag.service.TagService
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import software.amazon.awssdk.services.s3.S3Client
@@ -543,6 +545,7 @@ class ContentServiceImplTest : BaseReactiveTest {
             every { contentInteractionRepository.getSaveCount(contentId) } returns Mono.just(0)
             every { contentInteractionRepository.getShareCount(contentId) } returns Mono.just(0)
             every { contentInteractionRepository.getViewCount(contentId) } returns Mono.just(0)
+            every { tagService.getTagsByContentId(contentId) } returns Flux.empty()
 
             // When: 메서드 실행
             val result = contentService.getContent(contentId, null)

@@ -1,8 +1,10 @@
 package me.onetwo.upvy.domain.tag.repository
 
+import me.onetwo.upvy.domain.tag.model.ContentTagsProjection
 import me.onetwo.upvy.domain.tag.model.Tag
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.UUID
 
 /**
  * 태그 레포지토리 인터페이스 (Reactive)
@@ -55,6 +57,16 @@ interface TagRepository {
      * @return 태그 목록 (Flux)
      */
     fun findByIds(tagIds: List<Long>): Flux<Tag>
+
+    /**
+     * 여러 콘텐츠의 태그 이름을 배치로 조회합니다.
+     *
+     * N+1 문제를 방지하기 위해 여러 콘텐츠의 태그를 한 번의 쿼리로 조회합니다.
+     *
+     * @param contentIds 콘텐츠 ID 목록
+     * @return 콘텐츠별 태그 목록 (Flux)
+     */
+    fun findByContentIds(contentIds: List<UUID>): Flux<ContentTagsProjection>
 
     /**
      * 인기 태그를 usage_count 기준 내림차순으로 조회합니다.

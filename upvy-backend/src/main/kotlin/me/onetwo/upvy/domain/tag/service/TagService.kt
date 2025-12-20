@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.tag.service
 
+import me.onetwo.upvy.domain.tag.model.ContentTagsProjection
 import me.onetwo.upvy.domain.tag.model.Tag
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -49,6 +50,16 @@ interface TagService {
      * @return 태그 목록 (Flux)
      */
     fun getTagsByContentId(contentId: UUID): Flux<Tag>
+
+    /**
+     * 여러 콘텐츠의 태그를 배치로 조회합니다.
+     *
+     * N+1 문제를 방지하기 위해 여러 콘텐츠의 태그를 한 번의 쿼리로 조회합니다.
+     *
+     * @param contentIds 콘텐츠 ID 목록
+     * @return 콘텐츠별 태그 목록 (Flux)
+     */
+    fun getTagsByContentIds(contentIds: List<UUID>): Flux<ContentTagsProjection>
 
     /**
      * 인기 태그를 조회합니다 (usage_count DESC).

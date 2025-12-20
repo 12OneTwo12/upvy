@@ -1,6 +1,7 @@
 package me.onetwo.upvy.domain.tag.service
 
 import me.onetwo.upvy.domain.tag.model.ContentTag
+import me.onetwo.upvy.domain.tag.model.ContentTagsProjection
 import me.onetwo.upvy.domain.tag.model.Tag
 import me.onetwo.upvy.domain.tag.repository.ContentTagRepository
 import me.onetwo.upvy.domain.tag.repository.TagRepository
@@ -95,6 +96,14 @@ class TagServiceImpl(
                     tagRepository.findByIds(tagIds)
                 }
             }
+    }
+
+    override fun getTagsByContentIds(contentIds: List<UUID>): Flux<ContentTagsProjection> {
+        if (contentIds.isEmpty()) {
+            return Flux.empty()
+        }
+
+        return tagRepository.findByContentIds(contentIds)
     }
 
     override fun getPopularTags(limit: Int): Flux<Tag> {
