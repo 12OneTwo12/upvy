@@ -1,8 +1,5 @@
 package me.onetwo.upvy.domain.content.repository
 
-import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.databind.ObjectMapper
 import me.onetwo.upvy.domain.content.dto.ContentWithMetadata
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.Content
@@ -11,8 +8,10 @@ import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENTS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_METADATA
+import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_TAGS
+import me.onetwo.upvy.jooq.generated.tables.references.TAGS
 import org.jooq.DSLContext
-import org.jooq.JSON
+import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
@@ -28,12 +27,10 @@ import java.util.UUID
  * 완전한 Non-blocking 처리를 지원합니다.
  *
  * @property dslContext JOOQ DSLContext (R2DBC 기반)
- * @property objectMapper JSON 변환을 위한 ObjectMapper
  */
 @Repository
 class ContentRepositoryImpl(
-    private val dslContext: DSLContext,
-    private val objectMapper: ObjectMapper
+    private val dslContext: DSLContext
 ) : ContentRepository {
 
     private val logger = LoggerFactory.getLogger(ContentRepositoryImpl::class.java)
@@ -174,6 +171,8 @@ class ContentRepositoryImpl(
      * @return 콘텐츠와 메타데이터의 목록 (Flux)
      */
     override fun findWithMetadataByCreatorId(creatorId: UUID): Flux<ContentWithMetadata> {
+        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
+
         return Flux.from(
             dslContext
                 .select(
@@ -196,7 +195,47 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.TITLE,
                     CONTENT_METADATA.DESCRIPTION,
                     CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.TAGS,
+                    CONTENT_METADATA.LANGUAGE,
+                    CONTENT_METADATA.CREATED_AT,
+                    CONTENT_METADATA.CREATED_BY,
+                    CONTENT_METADATA.UPDATED_AT,
+                    CONTENT_METADATA.UPDATED_BY,
+                    CONTENT_METADATA.DELETED_AT,
+                    tagsField
+                )
+                .from(CONTENTS)
+                .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
+                .leftJoin(CONTENT_TAGS).on(
+                    CONTENTS.ID.eq(CONTENT_TAGS.CONTENT_ID)
+                        .and(CONTENT_TAGS.DELETED_AT.isNull)
+                )
+                .leftJoin(TAGS).on(
+                    CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
+                        .and(TAGS.DELETED_AT.isNull)
+                )
+                .where(CONTENTS.CREATOR_ID.eq(creatorId.toString()))
+                .and(CONTENTS.DELETED_AT.isNull)
+                .and(CONTENT_METADATA.DELETED_AT.isNull)
+                .groupBy(
+                    CONTENTS.ID,
+                    CONTENTS.CREATOR_ID,
+                    CONTENTS.CONTENT_TYPE,
+                    CONTENTS.URL,
+                    CONTENTS.THUMBNAIL_URL,
+                    CONTENTS.DURATION,
+                    CONTENTS.WIDTH,
+                    CONTENTS.HEIGHT,
+                    CONTENTS.STATUS,
+                    CONTENTS.CREATED_AT,
+                    CONTENTS.CREATED_BY,
+                    CONTENTS.UPDATED_AT,
+                    CONTENTS.UPDATED_BY,
+                    CONTENTS.DELETED_AT,
+                    CONTENT_METADATA.ID,
+                    CONTENT_METADATA.CONTENT_ID,
+                    CONTENT_METADATA.TITLE,
+                    CONTENT_METADATA.DESCRIPTION,
+                    CONTENT_METADATA.CATEGORY,
                     CONTENT_METADATA.LANGUAGE,
                     CONTENT_METADATA.CREATED_AT,
                     CONTENT_METADATA.CREATED_BY,
@@ -204,11 +243,6 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.UPDATED_BY,
                     CONTENT_METADATA.DELETED_AT
                 )
-                .from(CONTENTS)
-                .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
-                .where(CONTENTS.CREATOR_ID.eq(creatorId.toString()))
-                .and(CONTENTS.DELETED_AT.isNull)
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
                 .orderBy(CONTENTS.CREATED_AT.desc())
         ).map { record ->
             val content = Content(
@@ -228,16 +262,10 @@ class ContentRepositoryImpl(
                 deletedAt = record.getValue(CONTENTS.DELETED_AT)
             )
 
-            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-            val tags = if (tagsString != null && tagsString.isNotBlank()) {
-                try {
-                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-                } catch (e: JsonProcessingException) {
-                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                    logger.warn("Failed to parse tags JSON for content ${content.id}: ${e.message}", e)
-                    emptyList()
-                }
+            // 태그 파싱 - GROUP_CONCAT으로 가져온 tags
+            val tagsString = record.get("tag_names", String::class.java)
+            val tags = if (!tagsString.isNullOrBlank()) {
+                tagsString.split(",").filter { it.isNotBlank() }
             } else {
                 emptyList()
             }
@@ -326,8 +354,6 @@ class ContentRepositoryImpl(
      * @return 저장된 메타데이터 (Mono)
      */
     override fun saveMetadata(metadata: ContentMetadata): Mono<ContentMetadata> {
-        val tagsJson = JSON.valueOf(objectMapper.writeValueAsString(metadata.tags))
-
         return Mono.from(
             dslContext
                 .insertInto(CONTENT_METADATA)
@@ -335,7 +361,6 @@ class ContentRepositoryImpl(
                 .set(CONTENT_METADATA.TITLE, metadata.title)
                 .set(CONTENT_METADATA.DESCRIPTION, metadata.description)
                 .set(CONTENT_METADATA.CATEGORY, metadata.category.name)
-                .set(CONTENT_METADATA.TAGS, tagsJson)
                 .set(CONTENT_METADATA.LANGUAGE, metadata.language)
                 .set(CONTENT_METADATA.CREATED_AT, metadata.createdAt)
                 .set(CONTENT_METADATA.CREATED_BY, metadata.createdBy?.toString())
@@ -356,6 +381,8 @@ class ContentRepositoryImpl(
      * @return 조회된 메타데이터 (없으면 empty Mono)
      */
     override fun findMetadataByContentId(contentId: UUID): Mono<ContentMetadata> {
+        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
+
         return Mono.from(
             dslContext
                 .select(
@@ -364,7 +391,32 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.TITLE,
                     CONTENT_METADATA.DESCRIPTION,
                     CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.TAGS,
+                    CONTENT_METADATA.DIFFICULTY_LEVEL,
+                    CONTENT_METADATA.LANGUAGE,
+                    CONTENT_METADATA.CREATED_AT,
+                    CONTENT_METADATA.CREATED_BY,
+                    CONTENT_METADATA.UPDATED_AT,
+                    CONTENT_METADATA.UPDATED_BY,
+                    CONTENT_METADATA.DELETED_AT,
+                    tagsField
+                )
+                .from(CONTENT_METADATA)
+                .leftJoin(CONTENT_TAGS).on(
+                    CONTENT_METADATA.CONTENT_ID.eq(CONTENT_TAGS.CONTENT_ID)
+                        .and(CONTENT_TAGS.DELETED_AT.isNull)
+                )
+                .leftJoin(TAGS).on(
+                    CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
+                        .and(TAGS.DELETED_AT.isNull)
+                )
+                .where(CONTENT_METADATA.CONTENT_ID.eq(contentId.toString()))
+                .and(CONTENT_METADATA.DELETED_AT.isNull)
+                .groupBy(
+                    CONTENT_METADATA.ID,
+                    CONTENT_METADATA.CONTENT_ID,
+                    CONTENT_METADATA.TITLE,
+                    CONTENT_METADATA.DESCRIPTION,
+                    CONTENT_METADATA.CATEGORY,
                     CONTENT_METADATA.DIFFICULTY_LEVEL,
                     CONTENT_METADATA.LANGUAGE,
                     CONTENT_METADATA.CREATED_AT,
@@ -373,20 +425,11 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.UPDATED_BY,
                     CONTENT_METADATA.DELETED_AT
                 )
-                .from(CONTENT_METADATA)
-                .where(CONTENT_METADATA.CONTENT_ID.eq(contentId.toString()))
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
         ).map { record ->
-            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-            val tags = if (tagsString != null && tagsString.isNotBlank()) {
-                try {
-                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-                } catch (e: JsonProcessingException) {
-                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                    logger.warn("Failed to parse tags JSON for content $contentId: ${e.message}", e)
-                    emptyList()
-                }
+            // 태그 파싱 - GROUP_CONCAT으로 가져온 tags
+            val tagsString = record.get("tag_names", String::class.java)
+            val tags = if (!tagsString.isNullOrBlank()) {
+                tagsString.split(",").filter { it.isNotBlank() }
             } else {
                 emptyList()
             }
@@ -415,15 +458,12 @@ class ContentRepositoryImpl(
      * @return 수정 성공 여부 (Mono)
      */
     override fun updateMetadata(metadata: ContentMetadata): Mono<Boolean> {
-        val tagsJson = JSON.valueOf(objectMapper.writeValueAsString(metadata.tags))
-
         return Mono.from(
             dslContext
                 .update(CONTENT_METADATA)
                 .set(CONTENT_METADATA.TITLE, metadata.title)
                 .set(CONTENT_METADATA.DESCRIPTION, metadata.description)
                 .set(CONTENT_METADATA.CATEGORY, metadata.category.name)
-                .set(CONTENT_METADATA.TAGS, tagsJson)
                 .set(CONTENT_METADATA.LANGUAGE, metadata.language)
                 .set(CONTENT_METADATA.UPDATED_AT, metadata.updatedAt)
                 .set(CONTENT_METADATA.UPDATED_BY, metadata.updatedBy?.toString())
@@ -456,6 +496,8 @@ class ContentRepositoryImpl(
         cursor: UUID?,
         limit: Int
     ): Flux<ContentWithMetadata> {
+        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
+
         var query = dslContext
             .select(
                 CONTENTS.ID,
@@ -477,16 +519,24 @@ class ContentRepositoryImpl(
                 CONTENT_METADATA.TITLE,
                 CONTENT_METADATA.DESCRIPTION,
                 CONTENT_METADATA.CATEGORY,
-                CONTENT_METADATA.TAGS,
                 CONTENT_METADATA.LANGUAGE,
                 CONTENT_METADATA.CREATED_AT,
                 CONTENT_METADATA.CREATED_BY,
                 CONTENT_METADATA.UPDATED_AT,
                 CONTENT_METADATA.UPDATED_BY,
-                CONTENT_METADATA.DELETED_AT
+                CONTENT_METADATA.DELETED_AT,
+                tagsField
             )
             .from(CONTENTS)
             .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
+            .leftJoin(CONTENT_TAGS).on(
+                CONTENTS.ID.eq(CONTENT_TAGS.CONTENT_ID)
+                    .and(CONTENT_TAGS.DELETED_AT.isNull)
+            )
+            .leftJoin(TAGS).on(
+                CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
+                    .and(TAGS.DELETED_AT.isNull)
+            )
             .where(CONTENTS.CREATOR_ID.eq(creatorId.toString()))
             .and(CONTENTS.DELETED_AT.isNull)
             .and(CONTENT_METADATA.DELETED_AT.isNull)
@@ -505,6 +555,33 @@ class ContentRepositoryImpl(
 
         return Flux.from(
             query
+                .groupBy(
+                    CONTENTS.ID,
+                    CONTENTS.CREATOR_ID,
+                    CONTENTS.CONTENT_TYPE,
+                    CONTENTS.URL,
+                    CONTENTS.THUMBNAIL_URL,
+                    CONTENTS.DURATION,
+                    CONTENTS.WIDTH,
+                    CONTENTS.HEIGHT,
+                    CONTENTS.STATUS,
+                    CONTENTS.CREATED_AT,
+                    CONTENTS.CREATED_BY,
+                    CONTENTS.UPDATED_AT,
+                    CONTENTS.UPDATED_BY,
+                    CONTENTS.DELETED_AT,
+                    CONTENT_METADATA.ID,
+                    CONTENT_METADATA.CONTENT_ID,
+                    CONTENT_METADATA.TITLE,
+                    CONTENT_METADATA.DESCRIPTION,
+                    CONTENT_METADATA.CATEGORY,
+                    CONTENT_METADATA.LANGUAGE,
+                    CONTENT_METADATA.CREATED_AT,
+                    CONTENT_METADATA.CREATED_BY,
+                    CONTENT_METADATA.UPDATED_AT,
+                    CONTENT_METADATA.UPDATED_BY,
+                    CONTENT_METADATA.DELETED_AT
+                )
                 .orderBy(CONTENTS.CREATED_AT.desc())
                 .limit(limit)
         ).map { record ->
@@ -525,16 +602,10 @@ class ContentRepositoryImpl(
                 deletedAt = record.getValue(CONTENTS.DELETED_AT)
             )
 
-            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-            val tags = if (tagsString != null && tagsString.isNotBlank()) {
-                try {
-                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-                } catch (e: JsonProcessingException) {
-                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                    logger.warn("Failed to parse tags JSON for content ${content.id}: ${e.message}", e)
-                    emptyList()
-                }
+            // 태그 파싱 - GROUP_CONCAT으로 가져온 tags
+            val tagsString = record.get("tag_names", String::class.java)
+            val tags = if (!tagsString.isNullOrBlank()) {
+                tagsString.split(",").filter { it.isNotBlank() }
             } else {
                 emptyList()
             }
@@ -573,6 +644,7 @@ class ContentRepositoryImpl(
         }
 
         val contentIdsString = contentIds.map { it.toString() }
+        val tagsField = DSL.groupConcat(TAGS.NAME).separator(",").`as`("tag_names")
 
         return Flux.from(
             dslContext
@@ -596,7 +668,48 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.TITLE,
                     CONTENT_METADATA.DESCRIPTION,
                     CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.TAGS,
+                    CONTENT_METADATA.DIFFICULTY_LEVEL,
+                    CONTENT_METADATA.LANGUAGE,
+                    CONTENT_METADATA.CREATED_AT,
+                    CONTENT_METADATA.CREATED_BY,
+                    CONTENT_METADATA.UPDATED_AT,
+                    CONTENT_METADATA.UPDATED_BY,
+                    CONTENT_METADATA.DELETED_AT,
+                    tagsField
+                )
+                .from(CONTENTS)
+                .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
+                .leftJoin(CONTENT_TAGS).on(
+                    CONTENTS.ID.eq(CONTENT_TAGS.CONTENT_ID)
+                        .and(CONTENT_TAGS.DELETED_AT.isNull)
+                )
+                .leftJoin(TAGS).on(
+                    CONTENT_TAGS.TAG_ID.eq(TAGS.ID)
+                        .and(TAGS.DELETED_AT.isNull)
+                )
+                .where(CONTENTS.ID.`in`(contentIdsString))
+                .and(CONTENTS.DELETED_AT.isNull)
+                .and(CONTENT_METADATA.DELETED_AT.isNull)
+                .groupBy(
+                    CONTENTS.ID,
+                    CONTENTS.CREATOR_ID,
+                    CONTENTS.CONTENT_TYPE,
+                    CONTENTS.URL,
+                    CONTENTS.THUMBNAIL_URL,
+                    CONTENTS.DURATION,
+                    CONTENTS.WIDTH,
+                    CONTENTS.HEIGHT,
+                    CONTENTS.STATUS,
+                    CONTENTS.CREATED_AT,
+                    CONTENTS.CREATED_BY,
+                    CONTENTS.UPDATED_AT,
+                    CONTENTS.UPDATED_BY,
+                    CONTENTS.DELETED_AT,
+                    CONTENT_METADATA.ID,
+                    CONTENT_METADATA.CONTENT_ID,
+                    CONTENT_METADATA.TITLE,
+                    CONTENT_METADATA.DESCRIPTION,
+                    CONTENT_METADATA.CATEGORY,
                     CONTENT_METADATA.DIFFICULTY_LEVEL,
                     CONTENT_METADATA.LANGUAGE,
                     CONTENT_METADATA.CREATED_AT,
@@ -605,11 +718,6 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.UPDATED_BY,
                     CONTENT_METADATA.DELETED_AT
                 )
-                .from(CONTENTS)
-                .innerJoin(CONTENT_METADATA).on(CONTENTS.ID.eq(CONTENT_METADATA.CONTENT_ID))
-                .where(CONTENTS.ID.`in`(contentIdsString))
-                .and(CONTENTS.DELETED_AT.isNull)
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
         ).map { record ->
             val content = Content(
                 id = UUID.fromString(record.getValue(CONTENTS.ID)),
@@ -628,16 +736,10 @@ class ContentRepositoryImpl(
                 deletedAt = record.getValue(CONTENTS.DELETED_AT)
             )
 
-            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-            val tags = if (tagsString != null && tagsString.isNotBlank()) {
-                try {
-                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-                } catch (e: JsonProcessingException) {
-                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                    logger.warn("Failed to parse tags JSON for content ${content.id}: ${e.message}", e)
-                    emptyList()
-                }
+            // 태그 파싱 - GROUP_CONCAT으로 가져온 tags
+            val tagsString = record.get("tag_names", String::class.java)
+            val tags = if (!tagsString.isNullOrBlank()) {
+                tagsString.split(",").filter { it.isNotBlank() }
             } else {
                 emptyList()
             }

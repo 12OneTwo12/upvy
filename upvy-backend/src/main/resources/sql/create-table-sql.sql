@@ -240,7 +240,6 @@ CREATE TABLE IF NOT EXISTS content_metadata (
     title VARCHAR(200) NOT NULL,
     description TEXT,
     category VARCHAR(50) NOT NULL,
-    tags JSON,  -- ["tag1", "tag2", "tag3"]
     difficulty_level VARCHAR(20),  -- BEGINNER, INTERMEDIATE, ADVANCED
     language VARCHAR(10) NOT NULL DEFAULT 'ko',
     created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),

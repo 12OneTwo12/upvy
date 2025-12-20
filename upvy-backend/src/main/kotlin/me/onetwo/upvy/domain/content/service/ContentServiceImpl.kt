@@ -18,11 +18,19 @@ import me.onetwo.upvy.domain.content.model.ContentPhoto
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.repository.ContentRepository
+import me.onetwo.upvy.domain.content.repository.ContentPhotoRepository
+import me.onetwo.upvy.domain.content.repository.UploadSessionRepository
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
+import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
+import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.upvy.domain.interaction.repository.UserLikeRepository
+import me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
+import me.onetwo.upvy.domain.tag.service.TagService
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
+import software.amazon.awssdk.services.s3.S3Client
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -45,15 +53,15 @@ import java.util.UUID
 class ContentServiceImpl(
     private val contentUploadService: ContentUploadService,
     private val contentRepository: ContentRepository,
-    private val contentPhotoRepository: me.onetwo.upvy.domain.content.repository.ContentPhotoRepository,
-    private val uploadSessionRepository: me.onetwo.upvy.domain.content.repository.UploadSessionRepository,
-    private val s3Client: software.amazon.awssdk.services.s3.S3Client,
+    private val contentPhotoRepository: ContentPhotoRepository,
+    private val uploadSessionRepository: UploadSessionRepository,
+    private val s3Client: S3Client,
     private val eventPublisher: ReactiveEventPublisher,
-    private val contentInteractionService: me.onetwo.upvy.domain.analytics.service.ContentInteractionService,
-    private val contentInteractionRepository: me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository,
-    private val userLikeRepository: me.onetwo.upvy.domain.interaction.repository.UserLikeRepository,
-    private val userSaveRepository: me.onetwo.upvy.domain.interaction.repository.UserSaveRepository,
-    private val tagService: me.onetwo.upvy.domain.tag.service.TagService,
+    private val contentInteractionService: ContentInteractionService,
+    private val contentInteractionRepository: ContentInteractionRepository,
+    private val userLikeRepository: UserLikeRepository,
+    private val userSaveRepository: UserSaveRepository,
+    private val tagService: TagService,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {

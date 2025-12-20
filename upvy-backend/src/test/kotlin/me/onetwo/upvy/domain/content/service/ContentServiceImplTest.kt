@@ -20,7 +20,13 @@ import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.model.UploadSession
 import me.onetwo.upvy.domain.content.repository.ContentRepository
+import me.onetwo.upvy.domain.content.repository.ContentPhotoRepository
 import me.onetwo.upvy.domain.content.repository.UploadSessionRepository
+import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
+import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.upvy.domain.interaction.repository.UserLikeRepository
+import me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
+import me.onetwo.upvy.domain.tag.service.TagService
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
@@ -52,7 +58,7 @@ class ContentServiceImplTest : BaseReactiveTest {
     private lateinit var contentRepository: ContentRepository
 
     @MockK
-    private lateinit var contentPhotoRepository: me.onetwo.upvy.domain.content.repository.ContentPhotoRepository
+    private lateinit var contentPhotoRepository: ContentPhotoRepository
 
     @MockK
     private lateinit var uploadSessionRepository: UploadSessionRepository
@@ -64,19 +70,19 @@ class ContentServiceImplTest : BaseReactiveTest {
     private lateinit var eventPublisher: ReactiveEventPublisher
 
     @MockK
-    private lateinit var contentInteractionService: me.onetwo.upvy.domain.analytics.service.ContentInteractionService
+    private lateinit var contentInteractionService: ContentInteractionService
 
     @MockK
-    private lateinit var contentInteractionRepository: me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
+    private lateinit var contentInteractionRepository: ContentInteractionRepository
 
     @MockK
-    private lateinit var userLikeRepository: me.onetwo.upvy.domain.interaction.repository.UserLikeRepository
+    private lateinit var userLikeRepository: UserLikeRepository
 
     @MockK
-    private lateinit var userSaveRepository: me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
+    private lateinit var userSaveRepository: UserSaveRepository
 
     @MockK
-    private lateinit var tagService: me.onetwo.upvy.domain.tag.service.TagService
+    private lateinit var tagService: TagService
 
     private lateinit var contentService: ContentServiceImpl
 

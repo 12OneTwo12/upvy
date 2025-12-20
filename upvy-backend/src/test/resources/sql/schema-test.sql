@@ -274,7 +274,6 @@ CREATE TABLE content_metadata (
     title VARCHAR(200) NOT NULL,
     description TEXT,
     category VARCHAR(50) NOT NULL,
-    tags JSON,
     difficulty_level VARCHAR(20),
     language VARCHAR(10) NOT NULL DEFAULT 'ko',
     created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
