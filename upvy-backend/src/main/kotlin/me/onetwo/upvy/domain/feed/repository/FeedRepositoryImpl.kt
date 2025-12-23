@@ -1,8 +1,5 @@
 package me.onetwo.upvy.domain.feed.repository
 
-import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.databind.ObjectMapper
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.feed.dto.CreatorInfoResponse
@@ -39,12 +36,10 @@ import java.util.UUID
  * JOOQ를 사용하여 피드 데이터를 조회합니다.
  *
  * @property dslContext JOOQ DSL Context
- * @property objectMapper JSON 파싱용 ObjectMapper
  */
 @Repository
 class FeedRepositoryImpl(
-    private val dslContext: DSLContext,
-    private val objectMapper: ObjectMapper,
+    private val dslContext: DSLContext
 ) : FeedRepository {
 
     private val logger = LoggerFactory.getLogger(FeedRepositoryImpl::class.java)
@@ -64,7 +59,30 @@ class FeedRepositoryImpl(
         cursor: UUID?,
         limit: Int
     ): Flux<FeedItemResponse> {
-        var query = dslContext
+        // Build where conditions list
+        val conditions = mutableListOf<Condition>()
+        conditions.add(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
+        conditions.add(FOLLOWS.DELETED_AT.isNull)
+        conditions.add(CONTENTS.STATUS.eq("PUBLISHED"))
+        conditions.add(CONTENTS.DELETED_AT.isNull)
+        conditions.add(CONTENT_METADATA.DELETED_AT.isNull)
+        conditions.add(USERS.DELETED_AT.isNull)
+        conditions.add(USER_PROFILES.DELETED_AT.isNull)
+
+        // 차단 필터링 조건 추가
+        conditions.addAll(getBlockConditions(userId))
+
+        // 커서 기반 페이지네이션 조건 추가
+        if (cursor != null) {
+            conditions.add(CONTENTS.CREATED_AT.lt(
+                dslContext.select(CONTENTS.CREATED_AT)
+                    .from(CONTENTS)
+                    .where(CONTENTS.ID.eq(cursor.toString()))
+                    .asField()
+            ))
+        }
+
+        val query = dslContext
             .select(
                     // CONTENTS 필요 컬럼만 명시적으로 선택
                     CONTENTS.ID,
@@ -79,7 +97,6 @@ class FeedRepositoryImpl(
                     CONTENT_METADATA.TITLE,
                     CONTENT_METADATA.DESCRIPTION,
                     CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.TAGS,
                     // CONTENT_INTERACTIONS 필요 컬럼만 명시적으로 선택
                     CONTENT_INTERACTIONS.LIKE_COUNT,
                     CONTENT_INTERACTIONS.COMMENT_COUNT,
@@ -113,26 +130,7 @@ class FeedRepositoryImpl(
                         .and(USER_SAVES.USER_ID.eq(userId.toString()))
                         .and(USER_SAVES.DELETED_AT.isNull)
                 )
-                .where(FOLLOWS.FOLLOWER_ID.eq(userId.toString()))
-                .and(FOLLOWS.DELETED_AT.isNull)
-                .and(CONTENTS.STATUS.eq("PUBLISHED"))
-                .and(CONTENTS.DELETED_AT.isNull)
-                .and(CONTENT_METADATA.DELETED_AT.isNull)
-                .and(USERS.DELETED_AT.isNull)
-                .and(USER_PROFILES.DELETED_AT.isNull)
-
-        // 차단 필터링 조건 적용
-        getBlockConditions(userId).forEach { query = query.and(it) }
-
-        // 커서 기반 페이지네이션
-        if (cursor != null) {
-            query = query.and(CONTENTS.CREATED_AT.lt(
-                dslContext.select(CONTENTS.CREATED_AT)
-                    .from(CONTENTS)
-                    .where(CONTENTS.ID.eq(cursor.toString()))
-                    .asField()
-            ))
-        }
+                .where(conditions)
 
         // Execute query and collect contentIds first
         return Flux.from(query
@@ -160,7 +158,9 @@ class FeedRepositoryImpl(
                         val subtitlesMap = tuple.t1
                         val photosMap = tuple.t2
                         // 레코드를 FeedItemResponse로 변환
-                        Flux.fromIterable(records.map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) })
+                        Flux.fromIterable(records.map { record ->
+                            mapRecordToFeedItem(record, subtitlesMap, photosMap)
+                        })
                     }
             }
     }
@@ -201,20 +201,6 @@ class FeedRepositoryImpl(
     ): FeedItemResponse {
         val contentId = UUID.fromString(record.get(CONTENTS.ID))
 
-        // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-        val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-        val tags = if (tagsString != null && tagsString.isNotBlank()) {
-            try {
-                objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-            } catch (e: JsonProcessingException) {
-                // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                logger.warn("Failed to parse tags JSON for content $contentId: ${e.message}", e)
-                emptyList()
-            }
-        } else {
-            emptyList()
-        }
-
         // 자막은 미리 조회한 맵에서 가져오기
         val subtitles = subtitlesMap[contentId] ?: emptyList()
 
@@ -233,7 +219,7 @@ class FeedRepositoryImpl(
             title = record.get(CONTENT_METADATA.TITLE)!!,
             description = record.get(CONTENT_METADATA.DESCRIPTION),
             category = Category.valueOf(record.get(CONTENT_METADATA.CATEGORY)!!),
-            tags = tags,
+            tags = emptyList(),
             creator = CreatorInfoResponse(
                 userId = UUID.fromString(record.get(USERS.ID)!!),
                 nickname = record.get(USER_PROFILES.NICKNAME)!!,
@@ -499,7 +485,19 @@ class FeedRepositoryImpl(
             return Flux.empty()
         }
 
-        var query = dslContext
+        // Build where conditions list
+        val conditions = mutableListOf<Condition>()
+        conditions.add(CONTENTS.ID.`in`(contentIds.map { it.toString() }))
+        conditions.add(CONTENTS.STATUS.eq("PUBLISHED"))
+        conditions.add(CONTENTS.DELETED_AT.isNull)
+        conditions.add(CONTENT_METADATA.DELETED_AT.isNull)
+        conditions.add(USERS.DELETED_AT.isNull)
+        conditions.add(USER_PROFILES.DELETED_AT.isNull)
+
+        // 차단 필터링 조건 추가
+        conditions.addAll(getBlockConditions(userId))
+
+        val query = dslContext
             .select(
                 // CONTENTS 필요 컬럼만 명시적으로 선택
                 CONTENTS.ID,
@@ -514,7 +512,6 @@ class FeedRepositoryImpl(
                 CONTENT_METADATA.TITLE,
                 CONTENT_METADATA.DESCRIPTION,
                 CONTENT_METADATA.CATEGORY,
-                CONTENT_METADATA.TAGS,
                 // CONTENT_INTERACTIONS 필요 컬럼만 명시적으로 선택
                 CONTENT_INTERACTIONS.LIKE_COUNT,
                 CONTENT_INTERACTIONS.COMMENT_COUNT,
@@ -552,15 +549,7 @@ class FeedRepositoryImpl(
                     .and(FOLLOWS.FOLLOWING_ID.eq(CONTENTS.CREATOR_ID))
                     .and(FOLLOWS.DELETED_AT.isNull)
             )
-            .where(CONTENTS.ID.`in`(contentIds.map { it.toString() }))
-            .and(CONTENTS.STATUS.eq("PUBLISHED"))
-            .and(CONTENTS.DELETED_AT.isNull)
-            .and(CONTENT_METADATA.DELETED_AT.isNull)
-            .and(USERS.DELETED_AT.isNull)
-            .and(USER_PROFILES.DELETED_AT.isNull)
-
-        // 차단 필터링 조건 적용
-        getBlockConditions(userId).forEach { query = query.and(it) }
+            .where(conditions)
 
         return Flux.from(query)
             .collectList()

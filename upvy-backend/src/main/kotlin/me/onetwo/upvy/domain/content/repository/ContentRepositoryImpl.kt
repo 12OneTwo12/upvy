@@ -1,8 +1,5 @@
 package me.onetwo.upvy.domain.content.repository
 
-import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.databind.ObjectMapper
 import me.onetwo.upvy.domain.content.dto.ContentWithMetadata
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.Content
@@ -12,7 +9,6 @@ import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENTS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_METADATA
 import org.jooq.DSLContext
-import org.jooq.JSON
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
@@ -28,12 +24,10 @@ import java.util.UUID
  * 완전한 Non-blocking 처리를 지원합니다.
  *
  * @property dslContext JOOQ DSLContext (R2DBC 기반)
- * @property objectMapper JSON 변환을 위한 ObjectMapper
  */
 @Repository
 class ContentRepositoryImpl(
-    private val dslContext: DSLContext,
-    private val objectMapper: ObjectMapper
+    private val dslContext: DSLContext
 ) : ContentRepository {
 
     private val logger = LoggerFactory.getLogger(ContentRepositoryImpl::class.java)
@@ -196,7 +190,6 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.TITLE,
                     CONTENT_METADATA.DESCRIPTION,
                     CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.TAGS,
                     CONTENT_METADATA.LANGUAGE,
                     CONTENT_METADATA.CREATED_AT,
                     CONTENT_METADATA.CREATED_BY,
@@ -210,55 +203,51 @@ class ContentRepositoryImpl(
                 .and(CONTENTS.DELETED_AT.isNull)
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
                 .orderBy(CONTENTS.CREATED_AT.desc())
-        ).map { record ->
-            val content = Content(
-                id = UUID.fromString(record.getValue(CONTENTS.ID)),
-                creatorId = UUID.fromString(record.getValue(CONTENTS.CREATOR_ID)),
-                contentType = ContentType.valueOf(record.getValue(CONTENTS.CONTENT_TYPE)!!),
-                url = record.getValue(CONTENTS.URL)!!,
-                thumbnailUrl = record.getValue(CONTENTS.THUMBNAIL_URL)!!,
-                duration = record.getValue(CONTENTS.DURATION),
-                width = record.getValue(CONTENTS.WIDTH)!!,
-                height = record.getValue(CONTENTS.HEIGHT)!!,
-                status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
-                createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
-                createdBy = record.getValue(CONTENTS.CREATED_BY),
-                updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
-                updatedBy = record.getValue(CONTENTS.UPDATED_BY),
-                deletedAt = record.getValue(CONTENTS.DELETED_AT)
-            )
-
-            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-            val tags = if (tagsString != null && tagsString.isNotBlank()) {
-                try {
-                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-                } catch (e: JsonProcessingException) {
-                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                    logger.warn("Failed to parse tags JSON for content ${content.id}: ${e.message}", e)
-                    emptyList()
+        )
+            .collectList()
+            .flatMapMany { records ->
+                if (records.isEmpty()) {
+                    return@flatMapMany Flux.empty<ContentWithMetadata>()
                 }
-            } else {
-                emptyList()
+
+                Flux.fromIterable(records.map { record ->
+                    val contentId = UUID.fromString(record.getValue(CONTENTS.ID))
+
+                    val content = Content(
+                        id = contentId,
+                        creatorId = UUID.fromString(record.getValue(CONTENTS.CREATOR_ID)),
+                        contentType = ContentType.valueOf(record.getValue(CONTENTS.CONTENT_TYPE)!!),
+                        url = record.getValue(CONTENTS.URL)!!,
+                        thumbnailUrl = record.getValue(CONTENTS.THUMBNAIL_URL)!!,
+                        duration = record.getValue(CONTENTS.DURATION),
+                        width = record.getValue(CONTENTS.WIDTH)!!,
+                        height = record.getValue(CONTENTS.HEIGHT)!!,
+                        status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
+                        createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
+                        createdBy = record.getValue(CONTENTS.CREATED_BY),
+                        updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
+                        updatedBy = record.getValue(CONTENTS.UPDATED_BY),
+                        deletedAt = record.getValue(CONTENTS.DELETED_AT)
+                    )
+
+                    val metadata = ContentMetadata(
+                        id = record.getValue(CONTENT_METADATA.ID),
+                        contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
+                        title = record.getValue(CONTENT_METADATA.TITLE)!!,
+                        description = record.getValue(CONTENT_METADATA.DESCRIPTION),
+                        category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
+                        tags = emptyList(),
+                        language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
+                        createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
+                        createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
+                        updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
+                        updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
+                        deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
+                    )
+
+                    ContentWithMetadata(content, metadata)
+                })
             }
-
-            val metadata = ContentMetadata(
-                id = record.getValue(CONTENT_METADATA.ID),
-                contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
-                title = record.getValue(CONTENT_METADATA.TITLE)!!,
-                description = record.getValue(CONTENT_METADATA.DESCRIPTION),
-                category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = tags,
-                language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
-                createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
-                createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
-                updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
-                updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
-                deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
-            )
-
-            ContentWithMetadata(content, metadata)
-        }
     }
 
     /**
@@ -326,8 +315,6 @@ class ContentRepositoryImpl(
      * @return 저장된 메타데이터 (Mono)
      */
     override fun saveMetadata(metadata: ContentMetadata): Mono<ContentMetadata> {
-        val tagsJson = JSON.valueOf(objectMapper.writeValueAsString(metadata.tags))
-
         return Mono.from(
             dslContext
                 .insertInto(CONTENT_METADATA)
@@ -335,7 +322,6 @@ class ContentRepositoryImpl(
                 .set(CONTENT_METADATA.TITLE, metadata.title)
                 .set(CONTENT_METADATA.DESCRIPTION, metadata.description)
                 .set(CONTENT_METADATA.CATEGORY, metadata.category.name)
-                .set(CONTENT_METADATA.TAGS, tagsJson)
                 .set(CONTENT_METADATA.LANGUAGE, metadata.language)
                 .set(CONTENT_METADATA.CREATED_AT, metadata.createdAt)
                 .set(CONTENT_METADATA.CREATED_BY, metadata.createdBy?.toString())
@@ -364,7 +350,6 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.TITLE,
                     CONTENT_METADATA.DESCRIPTION,
                     CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.TAGS,
                     CONTENT_METADATA.DIFFICULTY_LEVEL,
                     CONTENT_METADATA.LANGUAGE,
                     CONTENT_METADATA.CREATED_AT,
@@ -377,27 +362,13 @@ class ContentRepositoryImpl(
                 .where(CONTENT_METADATA.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
         ).map { record ->
-            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-            val tags = if (tagsString != null && tagsString.isNotBlank()) {
-                try {
-                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-                } catch (e: JsonProcessingException) {
-                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                    logger.warn("Failed to parse tags JSON for content $contentId: ${e.message}", e)
-                    emptyList()
-                }
-            } else {
-                emptyList()
-            }
-
             ContentMetadata(
                 id = record.getValue(CONTENT_METADATA.ID),
                 contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
                 title = record.getValue(CONTENT_METADATA.TITLE)!!,
                 description = record.getValue(CONTENT_METADATA.DESCRIPTION),
                 category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = tags,
+                tags = emptyList(),
                 language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                 createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
                 createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
@@ -415,15 +386,12 @@ class ContentRepositoryImpl(
      * @return 수정 성공 여부 (Mono)
      */
     override fun updateMetadata(metadata: ContentMetadata): Mono<Boolean> {
-        val tagsJson = JSON.valueOf(objectMapper.writeValueAsString(metadata.tags))
-
         return Mono.from(
             dslContext
                 .update(CONTENT_METADATA)
                 .set(CONTENT_METADATA.TITLE, metadata.title)
                 .set(CONTENT_METADATA.DESCRIPTION, metadata.description)
                 .set(CONTENT_METADATA.CATEGORY, metadata.category.name)
-                .set(CONTENT_METADATA.TAGS, tagsJson)
                 .set(CONTENT_METADATA.LANGUAGE, metadata.language)
                 .set(CONTENT_METADATA.UPDATED_AT, metadata.updatedAt)
                 .set(CONTENT_METADATA.UPDATED_BY, metadata.updatedBy?.toString())
@@ -477,7 +445,6 @@ class ContentRepositoryImpl(
                 CONTENT_METADATA.TITLE,
                 CONTENT_METADATA.DESCRIPTION,
                 CONTENT_METADATA.CATEGORY,
-                CONTENT_METADATA.TAGS,
                 CONTENT_METADATA.LANGUAGE,
                 CONTENT_METADATA.CREATED_AT,
                 CONTENT_METADATA.CREATED_BY,
@@ -525,27 +492,13 @@ class ContentRepositoryImpl(
                 deletedAt = record.getValue(CONTENTS.DELETED_AT)
             )
 
-            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-            val tags = if (tagsString != null && tagsString.isNotBlank()) {
-                try {
-                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-                } catch (e: JsonProcessingException) {
-                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                    logger.warn("Failed to parse tags JSON for content ${content.id}: ${e.message}", e)
-                    emptyList()
-                }
-            } else {
-                emptyList()
-            }
-
             val metadata = ContentMetadata(
                 id = record.getValue(CONTENT_METADATA.ID),
                 contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
                 title = record.getValue(CONTENT_METADATA.TITLE)!!,
                 description = record.getValue(CONTENT_METADATA.DESCRIPTION),
                 category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = tags,
+                tags = emptyList(),
                 language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                 createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
                 createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
@@ -596,7 +549,6 @@ class ContentRepositoryImpl(
                     CONTENT_METADATA.TITLE,
                     CONTENT_METADATA.DESCRIPTION,
                     CONTENT_METADATA.CATEGORY,
-                    CONTENT_METADATA.TAGS,
                     CONTENT_METADATA.DIFFICULTY_LEVEL,
                     CONTENT_METADATA.LANGUAGE,
                     CONTENT_METADATA.CREATED_AT,
@@ -628,27 +580,13 @@ class ContentRepositoryImpl(
                 deletedAt = record.getValue(CONTENTS.DELETED_AT)
             )
 
-            // 태그 파싱 - JOOQ가 JSON을 String으로 자동 변환
-            val tagsString = record.get(CONTENT_METADATA.TAGS, String::class.java)
-            val tags = if (tagsString != null && tagsString.isNotBlank()) {
-                try {
-                    objectMapper.readValue(tagsString, object : TypeReference<List<String>>() {})
-                } catch (e: JsonProcessingException) {
-                    // JSON 파싱 실패 시 빈 리스트 반환 (fallback)
-                    logger.warn("Failed to parse tags JSON for content ${content.id}: ${e.message}", e)
-                    emptyList()
-                }
-            } else {
-                emptyList()
-            }
-
             val metadata = ContentMetadata(
                 id = record.getValue(CONTENT_METADATA.ID),
                 contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
                 title = record.getValue(CONTENT_METADATA.TITLE)!!,
                 description = record.getValue(CONTENT_METADATA.DESCRIPTION),
                 category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = tags,
+                tags = emptyList(),
                 language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
                 createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
                 createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),

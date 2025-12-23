@@ -240,7 +240,6 @@ CREATE TABLE IF NOT EXISTS content_metadata (
     title VARCHAR(200) NOT NULL,
     description TEXT,
     category VARCHAR(50) NOT NULL,
-    tags JSON,  -- ["tag1", "tag2", "tag3"]
     difficulty_level VARCHAR(20),  -- BEGINNER, INTERMEDIATE, ADVANCED
     language VARCHAR(10) NOT NULL DEFAULT 'ko',
     created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
@@ -603,3 +602,40 @@ CREATE INDEX idx_push_logs_push_token_id ON push_notification_logs(push_token_id
 CREATE INDEX idx_push_logs_status ON push_notification_logs(status);
 CREATE INDEX idx_push_logs_sent_at ON push_notification_logs(sent_at);
 CREATE INDEX idx_push_logs_provider ON push_notification_logs(provider);
+
+-- Tags Table (태그 마스터)
+CREATE TABLE IF NOT EXISTS tags (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL COMMENT '태그 이름 (원본)',
+    normalized_name VARCHAR(50) NOT NULL UNIQUE COMMENT '검색용 정규화된 이름 (소문자, 공백 제거)',
+    usage_count INT NOT NULL DEFAULT 0 COMMENT '사용 횟수 (인기도)',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    CHECK (usage_count >= 0)
+);
+
+CREATE INDEX idx_tags_normalized_name ON tags(normalized_name);
+CREATE INDEX idx_tags_usage_count ON tags(usage_count DESC);
+CREATE INDEX idx_tags_deleted_at ON tags(deleted_at);
+
+-- Content-Tags 관계 테이블 (M:N)
+CREATE TABLE IF NOT EXISTS content_tags (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id CHAR(36) NOT NULL,
+    tag_id BIGINT NOT NULL,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
+    CONSTRAINT unique_content_tag UNIQUE (content_id, tag_id)
+);
+
+CREATE INDEX idx_content_tags_content_id ON content_tags(content_id);
+CREATE INDEX idx_content_tags_tag_id ON content_tags(tag_id);
+CREATE INDEX idx_content_tags_deleted_at ON content_tags(deleted_at);

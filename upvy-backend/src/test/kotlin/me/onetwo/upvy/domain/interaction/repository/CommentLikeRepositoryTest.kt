@@ -321,7 +321,6 @@ class CommentLikeRepositoryTest : AbstractIntegrationTest() {
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test description")
             .set(CONTENT_METADATA.CATEGORY, "PROGRAMMING")
-            .set(CONTENT_METADATA.TAGS, JSON.valueOf("[\"test\"]"))
             .set(CONTENT_METADATA.DIFFICULTY_LEVEL, "BEGINNER")
             .set(CONTENT_METADATA.LANGUAGE, "ko")
             .set(CONTENT_METADATA.CREATED_AT, now)

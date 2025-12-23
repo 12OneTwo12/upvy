@@ -18,11 +18,19 @@ import me.onetwo.upvy.domain.content.model.ContentPhoto
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.repository.ContentRepository
+import me.onetwo.upvy.domain.content.repository.ContentPhotoRepository
+import me.onetwo.upvy.domain.content.repository.UploadSessionRepository
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
+import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
+import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.upvy.domain.interaction.repository.UserLikeRepository
+import me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
+import me.onetwo.upvy.domain.tag.service.TagService
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.slf4j.LoggerFactory
+import software.amazon.awssdk.services.s3.S3Client
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -45,14 +53,15 @@ import java.util.UUID
 class ContentServiceImpl(
     private val contentUploadService: ContentUploadService,
     private val contentRepository: ContentRepository,
-    private val contentPhotoRepository: me.onetwo.upvy.domain.content.repository.ContentPhotoRepository,
-    private val uploadSessionRepository: me.onetwo.upvy.domain.content.repository.UploadSessionRepository,
-    private val s3Client: software.amazon.awssdk.services.s3.S3Client,
+    private val contentPhotoRepository: ContentPhotoRepository,
+    private val uploadSessionRepository: UploadSessionRepository,
+    private val s3Client: S3Client,
     private val eventPublisher: ReactiveEventPublisher,
-    private val contentInteractionService: me.onetwo.upvy.domain.analytics.service.ContentInteractionService,
-    private val contentInteractionRepository: me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository,
-    private val userLikeRepository: me.onetwo.upvy.domain.interaction.repository.UserLikeRepository,
-    private val userSaveRepository: me.onetwo.upvy.domain.interaction.repository.UserSaveRepository,
+    private val contentInteractionService: ContentInteractionService,
+    private val contentInteractionRepository: ContentInteractionRepository,
+    private val userLikeRepository: UserLikeRepository,
+    private val userSaveRepository: UserSaveRepository,
+    private val tagService: TagService,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -172,8 +181,22 @@ class ContentServiceImpl(
                 .flatMap { savedContent ->
                     contentRepository.saveMetadata(metadata)
                         .switchIfEmpty(Mono.error(IllegalStateException("Failed to save content metadata")))
-                        .map { savedMetadata ->
-                            Triple(savedContent, savedMetadata, contentType)
+                        .flatMap { savedMetadata ->
+                            // Tags 연결 (tags가 있는 경우에만)
+                            if (!request.tags.isNullOrEmpty()) {
+                                tagService.attachTagsToContent(
+                                    contentId = savedContent.id!!,
+                                    tagNames = request.tags!!,
+                                    userId = userId.toString()
+                                )
+                                    .collectList()
+                                    .doOnSuccess { tags ->
+                                        logger.info("Tags attached: contentId=${savedContent.id}, tags=${tags.map { it.name }}")
+                                    }
+                                    .map { Triple(savedContent, savedMetadata, contentType) }
+                            } else {
+                                Mono.just(Triple(savedContent, savedMetadata, contentType))
+                            }
                         }
                 }
         }.flatMap { (savedContent, savedMetadata, contentType) ->
@@ -297,10 +320,16 @@ class ContentServiceImpl(
                 // Interaction 정보 조회
                 val interactionMono = getInteractionInfo(contentId, userId)
 
-                Mono.zip(photoUrlsMono.defaultIfEmpty(emptyList()), interactionMono)
+                // Tags 조회
+                val tagsMono = tagService.getTagsByContentId(contentId)
+                    .map { it.name }
+                    .collectList()
+
+                Mono.zip(photoUrlsMono.defaultIfEmpty(emptyList()), interactionMono, tagsMono)
                     .map { tuple ->
                         val photoUrls = tuple.t1.takeIf { it.isNotEmpty() }
                         val interactions = tuple.t2
+                        val tags = tuple.t3
 
                         ContentResponse(
                             id = content.id.toString(),
@@ -316,7 +345,7 @@ class ContentServiceImpl(
                             title = metadata.title,
                             description = metadata.description,
                             category = metadata.category,
-                            tags = metadata.tags,
+                            tags = tags,
                             language = metadata.language,
                             interactions = interactions,
                             createdAt = content.createdAt,
@@ -353,11 +382,20 @@ class ContentServiceImpl(
                     Mono.just(emptyMap())
                 }
 
-                photoUrlsMapMono.map { photoUrlsMap ->
-                    contentWithMetadataList to photoUrlsMap
-                }
+                // N+1 방지: 태그 일괄 조회
+                val contentIds = contentWithMetadataList.mapNotNull { it.content.id }
+                val tagsMapMono = tagService.getTagsByContentIds(contentIds)
+                    .collectList()
+                    .map { projections ->
+                        projections.associate { it.contentId to it.tags }
+                    }
+
+                Mono.zip(photoUrlsMapMono, tagsMapMono)
+                    .map { tuple ->
+                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                    }
             }
-            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
                 Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
@@ -366,6 +404,7 @@ class ContentServiceImpl(
                     } else {
                         null
                     }
+                    val tags = tagsMap[content.id] ?: emptyList()
 
                     // Interaction 정보 조회
                     getInteractionInfo(content.id!!, userId).map { interactions ->
@@ -383,7 +422,7 @@ class ContentServiceImpl(
                             title = metadata.title,
                             description = metadata.description,
                             category = metadata.category,
-                            tags = metadata.tags,
+                            tags = tags,
                             language = metadata.language,
                             interactions = interactions,
                             createdAt = content.createdAt,
@@ -433,11 +472,20 @@ class ContentServiceImpl(
                     Mono.just(emptyMap())
                 }
 
-                photoUrlsMapMono.map { photoUrlsMap ->
-                    contentWithMetadataList to photoUrlsMap
-                }
+                // N+1 방지: 태그 일괄 조회
+                val contentIds = contentWithMetadataList.mapNotNull { it.content.id }
+                val tagsMapMono = tagService.getTagsByContentIds(contentIds)
+                    .collectList()
+                    .map { projections ->
+                        projections.associate { it.contentId to it.tags }
+                    }
+
+                Mono.zip(photoUrlsMapMono, tagsMapMono)
+                    .map { tuple ->
+                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                    }
             }
-            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
                 Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
@@ -446,6 +494,7 @@ class ContentServiceImpl(
                     } else {
                         null
                     }
+                    val tags = tagsMap[content.id] ?: emptyList()
 
                     // Interaction 정보 조회
                     getInteractionInfo(content.id!!, userId).map { interactions ->
@@ -463,7 +512,7 @@ class ContentServiceImpl(
                             title = metadata.title,
                             description = metadata.description,
                             category = metadata.category,
-                            tags = metadata.tags,
+                            tags = tags,
                             language = metadata.language,
                             interactions = interactions,
                             createdAt = content.createdAt,
@@ -515,11 +564,20 @@ class ContentServiceImpl(
                     Mono.just(emptyMap())
                 }
 
-                photoUrlsMapMono.map { photoUrlsMap ->
-                    contentWithMetadataList to photoUrlsMap
-                }
+                // N+1 방지: 태그 일괄 조회
+                val contentIdsList = contentWithMetadataList.mapNotNull { it.content.id }
+                val tagsMapMono = tagService.getTagsByContentIds(contentIdsList)
+                    .collectList()
+                    .map { projections ->
+                        projections.associate { it.contentId to it.tags }
+                    }
+
+                Mono.zip(photoUrlsMapMono, tagsMapMono)
+                    .map { tuple ->
+                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                    }
             }
-            .flatMapMany { (contentWithMetadataList, photoUrlsMap) ->
+            .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
                 Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
@@ -528,6 +586,7 @@ class ContentServiceImpl(
                     } else {
                         null
                     }
+                    val tags = tagsMap[content.id] ?: emptyList()
 
                     // Interaction 정보 조회
                     getInteractionInfo(content.id!!, userId).map { interactions ->
@@ -545,7 +604,7 @@ class ContentServiceImpl(
                             title = metadata.title,
                             description = metadata.description,
                             category = metadata.category,
-                            tags = metadata.tags,
+                            tags = tags,
                             language = metadata.language,
                             interactions = interactions,
                             createdAt = content.createdAt,
@@ -642,9 +701,40 @@ class ContentServiceImpl(
                     Mono.empty()
                 }
 
-                photoUpdateMono.then(Mono.just(Triple(content, updatedMetadata, photoUrls)))
+                photoUpdateMono
+                    .then(Mono.just(content to updatedMetadata))
             }
-            .flatMap { triple ->
+            .flatMap { (content, updatedMetadata) ->
+                // Tags 업데이트 (tags가 변경된 경우에만)
+                if (request.tags != null) {
+                    // 기존 태그 제거 후 새 태그 연결
+                    tagService.detachTagsFromContent(contentId, userId.toString())
+                        .doOnSuccess { count ->
+                            logger.info("Detached tags: contentId=$contentId, count=$count")
+                        }
+                        .then(
+                            if (request.tags!!.isNotEmpty()) {
+                                tagService.attachTagsToContent(
+                                    contentId = contentId,
+                                    tagNames = request.tags!!,
+                                    userId = userId.toString()
+                                )
+                                    .collectList()
+                                    .doOnSuccess { tags ->
+                                        logger.info("Attached new tags: contentId=$contentId, tags=${tags.map { it.name }}")
+                                    }
+                            } else {
+                                Mono.just(emptyList())
+                            }
+                        )
+                        .map { Pair(content, updatedMetadata) }
+                } else {
+                    Mono.just(Pair(content, updatedMetadata))
+                }
+            }
+            .flatMap { (content, updatedMetadata) ->
+                val triple = Triple(content, updatedMetadata, request.photoUrls)
+                // 원래 로직 계속
                 val (content, metadata, updatedPhotoUrls) = triple
                 // PHOTO 타입인 경우 사진 목록 조회 (수정되었으면 수정된 것, 아니면 기존 것)
                 val photoUrlsMono: Mono<List<String>?> = if (content.contentType == ContentType.PHOTO) {

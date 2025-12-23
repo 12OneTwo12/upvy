@@ -20,7 +20,14 @@ import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.model.UploadSession
 import me.onetwo.upvy.domain.content.repository.ContentRepository
+import me.onetwo.upvy.domain.content.repository.ContentPhotoRepository
 import me.onetwo.upvy.domain.content.repository.UploadSessionRepository
+import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
+import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
+import me.onetwo.upvy.domain.interaction.repository.UserLikeRepository
+import me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
+import me.onetwo.upvy.domain.tag.model.Tag
+import me.onetwo.upvy.domain.tag.service.TagService
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
 import org.assertj.core.api.Assertions.assertThat
@@ -29,6 +36,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import software.amazon.awssdk.services.s3.S3Client
@@ -52,7 +60,7 @@ class ContentServiceImplTest : BaseReactiveTest {
     private lateinit var contentRepository: ContentRepository
 
     @MockK
-    private lateinit var contentPhotoRepository: me.onetwo.upvy.domain.content.repository.ContentPhotoRepository
+    private lateinit var contentPhotoRepository: ContentPhotoRepository
 
     @MockK
     private lateinit var uploadSessionRepository: UploadSessionRepository
@@ -64,16 +72,19 @@ class ContentServiceImplTest : BaseReactiveTest {
     private lateinit var eventPublisher: ReactiveEventPublisher
 
     @MockK
-    private lateinit var contentInteractionService: me.onetwo.upvy.domain.analytics.service.ContentInteractionService
+    private lateinit var contentInteractionService: ContentInteractionService
 
     @MockK
-    private lateinit var contentInteractionRepository: me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
+    private lateinit var contentInteractionRepository: ContentInteractionRepository
 
     @MockK
-    private lateinit var userLikeRepository: me.onetwo.upvy.domain.interaction.repository.UserLikeRepository
+    private lateinit var userLikeRepository: UserLikeRepository
 
     @MockK
-    private lateinit var userSaveRepository: me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
+    private lateinit var userSaveRepository: UserSaveRepository
+
+    @MockK
+    private lateinit var tagService: TagService
 
     private lateinit var contentService: ContentServiceImpl
 
@@ -90,6 +101,7 @@ class ContentServiceImplTest : BaseReactiveTest {
             contentInteractionRepository = contentInteractionRepository,
             userLikeRepository = userLikeRepository,
             userSaveRepository = userSaveRepository,
+            tagService = tagService,
             bucketName = "test-bucket",
             region = "ap-northeast-2"
         )
@@ -212,6 +224,9 @@ class ContentServiceImplTest : BaseReactiveTest {
             every { contentRepository.save(any()) } returns Mono.just(savedContent)
             every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
 
+            // Mock TagService: 태그 연결
+            every { tagService.attachTagsToContent(contentId, request.tags!!, userId.toString()) } returns reactor.core.publisher.Flux.empty()
+
             // Mock Redis: 세션 삭제
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
 
@@ -313,6 +328,7 @@ class ContentServiceImplTest : BaseReactiveTest {
             every { s3Client.headObject(any<Consumer<HeadObjectRequest.Builder>>()) } returns HeadObjectResponse.builder().build()
             every { contentRepository.save(any()) } returns Mono.just(savedContent)
             every { contentRepository.saveMetadata(any()) } returns Mono.just(savedMetadata)
+            every { tagService.attachTagsToContent(contentId, request.tags!!, userId.toString()) } returns reactor.core.publisher.Flux.empty()
             every { contentPhotoRepository.save(any()) } returns Mono.empty()
             every { contentInteractionService.createContentInteraction(contentId, userId) } returns Mono.empty()
             every { uploadSessionRepository.deleteById(contentId.toString()) } returns Unit
@@ -529,6 +545,7 @@ class ContentServiceImplTest : BaseReactiveTest {
             every { contentInteractionRepository.getSaveCount(contentId) } returns Mono.just(0)
             every { contentInteractionRepository.getShareCount(contentId) } returns Mono.just(0)
             every { contentInteractionRepository.getViewCount(contentId) } returns Mono.just(0)
+            every { tagService.getTagsByContentId(contentId) } returns Flux.empty()
 
             // When: 메서드 실행
             val result = contentService.getContent(contentId, null)

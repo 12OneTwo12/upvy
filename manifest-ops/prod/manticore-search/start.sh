@@ -46,5 +46,19 @@ else
     echo "Existing autocomplete_index index found. Skipping initial indexing."
 fi
 
+# 초기 인덱싱 실행 (tag_index)
+if [ ! -f /var/lib/manticore/tag_index.sph ]; then
+    echo "No existing tag_index index found. Running initial indexing..."
+    indexer tag_index --config /etc/manticoresearch/manticore.conf 2>&1 | tee /var/log/manticore/initial_indexing_tag.log
+
+    if [ $? -eq 0 ]; then
+        echo "Initial tag_index indexing completed successfully"
+    else
+        echo "WARNING: Initial tag_index indexing failed. Service will start without data."
+    fi
+else
+    echo "Existing tag_index index found. Skipping initial indexing."
+fi
+
 # Manticore를 포어그라운드로 실행
 exec searchd --nodetach
