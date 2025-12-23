@@ -4,7 +4,6 @@ import me.onetwo.upvy.domain.content.model.ContentPhoto
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_PHOTOS
 import org.jooq.DSLContext
 import org.jooq.Record
-import org.jooq.exception.DataAccessException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono

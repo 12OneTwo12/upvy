@@ -9,7 +9,6 @@ import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENTS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_METADATA
 import org.jooq.DSLContext
-import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux

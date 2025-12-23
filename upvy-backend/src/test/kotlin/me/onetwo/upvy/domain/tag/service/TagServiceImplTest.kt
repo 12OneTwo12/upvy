@@ -143,12 +143,12 @@ class TagServiceImplTest {
             val contentId = UUID.randomUUID()
             val tag = Tag(id = 1L, name = "Kotlin", normalizedName = "kotlin", usageCount = 0)
 
-            every { tagRepository.findByNormalizedName("kotlin") } returns Mono.just(tag)
-            every { contentTagRepository.existsByContentIdAndTagId(contentId, 1L) } returns Mono.just(false)
-            every { contentTagRepository.save(any()) } returns Mono.just(
+            every { tagRepository.findByNormalizedNames(listOf("kotlin")) } returns Flux.just(tag)
+            every { contentTagRepository.findExistingTagIds(contentId, listOf(1L)) } returns Flux.empty()
+            every { contentTagRepository.saveAll(any<List<ContentTag>>()) } returns Flux.just(
                 ContentTag(id = 1L, contentId = contentId, tagId = 1L)
             )
-            every { tagRepository.incrementUsageCount(1L) } returns Mono.just(true)
+            every { tagRepository.incrementUsageCountBatch(listOf(1L)) } returns Mono.just(1)
 
             // When: 태그 연결
             val result = tagService.attachTagsToContent(contentId, listOf("Kotlin"), "test-user")
@@ -160,8 +160,8 @@ class TagServiceImplTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 1) { contentTagRepository.save(any()) }
-            verify(exactly = 1) { tagRepository.incrementUsageCount(1L) }
+            verify(exactly = 1) { contentTagRepository.saveAll(any<List<ContentTag>>()) }
+            verify(exactly = 1) { tagRepository.incrementUsageCountBatch(listOf(1L)) }
         }
 
         @Test
@@ -171,8 +171,8 @@ class TagServiceImplTest {
             val contentId = UUID.randomUUID()
             val tag = Tag(id = 1L, name = "Java", normalizedName = "java", usageCount = 5)
 
-            every { tagRepository.findByNormalizedName("java") } returns Mono.just(tag)
-            every { contentTagRepository.existsByContentIdAndTagId(contentId, 1L) } returns Mono.just(true)
+            every { tagRepository.findByNormalizedNames(listOf("java")) } returns Flux.just(tag)
+            every { contentTagRepository.findExistingTagIds(contentId, listOf(1L)) } returns Flux.just(1L)
 
             // When: 태그 연결 시도
             val result = tagService.attachTagsToContent(contentId, listOf("Java"), "test-user")
@@ -184,8 +184,8 @@ class TagServiceImplTest {
                 }
                 .verifyComplete()
 
-            verify(exactly = 0) { contentTagRepository.save(any()) }
-            verify(exactly = 0) { tagRepository.incrementUsageCount(any()) }
+            verify(exactly = 0) { contentTagRepository.saveAll(any<List<ContentTag>>()) }
+            verify(exactly = 0) { tagRepository.incrementUsageCountBatch(any()) }
         }
     }
 
@@ -200,13 +200,12 @@ class TagServiceImplTest {
             val contentId = UUID.randomUUID()
             every { contentTagRepository.findTagIdsByContentId(contentId) } returns Flux.just(1L, 2L)
             every { contentTagRepository.deleteByContentId(contentId, "test-user") } returns Mono.just(2)
-            every { tagRepository.decrementUsageCount(1L) } returns Mono.just(true)
-            every { tagRepository.decrementUsageCount(2L) } returns Mono.just(true)
+            every { tagRepository.decrementUsageCountBatch(listOf(1L, 2L)) } returns Mono.just(2)
 
             // When: 태그 제거
             val result = tagService.detachTagsFromContent(contentId, "test-user")
 
-            // Then: 2개 제거, usage_count 2번 감소
+            // Then: 2개 제거, usage_count 배치 감소
             StepVerifier.create(result)
                 .assertNext { count ->
                     assertThat(count).isEqualTo(2)
@@ -214,8 +213,7 @@ class TagServiceImplTest {
                 .verifyComplete()
 
             verify(exactly = 1) { contentTagRepository.deleteByContentId(contentId, "test-user") }
-            verify(exactly = 1) { tagRepository.decrementUsageCount(1L) }
-            verify(exactly = 1) { tagRepository.decrementUsageCount(2L) }
+            verify(exactly = 1) { tagRepository.decrementUsageCountBatch(listOf(1L, 2L)) }
         }
     }
 

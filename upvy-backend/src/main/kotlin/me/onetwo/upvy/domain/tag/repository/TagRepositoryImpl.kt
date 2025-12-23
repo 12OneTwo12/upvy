@@ -143,6 +143,53 @@ class TagRepositoryImpl(
         }
     }
 
+    override fun findByNormalizedNames(normalizedNames: List<String>): Flux<Tag> {
+        if (normalizedNames.isEmpty()) {
+            return Flux.empty()
+        }
+
+        return Flux.from(
+            dslContext
+                .select(
+                    TAGS.ID,
+                    TAGS.NAME,
+                    TAGS.NORMALIZED_NAME,
+                    TAGS.USAGE_COUNT,
+                    TAGS.CREATED_AT,
+                    TAGS.CREATED_BY,
+                    TAGS.UPDATED_AT,
+                    TAGS.UPDATED_BY,
+                    TAGS.DELETED_AT
+                )
+                .from(TAGS)
+                .where(TAGS.NORMALIZED_NAME.`in`(normalizedNames))
+                .and(TAGS.DELETED_AT.isNull)
+        ).map { record ->
+            Tag(
+                id = record.getValue(TAGS.ID),
+                name = record.getValue(TAGS.NAME)!!,
+                normalizedName = record.getValue(TAGS.NORMALIZED_NAME)!!,
+                usageCount = (record.getValue(TAGS.USAGE_COUNT) as? Number)?.toInt() ?: 0,
+                createdAt = record.getValue(TAGS.CREATED_AT) ?: Instant.now(),
+                createdBy = record.getValue(TAGS.CREATED_BY),
+                updatedAt = record.getValue(TAGS.UPDATED_AT) ?: Instant.now(),
+                updatedBy = record.getValue(TAGS.UPDATED_BY),
+                deletedAt = record.getValue(TAGS.DELETED_AT)
+            )
+        }
+    }
+
+    override fun saveAll(tags: List<Tag>): Flux<Tag> {
+        if (tags.isEmpty()) {
+            return Flux.empty()
+        }
+
+        // JOOQ R2DBC does not support batch insert with returning IDs well
+        // Use sequential saves but within a single reactive chain
+        return Flux.fromIterable(tags)
+            .flatMapSequential { tag -> save(tag) }
+    }
+
     override fun findByIds(tagIds: List<Long>): Flux<Tag> {
         if (tagIds.isEmpty()) {
             return Flux.empty()
@@ -231,6 +278,29 @@ class TagRepositoryImpl(
         }.defaultIfEmpty(false)
     }
 
+    override fun incrementUsageCountBatch(tagIds: List<Long>): Mono<Int> {
+        if (tagIds.isEmpty()) {
+            return Mono.just(0)
+        }
+
+        return Mono.from(
+            dslContext
+                .update(TAGS)
+                .set(TAGS.USAGE_COUNT, TAGS.USAGE_COUNT.plus(1))
+                .set(TAGS.UPDATED_AT, Instant.now())
+                .where(TAGS.ID.`in`(tagIds))
+                .and(TAGS.DELETED_AT.isNull)
+        ).map { rowsUpdated: Any ->
+            val count = when (rowsUpdated) {
+                is Long -> rowsUpdated.toInt()
+                is Int -> rowsUpdated
+                else -> rowsUpdated.toString().toIntOrNull() ?: 0
+            }
+            logger.debug("Batch increment usage count: tagIds=$tagIds, updated=$count")
+            count
+        }.defaultIfEmpty(0)
+    }
+
     override fun decrementUsageCount(tagId: Long): Mono<Boolean> {
         return Mono.from(
             dslContext
@@ -249,6 +319,30 @@ class TagRepositoryImpl(
             logger.debug("Decrement usage count: tagId=$tagId, success=$success")
             success
         }.defaultIfEmpty(false)
+    }
+
+    override fun decrementUsageCountBatch(tagIds: List<Long>): Mono<Int> {
+        if (tagIds.isEmpty()) {
+            return Mono.just(0)
+        }
+
+        return Mono.from(
+            dslContext
+                .update(TAGS)
+                .set(TAGS.USAGE_COUNT, TAGS.USAGE_COUNT.minus(1))
+                .set(TAGS.UPDATED_AT, Instant.now())
+                .where(TAGS.ID.`in`(tagIds))
+                .and(TAGS.DELETED_AT.isNull)
+                .and(TAGS.USAGE_COUNT.gt(0))
+        ).map { rowsUpdated: Any ->
+            val count = when (rowsUpdated) {
+                is Long -> rowsUpdated.toInt()
+                is Int -> rowsUpdated
+                else -> rowsUpdated.toString().toIntOrNull() ?: 0
+            }
+            logger.debug("Batch decrement usage count: tagIds=$tagIds, updated=$count")
+            count
+        }.defaultIfEmpty(0)
     }
 
     override fun delete(tagId: Long, deletedBy: String): Mono<Boolean> {

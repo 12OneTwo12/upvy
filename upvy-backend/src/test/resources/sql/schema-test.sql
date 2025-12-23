@@ -298,7 +298,8 @@ CREATE TABLE IF NOT EXISTS tags (
     created_by VARCHAR(36) NULL,
     updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     updated_by VARCHAR(36) NULL,
-    deleted_at DATETIME(6) NULL
+    deleted_at DATETIME(6) NULL,
+    CHECK (usage_count >= 0)
 );
 
 CREATE INDEX idx_tags_normalized_name ON tags(normalized_name);

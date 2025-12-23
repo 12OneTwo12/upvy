@@ -67,6 +67,17 @@ interface ContentTagRepository {
     fun existsByContentIdAndTagId(contentId: UUID, tagId: Long): Mono<Boolean>
 
     /**
+     * 특정 콘텐츠와 여러 태그의 관계 중 이미 존재하는 태그 ID 목록을 반환합니다.
+     *
+     * N+1 문제를 방지하기 위해 여러 태그의 존재 여부를 한 번의 쿼리로 확인합니다.
+     *
+     * @param contentId 콘텐츠 ID
+     * @param tagIds 확인할 태그 ID 목록
+     * @return 이미 존재하는 태그 ID 목록 (Flux)
+     */
+    fun findExistingTagIds(contentId: UUID, tagIds: List<Long>): Flux<Long>
+
+    /**
      * 콘텐츠의 모든 태그를 삭제합니다 (Soft Delete).
      *
      * 콘텐츠 삭제 시 연결된 모든 태그 관계도 함께 삭제됩니다.

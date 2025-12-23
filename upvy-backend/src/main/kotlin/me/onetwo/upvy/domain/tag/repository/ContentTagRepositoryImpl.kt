@@ -136,6 +136,23 @@ class ContentTagRepositoryImpl(
         }.defaultIfEmpty(false)
     }
 
+    override fun findExistingTagIds(contentId: UUID, tagIds: List<Long>): Flux<Long> {
+        if (tagIds.isEmpty()) {
+            return Flux.empty()
+        }
+
+        return Flux.from(
+            dslContext
+                .select(CONTENT_TAGS.TAG_ID)
+                .from(CONTENT_TAGS)
+                .where(CONTENT_TAGS.CONTENT_ID.eq(contentId.toString()))
+                .and(CONTENT_TAGS.TAG_ID.`in`(tagIds))
+                .and(CONTENT_TAGS.DELETED_AT.isNull)
+        ).map { record ->
+            record.getValue(CONTENT_TAGS.TAG_ID)!!
+        }
+    }
+
     override fun deleteByContentId(contentId: UUID, deletedBy: String): Mono<Int> {
         return Mono.from(
             dslContext

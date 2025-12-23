@@ -23,6 +23,16 @@ interface TagRepository {
     fun save(tag: Tag): Mono<Tag>
 
     /**
+     * 여러 태그를 배치 저장합니다.
+     *
+     * N+1 문제를 방지하기 위해 여러 태그를 한 번의 배치 쿼리로 저장합니다.
+     *
+     * @param tags 저장할 태그 목록
+     * @return 저장된 태그 목록 (Auto Increment ID 포함, Flux)
+     */
+    fun saveAll(tags: List<Tag>): Flux<Tag>
+
+    /**
      * 태그를 ID로 조회합니다.
      *
      * @param tagId 태그 ID
@@ -49,6 +59,16 @@ interface TagRepository {
      * @return 조회된 태그 (없으면 empty Mono)
      */
     fun findByNormalizedName(normalizedName: String): Mono<Tag>
+
+    /**
+     * 여러 정규화된 이름으로 태그를 배치 조회합니다.
+     *
+     * N+1 문제를 방지하기 위해 여러 태그를 한 번의 쿼리로 조회합니다.
+     *
+     * @param normalizedNames 정규화된 태그 이름 목록
+     * @return 조회된 태그 목록 (Flux)
+     */
+    fun findByNormalizedNames(normalizedNames: List<String>): Flux<Tag>
 
     /**
      * 여러 태그 ID로 태그를 배치 조회합니다.
@@ -90,6 +110,17 @@ interface TagRepository {
     fun incrementUsageCount(tagId: Long): Mono<Boolean>
 
     /**
+     * 여러 태그의 사용 횟수를 배치로 증가시킵니다.
+     *
+     * N+1 문제를 방지하기 위해 여러 태그의 usage_count를 한 번의 쿼리로 증가시킵니다.
+     * 원자적(Atomic) 연산으로 동시성 문제를 방지합니다.
+     *
+     * @param tagIds 태그 ID 목록
+     * @return 업데이트된 행 개수 (Mono)
+     */
+    fun incrementUsageCountBatch(tagIds: List<Long>): Mono<Int>
+
+    /**
      * 태그 사용 횟수를 감소시킵니다.
      *
      * 콘텐츠에서 태그가 제거될 때 usage_count를 1 감소시킵니다.
@@ -99,6 +130,17 @@ interface TagRepository {
      * @return 감소 성공 여부 (Mono)
      */
     fun decrementUsageCount(tagId: Long): Mono<Boolean>
+
+    /**
+     * 여러 태그의 사용 횟수를 배치로 감소시킵니다.
+     *
+     * N+1 문제를 방지하기 위해 여러 태그의 usage_count를 한 번의 쿼리로 감소시킵니다.
+     * 원자적(Atomic) 연산으로 동시성 문제를 방지합니다.
+     *
+     * @param tagIds 태그 ID 목록
+     * @return 업데이트된 행 개수 (Mono)
+     */
+    fun decrementUsageCountBatch(tagIds: List<Long>): Mono<Int>
 
     /**
      * 태그를 삭제합니다 (Soft Delete).
