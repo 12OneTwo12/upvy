@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +37,7 @@ import type {
   UserSearchResult,
 } from '@/types/search.types';
 import type { FeedItem } from '@/types/feed.types';
-import type { RootStackParamList } from '@/types/navigation.types';
+import type { RootStackParamList, SearchStackParamList } from '@/types/navigation.types';
 import { withErrorHandling } from '@/utils/errorHandler';
 
 type TabType = 'creators' | 'shorts';
@@ -241,6 +242,7 @@ export default function SearchScreen() {
   const styles = useStyles();
   const dynamicTheme = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProp<SearchStackParamList, 'SearchMain'>>();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation(['search', 'common']);
 
@@ -403,6 +405,28 @@ export default function SearchScreen() {
     // 검색 기록 새로고침
     loadSearchHistory();
   }, []);
+
+  /**
+   * 태그 터치로 네비게이션된 경우 자동 검색 실행
+   */
+  useEffect(() => {
+    const params = route.params;
+
+    if (params?.initialQuery) {
+      // 검색어 설정
+      setSearchQuery(params.initialQuery);
+
+      // 탭 설정 (기본값: 'shorts')
+      const targetTab = params.initialTab || 'shorts';
+      setActiveTab(targetTab);
+
+      // 검색 즉시 실행
+      handleSearch(params.initialQuery);
+
+      // 파라미터 초기화 (재실행 방지)
+      navigation.setParams({ initialQuery: undefined, initialTab: undefined });
+    }
+  }, [route.params?.initialQuery, route.params?.initialTab, handleSearch, navigation]);
 
   // 검색어 클릭
   const handleKeywordPress = useCallback((keyword: string) => {
@@ -788,7 +812,7 @@ export default function SearchScreen() {
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
-            autoFocus
+            autoFocus={!route.params?.initialQuery}  // 태그로 온 경우 키보드 안띄움
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={handleClearSearch}>

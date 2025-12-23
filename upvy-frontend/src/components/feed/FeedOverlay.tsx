@@ -6,13 +6,15 @@
  * - 하단 우측: 인터랙션 버튼 (좋아요, 댓글, 저장, 공유, 신고)
  */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView, Dimensions, Animated, Easing } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/stores/authStore';
 import { ReportModal } from '@/components/report/ReportModal';
 import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
@@ -20,9 +22,12 @@ import { BlockConfirmModal } from '@/components/block/BlockConfirmModal';
 import { DeleteConfirmModal, ContentEditModal } from '@/components/content';
 import type { CreatorInfo, InteractionInfo, Category } from '@/types/feed.types';
 import type { BlockType } from '@/types/block.types';
+import type { RootStackParamList } from '@/types/navigation.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_EXPAND_HEIGHT = 150; // 최대 확장 높이
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface FeedOverlayProps {
   creator: CreatorInfo;
@@ -56,6 +61,58 @@ const isLoadingState = (creator: CreatorInfo) => {
 const PROGRESS_BAR_AREA = 20;
 const DEFAULT_BOTTOM_MARGIN = 24; // 탭바가 없을 때 하단 여백
 
+/**
+ * 개별 클릭 가능한 태그
+ */
+interface ClickableTagProps {
+  tag: string;
+  onPress: (tag: string) => void;
+  style?: any;
+}
+
+const ClickableTag: React.FC<ClickableTagProps> = ({ tag, onPress, style }) => {
+  return (
+    <TouchableOpacity
+      onPress={() => onPress(tag)}
+      activeOpacity={0.7}
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`Search for tag ${tag}`}
+    >
+      <Text style={style}>#{tag}</Text>
+    </TouchableOpacity>
+  );
+};
+
+/**
+ * 태그 목록 컨테이너
+ */
+interface ClickableTagsProps {
+  tags: string[];
+  onTagPress: (tag: string) => void;
+  style?: any;
+  numberOfLines?: number;
+}
+
+const ClickableTags: React.FC<ClickableTagsProps> = ({
+  tags,
+  onTagPress,
+  style,
+  numberOfLines
+}) => {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+      {tags.map((tag, index) => (
+        <React.Fragment key={`${tag}-${index}`}>
+          <ClickableTag tag={tag} onPress={onTagPress} style={style} />
+          {index < tags.length - 1 && <Text style={style}> </Text>}
+        </React.Fragment>
+      ))}
+    </View>
+  );
+};
+
 export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   creator,
   title,
@@ -81,6 +138,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const { t } = useTranslation('feed');
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const navigation = useNavigation<NavigationProp>();
   const currentUser = useAuthStore((state) => state.user);
   const isLoading = isLoadingState(creator);
   const isOwnPost = !isLoading && currentUser && currentUser.id === creator.userId;
@@ -207,6 +265,22 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
     ];
   }, [t, isOwnPost]);
 
+  /**
+   * 태그 클릭 - Search 탭으로 네비게이션
+   */
+  const handleTagPress = useCallback((tag: string) => {
+    navigation.navigate('Main', {
+      screen: 'Search',
+      params: {
+        screen: 'SearchMain',
+        params: {
+          initialQuery: tag,      // # 없이 태그 텍스트만 전달
+          initialTab: 'shorts',   // 콘텐츠 탭으로 자동 전환
+        },
+      },
+    });
+  }, [navigation]);
+
   const formatCount = (count: number): string => {
     if (count >= 1000000) {
       return `${(count / 1000000).toFixed(1)}M`;
@@ -328,9 +402,13 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                         {description && `\n${description}`}
                       </Text>
                       {tags && tags.length > 0 && (
-                        <Text style={styles.expandedInlineTagsText}>
-                          {tags.map((tag) => `#${tag}`).join(' ')}
-                        </Text>
+                        <View style={{ marginTop: 8 }}>
+                          <ClickableTags
+                            tags={tags}
+                            onTagPress={handleTagPress}
+                            style={styles.expandedInlineTagsText}
+                          />
+                        </View>
                       )}
                     </ScrollView>
                   </Animated.View>
@@ -346,11 +424,15 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                           outputRange: [0, 24], // 태그 높이 (marginTop 6 + lineHeight 18)
                         }),
                       }}
+                      pointerEvents={isExpanded ? 'none' : 'auto'}  // 확장 시 터치 비활성화
                     >
                       <View style={styles.tagsContainer}>
-                        <Text style={styles.tagsText} numberOfLines={1}>
-                          {tags.map((tag) => `#${tag}`).join(' ')}
-                        </Text>
+                        <ClickableTags
+                          tags={tags}
+                          onTagPress={handleTagPress}
+                          style={styles.tagsText}
+                          numberOfLines={1}
+                        />
                       </View>
                     </Animated.View>
                   )}
