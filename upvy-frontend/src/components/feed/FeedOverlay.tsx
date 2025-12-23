@@ -62,31 +62,8 @@ const PROGRESS_BAR_AREA = 20;
 const DEFAULT_BOTTOM_MARGIN = 24; // 탭바가 없을 때 하단 여백
 
 /**
- * 개별 클릭 가능한 태그
- */
-interface ClickableTagProps {
-  tag: string;
-  onPress: (tag: string) => void;
-  style?: any;
-}
-
-const ClickableTag: React.FC<ClickableTagProps> = ({ tag, onPress, style }) => {
-  return (
-    <TouchableOpacity
-      onPress={() => onPress(tag)}
-      activeOpacity={0.7}
-      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-      accessible={true}
-      accessibilityRole="button"
-      accessibilityLabel={`Search for tag ${tag}`}
-    >
-      <Text style={style}>#{tag}</Text>
-    </TouchableOpacity>
-  );
-};
-
-/**
  * 태그 목록 컨테이너
+ * Text 컴포넌트로 감싸서 본문과 동일한 lineHeight 적용
  */
 interface ClickableTagsProps {
   tags: string[];
@@ -101,30 +78,17 @@ const ClickableTags: React.FC<ClickableTagsProps> = ({
   style,
   numberOfLines
 }) => {
-  // numberOfLines가 지정된 경우 (collapsed 상태): Text로 감싸서 truncate
-  if (numberOfLines) {
-    return (
-      <Text style={style} numberOfLines={numberOfLines}>
-        {tags.map((tag, index) => (
-          <React.Fragment key={`${tag}-${index}`}>
-            <Text onPress={() => onTagPress(tag)}>#{tag}</Text>
-            {index < tags.length - 1 && ' '}
-          </React.Fragment>
-        ))}
-      </Text>
-    );
-  }
-
-  // numberOfLines가 없는 경우 (expanded 상태): View로 감싸서 wrapping
+  // Text 컴포넌트로 감싸서 본문과 동일한 자연스러운 줄 간격 적용
+  // numberOfLines 지정 시 truncate, 미지정 시 자동 줄바꿈
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 2, alignItems: 'flex-start' }}>
+    <Text style={style} numberOfLines={numberOfLines}>
       {tags.map((tag, index) => (
         <React.Fragment key={`${tag}-${index}`}>
-          <ClickableTag tag={tag} onPress={onTagPress} style={style} />
-          {index < tags.length - 1 && <Text style={style}> </Text>}
+          <Text onPress={() => onTagPress(tag)}>#{tag}</Text>
+          {index < tags.length - 1 && ' '}
         </React.Fragment>
       ))}
-    </View>
+    </Text>
   );
 };
 
