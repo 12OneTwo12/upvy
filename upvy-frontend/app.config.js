@@ -22,7 +22,7 @@ module.exports = {
   expo: {
     name: 'Upvy',
     slug: 'upvy',
-    version: '1.4.1',
+    version: '1.4.2',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
