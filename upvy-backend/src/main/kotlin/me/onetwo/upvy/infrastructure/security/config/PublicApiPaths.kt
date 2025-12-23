@@ -60,6 +60,9 @@ object PublicApiPaths {
             "${ApiPaths.API_V1_SEARCH}/autocomplete",
             "${ApiPaths.API_V1_SEARCH}/trending",
 
+            // 태그 조회 (인기 태그 등 - 비로그인 사용자도 접근 가능)
+            "${ApiPaths.API_V1_TAGS}/popular",
+
             // 콘텐츠 개별 조회 (GET /api/v1/contents/{contentId})
             // 주의: SecurityConfig에서 /me를 먼저 authenticated()로 선언하여
             // /api/v1/contents/me가 공개되지 않도록 함

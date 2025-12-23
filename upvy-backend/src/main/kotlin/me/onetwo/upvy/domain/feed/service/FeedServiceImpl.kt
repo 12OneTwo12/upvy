@@ -4,6 +4,7 @@ import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.feed.dto.FeedResponse
 import me.onetwo.upvy.domain.feed.repository.FeedRepository
 import me.onetwo.upvy.domain.feed.service.recommendation.RecommendationService
+import me.onetwo.upvy.domain.tag.service.TagService
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import org.slf4j.LoggerFactory
@@ -32,7 +33,8 @@ import java.util.UUID
 class FeedServiceImpl(
     private val feedRepository: FeedRepository,
     private val recommendationService: RecommendationService,
-    private val feedCacheService: FeedCacheService
+    private val feedCacheService: FeedCacheService,
+    private val tagService: TagService
 ) : FeedService {
 
     /**
@@ -95,12 +97,25 @@ class FeedServiceImpl(
                 // 상세 정보 조회
                 feedRepository.findByContentIds(userId, contentIds)
                     .collectList()
-                    .map { feedItems ->
-                        CursorPageResponse.of(
-                            content = feedItems,
-                            limit = limit,
-                            getCursor = { (offset + feedItems.indexOf(it) + 1).toString() }
-                        )
+                    .flatMap { feedItems ->
+                        // Tags 조회
+                        val itemContentIds = feedItems.map { it.contentId }
+                        tagService.getTagsByContentIds(itemContentIds)
+                            .collectList()
+                            .map { projections ->
+                                val tagsMap = projections.associate { it.contentId to it.tags }
+                                // Tags 조합
+                                feedItems.map { item ->
+                                    item.copy(tags = tagsMap[item.contentId] ?: emptyList())
+                                }
+                            }
+                            .map { updatedFeedItems ->
+                                CursorPageResponse.of(
+                                    content = updatedFeedItems,
+                                    limit = limit,
+                                    getCursor = { (offset + updatedFeedItems.indexOf(it) + 1).toString() }
+                                )
+                            }
                     }
             }
     }
@@ -128,12 +143,25 @@ class FeedServiceImpl(
             limit = limit + 1  // +1 to check if there are more items
         )
             .collectList()
-            .map { feedItems ->
-                CursorPageResponse.of(
-                    content = feedItems,
-                    limit = limit,
-                    getCursor = { it.contentId.toString() }
-                )
+            .flatMap { feedItems ->
+                // Tags 조회
+                val itemContentIds = feedItems.map { it.contentId }
+                tagService.getTagsByContentIds(itemContentIds)
+                    .collectList()
+                    .map { projections ->
+                        val tagsMap = projections.associate { it.contentId to it.tags }
+                        // Tags 조합
+                        feedItems.map { item ->
+                            item.copy(tags = tagsMap[item.contentId] ?: emptyList())
+                        }
+                    }
+                    .map { updatedFeedItems ->
+                        CursorPageResponse.of(
+                            content = updatedFeedItems,
+                            limit = limit,
+                            getCursor = { it.contentId.toString() }
+                        )
+                    }
             }
     }
 
@@ -208,12 +236,25 @@ class FeedServiceImpl(
                 // 상세 정보 조회
                 feedRepository.findByContentIds(effectiveUserId, contentIds)
                     .collectList()
-                    .map { feedItems ->
-                        CursorPageResponse.of(
-                            content = feedItems,
-                            limit = limit,
-                            getCursor = { (offset + feedItems.indexOf(it) + 1).toString() }
-                        )
+                    .flatMap { feedItems ->
+                        // Tags 조회
+                        val itemContentIds = feedItems.map { it.contentId }
+                        tagService.getTagsByContentIds(itemContentIds)
+                            .collectList()
+                            .map { projections ->
+                                val tagsMap = projections.associate { it.contentId to it.tags }
+                                // Tags 조합
+                                feedItems.map { item ->
+                                    item.copy(tags = tagsMap[item.contentId] ?: emptyList())
+                                }
+                            }
+                            .map { updatedFeedItems ->
+                                CursorPageResponse.of(
+                                    content = updatedFeedItems,
+                                    limit = limit,
+                                    getCursor = { (offset + updatedFeedItems.indexOf(it) + 1).toString() }
+                                )
+                            }
                     }
             }
     }

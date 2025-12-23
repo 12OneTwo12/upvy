@@ -762,7 +762,6 @@ class CommentRepositoryTest : AbstractIntegrationTest() {
             .set(CONTENT_METADATA.TITLE, title)
             .set(CONTENT_METADATA.DESCRIPTION, "Test Description")
             .set(CONTENT_METADATA.CATEGORY, Category.PROGRAMMING.name)
-            .set(CONTENT_METADATA.TAGS, JSON.valueOf("[\"test\"]"))
             .set(CONTENT_METADATA.LANGUAGE, "ko")
             .set(CONTENT_METADATA.CREATED_AT, now)
             .set(CONTENT_METADATA.CREATED_BY, creatorId.toString())

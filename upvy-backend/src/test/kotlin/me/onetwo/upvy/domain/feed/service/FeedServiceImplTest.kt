@@ -11,6 +11,8 @@ import me.onetwo.upvy.domain.feed.dto.FeedItemResponse
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.upvy.domain.feed.repository.FeedRepository
 import me.onetwo.upvy.domain.feed.service.recommendation.RecommendationService
+import me.onetwo.upvy.domain.tag.model.ContentTagsProjection
+import me.onetwo.upvy.domain.tag.service.TagService
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageRequest
 import org.assertj.core.api.Assertions.assertThat
@@ -40,6 +42,7 @@ class FeedServiceImplTest : BaseReactiveTest {
     private lateinit var feedRepository: FeedRepository
     private lateinit var recommendationService: RecommendationService
     private lateinit var feedCacheService: FeedCacheService
+    private lateinit var tagService: TagService
     private lateinit var feedService: FeedServiceImpl
 
     private val userId = UUID.randomUUID()
@@ -49,7 +52,12 @@ class FeedServiceImplTest : BaseReactiveTest {
         feedRepository = mockk(relaxed = true)
         recommendationService = mockk(relaxed = true)
         feedCacheService = mockk(relaxed = true)
-        feedService = FeedServiceImpl(feedRepository, recommendationService, feedCacheService)
+        tagService = mockk(relaxed = true)
+
+        // 기본 태그 조회 mock 설정
+        every { tagService.getTagsByContentIds(any()) } returns Flux.empty()
+
+        feedService = FeedServiceImpl(feedRepository, recommendationService, feedCacheService, tagService)
     }
 
     @Nested
