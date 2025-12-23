@@ -23,6 +23,7 @@ export default function MainNavigator() {
   return (
     <Tab.Navigator
       initialRouteName="Feed"
+      backBehavior="history"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
