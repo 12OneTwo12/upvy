@@ -78,17 +78,18 @@ export default function CategoryFeedScreen() {
     viewabilityConfig,
     flatListRef,
     SCREEN_HEIGHT,
-    refetch,
+    handleRefresh,
   } = feed;
 
   /**
    * 카테고리 화면 포커스 시 피드 새로고침
    * 탐색 화면에서 카테고리를 선택할 때마다 최신 콘텐츠 표시
+   * Pull-to-Refresh와 동일한 효과 (백엔드 API 호출)
    */
   useFocusEffect(
     useCallback(() => {
-      refetch();
-    }, [refetch])
+      handleRefresh();
+    }, [handleRefresh])
   );
 
   // 렌더링

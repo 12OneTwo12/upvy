@@ -101,6 +101,21 @@ const ClickableTags: React.FC<ClickableTagsProps> = ({
   style,
   numberOfLines
 }) => {
+  // numberOfLines가 지정된 경우 (collapsed 상태): Text로 감싸서 truncate
+  if (numberOfLines) {
+    return (
+      <Text style={style} numberOfLines={numberOfLines}>
+        {tags.map((tag, index) => (
+          <React.Fragment key={`${tag}-${index}`}>
+            <Text onPress={() => onTagPress(tag)}>#{tag}</Text>
+            {index < tags.length - 1 && ' '}
+          </React.Fragment>
+        ))}
+      </Text>
+    );
+  }
+
+  // numberOfLines가 없는 경우 (expanded 상태): View로 감싸서 wrapping
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
       {tags.map((tag, index) => (

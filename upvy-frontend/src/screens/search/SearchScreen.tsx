@@ -268,6 +268,9 @@ export default function SearchScreen() {
   // Debounce를 위한 ref
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // AutoFocus 제어: 태그로 진입한 경우 키보드 띄우지 않음
+  const [shouldAutoFocus] = useState(!route.params?.initialQuery);
+
   // 인기 검색어 및 검색 기록 로드
   useEffect(() => {
     loadTrendingKeywords();
@@ -807,7 +810,7 @@ export default function SearchScreen() {
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
-            autoFocus={!route.params?.initialQuery}  // 태그로 온 경우 키보드 안띄움
+            autoFocus={shouldAutoFocus}  // 태그로 진입한 경우 키보드 띄우지 않음
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={handleClearSearch}>
