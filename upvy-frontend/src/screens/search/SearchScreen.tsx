@@ -177,17 +177,12 @@ const ExploreGridItem: React.FC<ExploreGridItemProps> = ({ item, index, totalIte
       {!showRetryButton && (
         <>
           {item.contentType === 'VIDEO' ? (
-            <Video
+            <Image
               key={mediaKey}
-              source={{ uri: item.url }}
+              source={{ uri: item.thumbnailUrl }}
               style={styles.exploreGridThumbnail}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay={isLarge}
-              isLooping
-              isMuted
-              useNativeControls={false}
+              resizeMode="cover"
               onLoad={handleMediaLoaded}
-              onReadyForDisplay={handleMediaLoaded}
               onError={handleMediaError}
             />
           ) : (
