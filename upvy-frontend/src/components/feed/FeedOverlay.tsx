@@ -117,7 +117,7 @@ const ClickableTags: React.FC<ClickableTagsProps> = ({
 
   // numberOfLines가 없는 경우 (expanded 상태): View로 감싸서 wrapping
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 2, alignItems: 'flex-start' }}>
       {tags.map((tag, index) => (
         <React.Fragment key={`${tag}-${index}`}>
           <ClickableTag tag={tag} onPress={onTagPress} style={style} />
