@@ -7,7 +7,7 @@
  * - 커서 기반 페이지네이션
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   FlatList,
@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRoute, useIsFocused, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, useIsFocused, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
@@ -78,7 +78,18 @@ export default function CategoryFeedScreen() {
     viewabilityConfig,
     flatListRef,
     SCREEN_HEIGHT,
+    refetch,
   } = feed;
+
+  /**
+   * 카테고리 화면 포커스 시 피드 새로고침
+   * 탐색 화면에서 카테고리를 선택할 때마다 최신 콘텐츠 표시
+   */
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   // 렌더링
   const renderItem = ({ item, index }: { item: FeedItemType; index: number }) => {
