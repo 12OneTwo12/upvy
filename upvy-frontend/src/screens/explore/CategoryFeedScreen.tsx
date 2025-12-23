@@ -7,7 +7,7 @@
  * - 커서 기반 페이지네이션
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -82,14 +82,26 @@ export default function CategoryFeedScreen() {
   } = feed;
 
   /**
+   * handleRefresh의 최신 버전을 ref로 유지
+   * useFocusEffect에서 안정적인 콜백을 사용하면서도 최신 handleRefresh를 호출하기 위함
+   */
+  const handleRefreshRef = useRef(handleRefresh);
+  useEffect(() => {
+    handleRefreshRef.current = handleRefresh;
+  }, [handleRefresh]);
+
+  /**
    * 카테고리 화면 포커스 시 피드 새로고침
    * 탐색 화면에서 카테고리를 선택할 때마다 최신 콘텐츠 표시
    * Pull-to-Refresh와 동일한 효과 (백엔드 API 호출)
+   *
+   * 빈 dependency 배열로 안정적인 콜백 유지 → 무한 루프 방지
+   * ref를 통해 항상 최신 handleRefresh 호출 → stale closure 방지
    */
   useFocusEffect(
     useCallback(() => {
-      handleRefresh();
-    }, [handleRefresh])
+      handleRefreshRef.current();
+    }, [])
   );
 
   // 렌더링
