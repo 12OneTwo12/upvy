@@ -172,6 +172,12 @@ export const API_ENDPOINTS = {
     // 모든 디바이스 푸시 토큰 삭제
     DELETE_ALL: '/push-tokens',
   },
+
+  // App Version (앱 버전 체크)
+  APP_VERSION: {
+    // 앱 버전 체크
+    CHECK: '/app-version/check',
+  },
 } as const;
 
 /**
