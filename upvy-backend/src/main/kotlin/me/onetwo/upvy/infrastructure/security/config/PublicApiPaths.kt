@@ -18,6 +18,7 @@ object PublicApiPaths {
      */
     val AUTH_ENDPOINTS = arrayOf(
         "${ApiPaths.API_V1_AUTH}/**",
+        "${ApiPaths.API_V1_APP_VERSION}/**",  // 앱 버전 체크 (비로그인 사용자도 접근 가능)
         "/oauth2/**",
         "/login/**",
         "/error",

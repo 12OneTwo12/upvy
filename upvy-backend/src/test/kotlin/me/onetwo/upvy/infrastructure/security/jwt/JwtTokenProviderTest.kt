@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.util.*
 
 /**
@@ -169,7 +168,7 @@ class JwtTokenProviderTest {
         val token = expiredJwtTokenProvider.generateAccessToken(UUID.randomUUID(), "test@example.com", UserRole.USER)
 
         // When & Then
-        assertThrows<JwtException> {
+        assertThrows(JwtException::class.java) {
             jwtTokenProvider.getUserIdFromToken(token)
         }
     }

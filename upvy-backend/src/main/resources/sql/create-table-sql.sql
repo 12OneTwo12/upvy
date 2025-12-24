@@ -639,3 +639,22 @@ CREATE TABLE IF NOT EXISTS content_tags (
 CREATE INDEX idx_content_tags_content_id ON content_tags(content_id);
 CREATE INDEX idx_content_tags_tag_id ON content_tags(tag_id);
 CREATE INDEX idx_content_tags_deleted_at ON content_tags(deleted_at);
+
+-- App Versions Table (앱 강제 업데이트 관리)
+CREATE TABLE IF NOT EXISTS app_versions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    platform VARCHAR(10) NOT NULL COMMENT '플랫폼 (IOS, ANDROID)',
+    minimum_version VARCHAR(20) NOT NULL COMMENT '최소 지원 버전 (이 버전 미만은 강제 업데이트)',
+    latest_version VARCHAR(20) NOT NULL COMMENT '최신 버전',
+    store_url VARCHAR(500) NOT NULL COMMENT '앱스토어/플레이스토어 URL',
+    force_update BOOLEAN DEFAULT TRUE COMMENT '강제 업데이트 여부',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    CONSTRAINT unique_platform UNIQUE (platform)
+);
+
+CREATE INDEX idx_app_versions_platform ON app_versions(platform);
+CREATE INDEX idx_app_versions_deleted_at ON app_versions(deleted_at);

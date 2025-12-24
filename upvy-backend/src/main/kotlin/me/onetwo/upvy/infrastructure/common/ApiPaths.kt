@@ -20,4 +20,5 @@ object ApiPaths {
     const val API_V1_NOTIFICATIONS = "$API_V1/notifications"
     const val API_V1_PUSH_TOKENS = "$API_V1/push-tokens"
     const val API_V1_TAGS = "$API_V1/tags"
+    const val API_V1_APP_VERSION = "$API_V1/app-version"
 }
