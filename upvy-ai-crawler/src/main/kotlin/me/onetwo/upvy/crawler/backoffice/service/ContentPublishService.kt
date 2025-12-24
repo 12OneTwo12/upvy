@@ -125,7 +125,6 @@ class ContentPublishService(
             title = pendingContent.title,
             description = pendingContent.description,
             category = pendingContent.category.name,
-            tags = pendingContent.tags,
             difficultyLevel = pendingContent.difficulty?.name,
             language = pendingContent.language,  // 콘텐츠 언어
             createdAt = now,
