@@ -25,9 +25,6 @@ data class PublishedContentMetadata(
     @Column(nullable = false, length = 50)
     val category: String,
 
-    @Column(columnDefinition = "JSON")
-    val tags: String? = null,
-
     @Column(name = "difficulty_level", length = 20)
     val difficultyLevel: String? = null,
 

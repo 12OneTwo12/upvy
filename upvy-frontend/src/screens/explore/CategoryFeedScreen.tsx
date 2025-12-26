@@ -7,7 +7,7 @@
  * - 커서 기반 페이지네이션
  */
 
-import React from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRoute, useIsFocused, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, useIsFocused, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
@@ -78,7 +78,31 @@ export default function CategoryFeedScreen() {
     viewabilityConfig,
     flatListRef,
     SCREEN_HEIGHT,
+    handleRefresh,
   } = feed;
+
+  /**
+   * handleRefresh의 최신 버전을 ref로 유지
+   * useFocusEffect에서 안정적인 콜백을 사용하면서도 최신 handleRefresh를 호출하기 위함
+   */
+  const handleRefreshRef = useRef(handleRefresh);
+  useEffect(() => {
+    handleRefreshRef.current = handleRefresh;
+  }, [handleRefresh]);
+
+  /**
+   * 카테고리 화면 포커스 시 피드 새로고침
+   * 탐색 화면에서 카테고리를 선택할 때마다 최신 콘텐츠 표시
+   * Pull-to-Refresh와 동일한 효과 (백엔드 API 호출)
+   *
+   * 빈 dependency 배열로 안정적인 콜백 유지 → 무한 루프 방지
+   * ref를 통해 항상 최신 handleRefresh 호출 → stale closure 방지
+   */
+  useFocusEffect(
+    useCallback(() => {
+      handleRefreshRef.current();
+    }, [])
+  );
 
   // 렌더링
   const renderItem = ({ item, index }: { item: FeedItemType; index: number }) => {

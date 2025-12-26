@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.io.File
 import javax.imageio.ImageIO
 
@@ -103,7 +102,7 @@ class ImageResizerTest {
         val quality = 0.85
 
         // When & Then: 예외 발생 확인
-        val exception = assertThrows<IllegalArgumentException> {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
             imageResizer.resize(invalidImage, maxWidth, maxHeight, quality)
         }
         assertTrue(exception.message!!.contains("Failed to resize image"))

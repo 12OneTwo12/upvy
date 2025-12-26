@@ -114,7 +114,10 @@ export type FeedStackParamList = {
  * Search Stack Navigator Params
  */
 export type SearchStackParamList = {
-  SearchMain: undefined;
+  SearchMain: {
+    initialQuery?: string;           // 초기 검색어 (태그 터치로 진입 시)
+    initialTab?: 'creators' | 'shorts';  // 초기 탭 선택 (기본값: 'shorts')
+  } | undefined;  // 파라미터 없이도 네비게이션 가능
   ContentViewer: { contentId: string };
   UserProfile: { userId: string };
   FollowList: { userId: string; initialTab?: 'followers' | 'following' };
