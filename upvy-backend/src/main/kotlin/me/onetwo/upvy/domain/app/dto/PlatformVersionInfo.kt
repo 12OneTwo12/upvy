@@ -1,7 +1,6 @@
 package me.onetwo.upvy.domain.app.dto
 
 import me.onetwo.upvy.domain.app.model.AppVersion
-import me.onetwo.upvy.domain.app.model.Platform
 
 /**
  * 플랫폼별 버전 정보 DTO

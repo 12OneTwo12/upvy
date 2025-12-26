@@ -76,8 +76,8 @@ class AppVersionController(
         logger.debug("Checking app version: platform={}, currentVersion={}", request.platform, request.currentVersion)
 
         // Validation ensures these are non-null when reaching this point
-        val platform = Platform.valueOf(request.platform!!)
-        val currentVersion = request.currentVersion!!
+        val platform = Platform.valueOf(requireNotNull(request.platform) { "Platform is required" })
+        val currentVersion = requireNotNull(request.currentVersion) { "Current version is required" }
 
         return appVersionService.checkVersion(platform, currentVersion)
             .map { ResponseEntity.ok(it) }

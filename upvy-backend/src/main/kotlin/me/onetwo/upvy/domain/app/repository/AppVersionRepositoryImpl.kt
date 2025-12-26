@@ -97,9 +97,23 @@ class AppVersionRepositoryImpl(
                 .set(APP_VERSIONS.UPDATED_BY, appVersion.updatedBy)
                 .where(APP_VERSIONS.ID.eq(appVersion.id))
                 .and(APP_VERSIONS.DELETED_AT.isNull)
-        ).then(findByPlatform(appVersion.platform))
-            .doOnNext { updatedAppVersion ->
-                logger.info("AppVersion updated: platform=${updatedAppVersion.platform}, minimumVersion=${updatedAppVersion.minimumVersion}, latestVersion=${updatedAppVersion.latestVersion}")
+        ).flatMap { updatedRows: Int ->
+            if (updatedRows > 0) {
+                findByPlatform(appVersion.platform)
+                    .doOnNext { updatedAppVersion ->
+                        logger.info(
+                            "AppVersion updated: platform=${updatedAppVersion.platform}, " +
+                                "minimumVersion=${updatedAppVersion.minimumVersion}, " +
+                                "latestVersion=${updatedAppVersion.latestVersion}"
+                        )
+                    }
+            } else {
+                Mono.error(
+                    IllegalStateException(
+                        "AppVersion update failed for id: ${appVersion.id}, 0 rows affected."
+                    )
+                )
             }
+        }
     }
 }

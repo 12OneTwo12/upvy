@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Linking,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import type { AppVersionCheckResponse } from '@/types/app-version.types';
 
@@ -37,6 +38,10 @@ export const ForceUpdateModal: React.FC<ForceUpdateModalProps> = ({
       }
     } catch (error) {
       console.error('[ForceUpdateModal] Failed to open store URL:', error);
+      Alert.alert(
+        '업데이트 실패',
+        '스토어로 이동하는 데 실패했습니다. 앱 스토어 또는 플레이 스토어에서 직접 앱을 업데이트해 주세요.'
+      );
     }
   };
 
