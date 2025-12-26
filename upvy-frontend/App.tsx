@@ -12,6 +12,8 @@ import { useThemeStore } from './src/stores/themeStore';
 import { initializeSentry, Sentry } from './src/config/sentry';
 import { Analytics } from './src/utils/analytics';
 import './src/locales'; // Initialize i18n
+import { useAppVersionCheck } from './src/hooks/useAppVersionCheck';
+import { ForceUpdateModal } from './src/components/common/ForceUpdateModal';
 
 // Sentry 초기화 (환경별 설정 적용)
 initializeSentry();
@@ -32,6 +34,9 @@ export const queryClient = new QueryClient({
 });
 
 export default Sentry.wrap(function App() {
+  // App version check - 강제 업데이트 필요 여부 확인
+  const { versionInfo, needsUpdate } = useAppVersionCheck();
+
   // Initialize language on app start
   useEffect(() => {
     useLanguageStore.getState().initializeLanguage();
@@ -97,6 +102,8 @@ export default Sentry.wrap(function App() {
         <SafeAreaProvider>
           <QueryClientProvider client={queryClient}>
             <RootNavigator />
+            {/* 강제 업데이트 모달 */}
+            <ForceUpdateModal visible={needsUpdate} versionInfo={versionInfo} />
           </QueryClientProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

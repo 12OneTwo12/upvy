@@ -1,0 +1,127 @@
+[[app-version-check]]
+=== 앱 버전 체크
+
+클라이언트의 현재 버전과 플랫폼 정보를 받아 강제 업데이트 필요 여부를 확인합니다.
+
+사용자의 앱 버전이 최소 지원 버전보다 낮은 경우, 강제 업데이트가 필요하며 앱스토어/플레이스토어 URL을 포함하여 응답합니다.
+
+==== Request
+
+include::{snippets}/app-version-check-needs-update/http-request.adoc[]
+include::{snippets}/app-version-check-needs-update/request-fields.adoc[]
+
+===== 요청 필드 설명
+
+* `platform`: 플랫폼 (IOS, ANDROID)
+* `currentVersion`: 현재 앱 버전 (시맨틱 버전 형식: major.minor.patch)
+
+==== Response (업데이트 필요)
+
+최소 버전보다 낮은 경우 강제 업데이트가 필요합니다.
+
+include::{snippets}/app-version-check-needs-update/http-response.adoc[]
+include::{snippets}/app-version-check-needs-update/response-fields.adoc[]
+
+===== 응답 필드 설명
+
+* `needsUpdate`: 강제 업데이트 필요 여부
+* `isLatestVersion`: 최신 버전 여부
+* `latestVersion`: 최신 버전
+* `minimumVersion`: 최소 지원 버전
+* `storeUrl`: 앱스토어/플레이스토어 URL (업데이트 필요 시에만 제공)
+
+==== Response (업데이트 불필요)
+
+최신 버전이거나 최소 버전 이상인 경우 업데이트가 불필요합니다.
+
+include::{snippets}/app-version-check-no-update/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+# iOS 버전 체크 (업데이트 필요)
+curl -X POST "http://localhost:8080/api/v1/app-version/check" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "IOS",
+    "currentVersion": "1.0.0"
+  }'
+
+# Android 버전 체크 (업데이트 불필요)
+curl -X POST "http://localhost:8080/api/v1/app-version/check" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "ANDROID",
+    "currentVersion": "1.4.2"
+  }'
+----
+
+==== 응답 예시
+
+===== 강제 업데이트 필요 (needsUpdate: true)
+
+[source,json]
+----
+{
+  "needsUpdate": true,
+  "isLatestVersion": false,
+  "latestVersion": "1.4.2",
+  "minimumVersion": "1.2.0",
+  "storeUrl": "https://apps.apple.com/app/upvy/id123456789"
+}
+----
+
+===== 업데이트 불필요 (needsUpdate: false)
+
+[source,json]
+----
+{
+  "needsUpdate": false,
+  "isLatestVersion": true,
+  "latestVersion": "1.4.2",
+  "minimumVersion": "1.0.0",
+  "storeUrl": null
+}
+----
+
+==== Notes
+
+* 인증이 필요하지 않은 공개 API입니다
+* 시맨틱 버전 형식 (major.minor.patch)을 사용합니다 (예: 1.4.2)
+* `forceUpdate` 설정이 `false`인 경우, 최소 버전보다 낮아도 강제 업데이트가 요구되지 않습니다
+* 플랫폼별로 독립적인 버전 관리가 가능합니다 (iOS, Android)
+* 앱 실행 시 한 번, 그리고 앱이 포그라운드로 돌아올 때마다 체크하는 것을 권장합니다
+* 버전 비교는 서버에서 처리되므로, 클라이언트는 응답의 `needsUpdate` 필드만 확인하면 됩니다
+
+==== Error Cases
+
+===== 플랫폼 설정 없음 (404 Not Found)
+
+[source,json]
+----
+{
+  "errorCode": "APP_VERSION_NOT_FOUND",
+  "message": "App version configuration not found for platform: IOS"
+}
+----
+
+===== 잘못된 버전 형식 (400 Bad Request)
+
+[source,json]
+----
+{
+  "errorCode": "VALIDATION_ERROR",
+  "message": "버전은 시맨틱 버전 형식(major.minor.patch)이어야 합니다"
+}
+----
+
+===== 잘못된 플랫폼 (400 Bad Request)
+
+[source,json]
+----
+{
+  "errorCode": "VALIDATION_ERROR",
+  "message": "플랫폼은 IOS 또는 ANDROID여야 합니다"
+}
+----

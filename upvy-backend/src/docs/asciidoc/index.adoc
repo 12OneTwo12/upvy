@@ -219,3 +219,10 @@ include::notification/delete.adoc[]
 include::push-token/register.adoc[]
 include::push-token/delete.adoc[]
 include::push-token/delete-all.adoc[]
+
+[[app-version-api]]
+== App Version API
+
+앱 버전 체크 및 강제 업데이트 관리 API. 플랫폼별(iOS, Android) 최소 버전 및 최신 버전을 관리합니다.
+
+include::app-version/check.adoc[]
