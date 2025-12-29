@@ -164,6 +164,60 @@ class GlobalExceptionHandler {
     }
 
     /**
+     * NoSuchElementException 예외 처리
+     *
+     * 리소스를 찾을 수 없는 경우 발생합니다.
+     *
+     * @param ex NoSuchElementException
+     * @param exchange ServerWebExchange
+     * @return 404 Not Found 응답
+     */
+    @ExceptionHandler(NoSuchElementException::class)
+    fun handleNoSuchElementException(
+        ex: NoSuchElementException,
+        exchange: ServerWebExchange
+    ): Mono<ResponseEntity<ErrorResponse>> {
+        logger.warn("Resource not found: {}", ex.message)
+
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.NOT_FOUND.value(),
+            error = "Not Found",
+            message = ex.message ?: "요청한 리소스를 찾을 수 없습니다.",
+            path = exchange.request.path.value(),
+            code = "NOT_FOUND"
+        )
+
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse))
+    }
+
+    /**
+     * IllegalAccessException 예외 처리
+     *
+     * 리소스에 대한 접근 권한이 없는 경우 발생합니다.
+     *
+     * @param ex IllegalAccessException
+     * @param exchange ServerWebExchange
+     * @return 403 Forbidden 응답
+     */
+    @ExceptionHandler(IllegalAccessException::class)
+    fun handleIllegalAccessException(
+        ex: IllegalAccessException,
+        exchange: ServerWebExchange
+    ): Mono<ResponseEntity<ErrorResponse>> {
+        logger.warn("Access denied: {}", ex.message)
+
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.FORBIDDEN.value(),
+            error = "Forbidden",
+            message = ex.message ?: "접근 권한이 없습니다.",
+            path = exchange.request.path.value(),
+            code = "ACCESS_DENIED"
+        )
+
+        return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse))
+    }
+
+    /**
      * 기타 모든 예외 처리
      *
      * @param ex Exception
