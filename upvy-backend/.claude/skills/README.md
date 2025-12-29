@@ -142,6 +142,35 @@
 
 **⚠️ 중요**: 프론트엔드 작업 시 백엔드 Controller와 DTO를 **반드시** 먼저 확인해야 합니다!
 
+### 12. webflux-code-quality.md (WebFlux 코드 품질) 🔥
+
+**내용**: Reactive 코드 가독성 향상 규칙 (중첩 제한, N+1 방지, 병렬 실행)
+
+**사용 시기**:
+- WebFlux Reactive 코드 작성 시
+- 복잡한 flatMap 체인 리팩토링 시
+- N+1 쿼리 문제 해결 시
+- Mono.zip() 병렬 실행 최적화 시
+- Blocking 연산 제거 시
+
+**토큰**: ~2,000
+
+**⚠️ 핵심**: 중첩 3단계 이하, Tuple 대신 Data Class, N+1 절대 금지!
+
+### 13. reactive-error-handling-standards.md (Reactive 에러 처리 표준) 🔥
+
+**내용**: 일관된 에러 처리 패턴 (switchIfEmpty, onErrorMap, doOnError, handle)
+
+**사용 시기**:
+- Repository/Service 에러 처리 구현 시
+- Blocking 에러 처리 제거 시
+- 예외 변환 로직 작성 시
+- GlobalExceptionHandler와의 통합 확인 시
+
+**토큰**: ~2,000
+
+**⚠️ 핵심**: switchIfEmpty (빈 결과), onErrorMap (예외 변환), doOnError (로깅), handle (조건 검증)
+
 ## 작업별 필수 Skill 매핑
 
 | 작업 유형 | 필수 Skill | 예상 토큰 |
@@ -153,6 +182,10 @@
 | **데이터베이스 쿼리** | database-query → core-principles | ~4,000 |
 | **코드 리뷰** | quick-reference | ~2,000 |
 | **Reactor Sinks 이벤트 처리** | reactor-sinks-event → reactor-sinks-event-testing → mvc-layers | ~8,000 |
+| **WebFlux 코드 작성** | **webflux-code-quality** → reactive-error-handling-standards | ~4,000 |
+| **WebFlux 리팩토링** | **webflux-code-quality** → reactive-error-handling-standards → mvc-layers | ~6,000 |
+| **에러 처리 구현** | **reactive-error-handling-standards** → mvc-layers | ~5,000 |
+| **N+1 쿼리 수정** | **webflux-code-quality** → database-query | ~4,500 |
 | **코드 스타일 수정** | code-style → quick-reference | ~3,000 |
 | **리팩토링** | core-principles → mvc-layers → quick-reference | ~6,000 |
 | **커밋 작성** | git | ~3,500 |
