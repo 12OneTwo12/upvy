@@ -15,7 +15,7 @@
     "selectMediaMessage": "Please select media.",
     "maxPhotosMessage": "You can select up to 10 photos.",
     "videoLengthExceeded": "Video Length Exceeded",
-    "videoLengthMessage": "Videos can be up to 1 minute (60 seconds). Please trim in the edit screen.",
+    "videoLengthMessage": "Videos can be up to 3 minutes (180 seconds). Please trim in the edit screen.",
     "simulatorLimitation": "Simulator Limitation",
     "simulatorCameraMessage": "Camera is not available on simulator. Please test on a real device.",
     "cameraError": "Camera capture failed."

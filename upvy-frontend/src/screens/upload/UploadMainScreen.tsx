@@ -381,8 +381,8 @@ export default function UploadMainScreen({ navigation }: Props) {
     if (contentType === 'video') {
       const asset = selectedAssets[0];
 
-      // 비디오 길이 체크 (최대 1분 = 60초)
-      if (asset.duration > 60) {
+      // 비디오 길이 체크 (최대 3분 = 180초)
+      if (asset.duration > 180) {
         Alert.alert(
           t('upload:main.videoLengthExceeded'),
           t('upload:main.videoLengthMessage')

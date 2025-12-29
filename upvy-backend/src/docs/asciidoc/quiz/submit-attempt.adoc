@@ -1,0 +1,68 @@
+[[quiz-submit-attempt]]
+=== 퀴즈 시도 제출
+
+퀴즈에 대한 답변을 제출합니다. 사용자는 동일한 퀴즈를 여러 번 시도할 수 있습니다.
+제출 즉시 정답 여부와 전체 통계가 반환됩니다 (Instagram 폴 스타일).
+
+==== Request
+
+include::{snippets}/quiz-submit-attempt/http-request.adoc[]
+include::{snippets}/quiz-submit-attempt/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/quiz-submit-attempt/http-response.adoc[]
+include::{snippets}/quiz-submit-attempt/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/quizzes/{quizId}/attempts \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "selectedOptionIds": [
+      "770e8400-e29b-41d4-a716-446655440002"
+    ]
+  }'
+----
+
+==== Response Example
+
+[source,json]
+----
+{
+  "attemptId": "880e8400-e29b-41d4-a716-446655440004",
+  "quizId": "550e8400-e29b-41d4-a716-446655440000",
+  "isCorrect": true,
+  "attemptNumber": 1,
+  "options": [
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440002",
+      "optionText": "val은 불변, var는 가변",
+      "displayOrder": 1,
+      "selectionCount": 151,
+      "selectionPercentage": 75.1,
+      "isCorrect": true
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440003",
+      "optionText": "val은 가변, var는 불변",
+      "displayOrder": 2,
+      "selectionCount": 30,
+      "selectionPercentage": 14.9,
+      "isCorrect": false
+    }
+  ]
+}
+----
+
+==== Notes
+
+* 인증된 사용자만 시도 가능
+* 무제한 재시도 가능 (교육 목적)
+* 단일 정답 퀴즈는 1개만 선택 가능
+* 복수 정답 퀴즈는 여러 개 선택 가능
+* 선택한 보기가 정답과 정확히 일치해야 정답 처리
+* 제출 즉시 정답 여부와 통계 반환

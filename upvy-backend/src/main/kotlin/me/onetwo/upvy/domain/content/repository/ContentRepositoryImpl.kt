@@ -39,10 +39,12 @@ class ContentRepositoryImpl(
      * @return 저장된 콘텐츠 (Mono)
      */
     override fun save(content: Content): Mono<Content> {
+        val contentId = content.id ?: UUID.randomUUID()
+
         return Mono.from(
             dslContext
                 .insertInto(CONTENTS)
-                .set(CONTENTS.ID, content.id.toString())
+                .set(CONTENTS.ID, contentId.toString())
                 .set(CONTENTS.CREATOR_ID, content.creatorId.toString())
                 .set(CONTENTS.CONTENT_TYPE, content.contentType.name)
                 .set(CONTENTS.URL, content.url)
@@ -57,8 +59,8 @@ class ContentRepositoryImpl(
                 .set(CONTENTS.UPDATED_BY, content.updatedBy?.toString())
                 .returningResult(CONTENTS.ID)
         ).map { record ->
-            logger.debug("Content saved: contentId=${content.id}")
-            content
+            logger.debug("Content saved: contentId=$contentId")
+            content.copy(id = contentId)
         }
     }
 

@@ -30,6 +30,10 @@ DROP TABLE IF EXISTS user_profiles;
 DROP TABLE IF EXISTS user_status_history;
 DROP TABLE IF EXISTS email_verification_tokens;
 DROP TABLE IF EXISTS user_authentication_methods;
+DROP TABLE IF EXISTS quiz_attempt_answers;
+DROP TABLE IF EXISTS quiz_attempts;
+DROP TABLE IF EXISTS quiz_options;
+DROP TABLE IF EXISTS quizzes;
 DROP TABLE IF EXISTS users;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -692,3 +696,71 @@ CREATE TABLE IF NOT EXISTS app_versions (
 
 CREATE INDEX idx_app_versions_platform ON app_versions(platform);
 CREATE INDEX idx_app_versions_deleted_at ON app_versions(deleted_at);
+
+-- Quizzes Table
+CREATE TABLE IF NOT EXISTS quizzes (
+    id CHAR(36) PRIMARY KEY,
+    content_id CHAR(36) NOT NULL UNIQUE COMMENT '콘텐츠 ID (1:1 관계)',
+    question VARCHAR(200) NOT NULL COMMENT '퀴즈 질문',
+    allow_multiple_answers BOOLEAN NOT NULL DEFAULT FALSE COMMENT '복수 정답 허용 여부',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (content_id) REFERENCES contents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_quizzes_content_id ON quizzes(content_id);
+CREATE INDEX idx_quizzes_deleted_at ON quizzes(deleted_at);
+
+-- Quiz Options Table
+CREATE TABLE IF NOT EXISTS quiz_options (
+    id CHAR(36) PRIMARY KEY,
+    quiz_id CHAR(36) NOT NULL COMMENT '퀴즈 ID',
+    option_text VARCHAR(100) NOT NULL COMMENT '보기 텍스트',
+    is_correct BOOLEAN NOT NULL COMMENT '정답 여부',
+    display_order INT NOT NULL COMMENT '표시 순서',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    created_by VARCHAR(36) NULL,
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    updated_by VARCHAR(36) NULL,
+    deleted_at DATETIME(6) NULL,
+    FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_quiz_options_quiz_id ON quiz_options(quiz_id);
+CREATE INDEX idx_quiz_options_deleted_at ON quiz_options(deleted_at);
+CREATE INDEX idx_quiz_options_display_order ON quiz_options(quiz_id, display_order);
+
+-- Quiz Attempts Table
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+    id CHAR(36) PRIMARY KEY,
+    quiz_id CHAR(36) NOT NULL COMMENT '퀴즈 ID',
+    user_id CHAR(36) NOT NULL COMMENT '사용자 ID',
+    attempt_number INT NOT NULL COMMENT '시도 번호',
+    is_correct BOOLEAN NOT NULL COMMENT '정답 여부',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_attempt (quiz_id, user_id, attempt_number)
+);
+
+CREATE INDEX idx_quiz_attempts_quiz_id ON quiz_attempts(quiz_id);
+CREATE INDEX idx_quiz_attempts_user_id ON quiz_attempts(user_id);
+CREATE INDEX idx_quiz_attempts_quiz_user ON quiz_attempts(quiz_id, user_id);
+CREATE INDEX idx_quiz_attempts_created_at ON quiz_attempts(created_at);
+
+-- Quiz Attempt Answers Table
+CREATE TABLE IF NOT EXISTS quiz_attempt_answers (
+    id CHAR(36) PRIMARY KEY,
+    attempt_id CHAR(36) NOT NULL COMMENT '시도 ID',
+    option_id CHAR(36) NOT NULL COMMENT '선택한 보기 ID',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    FOREIGN KEY (attempt_id) REFERENCES quiz_attempts(id) ON DELETE CASCADE,
+    FOREIGN KEY (option_id) REFERENCES quiz_options(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_attempt_option (attempt_id, option_id)
+);
+
+CREATE INDEX idx_quiz_attempt_answers_attempt_id ON quiz_attempt_answers(attempt_id);
+CREATE INDEX idx_quiz_attempt_answers_option_id ON quiz_attempt_answers(option_id);

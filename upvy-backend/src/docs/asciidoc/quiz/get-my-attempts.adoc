@@ -1,0 +1,57 @@
+[[quiz-get-my-attempts]]
+=== 내 퀴즈 시도 이력 조회
+
+현재 사용자의 특정 퀴즈에 대한 모든 시도 기록을 조회합니다.
+
+==== Request
+
+include::{snippets}/quiz-get-my-attempts/http-request.adoc[]
+include::{snippets}/quiz-get-my-attempts/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/quiz-get-my-attempts/http-response.adoc[]
+include::{snippets}/quiz-get-my-attempts/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/quizzes/{quizId}/my-attempts \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Response Example
+
+[source,json]
+----
+{
+  "attempts": [
+    {
+      "attemptId": "880e8400-e29b-41d4-a716-446655440004",
+      "attemptNumber": 2,
+      "isCorrect": true,
+      "selectedOptions": [
+        "770e8400-e29b-41d4-a716-446655440002"
+      ],
+      "attemptedAt": "2025-12-29T13:30:00Z"
+    },
+    {
+      "attemptId": "880e8400-e29b-41d4-a716-446655440003",
+      "attemptNumber": 1,
+      "isCorrect": false,
+      "selectedOptions": [
+        "770e8400-e29b-41d4-a716-446655440003"
+      ],
+      "attemptedAt": "2025-12-29T13:25:00Z"
+    }
+  ]
+}
+----
+
+==== Notes
+
+* 인증된 사용자만 조회 가능
+* 최신 시도부터 정렬되어 반환
+* 시도 기록이 없으면 빈 배열 반환
+* 각 시도의 선택한 보기 ID와 정답 여부 포함

@@ -6,6 +6,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
+import me.onetwo.upvy.domain.content.exception.ContentException
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.model.UploadSession
 import me.onetwo.upvy.domain.content.repository.UploadSessionRepository
@@ -136,7 +137,7 @@ class ContentUploadServiceImplTest : BaseReactiveTest {
         }
 
         @Test
-        @DisplayName("비디오 파일 크기가 500MB를 초과하면, IllegalArgumentException이 발생한다")
+        @DisplayName("비디오 파일 크기가 500MB를 초과하면, FileSizeLimitExceededException이 발생한다")
         fun generateUploadUrl_WhenVideoExceedsMaxSize_ThrowsException() {
             // Given: 500MB 초과 비디오
             val userId = UUID.randomUUID()
@@ -150,14 +151,14 @@ class ContentUploadServiceImplTest : BaseReactiveTest {
             // Then: 예외 발생
             StepVerifier.create(result)
                 .expectErrorMatches { error ->
-                    error is IllegalArgumentException &&
+                    error is ContentException.FileSizeLimitExceededException &&
                         error.message!!.contains("File size exceeds maximum allowed size for VIDEO: 500MB")
                 }
                 .verify()
         }
 
         @Test
-        @DisplayName("사진 파일 크기가 50MB를 초과하면, IllegalArgumentException이 발생한다")
+        @DisplayName("사진 파일 크기가 50MB를 초과하면, FileSizeLimitExceededException이 발생한다")
         fun generateUploadUrl_WhenPhotoExceedsMaxSize_ThrowsException() {
             // Given: 50MB 초과 사진
             val userId = UUID.randomUUID()
@@ -171,14 +172,14 @@ class ContentUploadServiceImplTest : BaseReactiveTest {
             // Then: 예외 발생
             StepVerifier.create(result)
                 .expectErrorMatches { error ->
-                    error is IllegalArgumentException &&
+                    error is ContentException.FileSizeLimitExceededException &&
                         error.message!!.contains("File size exceeds maximum allowed size for PHOTO: 50MB")
                 }
                 .verify()
         }
 
         @Test
-        @DisplayName("지원하지 않는 비디오 형식이면, IllegalArgumentException이 발생한다")
+        @DisplayName("지원하지 않는 비디오 형식이면, InvalidFileException이 발생한다")
         fun generateUploadUrl_WithUnsupportedVideoFormat_ThrowsException() {
             // Given: 지원하지 않는 비디오 형식
             val userId = UUID.randomUUID()
@@ -192,14 +193,14 @@ class ContentUploadServiceImplTest : BaseReactiveTest {
             // Then: 예외 발생
             StepVerifier.create(result)
                 .expectErrorMatches { error ->
-                    error is IllegalArgumentException &&
+                    error is ContentException.InvalidFileException &&
                         error.message!!.contains("Unsupported video extension: wmv")
                 }
                 .verify()
         }
 
         @Test
-        @DisplayName("지원하지 않는 사진 형식이면, IllegalArgumentException이 발생한다")
+        @DisplayName("지원하지 않는 사진 형식이면, InvalidFileException이 발생한다")
         fun generateUploadUrl_WithUnsupportedPhotoFormat_ThrowsException() {
             // Given: 지원하지 않는 사진 형식
             val userId = UUID.randomUUID()
@@ -213,14 +214,14 @@ class ContentUploadServiceImplTest : BaseReactiveTest {
             // Then: 예외 발생
             StepVerifier.create(result)
                 .expectErrorMatches { error ->
-                    error is IllegalArgumentException &&
+                    error is ContentException.InvalidFileException &&
                         error.message!!.contains("Unsupported photo extension: bmp")
                 }
                 .verify()
         }
 
         @Test
-        @DisplayName("파일 확장자가 없으면, IllegalArgumentException이 발생한다")
+        @DisplayName("파일 확장자가 없으면, InvalidFileException이 발생한다")
         fun generateUploadUrl_WithNoExtension_ThrowsException() {
             // Given: 확장자 없는 파일
             val userId = UUID.randomUUID()
@@ -234,7 +235,7 @@ class ContentUploadServiceImplTest : BaseReactiveTest {
             // Then: 예외 발생
             StepVerifier.create(result)
                 .expectErrorMatches { error ->
-                    error is IllegalArgumentException &&
+                    error is ContentException.InvalidFileException &&
                         error.message!!.contains("Unsupported video extension")
                 }
                 .verify()

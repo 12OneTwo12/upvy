@@ -15,7 +15,7 @@
     "selectMediaMessage": "メディアを選択してください。",
     "maxPhotosMessage": "写真は最大10枚まで選択できます。",
     "videoLengthExceeded": "動画の長さが超過しています",
-    "videoLengthMessage": "動画は最大1分（60秒）までです。編集画面でトリミングしてください。",
+    "videoLengthMessage": "動画は最大3分（180秒）までです。編集画面でトリミングしてください。",
     "simulatorLimitation": "シミュレータの制限",
     "simulatorCameraMessage": "シミュレータではカメラが使用できません。実機でテストしてください。",
     "cameraError": "カメラ撮影に失敗しました。"

@@ -43,7 +43,7 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 const VIDEO_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 // 최대 비디오 길이 (초)
-const MAX_VIDEO_DURATION = 60;
+const MAX_VIDEO_DURATION = 180;
 
 export default function VideoEditScreen({ navigation, route }: Props) {
   const styles = useStyles();
