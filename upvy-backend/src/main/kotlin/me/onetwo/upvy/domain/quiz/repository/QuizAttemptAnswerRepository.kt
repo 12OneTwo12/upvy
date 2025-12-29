@@ -52,4 +52,13 @@ interface QuizAttemptAnswerRepository {
      * @return 완료 신호 (Mono<Void>)
      */
     fun deleteByAttemptId(attemptId: UUID): Mono<Void>
+
+    /**
+     * 특정 퀴즈의 각 보기별 선택 횟수를 한 번에 조회합니다.
+     * N+1 문제를 방지하기 위해 GROUP BY를 사용하여 효율적으로 집계합니다.
+     *
+     * @param quizId 퀴즈 ID
+     * @return 보기 ID별 선택 횟수 Map (Mono)
+     */
+    fun getSelectionCountsByQuizId(quizId: UUID): Mono<Map<UUID, Int>>
 }

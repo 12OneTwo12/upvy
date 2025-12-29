@@ -2,7 +2,9 @@ package me.onetwo.upvy.domain.quiz.repository
 
 import me.onetwo.upvy.domain.quiz.model.QuizAttemptAnswer
 import me.onetwo.upvy.jooq.generated.tables.references.QUIZ_ATTEMPT_ANSWERS
+import me.onetwo.upvy.jooq.generated.tables.references.QUIZ_ATTEMPTS
 import org.jooq.DSLContext
+import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
@@ -45,8 +47,20 @@ class QuizAttemptAnswerRepositoryImpl(
             return Flux.empty()
         }
 
-        return Flux.fromIterable(answers)
-            .flatMap { answer -> save(answer) }
+        val now = Instant.now()
+        val answersWithIds = answers.map { it.copy(id = it.id ?: UUID.randomUUID(), createdAt = now) }
+
+        val queries = answersWithIds.map { answer ->
+            dslContext.insertInto(QUIZ_ATTEMPT_ANSWERS)
+                .set(QUIZ_ATTEMPT_ANSWERS.ID, answer.id.toString())
+                .set(QUIZ_ATTEMPT_ANSWERS.ATTEMPT_ID, answer.attemptId.toString())
+                .set(QUIZ_ATTEMPT_ANSWERS.OPTION_ID, answer.optionId.toString())
+                .set(QUIZ_ATTEMPT_ANSWERS.CREATED_AT, answer.createdAt)
+        }
+
+        return Flux.from(dslContext.batch(queries))
+            .doOnComplete { logger.debug("Batch inserted ${answersWithIds.size} QuizAttemptAnswers") }
+            .thenMany(Flux.fromIterable(answersWithIds))
     }
 
     override fun findByAttemptId(attemptId: UUID): Flux<QuizAttemptAnswer> {
@@ -87,5 +101,23 @@ class QuizAttemptAnswerRepositoryImpl(
                 .deleteFrom(QUIZ_ATTEMPT_ANSWERS)
                 .where(QUIZ_ATTEMPT_ANSWERS.ATTEMPT_ID.eq(attemptId.toString()))
         ).then()
+    }
+
+    override fun getSelectionCountsByQuizId(quizId: UUID): Mono<Map<UUID, Int>> {
+        return Flux.from(
+            dslContext
+                .select(
+                    QUIZ_ATTEMPT_ANSWERS.OPTION_ID,
+                    DSL.count(QUIZ_ATTEMPT_ANSWERS.ID).`as`("selection_count")
+                )
+                .from(QUIZ_ATTEMPT_ANSWERS)
+                .join(QUIZ_ATTEMPTS)
+                .on(QUIZ_ATTEMPT_ANSWERS.ATTEMPT_ID.eq(QUIZ_ATTEMPTS.ID))
+                .where(QUIZ_ATTEMPTS.QUIZ_ID.eq(quizId.toString()))
+                .groupBy(QUIZ_ATTEMPT_ANSWERS.OPTION_ID)
+        ).collectMap(
+            { record -> UUID.fromString(record.getValue(QUIZ_ATTEMPT_ANSWERS.OPTION_ID)) },
+            { record -> record.get("selection_count", Int::class.java) ?: 0 }
+        ).defaultIfEmpty(emptyMap())
     }
 }

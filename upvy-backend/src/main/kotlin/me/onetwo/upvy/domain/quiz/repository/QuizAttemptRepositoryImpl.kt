@@ -144,4 +144,30 @@ class QuizAttemptRepositoryImpl(
             record.value1() ?: 0
         }.defaultIfEmpty(0)
     }
+
+    override fun countByQuizId(quizId: UUID): Mono<Int> {
+        return Mono.from(
+            dslContext
+                .selectCount()
+                .from(QUIZ_ATTEMPTS)
+                .where(QUIZ_ATTEMPTS.QUIZ_ID.eq(quizId.toString()))
+        ).map { record ->
+            record.value1() ?: 0
+        }.defaultIfEmpty(0)
+    }
+
+    override fun countDistinctUsersByQuizId(quizId: UUID): Mono<Int> {
+        return Mono.from(
+            dslContext
+                .selectCount()
+                .from(
+                    dslContext
+                        .selectDistinct(QUIZ_ATTEMPTS.USER_ID)
+                        .from(QUIZ_ATTEMPTS)
+                        .where(QUIZ_ATTEMPTS.QUIZ_ID.eq(quizId.toString()))
+                )
+        ).map { record ->
+            record.value1() ?: 0
+        }.defaultIfEmpty(0)
+    }
 }

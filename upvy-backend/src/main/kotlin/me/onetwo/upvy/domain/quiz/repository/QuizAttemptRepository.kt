@@ -62,4 +62,22 @@ interface QuizAttemptRepository {
      * @return 시도 개수
      */
     fun countByQuizIdAndUserId(quizId: UUID, userId: UUID): Mono<Int>
+
+    /**
+     * 특정 퀴즈의 전체 시도 횟수를 조회합니다 (통계용).
+     * N+1 문제를 방지하기 위해 단일 COUNT 쿼리로 조회합니다.
+     *
+     * @param quizId 퀴즈 ID
+     * @return 전체 시도 횟수
+     */
+    fun countByQuizId(quizId: UUID): Mono<Int>
+
+    /**
+     * 특정 퀴즈를 시도한 고유 사용자 수를 조회합니다 (통계용).
+     * N+1 문제를 방지하기 위해 단일 COUNT DISTINCT 쿼리로 조회합니다.
+     *
+     * @param quizId 퀴즈 ID
+     * @return 고유 사용자 수
+     */
+    fun countDistinctUsersByQuizId(quizId: UUID): Mono<Int>
 }

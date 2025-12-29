@@ -108,8 +108,8 @@ class QuizServiceImpl(
                 // 보기 조회
                 val optionsMono = quizOptionRepository.findByQuizId(quizId).collectList()
 
-                // 전체 시도 횟수 조회
-                val totalAttemptsMono = quizAttemptRepository.findByQuizId(quizId).collectList()
+                // 전체 시도 횟수 조회 (최적화: count 쿼리 사용)
+                val totalAttemptsMono = quizAttemptRepository.countByQuizId(quizId)
 
                 // 사용자별 시도 횟수 조회
                 val userAttemptCountMono = if (userId != null) {
@@ -129,12 +129,12 @@ class QuizServiceImpl(
                 Mono.zip(optionsMono, totalAttemptsMono, userAttemptCountMono, hasAttemptedMono)
                     .flatMap { tuple ->
                         val options = tuple.t1
-                        val allAttempts = tuple.t2
+                        val totalAttempts = tuple.t2
                         val userAttemptCount = tuple.t3
                         val hasAttempted = tuple.t4
 
-                        // 각 보기별 선택 횟수 계산
-                        calculateOptionStats(quizId, options, allAttempts.size)
+                        // 각 보기별 선택 횟수 계산 (최적화된 GROUP BY 쿼리 사용)
+                        calculateOptionStats(quizId, options, totalAttempts)
                             .map { optionResponses ->
                                 QuizResponse(
                                     id = quizId.toString(),
@@ -150,7 +150,7 @@ class QuizServiceImpl(
                                         }
                                     },
                                     userAttemptCount = if (userId != null) userAttemptCount else null,
-                                    totalAttempts = allAttempts.size
+                                    totalAttempts = totalAttempts
                                 )
                             }
                     }
@@ -283,20 +283,21 @@ class QuizServiceImpl(
         return quizRepository.findById(quizId)
             .switchIfEmpty(Mono.error(QuizException.QuizNotFoundException(quizId.toString())))
             .flatMap {
-                val allAttemptsMono = quizAttemptRepository.findByQuizId(quizId).collectList()
+                val totalAttemptsMono = quizAttemptRepository.countByQuizId(quizId)
+                val uniqueUsersMono = quizAttemptRepository.countDistinctUsersByQuizId(quizId)
                 val optionsMono = quizOptionRepository.findByQuizId(quizId).collectList()
 
-                Mono.zip(allAttemptsMono, optionsMono)
+                Mono.zip(totalAttemptsMono, uniqueUsersMono, optionsMono)
                     .flatMap { tuple ->
-                        val allAttempts = tuple.t1
-                        val options = tuple.t2
-                        val uniqueUsers = allAttempts.map { it.userId }.toSet().size
+                        val totalAttempts = tuple.t1
+                        val uniqueUsers = tuple.t2
+                        val options = tuple.t3
 
-                        calculateOptionStats(quizId, options, allAttempts.size)
+                        calculateOptionStats(quizId, options, totalAttempts)
                             .map { optionStats ->
                                 QuizStatsResponse(
                                     quizId = quizId.toString(),
-                                    totalAttempts = allAttempts.size,
+                                    totalAttempts = totalAttempts,
                                     uniqueUsers = uniqueUsers,
                                     options = optionStats.map { stat ->
                                         QuizOptionStatsResponse(
@@ -314,7 +315,7 @@ class QuizServiceImpl(
     }
 
     /**
-     * 각 보기별 선택 통계 계산
+     * 각 보기별 선택 통계 계산 (최적화: 단일 GROUP BY 쿼리 사용)
      */
     private fun calculateOptionStats(
         quizId: UUID,
@@ -325,35 +326,27 @@ class QuizServiceImpl(
             return Mono.just(emptyList())
         }
 
-        // 각 보기별 선택 횟수 조회
-        return Flux.fromIterable(options)
-            .flatMap { option ->
-                quizAttemptRepository.findByQuizId(quizId)
-                    .flatMap { attempt ->
-                        quizAttemptAnswerRepository.findByAttemptId(attempt.id!!)
-                            .filter { it.optionId == option.id }
-                            .hasElements()
-                            .map { if (it) 1 else 0 }
+        // 모든 보기의 선택 횟수를 한 번의 GROUP BY 쿼리로 조회 (N+1 방지)
+        return quizAttemptAnswerRepository.getSelectionCountsByQuizId(quizId)
+            .map { selectionCounts ->
+                options.map { option ->
+                    val selectionCount = selectionCounts[option.id] ?: 0
+                    val percentage = if (totalAttempts > 0) {
+                        (selectionCount.toDouble() / totalAttempts) * 100.0
+                    } else {
+                        0.0
                     }
-                    .reduce(0, Int::plus)
-                    .map { selectionCount ->
-                        val percentage = if (totalAttempts > 0) {
-                            (selectionCount.toDouble() / totalAttempts) * 100.0
-                        } else {
-                            0.0
-                        }
 
-                        QuizOptionResponse(
-                            id = option.id.toString(),
-                            optionText = option.optionText,
-                            displayOrder = option.displayOrder,
-                            selectionCount = selectionCount,
-                            selectionPercentage = percentage,
-                            isCorrect = option.isCorrect
-                        )
-                    }
+                    QuizOptionResponse(
+                        id = option.id.toString(),
+                        optionText = option.optionText,
+                        displayOrder = option.displayOrder,
+                        selectionCount = selectionCount,
+                        selectionPercentage = percentage,
+                        isCorrect = option.isCorrect
+                    )
+                }
             }
-            .collectList()
     }
 
     /**
@@ -449,14 +442,14 @@ class QuizServiceImpl(
         isCorrect: Boolean,
         attemptNumber: Int
     ): Mono<QuizAttemptResponse> {
-        val allAttemptsMono = quizAttemptRepository.findByQuizId(quizId).collectList()
+        val totalAttemptsMono = quizAttemptRepository.countByQuizId(quizId)
         val optionsMono = quizOptionRepository.findByQuizId(quizId).collectList()
 
-        return Mono.zip(allAttemptsMono, optionsMono)
+        return Mono.zip(totalAttemptsMono, optionsMono)
             .flatMap { tuple ->
-                val allAttempts = tuple.t1
+                val totalAttempts = tuple.t1
                 val options = tuple.t2
-                calculateOptionStats(quizId, options, allAttempts.size)
+                calculateOptionStats(quizId, options, totalAttempts)
                     .map { optionStats ->
                         QuizAttemptResponse(
                             attemptId = attemptId.toString(),

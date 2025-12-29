@@ -112,6 +112,7 @@ class QuizRepositoryImpl(
 
     override fun update(quiz: Quiz): Mono<Quiz> {
         val now = Instant.now()
+        val quizId = quiz.id ?: return Mono.error(IllegalArgumentException("Quiz ID cannot be null for update"))
 
         return Mono.from(
             dslContext
@@ -120,9 +121,21 @@ class QuizRepositoryImpl(
                 .set(QUIZZES.ALLOW_MULTIPLE_ANSWERS, quiz.allowMultipleAnswers)
                 .set(QUIZZES.UPDATED_AT, now)
                 .set(QUIZZES.UPDATED_BY, quiz.updatedBy)
-                .where(QUIZZES.ID.eq(quiz.id.toString()))
+                .where(QUIZZES.ID.eq(quizId.toString()))
                 .and(QUIZZES.DELETED_AT.isNull)
-        ).then(Mono.just(quiz.copy(updatedAt = now)))
+        ).flatMap { rowsAffected: Any ->
+            val hasUpdated = when (rowsAffected) {
+                is Long -> rowsAffected > 0L
+                is Int -> rowsAffected > 0
+                else -> rowsAffected.toString().toLongOrNull()?.let { it > 0L } ?: false
+            }
+
+            if (hasUpdated) {
+                findById(quizId) // 업데이트 후 최신 데이터를 다시 조회하여 반환
+            } else {
+                Mono.error(me.onetwo.upvy.domain.quiz.exception.QuizException.QuizNotFoundException(quizId.toString()))
+            }
+        }
     }
 
     override fun delete(quizId: UUID, deletedBy: UUID): Mono<Void> {
