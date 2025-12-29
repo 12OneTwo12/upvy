@@ -314,7 +314,9 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
                   />
                 ) : (
                   <View style={styles.profilePlaceholder}>
-                    <Ionicons name="person" size={20} color="#FFFFFF" />
+                    <Text style={styles.profilePlaceholderText}>
+                      {creator.nickname.charAt(0).toUpperCase()}
+                    </Text>
                   </View>
                 )}
                 <Text style={styles.creatorName}>{creator.nickname}</Text>
@@ -585,11 +587,16 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#444444',
+    backgroundColor: '#dcfce7',
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  profilePlaceholderText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#22c55e',
   },
   skeleton: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',

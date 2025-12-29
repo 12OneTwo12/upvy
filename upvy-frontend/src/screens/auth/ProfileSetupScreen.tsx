@@ -223,6 +223,7 @@ export default function ProfileSetupScreen() {
               {profileImageUrl ? (
                 <ProfileAvatar
                   imageUrl={profileImageUrl}
+                  nickname={nickname}
                   size="xlarge"
                   showBorder={true}
                 />

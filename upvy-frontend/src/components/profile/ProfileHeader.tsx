@@ -88,6 +88,7 @@ export default function ProfileHeader({
       <View style={styles.topSection}>
         <ProfileAvatar
           imageUrl={profile.profileImageUrl}
+          nickname={profile.nickname}
           size="xlarge"
           onPress={onAvatarPress}
           style={styles.avatar}
