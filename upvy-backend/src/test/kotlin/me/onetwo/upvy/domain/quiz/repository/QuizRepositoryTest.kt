@@ -3,6 +3,7 @@ package me.onetwo.upvy.domain.quiz.repository
 import me.onetwo.upvy.domain.content.model.Content
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.repository.ContentRepository
+import me.onetwo.upvy.domain.quiz.exception.QuizException
 import me.onetwo.upvy.domain.quiz.model.Quiz
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import reactor.test.StepVerifier
 import java.util.UUID
 
 /**
@@ -121,18 +123,21 @@ class QuizRepositoryTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("존재하지 않는 퀴즈 ID로 조회하면, 빈 Mono를 반환한다")
-        fun findById_WhenQuizNotExists_ReturnsEmpty() {
-            // When: 존재하지 않는 ID로 조회
-            val foundQuiz = quizRepository.findById(UUID.randomUUID()).block()
+        @DisplayName("존재하지 않는 퀴즈 ID로 조회하면, 예외가 발생한다")
+        fun findById_WhenQuizNotExists_ThrowsException() {
+            // Given: 존재하지 않는 ID
+            val nonExistingId = UUID.randomUUID()
 
-            // Then: null 반환
-            assertThat(foundQuiz).isNull()
+            // When & Then: 예외 발생
+            val result = quizRepository.findById(nonExistingId)
+            StepVerifier.create(result)
+                .expectError(QuizException.QuizNotFoundException::class.java)
+                .verify()
         }
 
         @Test
-        @DisplayName("삭제된 퀴즈 ID로 조회하면, 빈 Mono를 반환한다")
-        fun findById_WhenQuizDeleted_ReturnsEmpty() {
+        @DisplayName("삭제된 퀴즈 ID로 조회하면, 예외가 발생한다 (Soft Delete)")
+        fun findById_WhenQuizDeleted_ThrowsException() {
             // Given: 퀴즈 저장 후 삭제
             val savedQuiz = quizRepository.save(
                 Quiz(
@@ -146,11 +151,11 @@ class QuizRepositoryTest : AbstractIntegrationTest() {
 
             quizRepository.delete(savedQuiz.id!!, testUser.id!!).block()
 
-            // When: 삭제된 퀴즈 ID로 조회
-            val foundQuiz = quizRepository.findById(savedQuiz.id!!).block()
-
-            // Then: null 반환 (soft delete)
-            assertThat(foundQuiz).isNull()
+            // When & Then: 예외 발생 (soft delete)
+            val result = quizRepository.findById(savedQuiz.id!!)
+            StepVerifier.create(result)
+                .expectError(QuizException.QuizNotFoundException::class.java)
+                .verify()
         }
     }
 
@@ -183,8 +188,8 @@ class QuizRepositoryTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("콘텐츠에 퀴즈가 없으면, 빈 Mono를 반환한다")
-        fun findByContentId_WhenQuizNotExists_ReturnsEmpty() {
+        @DisplayName("콘텐츠에 퀴즈가 없으면, 예외가 발생한다")
+        fun findByContentId_WhenQuizNotExists_ThrowsException() {
             // Given: 퀴즈가 없는 새로운 콘텐츠
             val newContent = contentRepository.save(
                 Content(
@@ -198,11 +203,11 @@ class QuizRepositoryTest : AbstractIntegrationTest() {
                 )
             ).block()!!
 
-            // When: 콘텐츠 ID로 조회
-            val foundQuiz = quizRepository.findByContentId(newContent.id!!).block()
-
-            // Then: null 반환
-            assertThat(foundQuiz).isNull()
+            // When & Then: 예외 발생
+            val result = quizRepository.findByContentId(newContent.id!!)
+            StepVerifier.create(result)
+                .expectError(QuizException.QuizNotFoundException::class.java)
+                .verify()
         }
     }
 
@@ -260,9 +265,11 @@ class QuizRepositoryTest : AbstractIntegrationTest() {
             // When: 삭제
             quizRepository.delete(savedQuiz.id!!, testUser.id!!).block()
 
-            // Then: soft delete되어 조회되지 않음
-            val foundQuiz = quizRepository.findById(savedQuiz.id!!).block()
-            assertThat(foundQuiz).isNull()
+            // Then: soft delete되어 조회 시 예외 발생
+            val result = quizRepository.findById(savedQuiz.id!!)
+            StepVerifier.create(result)
+                .expectError(QuizException.QuizNotFoundException::class.java)
+                .verify()
         }
     }
 

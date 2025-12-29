@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.tag.repository
 
+import me.onetwo.upvy.domain.tag.exception.TagNotFoundException
 import me.onetwo.upvy.domain.tag.model.Tag
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 import org.assertj.core.api.Assertions.assertThat
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import reactor.test.StepVerifier
 import java.time.Instant
 
 /**
@@ -78,13 +80,13 @@ class TagRepositoryTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("존재하지 않는 태그 이름으로 조회하면, 빈 Mono를 반환한다")
-        fun findByName_WhenTagNotExists_ReturnsEmpty() {
-            // When: 존재하지 않는 이름으로 조회
-            val foundTag = tagRepository.findByName("NonExistentTag").block()
-
-            // Then: null 반환
-            assertThat(foundTag).isNull()
+        @DisplayName("존재하지 않는 태그 이름으로 조회하면, 예외가 발생한다")
+        fun findByName_WhenTagNotExists_ThrowsException() {
+            // When & Then: 예외 발생
+            val result = tagRepository.findByName("NonExistentTag")
+            StepVerifier.create(result)
+                .expectError(TagNotFoundException::class.java)
+                .verify()
         }
     }
 
@@ -244,10 +246,12 @@ class TagRepositoryTest : AbstractIntegrationTest() {
             // When: 삭제
             val success = tagRepository.delete(savedTag.id!!, "delete-user").block()!!
 
-            // Then: 삭제 성공, findById로 조회 불가
+            // Then: 삭제 성공, findById로 조회 시 예외 발생
             assertThat(success).isTrue()
-            val deletedTag = tagRepository.findById(savedTag.id!!).block()
-            assertThat(deletedTag).isNull()
+            val result = tagRepository.findById(savedTag.id!!)
+            StepVerifier.create(result)
+                .expectError(TagNotFoundException::class.java)
+                .verify()
         }
     }
 }

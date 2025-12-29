@@ -2,6 +2,7 @@ package me.onetwo.upvy.domain.user.repository
 
 import me.onetwo.upvy.jooq.generated.tables.references.USER_PROFILES
 import me.onetwo.upvy.domain.user.dto.UserInfo
+import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.jooq.generated.tables.records.UserProfilesRecord
 import org.jooq.DSLContext
@@ -37,7 +38,9 @@ class UserProfileRepository(
             dsl.selectFrom(USER_PROFILES)
                 .where(USER_PROFILES.USER_ID.eq(userId.toString()))
                 .and(USER_PROFILES.DELETED_AT.isNull)  // Soft delete 필터링
-        ).map { record -> mapToUserProfile(record) }
+        )
+            .map { record -> mapToUserProfile(record) }
+            .switchIfEmpty(Mono.error(UserProfileNotFoundException("User profile not found for userId: $userId")))
     }
 
     fun findByNickname(nickname: String): Mono<UserProfile> {
@@ -45,7 +48,9 @@ class UserProfileRepository(
             dsl.selectFrom(USER_PROFILES)
                 .where(USER_PROFILES.NICKNAME.eq(nickname))
                 .and(USER_PROFILES.DELETED_AT.isNull)  // Soft delete 필터링
-        ).map { record -> mapToUserProfile(record) }
+        )
+            .map { record -> mapToUserProfile(record) }
+            .switchIfEmpty(Mono.error(UserProfileNotFoundException("User profile not found for nickname: $nickname")))
     }
 
     fun update(profile: UserProfile): Mono<UserProfile> {

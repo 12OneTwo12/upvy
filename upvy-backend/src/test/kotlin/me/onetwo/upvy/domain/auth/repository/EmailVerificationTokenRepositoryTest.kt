@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.auth.repository
 
+import me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException
 import me.onetwo.upvy.domain.auth.model.EmailVerificationToken
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import reactor.core.publisher.Mono
+import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.UUID
 
@@ -119,10 +121,12 @@ class EmailVerificationTokenRepositoryTest : AbstractIntegrationTest() {
         fun findByToken_WithNonExistentToken_ReturnsEmpty() {
             // Given: 데이터 없음
             // When: 존재하지 않는 토큰으로 조회
-            val result = emailVerificationTokenRepository.findByToken("non-existent-token").block()
+            val result = emailVerificationTokenRepository.findByToken("non-existent-token")
 
             // Then: 조회되지 않음
-            assertThat(result).isNull()
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
         }
 
         @Test
@@ -134,10 +138,12 @@ class EmailVerificationTokenRepositoryTest : AbstractIntegrationTest() {
             emailVerificationTokenRepository.softDelete(saved.id!!).block()
 
             // When: 삭제된 토큰으로 조회
-            val result = emailVerificationTokenRepository.findByToken(saved.token).block()
+            val result = emailVerificationTokenRepository.findByToken(saved.token)
 
             // Then: 조회되지 않음
-            assertThat(result).isNull()
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
         }
     }
 
@@ -190,10 +196,12 @@ class EmailVerificationTokenRepositoryTest : AbstractIntegrationTest() {
         fun findLatestByUserId_WithNoTokens_ReturnsEmpty() {
             // Given: 토큰 없음
             // When: 최근 토큰 조회
-            val result = emailVerificationTokenRepository.findLatestByUserId(testUser.id!!).block()
+            val result = emailVerificationTokenRepository.findLatestByUserId(testUser.id!!)
 
             // Then: 조회되지 않음
-            assertThat(result).isNull()
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
         }
 
         @Test
@@ -244,9 +252,11 @@ class EmailVerificationTokenRepositoryTest : AbstractIntegrationTest() {
             // When: 삭제
             emailVerificationTokenRepository.softDelete(saved.id!!).block()
 
-            // Then: 삭제됨 (조회되지 않음)
-            val result = emailVerificationTokenRepository.findByToken(saved.token).block()
-            assertThat(result).isNull()
+            // Then: 삭제됨 (조회되지 않음 - 예외 발생)
+            val result = emailVerificationTokenRepository.findByToken(saved.token)
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
         }
 
         @Test
@@ -260,9 +270,11 @@ class EmailVerificationTokenRepositoryTest : AbstractIntegrationTest() {
             // When: 재삭제 시도 (에러가 발생하지 않아야 함)
             emailVerificationTokenRepository.softDelete(saved.id!!).block()
 
-            // Then: 여전히 조회되지 않음
-            val result = emailVerificationTokenRepository.findByToken(saved.token).block()
-            assertThat(result).isNull()
+            // Then: 여전히 조회되지 않음 (예외 발생)
+            val result = emailVerificationTokenRepository.findByToken(saved.token)
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
         }
     }
 
@@ -286,9 +298,11 @@ class EmailVerificationTokenRepositoryTest : AbstractIntegrationTest() {
             // When: 사용자의 모든 토큰 삭제
             emailVerificationTokenRepository.softDeleteAllByUserId(testUser.id!!).block()
 
-            // Then: 모든 토큰이 조회되지 않음
-            val result = emailVerificationTokenRepository.findLatestByUserId(testUser.id!!).block()
-            assertThat(result).isNull()
+            // Then: 모든 토큰이 조회되지 않음 (예외 발생)
+            val result = emailVerificationTokenRepository.findLatestByUserId(testUser.id!!)
+            StepVerifier.create(result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
         }
 
         @Test
@@ -312,11 +326,13 @@ class EmailVerificationTokenRepositoryTest : AbstractIntegrationTest() {
             // When: user1의 모든 토큰 삭제
             emailVerificationTokenRepository.softDeleteAllByUserId(user1.id!!).block()
 
-            // Then: user1 토큰은 삭제되고, user2 토큰은 남아있음
-            val user1Result = emailVerificationTokenRepository.findLatestByUserId(user1.id!!).block()
-            val user2Result = emailVerificationTokenRepository.findLatestByUserId(user2.id!!).block()
+            // Then: user1 토큰은 삭제되고 (예외 발생), user2 토큰은 남아있음
+            val user1Result = emailVerificationTokenRepository.findLatestByUserId(user1.id!!)
+            StepVerifier.create(user1Result)
+                .expectError(InvalidVerificationTokenException::class.java)
+                .verify()
 
-            assertThat(user1Result).isNull()
+            val user2Result = emailVerificationTokenRepository.findLatestByUserId(user2.id!!).block()
             assertThat(user2Result).isNotNull
             assertThat(user2Result!!.id).isEqualTo(savedUser2Token.id)
         }

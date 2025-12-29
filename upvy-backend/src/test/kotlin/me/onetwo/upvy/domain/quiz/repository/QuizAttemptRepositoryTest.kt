@@ -3,6 +3,7 @@ package me.onetwo.upvy.domain.quiz.repository
 import me.onetwo.upvy.domain.content.model.Content
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.repository.ContentRepository
+import me.onetwo.upvy.domain.quiz.exception.QuizException
 import me.onetwo.upvy.domain.quiz.model.Quiz
 import me.onetwo.upvy.domain.quiz.model.QuizAttempt
 import me.onetwo.upvy.domain.user.model.User
@@ -24,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import reactor.core.publisher.Mono
+import reactor.test.StepVerifier
 import java.util.UUID
 
 /**
@@ -186,13 +188,16 @@ class QuizAttemptRepositoryTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("존재하지 않는 시도 ID로 조회하면, 빈 Mono를 반환한다")
-        fun findById_WhenAttemptNotExists_ReturnsEmpty() {
-            // When: 존재하지 않는 ID로 조회
-            val foundAttempt = quizAttemptRepository.findById(UUID.randomUUID()).block()
+        @DisplayName("존재하지 않는 시도 ID로 조회하면, 예외가 발생한다")
+        fun findById_WhenAttemptNotExists_ThrowsException() {
+            // Given: 존재하지 않는 ID
+            val nonExistingId = UUID.randomUUID()
 
-            // Then: null 반환
-            assertThat(foundAttempt).isNull()
+            // When & Then: 예외 발생
+            val result = quizAttemptRepository.findById(nonExistingId)
+            StepVerifier.create(result)
+                .expectError(QuizException.QuizAttemptNotFoundException::class.java)
+                .verify()
         }
     }
 

@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.quiz.repository
 
+import me.onetwo.upvy.domain.quiz.exception.QuizException.QuizNotFoundException
 import me.onetwo.upvy.domain.quiz.model.Quiz
 import me.onetwo.upvy.jooq.generated.tables.references.QUIZZES
 import org.jooq.DSLContext
@@ -75,7 +76,7 @@ class QuizRepositoryImpl(
                 updatedBy = record.getValue(QUIZZES.UPDATED_BY),
                 deletedAt = record.getValue(QUIZZES.DELETED_AT)
             )
-        }
+        }.switchIfEmpty(Mono.error(QuizNotFoundException(quizId.toString())))
     }
 
     override fun findByContentId(contentId: UUID): Mono<Quiz> {
@@ -107,7 +108,7 @@ class QuizRepositoryImpl(
                 updatedBy = record.getValue(QUIZZES.UPDATED_BY),
                 deletedAt = record.getValue(QUIZZES.DELETED_AT)
             )
-        }
+        }.switchIfEmpty(Mono.error(QuizNotFoundException(contentId.toString())))
     }
 
     override fun update(quiz: Quiz): Mono<Quiz> {
@@ -133,7 +134,7 @@ class QuizRepositoryImpl(
             if (hasUpdated) {
                 findById(quizId) // 업데이트 후 최신 데이터를 다시 조회하여 반환
             } else {
-                Mono.error(me.onetwo.upvy.domain.quiz.exception.QuizException.QuizNotFoundException(quizId.toString()))
+                Mono.error(QuizNotFoundException(quizId.toString()))
             }
         }
     }

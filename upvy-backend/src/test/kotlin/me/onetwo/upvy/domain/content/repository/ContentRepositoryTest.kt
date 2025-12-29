@@ -1,6 +1,7 @@
 package me.onetwo.upvy.domain.content.repository
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 
+import me.onetwo.upvy.domain.content.exception.ContentException
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.Content
 import me.onetwo.upvy.domain.content.model.ContentMetadata
@@ -18,6 +19,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.jooq.DSLContext
 import org.jooq.JSON
 import reactor.core.publisher.Mono
+import reactor.test.StepVerifier
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -165,10 +167,12 @@ class ContentRepositoryTest : AbstractIntegrationTest() {
             val nonExistingId = UUID.randomUUID()
 
             // When: 조회
-            val found = contentRepository.findById(nonExistingId).block()
+            val result = contentRepository.findById(nonExistingId)
 
-            // Then: null 반환
-            assertThat(found).isNull()
+            // Then: 예외 발생
+            StepVerifier.create(result)
+                .expectError(ContentException.ContentNotFoundException::class.java)
+                .verify()
         }
 
         @Test
@@ -180,10 +184,12 @@ class ContentRepositoryTest : AbstractIntegrationTest() {
             softDeleteContent(contentId, testUser.id!!)
 
             // When: 조회
-            val found = contentRepository.findById(contentId).block()
+            val result = contentRepository.findById(contentId)
 
-            // Then: null 반환 (Soft Delete)
-            assertThat(found).isNull()
+            // Then: 예외 발생 (Soft Delete)
+            StepVerifier.create(result)
+                .expectError(ContentException.ContentNotFoundException::class.java)
+                .verify()
         }
     }
 
@@ -245,16 +251,16 @@ class ContentRepositoryTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("존재하지 않는 콘텐츠 ID로 조회하면, null이 반환된다")
-        fun findMetadataByContentId_NonExistingContent_ReturnsNull() {
+        @DisplayName("존재하지 않는 콘텐츠 ID로 조회하면, 예외가 발생한다")
+        fun findMetadataByContentId_NonExistingContent_ThrowsException() {
             // Given: 존재하지 않는 ID
             val nonExistingId = UUID.randomUUID()
 
-            // When: 조회
-            val found = contentRepository.findMetadataByContentId(nonExistingId).block()
-
-            // Then: null 반환
-            assertThat(found).isNull()
+            // When & Then: 예외 발생
+            val result = contentRepository.findMetadataByContentId(nonExistingId)
+            StepVerifier.create(result)
+                .expectError(ContentException.ContentNotFoundException::class.java)
+                .verify()
         }
     }
 
@@ -469,9 +475,11 @@ class ContentRepositoryTest : AbstractIntegrationTest() {
             assertThat(dbContent).isNotNull
             assertThat(dbContent!!.get(CONTENTS.DELETED_AT)).isNotNull
 
-            // findById로 조회 시 null (Soft Delete)
-            val found = contentRepository.findById(contentId).block()
-            assertThat(found).isNull()
+            // findById로 조회 시 예외 발생 (Soft Delete)
+            val found = contentRepository.findById(contentId)
+            StepVerifier.create(found)
+                .expectError(ContentException.ContentNotFoundException::class.java)
+                .verify()
         }
 
         @Test

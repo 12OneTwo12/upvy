@@ -90,3 +90,16 @@ class NotFollowingException(
     httpStatus = HttpStatus.BAD_REQUEST,
     message = "팔로우하지 않은 사용자입니다."
 )
+
+/**
+ * 사용자 상태 변경 이력을 찾을 수 없을 때 발생하는 예외
+ *
+ * @property message 예외 메시지
+ */
+class UserStatusHistoryNotFoundException(
+    message: String = "사용자 상태 변경 이력을 찾을 수 없습니다."
+) : BusinessException(
+    errorCode = "USER_STATUS_HISTORY_NOT_FOUND",
+    httpStatus = HttpStatus.NOT_FOUND,
+    message = message
+)
