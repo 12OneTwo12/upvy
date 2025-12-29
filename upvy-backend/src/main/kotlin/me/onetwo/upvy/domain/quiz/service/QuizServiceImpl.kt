@@ -232,86 +232,23 @@ class QuizServiceImpl(
 
         return quizRepository.findById(quizId)
             .switchIfEmpty(Mono.error(QuizException.QuizNotFoundException(quizId.toString())))
-            .flatMap { quiz ->
-                // 선택한 보기 ID 파싱
+            .flatMap { _ ->
                 val selectedOptionIds = request.selectedOptionIds.map { UUID.fromString(it) }
 
-                // 보기 조회 및 검증
-                quizOptionRepository.findByIdIn(selectedOptionIds)
-                    .collectList()
-                    .flatMap { selectedOptions ->
-                        // 검증: 선택한 보기가 모두 해당 퀴즈의 보기인지 확인
-                        if (selectedOptions.size != selectedOptionIds.size) {
-                            return@flatMap Mono.error<QuizAttemptResponse>(
-                                QuizException.InvalidQuizDataException("일부 보기를 찾을 수 없습니다")
-                            )
-                        }
-
-                        if (selectedOptions.any { it.quizId != quizId }) {
-                            return@flatMap Mono.error<QuizAttemptResponse>(
-                                QuizException.InvalidQuizDataException("다른 퀴즈의 보기가 포함되어 있습니다")
-                            )
-                        }
-
-                        // 정답 확인
-                        val allCorrectOptions = quizOptionRepository.findByQuizId(quizId)
-                            .filter { it.isCorrect }
-                            .collectList()
-
-                        allCorrectOptions.flatMap { correctOptions ->
-                            val correctOptionIds = correctOptions.map { it.id!! }.toSet()
-                            val selectedOptionIdSet = selectedOptionIds.toSet()
-                            val isCorrect = correctOptionIds == selectedOptionIdSet
-
-                            // 다음 시도 번호 조회
-                            quizAttemptRepository.getNextAttemptNumber(quizId, userId)
-                                .flatMap { attemptNumber ->
-                                    // 시도 저장
-                                    val attempt = QuizAttempt(
-                                        quizId = quizId,
-                                        userId = userId,
-                                        attemptNumber = attemptNumber,
-                                        isCorrect = isCorrect
-                                    )
-
-                                    quizAttemptRepository.save(attempt)
-                                        .flatMap { savedAttempt ->
-                                            val attemptId = savedAttempt.id!!
-
-                                            // 선택한 답변 저장
-                                            val answers = selectedOptionIds.map { optionId ->
-                                                QuizAttemptAnswer(
-                                                    attemptId = attemptId,
-                                                    optionId = optionId
-                                                )
-                                            }
-
-                                            quizAttemptAnswerRepository.saveAll(answers)
-                                                .collectList()
-                                                .then(
-                                                    // 통계와 함께 응답 생성
-                                                    quizAttemptRepository.findByQuizId(quizId)
-                                                        .collectList()
-                                                        .flatMap { allAttempts ->
-                                                            quizOptionRepository.findByQuizId(quizId)
-                                                                .collectList()
-                                                                .flatMap { allOptions ->
-                                                                    calculateOptionStats(quizId, allOptions, allAttempts.size)
-                                                                        .map { optionStats ->
-                                                                            QuizAttemptResponse(
-                                                                                attemptId = attemptId.toString(),
-                                                                                quizId = quizId.toString(),
-                                                                                isCorrect = isCorrect,
-                                                                                attemptNumber = attemptNumber,
-                                                                                options = optionStats
-                                                                            )
-                                                                        }
-                                                                }
-                                                        }
-                                                )
-                                        }
-                                }
-                        }
+                validateSelectedOptions(quizId, selectedOptionIds)
+                    .flatMap { _ ->
+                        checkAnswerCorrectness(quizId, selectedOptionIds)
+                            .flatMap { isCorrect ->
+                                saveAttemptWithAnswers(quizId, userId, selectedOptionIds, isCorrect)
+                                    .flatMap { attemptResult ->
+                                        buildAttemptResponse(
+                                            attemptId = attemptResult.first,
+                                            quizId = quizId,
+                                            isCorrect = isCorrect,
+                                            attemptNumber = attemptResult.second
+                                        )
+                                    }
+                            }
                     }
             }
     }
@@ -427,5 +364,108 @@ class QuizServiceImpl(
         if (!hasCorrectOption) {
             throw QuizException.InvalidQuizDataException("최소 1개 이상의 정답이 필요합니다")
         }
+    }
+
+    /**
+     * 선택한 보기 검증
+     * - 모든 선택된 보기가 존재하는지 확인
+     * - 선택된 보기가 해당 퀴즈에 속하는지 확인
+     */
+    private fun validateSelectedOptions(quizId: UUID, selectedOptionIds: List<UUID>): Mono<List<QuizOption>> {
+        return quizOptionRepository.findByIdIn(selectedOptionIds)
+            .collectList()
+            .flatMap { selectedOptions ->
+                when {
+                    selectedOptions.size != selectedOptionIds.size ->
+                        Mono.error(QuizException.InvalidQuizDataException("일부 보기를 찾을 수 없습니다"))
+
+                    selectedOptions.any { it.quizId != quizId } ->
+                        Mono.error(QuizException.InvalidQuizDataException("다른 퀴즈의 보기가 포함되어 있습니다"))
+
+                    else -> Mono.just(selectedOptions)
+                }
+            }
+    }
+
+    /**
+     * 정답 여부 확인
+     * - 퀴즈의 정답 보기들과 사용자가 선택한 보기들이 정확히 일치하는지 확인
+     */
+    private fun checkAnswerCorrectness(quizId: UUID, selectedOptionIds: List<UUID>): Mono<Boolean> {
+        return quizOptionRepository.findByQuizId(quizId)
+            .filter { it.isCorrect }
+            .map { it.id!! }
+            .collectList()
+            .map { correctOptionIds ->
+                correctOptionIds.toSet() == selectedOptionIds.toSet()
+            }
+    }
+
+    /**
+     * 시도 및 답변 저장
+     * - 다음 시도 번호 조회
+     * - QuizAttempt 생성 및 저장
+     * - QuizAttemptAnswer 생성 및 저장
+     *
+     * @return Pair<attemptId, attemptNumber>
+     */
+    private fun saveAttemptWithAnswers(
+        quizId: UUID,
+        userId: UUID,
+        selectedOptionIds: List<UUID>,
+        isCorrect: Boolean
+    ): Mono<Pair<UUID, Int>> {
+        return quizAttemptRepository.getNextAttemptNumber(quizId, userId)
+            .flatMap { attemptNumber ->
+                val attempt = QuizAttempt(
+                    quizId = quizId,
+                    userId = userId,
+                    attemptNumber = attemptNumber,
+                    isCorrect = isCorrect
+                )
+
+                quizAttemptRepository.save(attempt)
+                    .flatMap { savedAttempt ->
+                        val attemptId = savedAttempt.id!!
+                        val answers = selectedOptionIds.map { optionId ->
+                            QuizAttemptAnswer(attemptId = attemptId, optionId = optionId)
+                        }
+
+                        quizAttemptAnswerRepository.saveAll(answers)
+                            .collectList()
+                            .thenReturn(Pair(attemptId, attemptNumber))
+                    }
+            }
+    }
+
+    /**
+     * 시도 응답 생성
+     * - 최신 통계 조회
+     * - QuizAttemptResponse 구성
+     */
+    private fun buildAttemptResponse(
+        attemptId: UUID,
+        quizId: UUID,
+        isCorrect: Boolean,
+        attemptNumber: Int
+    ): Mono<QuizAttemptResponse> {
+        val allAttemptsMono = quizAttemptRepository.findByQuizId(quizId).collectList()
+        val optionsMono = quizOptionRepository.findByQuizId(quizId).collectList()
+
+        return Mono.zip(allAttemptsMono, optionsMono)
+            .flatMap { tuple ->
+                val allAttempts = tuple.t1
+                val options = tuple.t2
+                calculateOptionStats(quizId, options, allAttempts.size)
+                    .map { optionStats ->
+                        QuizAttemptResponse(
+                            attemptId = attemptId.toString(),
+                            quizId = quizId.toString(),
+                            isCorrect = isCorrect,
+                            attemptNumber = attemptNumber,
+                            options = optionStats
+                        )
+                    }
+            }
     }
 }

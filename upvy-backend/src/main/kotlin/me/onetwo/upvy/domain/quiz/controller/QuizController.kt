@@ -75,7 +75,7 @@ class QuizController(
                 quizService.getQuizByContentId(contentId, userId)
             }
             .switchIfEmpty(
-                quizService.getQuizByContentId(contentId, null)
+                Mono.defer { quizService.getQuizByContentId(contentId, null) }
             )
             .map { response -> ResponseEntity.ok(response) }
     }
