@@ -433,14 +433,16 @@ class ContentServiceImpl(
     override fun getContent(contentId: UUID, userId: UUID?): Mono<ContentResponse> {
         logger.info("Getting content: contentId=$contentId, userId=$userId")
 
-        return contentRepository.findById(contentId)
-            .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId")))
-            .flatMap { content ->
-                contentRepository.findMetadataByContentId(contentId)
-                    .switchIfEmpty(Mono.error(NoSuchElementException("Content metadata not found: $contentId")))
-                    .map { metadata -> content to metadata }
-            }
-            .flatMap { (content, metadata) ->
+        // Parallel fetch: content와 metadata를 동시에 조회하여 성능 향상
+        return Mono.zip(
+            contentRepository.findById(contentId)
+                .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId"))),
+            contentRepository.findMetadataByContentId(contentId)
+                .switchIfEmpty(Mono.error(NoSuchElementException("Content metadata not found: $contentId")))
+        )
+            .flatMap { tuple ->
+                val content = tuple.t1
+                val metadata = tuple.t2
                 // PHOTO 타입인 경우 사진 목록 조회, 아니면 null 반환
                 val photoUrlsMono = if (content.contentType == ContentType.PHOTO) {
                     contentPhotoRepository.findByContentId(content.id!!)

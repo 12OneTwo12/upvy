@@ -14,6 +14,17 @@ import reactor.core.publisher.Mono
 import java.util.UUID
 
 /**
+ * 프로필과 콘텐츠 개수를 함께 담는 데이터 클래스
+ *
+ * @property profile 사용자 프로필
+ * @property contentCount 콘텐츠 개수
+ */
+private data class ProfileWithCount(
+    val profile: UserProfile,
+    val contentCount: Long
+)
+
+/**
  * 사용자 프로필 관리 서비스 구현체
  *
  * 프로필 생성, 수정, 조회 등의 비즈니스 로직을 처리합니다.
@@ -52,29 +63,28 @@ class UserProfileServiceImpl(
         // 사용자 존재 여부 확인
         return userService.getUserById(userId)
             .flatMap {
-                // 사용자당 프로필은 1개만 가능
-                userProfileRepository.existsByUserId(userId)
-                    .flatMap { exists ->
-                        if (exists) {
-                            Mono.error(IllegalStateException("이미 프로필이 존재합니다. User ID: $userId"))
-                        } else {
-                            // 닉네임 중복 확인
-                            userProfileRepository.existsByNickname(nickname)
-                                .flatMap { nicknameExists ->
-                                    if (nicknameExists) {
-                                        Mono.error(DuplicateNicknameException(nickname))
-                                    } else {
-                                        val profile = UserProfile(
-                                            userId = userId,
-                                            nickname = nickname,
-                                            profileImageUrl = profileImageUrl,
-                                            bio = bio
-                                        )
-                                        userProfileRepository.save(profile)
-                                    }
-                                }
-                        }
+                // Parallel check: userId와 nickname 존재 여부를 동시에 확인하여 성능 향상
+                Mono.zip(
+                    userProfileRepository.existsByUserId(userId),
+                    userProfileRepository.existsByNickname(nickname)
+                ).flatMap { tuple ->
+                    val userExists = tuple.t1
+                    val nicknameExists = tuple.t2
+
+                    if (userExists) {
+                        Mono.error(IllegalStateException("이미 프로필이 존재합니다. User ID: $userId"))
+                    } else if (nicknameExists) {
+                        Mono.error(DuplicateNicknameException(nickname))
+                    } else {
+                        val profile = UserProfile(
+                            userId = userId,
+                            nickname = nickname,
+                            profileImageUrl = profileImageUrl,
+                            bio = bio
+                        )
+                        userProfileRepository.save(profile)
                     }
+                }
             }
     }
 
@@ -271,10 +281,10 @@ class UserProfileServiceImpl(
         return Mono.zip(
             getProfileByUserId(userId),
             contentRepository.countByCreatorId(userId)
-        ).map { tuple ->
-            val profile = tuple.t1
-            val contentCount = tuple.t2
-            UserProfileWithContentCountResponse.from(profile, contentCount)
+        ) { profile, contentCount ->
+            ProfileWithCount(profile, contentCount)
+        }.map { data ->
+            UserProfileWithContentCountResponse.from(data.profile, data.contentCount)
         }
     }
 }

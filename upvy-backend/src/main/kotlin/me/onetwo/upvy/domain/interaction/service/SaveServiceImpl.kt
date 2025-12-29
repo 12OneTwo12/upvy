@@ -4,12 +4,14 @@ import me.onetwo.upvy.domain.analytics.dto.InteractionType
 import me.onetwo.upvy.domain.analytics.event.UserInteractionEvent
 import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.analytics.service.ContentInteractionService
+import me.onetwo.upvy.domain.content.dto.ContentResponse
 import me.onetwo.upvy.domain.content.repository.ContentMetadataRepository
 import me.onetwo.upvy.domain.content.service.ContentService
 import me.onetwo.upvy.domain.interaction.dto.SaveResponse
 import me.onetwo.upvy.domain.interaction.dto.SaveStatusResponse
 import me.onetwo.upvy.domain.interaction.dto.SavedContentPageResponse
 import me.onetwo.upvy.domain.interaction.dto.SavedContentResponse
+import me.onetwo.upvy.domain.interaction.model.UserSave
 import me.onetwo.upvy.domain.interaction.repository.UserSaveRepository
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageRequest
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
@@ -153,40 +155,16 @@ class SaveServiceImpl(
 
         return userSaveRepository.findByUserIdWithCursor(userId, cursor, limit + 1)
             .collectList()
-            .flatMapMany { userSaves ->
+            .flatMap { userSaves ->
                 if (userSaves.isEmpty()) {
-                    return@flatMapMany Flux.empty()
+                    return@flatMap Mono.just(CursorPageResponse.empty())
                 }
 
-                // UserSave의 순서를 유지하기 위해 Map 사용
-                val contentIdToSaveMap = userSaves.associateBy { it.contentId }
-                val contentIds = userSaves.map { it.contentId }
-
-                // 배치 조회로 N+1 문제 해결
-                contentService.getContentsByIds(contentIds, userId)
-                    .collectList()
-                    .flatMapMany { contentResponses ->
-                        // contentId -> ContentResponse Map 생성
-                        val contentResponseMap = contentResponses.associateBy { UUID.fromString(it.id) }
-
-                        // UserSave의 순서대로 ContentResponse 정렬 (삭제된 콘텐츠는 제외)
-                        val orderedResponses = contentIds.mapNotNull { contentId ->
-                            contentResponseMap[contentId]
-                        }
-
-                        Flux.just(
-                            CursorPageResponse.of(
-                                content = orderedResponses,
-                                limit = limit,
-                                getCursor = { response ->
-                                    contentIdToSaveMap[UUID.fromString(response.id)]?.id.toString()
-                                }
-                            )
-                        )
+                processSavedContents(userSaves, userId)
+                    .map { savedContentData ->
+                        buildPageResponse(savedContentData, limit)
                     }
             }
-            .next()
-            .switchIfEmpty(Mono.just(CursorPageResponse.empty()))
     }
 
     /**
@@ -211,6 +189,55 @@ class SaveServiceImpl(
             }
     }
 
+    /**
+     * 저장된 콘텐츠 데이터 처리
+     *
+     * @param userSaves 사용자 저장 목록
+     * @param userId 사용자 ID
+     * @return 저장된 콘텐츠 데이터
+     */
+    private fun processSavedContents(
+        userSaves: List<UserSave>,
+        userId: UUID
+    ): Mono<SavedContentData> {
+        val contentIdToSaveMap = userSaves.associateBy { it.contentId }
+        val contentIds = userSaves.map { it.contentId }
+
+        return contentService.getContentsByIds(contentIds, userId)
+            .collectList()
+            .map { contentResponses ->
+                val contentResponseMap = contentResponses.associateBy { UUID.fromString(it.id) }
+                val orderedResponses = contentIds.mapNotNull { contentId ->
+                    contentResponseMap[contentId]
+                }
+
+                SavedContentData(
+                    contentIdToSaveMap = contentIdToSaveMap,
+                    orderedResponses = orderedResponses
+                )
+            }
+    }
+
+    /**
+     * 페이지 응답 생성
+     *
+     * @param savedContentData 저장된 콘텐츠 데이터
+     * @param limit 페이지 크기
+     * @return 저장된 콘텐츠 페이지 응답
+     */
+    private fun buildPageResponse(
+        savedContentData: SavedContentData,
+        limit: Int
+    ): SavedContentPageResponse {
+        return CursorPageResponse.of(
+            content = savedContentData.orderedResponses,
+            limit = limit,
+            getCursor = { response ->
+                savedContentData.contentIdToSaveMap[UUID.fromString(response.id)]?.id.toString()
+            }
+        )
+    }
+
     private fun getSaveResponse(contentId: UUID, isSaved: Boolean): Mono<SaveResponse> {
         return contentInteractionRepository.getSaveCount(contentId)
             .map { saveCount ->
@@ -221,6 +248,17 @@ class SaveServiceImpl(
                 )
             }
     }
+
+    /**
+     * 저장된 콘텐츠 처리를 위한 데이터 클래스
+     *
+     * @property contentIdToSaveMap 콘텐츠 ID를 키로 하는 UserSave Map (커서 추출용)
+     * @property orderedResponses 저장 순서대로 정렬된 ContentResponse 목록
+     */
+    private data class SavedContentData(
+        val contentIdToSaveMap: Map<UUID, UserSave>,
+        val orderedResponses: List<ContentResponse>
+    )
 
     companion object {
         private val logger = LoggerFactory.getLogger(SaveServiceImpl::class.java)
