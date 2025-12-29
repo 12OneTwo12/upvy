@@ -1,0 +1,29 @@
+[[quiz-delete]]
+=== 퀴즈 삭제
+
+콘텐츠의 퀴즈를 삭제합니다 (Soft Delete). 퀴즈와 함께 모든 보기도 삭제됩니다.
+
+==== Request
+
+include::{snippets}/quiz-delete/http-request.adoc[]
+include::{snippets}/quiz-delete/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/quiz-delete/http-response.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X DELETE http://localhost:8080/api/v1/contents/{contentId}/quiz \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Notes
+
+* 본인이 소유한 콘텐츠의 퀴즈만 삭제 가능
+* Soft Delete로 처리되어 데이터는 유지됨
+* 모든 보기도 함께 soft delete 처리됨
+* 사용자의 시도 기록은 유지됨
+* 삭제 후 204 No Content 반환

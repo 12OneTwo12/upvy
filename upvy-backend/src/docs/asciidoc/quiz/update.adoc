@@ -1,0 +1,53 @@
+[[quiz-update]]
+=== 퀴즈 수정
+
+콘텐츠의 퀴즈를 수정합니다. 기존 보기는 모두 삭제되고 새로운 보기로 대체됩니다.
+
+==== Request
+
+include::{snippets}/quiz-update/http-request.adoc[]
+include::{snippets}/quiz-update/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/quiz-update/http-response.adoc[]
+include::{snippets}/quiz-update/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X PUT http://localhost:8080/api/v1/contents/{contentId}/quiz \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Kotlin의 주요 특징은?",
+    "allowMultipleAnswers": true,
+    "options": [
+      {
+        "optionText": "Null Safety",
+        "isCorrect": true
+      },
+      {
+        "optionText": "간결한 문법",
+        "isCorrect": true
+      },
+      {
+        "optionText": "Java 호환성",
+        "isCorrect": true
+      },
+      {
+        "optionText": "느린 성능",
+        "isCorrect": false
+      }
+    ]
+  }'
+----
+
+==== Notes
+
+* 본인이 소유한 콘텐츠의 퀴즈만 수정 가능
+* 기존 보기는 soft delete 처리됨
+* 기존 시도 기록은 유지됨
+* 최소 2개 이상의 보기 필요
+* 최소 1개 이상의 정답 필요

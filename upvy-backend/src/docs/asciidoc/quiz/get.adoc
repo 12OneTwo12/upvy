@@ -1,0 +1,61 @@
+[[quiz-get]]
+=== 퀴즈 조회
+
+콘텐츠에 연결된 퀴즈를 조회합니다. 사용자가 이미 퀴즈를 풀었으면 정답이 공개되고, 풀지 않았으면 정답이 숨겨집니다.
+
+==== Request
+
+include::{snippets}/quiz-get/http-request.adoc[]
+include::{snippets}/quiz-get/path-parameters.adoc[]
+
+==== Response
+
+include::{snippets}/quiz-get/http-response.adoc[]
+include::{snippets}/quiz-get/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X GET http://localhost:8080/api/v1/contents/{contentId}/quiz \
+  -H "Authorization: Bearer {access_token}"
+----
+
+==== Response Example (퀴즈를 풀지 않은 경우)
+
+[source,json]
+----
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "contentId": "660e8400-e29b-41d4-a716-446655440001",
+  "question": "Kotlin에서 val과 var의 차이는 무엇인가요?",
+  "allowMultipleAnswers": false,
+  "options": [
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440002",
+      "optionText": "val은 불변, var는 가변",
+      "displayOrder": 1,
+      "selectionCount": 150,
+      "selectionPercentage": 75.0,
+      "isCorrect": null
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440003",
+      "optionText": "val은 가변, var는 불변",
+      "displayOrder": 2,
+      "selectionCount": 30,
+      "selectionPercentage": 15.0,
+      "isCorrect": null
+    }
+  ],
+  "userAttemptCount": 0,
+  "totalAttempts": 200
+}
+----
+
+==== Notes
+
+* 인증 없이도 조회 가능합니다 (비로그인 사용자)
+* 사용자가 퀴즈를 풀지 않았으면 `isCorrect` 필드가 null
+* 사용자가 퀴즈를 풀었으면 `isCorrect` 필드에 정답 여부 표시
+* 퀴즈를 찾을 수 없으면 404 Not Found
