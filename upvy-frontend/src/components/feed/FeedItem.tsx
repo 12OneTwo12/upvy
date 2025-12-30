@@ -5,7 +5,8 @@
  */
 
 import React, { useState, useRef, useCallback, useContext, useEffect } from 'react';
-import { View, Dimensions, Animated, PanResponder } from 'react-native';
+import { View, Dimensions, Animated, PanResponder, TouchableWithoutFeedback } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
@@ -210,8 +211,21 @@ export const FeedItem: React.FC<FeedItemProps> = ({
 
   return (
     <View style={{ height: SCREEN_HEIGHT }} className="relative">
-      {/* 콘텐츠 렌더링 - VIDEO 또는 PHOTO */}
-      {item.contentType === 'VIDEO' ? (
+      {/* 콘텐츠 렌더링 - VIDEO, PHOTO, QUIZ */}
+      {item.contentType === 'QUIZ' ? (
+        // QUIZ 전용 콘텐츠: 그라데이션 배경
+        <TouchableWithoutFeedback onPress={handleContentTap}>
+          <LinearGradient
+            colors={['#667eea', '#764ba2', '#f093fb']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              width: SCREEN_WIDTH,
+              height: SCREEN_HEIGHT,
+            }}
+          />
+        </TouchableWithoutFeedback>
+      ) : item.contentType === 'VIDEO' ? (
         <VideoPlayer
           ref={videoPlayerRef}
           uri={item.url}

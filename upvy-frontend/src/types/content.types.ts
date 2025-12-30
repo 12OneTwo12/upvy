@@ -11,7 +11,7 @@ import { QuizMetadataResponse } from './quiz.types';
  * 콘텐츠 타입
  * 백엔드: ContentType.kt
  */
-export type ContentType = 'VIDEO' | 'PHOTO';
+export type ContentType = 'VIDEO' | 'PHOTO' | 'QUIZ';
 
 /**
  * 콘텐츠 상태

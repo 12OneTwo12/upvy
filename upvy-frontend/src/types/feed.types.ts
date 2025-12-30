@@ -16,7 +16,7 @@ import { QuizMetadataResponse } from './quiz.types';
  * 콘텐츠 타입
  * 백엔드: me.onetwo.upvy.domain.content.model.ContentType
  */
-export type ContentType = 'VIDEO' | 'PHOTO';
+export type ContentType = 'VIDEO' | 'PHOTO' | 'QUIZ';
 
 /**
  * 카테고리
