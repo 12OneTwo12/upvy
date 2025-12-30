@@ -461,20 +461,18 @@ class QuizServiceImpl(
         val totalAttemptsMono = quizAttemptRepository.countByQuizId(quizId)
         val optionsMono = quizOptionRepository.findByQuizId(quizId).collectList()
 
-        return Mono.zip(totalAttemptsMono, optionsMono)
-            .flatMap { tuple ->
-                val totalAttempts = tuple.t1
-                val options = tuple.t2
-                calculateOptionStats(quizId, options, totalAttempts)
-                    .map { optionStats ->
-                        QuizAttemptResponse(
-                            attemptId = attemptId.toString(),
-                            quizId = quizId.toString(),
-                            isCorrect = isCorrect,
-                            attemptNumber = attemptNumber,
-                            options = optionStats
-                        )
-                    }
+        return Mono.zip(totalAttemptsMono, optionsMono) { totalAttempts, options ->
+            calculateOptionStats(quizId, options, totalAttempts)
+        }.flatMap { statsMono ->
+            statsMono.map { optionStats ->
+                QuizAttemptResponse(
+                    attemptId = attemptId.toString(),
+                    quizId = quizId.toString(),
+                    isCorrect = isCorrect,
+                    attemptNumber = attemptNumber,
+                    options = optionStats
+                )
             }
+        }
     }
 }

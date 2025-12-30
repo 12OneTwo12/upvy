@@ -191,9 +191,9 @@ class RecommendationServiceImpl(
                 preferredLanguage,
                 category = Category.FUN
             )
-        ).flatMapMany { tuple ->
-            val regularIds = tuple.t1
-            val funIds = tuple.t2
+        ) { regularIds, funIds ->
+            regularIds to funIds
+        }.flatMapMany { (regularIds, funIds) ->
 
             val result = interleaveFunContent(regularIds, funIds)
             logger.debug(

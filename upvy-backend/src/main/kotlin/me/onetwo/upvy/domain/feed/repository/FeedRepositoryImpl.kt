@@ -153,10 +153,9 @@ class FeedRepositoryImpl(
                 val photosMono = findPhotosByContentIdsReactive(contentIds)
 
                 // 두 맵을 병렬로 조회한 후 결합
-                Mono.zip(subtitlesMono, photosMono)
-                    .flatMapMany { tuple ->
-                        val subtitlesMap = tuple.t1
-                        val photosMap = tuple.t2
+                Mono.zip(subtitlesMono, photosMono) { subtitlesMap, photosMap ->
+                    subtitlesMap to photosMap
+                }.flatMapMany { (subtitlesMap, photosMap) ->
                         // 레코드를 FeedItemResponse로 변환
                         Flux.fromIterable(records.map { record ->
                             mapRecordToFeedItem(record, subtitlesMap, photosMap)
@@ -565,10 +564,9 @@ class FeedRepositoryImpl(
                 val photosMono = findPhotosByContentIdsReactive(contentIds)
 
                 // 두 맵을 병렬로 조회한 후 결합
-                Mono.zip(subtitlesMono, photosMono)
-                    .flatMapMany { tuple ->
-                        val subtitlesMap = tuple.t1
-                        val photosMap = tuple.t2
+                Mono.zip(subtitlesMono, photosMono) { subtitlesMap, photosMap ->
+                    subtitlesMap to photosMap
+                }.flatMapMany { (subtitlesMap, photosMap) ->
                         // 레코드를 FeedItemResponse로 변환
                         val feedItemsMap = records
                             .map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }

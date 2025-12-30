@@ -67,9 +67,9 @@ class UserProfileServiceImpl(
                 Mono.zip(
                     userProfileRepository.existsByUserId(userId),
                     userProfileRepository.existsByNickname(nickname)
-                ).flatMap { tuple ->
-                    val userExists = tuple.t1
-                    val nicknameExists = tuple.t2
+                ) { userExists, nicknameExists ->
+                    userExists to nicknameExists
+                }.flatMap { (userExists, nicknameExists) ->
 
                     if (userExists) {
                         Mono.error(IllegalStateException("이미 프로필이 존재합니다. User ID: $userId"))

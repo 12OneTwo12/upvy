@@ -439,10 +439,9 @@ class ContentServiceImpl(
                 .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId"))),
             contentRepository.findMetadataByContentId(contentId)
                 .switchIfEmpty(Mono.error(NoSuchElementException("Content metadata not found: $contentId")))
-        )
-            .flatMap { tuple ->
-                val content = tuple.t1
-                val metadata = tuple.t2
+        ) { content, metadata ->
+            content to metadata
+        }.flatMap { (content, metadata) ->
                 // PHOTO 타입인 경우 사진 목록 조회, 아니면 null 반환
                 val photoUrlsMono = if (content.contentType == ContentType.PHOTO) {
                     contentPhotoRepository.findByContentId(content.id!!)
