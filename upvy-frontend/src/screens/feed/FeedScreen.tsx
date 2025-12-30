@@ -21,7 +21,10 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
+import { QuizOverlay } from '@/components/quiz';
 import { useFeed } from '@/hooks/useFeed';
+import { useQuizStore } from '@/stores/quizStore';
+import { useQuiz } from '@/hooks/useQuiz';
 import type { FeedTab, FeedItem as FeedItemType } from '@/types/feed.types';
 
 export default function FeedScreen() {
@@ -30,6 +33,11 @@ export default function FeedScreen() {
   const queryClient = useQueryClient();
   const navigation = useNavigation();
   const isScreenFocused = useIsFocused();
+
+  // 퀴즈 모달 상태
+  const [quizModalVisible, setQuizModalVisible] = useState(false);
+  const [selectedQuizContentId, setSelectedQuizContentId] = useState<string | null>(null);
+  const { isQuizAutoDisplayEnabled } = useQuizStore();
 
   // 피드 타입 결정
   const feedType = currentTab === 'recommended' ? 'main' : 'following';
@@ -75,6 +83,43 @@ export default function FeedScreen() {
     loadingFeedItem,
     SCREEN_HEIGHT,
   } = feed;
+
+  // 퀴즈 로직
+  const {
+    quiz,
+    isLoadingQuiz,
+    submitAttempt,
+    attemptResult,
+    isSubmitting,
+    isSubmitSuccess,
+  } = useQuiz(
+    selectedQuizContentId ?? '',
+    {
+      onSuccess: (attemptResult) => {
+        // 퀴즈 제출 성공 시 처리
+        // React Query가 자동으로 캐시 무효화하므로 별도 처리 불필요
+      },
+    }
+  );
+
+  // 퀴즈 보기 핸들러
+  const handleQuizPress = (contentId: string) => {
+    setSelectedQuizContentId(contentId);
+    setQuizModalVisible(true);
+  };
+
+  // 퀴즈 자동 표시 로직
+  useEffect(() => {
+    if (!isQuizAutoDisplayEnabled || !isScreenFocused) return;
+
+    if (currentIndex < displayItems.length) {
+      const currentItem = displayItems[currentIndex];
+      // 퀴즈가 있고, 아직 시도하지 않았고, 모달이 열려있지 않을 때만 자동 표시
+      if (currentItem.quiz && !currentItem.quiz.hasAttempted && !quizModalVisible) {
+        handleQuizPress(currentItem.contentId);
+      }
+    }
+  }, [currentIndex, isQuizAutoDisplayEnabled, displayItems, isScreenFocused, quizModalVisible]);
 
   // 탭 전환 시 비디오 캐시 초기화
   useEffect(() => {
@@ -132,6 +177,7 @@ export default function FeedScreen() {
           onShare={() => handleShare(item.contentId)}
           onFollow={() => handleFollow(item.creator.userId, item.creator.isFollowing ?? false)}
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
+          onQuizPress={() => handleQuizPress(item.contentId)}
           onBlockSuccess={handleBlockSuccess}
           onDeleteSuccess={handleDeleteSuccess}
         />
@@ -347,6 +393,33 @@ export default function FeedScreen() {
           visible={commentModalVisible}
           contentId={selectedContentId}
           onClose={() => setCommentModalVisible(false)}
+        />
+      )}
+
+      {/* 퀴즈 모달 */}
+      {quiz && (
+        <QuizOverlay
+          visible={quizModalVisible}
+          onClose={() => setQuizModalVisible(false)}
+          quiz={quiz}
+          onSubmit={(selectedOptionIds) => {
+            submitAttempt({ selectedOptionIds });
+          }}
+          onRetry={() => {
+            // 재시도 - 모달을 닫았다가 다시 열기
+            setQuizModalVisible(false);
+            setTimeout(() => {
+              if (selectedQuizContentId) {
+                handleQuizPress(selectedQuizContentId);
+              }
+            }, 300);
+          }}
+          onSkip={() => {
+            setQuizModalVisible(false);
+          }}
+          onViewVideo={() => {
+            setQuizModalVisible(false);
+          }}
         />
       )}
     </View>
