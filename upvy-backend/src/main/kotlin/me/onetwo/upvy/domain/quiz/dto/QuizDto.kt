@@ -188,3 +188,19 @@ data class QuizOptionStatsResponse(
     val selectionPercentage: Double,
     val isCorrect: Boolean
 )
+
+/**
+ * 퀴즈 메타데이터 응답 DTO
+ *
+ * 피드 및 콘텐츠 조회 시 퀴즈 존재 여부와 사용자의 시도 정보를 제공합니다.
+ * 프론트엔드가 "문제 보기" 버튼 활성화 여부와 퀴즈 토글 기능을 구현하는 데 사용됩니다.
+ *
+ * @property quizId 퀴즈 ID
+ * @property hasAttempted 사용자가 한 번이라도 풀었는지 여부
+ * @property attemptCount 사용자의 시도 횟수 (0 이상)
+ */
+data class QuizMetadataResponse(
+    val quizId: String,
+    val hasAttempted: Boolean,
+    val attemptCount: Int
+)

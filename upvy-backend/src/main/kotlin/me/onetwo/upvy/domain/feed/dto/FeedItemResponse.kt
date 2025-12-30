@@ -2,6 +2,7 @@ package me.onetwo.upvy.domain.feed.dto
 
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.ContentType
+import me.onetwo.upvy.domain.quiz.dto.QuizMetadataResponse
 import java.util.UUID
 
 /**
@@ -25,6 +26,7 @@ import java.util.UUID
  * @property creator 크리에이터 정보
  * @property interactions 인터랙션 정보
  * @property subtitles 자막 정보 목록
+ * @property quiz 퀴즈 메타데이터 (퀴즈가 있는 경우)
  */
 data class FeedItemResponse(
     val contentId: UUID,
@@ -41,5 +43,6 @@ data class FeedItemResponse(
     val tags: List<String>,
     val creator: CreatorInfoResponse,
     val interactions: InteractionInfoResponse,
-    val subtitles: List<SubtitleInfoResponse>
+    val subtitles: List<SubtitleInfoResponse>,
+    val quiz: QuizMetadataResponse? = null
 )

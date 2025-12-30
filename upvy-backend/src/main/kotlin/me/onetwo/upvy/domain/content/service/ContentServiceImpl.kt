@@ -62,6 +62,7 @@ class ContentServiceImpl(
     private val userLikeRepository: UserLikeRepository,
     private val userSaveRepository: UserSaveRepository,
     private val tagService: TagService,
+    private val quizRepository: me.onetwo.upvy.domain.quiz.repository.QuizRepository,
     @Value("\${spring.cloud.aws.s3.bucket}") private val bucketName: String,
     @Value("\${spring.cloud.aws.region.static}") private val region: String
 ) : ContentService {
@@ -458,33 +459,42 @@ class ContentServiceImpl(
                     .map { it.name }
                     .collectList()
 
-                Mono.zip(photoUrlsMono.defaultIfEmpty(emptyList()), interactionMono, tagsMono)
-                    .map { tuple ->
-                        val photoUrls = tuple.t1.takeIf { it.isNotEmpty() }
-                        val interactions = tuple.t2
-                        val tags = tuple.t3
+                // Quiz 메타데이터 조회 (N+1 방지 배치 쿼리)
+                val quizMetadataMono = quizRepository.findQuizMetadataByContentIds(listOf(contentId), userId)
 
-                        ContentResponse(
-                            id = content.id.toString(),
-                            creatorId = content.creatorId.toString(),
-                            contentType = content.contentType,
-                            url = content.url,
-                            photoUrls = photoUrls,
-                            thumbnailUrl = content.thumbnailUrl,
-                            duration = content.duration,
-                            width = content.width,
-                            height = content.height,
-                            status = content.status,
-                            title = metadata.title,
-                            description = metadata.description,
-                            category = metadata.category,
-                            tags = tags,
-                            language = metadata.language,
-                            interactions = interactions,
-                            createdAt = content.createdAt,
-                            updatedAt = content.updatedAt
-                        )
-                    }
+                Mono.zip(
+                    photoUrlsMono.defaultIfEmpty(emptyList()),
+                    interactionMono,
+                    tagsMono,
+                    quizMetadataMono
+                ).map { tuple ->
+                    val photoUrls = tuple.t1.takeIf { it.isNotEmpty() }
+                    val interactions = tuple.t2
+                    val tags = tuple.t3
+                    val quizMetadata = tuple.t4[contentId]  // Map에서 해당 contentId의 퀴즈 메타데이터 추출
+
+                    ContentResponse(
+                        id = content.id.toString(),
+                        creatorId = content.creatorId.toString(),
+                        contentType = content.contentType,
+                        url = content.url,
+                        photoUrls = photoUrls,
+                        thumbnailUrl = content.thumbnailUrl,
+                        duration = content.duration,
+                        width = content.width,
+                        height = content.height,
+                        status = content.status,
+                        title = metadata.title,
+                        description = metadata.description,
+                        category = metadata.category,
+                        tags = tags,
+                        language = metadata.language,
+                        interactions = interactions,
+                        quiz = quizMetadata,
+                        createdAt = content.createdAt,
+                        updatedAt = content.updatedAt
+                    )
+                }
             }
     }
 

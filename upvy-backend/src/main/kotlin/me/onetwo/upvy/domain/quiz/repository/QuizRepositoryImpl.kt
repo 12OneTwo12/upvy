@@ -1,11 +1,15 @@
 package me.onetwo.upvy.domain.quiz.repository
 
+import me.onetwo.upvy.domain.quiz.dto.QuizMetadataResponse
 import me.onetwo.upvy.domain.quiz.exception.QuizException.QuizNotFoundException
 import me.onetwo.upvy.domain.quiz.model.Quiz
 import me.onetwo.upvy.jooq.generated.tables.references.QUIZZES
+import me.onetwo.upvy.jooq.generated.tables.references.QUIZ_ATTEMPTS
 import org.jooq.DSLContext
+import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.UUID
@@ -164,5 +168,86 @@ class QuizRepositoryImpl(
             val count = record.value1() ?: 0
             count > 0
         }.defaultIfEmpty(false)
+    }
+
+    override fun findQuizMetadataByContentIds(contentIds: List<UUID>, userId: UUID?): Mono<Map<UUID, QuizMetadataResponse>> {
+        // contentIds가 비어있으면 빈 Map 반환
+        if (contentIds.isEmpty()) {
+            return Mono.just(emptyMap())
+        }
+
+        // 1. 퀴즈 조회 (contentId → Quiz 매핑)
+        val quizzesMono: Mono<Map<UUID, Quiz>> = Flux.from(
+            dslContext
+                .select(
+                    QUIZZES.ID,
+                    QUIZZES.CONTENT_ID
+                )
+                .from(QUIZZES)
+                .where(QUIZZES.CONTENT_ID.`in`(contentIds.map { it.toString() }))
+                .and(QUIZZES.DELETED_AT.isNull)
+        ).collectMap(
+            { record -> UUID.fromString(record.getValue(QUIZZES.CONTENT_ID)) }, // contentId를 키로
+            { record ->
+                Quiz(
+                    id = UUID.fromString(record.getValue(QUIZZES.ID)),
+                    contentId = UUID.fromString(record.getValue(QUIZZES.CONTENT_ID)),
+                    question = "",
+                    allowMultipleAnswers = false,
+                    createdAt = Instant.now(),
+                    createdBy = null,
+                    updatedAt = Instant.now(),
+                    updatedBy = null,
+                    deletedAt = null
+                )
+            }
+        )
+
+        // 2. 사용자의 시도 횟수 조회 (quizId → attemptCount 매핑)
+        val attemptCountsMono: Mono<Map<UUID, Int>> = if (userId != null) {
+            quizzesMono.flatMap { quizzesMap ->
+                if (quizzesMap.isEmpty()) {
+                    return@flatMap Mono.just(emptyMap<UUID, Int>())
+                }
+
+                val quizIds = quizzesMap.values.mapNotNull { it.id }
+                Flux.from(
+                    dslContext
+                        .select(
+                            QUIZ_ATTEMPTS.QUIZ_ID,
+                            DSL.count().`as`("attempt_count")
+                        )
+                        .from(QUIZ_ATTEMPTS)
+                        .where(QUIZ_ATTEMPTS.QUIZ_ID.`in`(quizIds.map { it.toString() }))
+                        .and(QUIZ_ATTEMPTS.USER_ID.eq(userId.toString()))
+                        .groupBy(QUIZ_ATTEMPTS.QUIZ_ID)
+                ).collectMap(
+                    { record -> UUID.fromString(record.getValue(QUIZ_ATTEMPTS.QUIZ_ID)) }, // quizId를 키로
+                    { record -> record.getValue("attempt_count", Int::class.java) ?: 0 }
+                )
+            }
+        } else {
+            // userId가 null이면 빈 Map
+            Mono.just(emptyMap())
+        }
+
+        // 3. 두 쿼리 결과를 조합
+        return Mono.zip(quizzesMono, attemptCountsMono)
+            .map { tuple ->
+                val quizzesMap = tuple.t1
+                val attemptCountsMap = tuple.t2
+
+                // quizId를 키로 하는 Map을 contentId를 키로 하는 Map으로 변환
+                quizzesMap.mapValues { (contentId, quiz) ->
+                    val quizId = quiz.id!!
+                    val attemptCount = attemptCountsMap[quizId] ?: 0
+                    QuizMetadataResponse(
+                        quizId = quizId.toString(),
+                        hasAttempted = attemptCount > 0,
+                        attemptCount = attemptCount
+                    )
+                }
+            }
+            .defaultIfEmpty(emptyMap())
     }
 }
