@@ -359,22 +359,32 @@ class UserServiceImpl(
                     changedBy = userId
                 )
             }
+            .doOnNext { logger.info("User status changed to DELETED: userId=$userId") }
             .flatMap { user ->
                 // 프로필, 팔로우 관계, 인증 수단을 병렬로 soft delete
+                logger.info("Starting auth methods deletion: userId=$userId")
                 authMethodRepository.findAllByUserId(user.id!!)
+                    .doOnNext { logger.info("Found auth method to delete: userId=$userId, authMethodId=${it.id}") }
                     .flatMap { authMethod ->
                         authMethodRepository.softDelete(authMethod.id!!)
                     }
-                    .then(
+                    .collectList()  // Ensure Flux completes properly even when empty
+                    .doOnSuccess { logger.info("Auth methods deletion completed: userId=$userId, deletedCount=${it.size}") }
+                    .flatMap {
+                        logger.info("Starting profile and follow deletion: userId=$userId")
                         Mono.zip(
                             userProfileRepository.softDelete(userId, userId)
-                                .doOnSuccess { logger.info("User profile soft deleted: userId=$userId") },
+                                .doOnNext { logger.info("User profile soft delete started: userId=$userId") }
+                                .doOnSuccess { logger.info("User profile soft deleted: userId=$userId, result=$it") },
                             followRepository.softDeleteAllByUserId(userId, userId)
-                                .doOnSuccess { logger.info("All follow relationships soft deleted: userId=$userId") }
+                                .doOnNext { logger.info("Follow relationships soft delete started: userId=$userId") }
+                                .doOnSuccess { logger.info("All follow relationships soft deleted: userId=$userId, result=$it") }
                         )
-                    )
+                    }
+                    .doOnSuccess { logger.info("Profile and follow deletion completed: userId=$userId") }
             }
             .doOnSuccess { logger.info("User withdrawal completed: userId=$userId") }
+            .doOnError { error -> logger.error("User withdrawal failed: userId=$userId", error) }
             .then()
     }
 }
