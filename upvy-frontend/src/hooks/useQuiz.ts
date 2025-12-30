@@ -71,8 +71,10 @@ export const useQuizAttempt = (
   });
 
   return {
-    /** 퀴즈 시도 제출 함수 */
+    /** 퀴즈 시도 제출 함수 (void 반환) */
     submit: mutation.mutate,
+    /** 퀴즈 시도 제출 함수 (Promise 반환) */
+    submitAsync: mutation.mutateAsync,
     /** 제출 결과 데이터 */
     data: mutation.data,
     /** 로딩 상태 */
@@ -130,8 +132,10 @@ export const useQuiz = (contentId: string, options?: UseQuizAttemptOptions) => {
     isLoadingQuiz: quizQuery.isLoading,
     /** 퀴즈 조회 에러 */
     quizError: quizQuery.error,
-    /** 퀴즈 시도 제출 함수 */
+    /** 퀴즈 시도 제출 함수 (void 반환) */
     submitAttempt: attemptMutation.submit,
+    /** 퀴즈 시도 제출 함수 (Promise 반환) */
+    submitAttemptAsync: attemptMutation.submitAsync,
     /** 시도 제출 결과 */
     attemptResult: attemptMutation.data,
     /** 시도 제출 중 상태 */

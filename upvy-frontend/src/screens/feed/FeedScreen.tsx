@@ -88,7 +88,7 @@ export default function FeedScreen() {
   const {
     quiz,
     isLoadingQuiz,
-    submitAttempt,
+    submitAttemptAsync,
     attemptResult,
     isSubmitting,
     isSubmitSuccess,
@@ -397,14 +397,12 @@ export default function FeedScreen() {
       )}
 
       {/* 퀴즈 모달 */}
-      {quiz && (
+      {quiz && submitAttemptAsync && (
         <QuizOverlay
           visible={quizModalVisible}
           onClose={() => setQuizModalVisible(false)}
           quiz={quiz}
-          onSubmit={(selectedOptionIds) => {
-            submitAttempt({ selectedOptionIds });
-          }}
+          onSubmit={submitAttemptAsync}
           onRetry={() => {
             // 재시도 - 모달을 닫았다가 다시 열기
             setQuizModalVisible(false);
