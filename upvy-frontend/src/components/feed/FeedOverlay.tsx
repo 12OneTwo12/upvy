@@ -302,20 +302,24 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           }
         ]}
       >
-        {/* 오른쪽 상단: 퀴즈 버튼들 (퀴즈가 있는 경우에만 표시) */}
-        {quiz && onQuizPress && (
-          <View style={styles.quizButtonsContainer}>
-            <QuizActionButton
-              hasAttempted={quiz.hasAttempted}
-              onPress={onQuizPress}
-            />
-            <View style={{ width: 8 }} />
-            <QuizToggleButton
-              isEnabled={isQuizAutoDisplayEnabled}
-              onToggle={toggleQuizAutoDisplay}
-            />
-          </View>
-        )}
+        {/* 오른쪽 상단: 퀴즈 버튼들 */}
+        {/* QuizToggleButton: 항상 표시 (전역 설정) */}
+        {/* QuizActionButton: 퀴즈가 있을 때만 표시 */}
+        <View style={styles.quizButtonsContainer}>
+          {quiz && onQuizPress && (
+            <>
+              <QuizActionButton
+                hasAttempted={quiz.hasAttempted}
+                onPress={onQuizPress}
+              />
+              <View style={{ width: 8 }} />
+            </>
+          )}
+          <QuizToggleButton
+            isEnabled={isQuizAutoDisplayEnabled}
+            onToggle={toggleQuizAutoDisplay}
+          />
+        </View>
 
         <View style={styles.content}>
           {/* 좌측: 크리에이터 정보 + 콘텐츠 정보 */}
