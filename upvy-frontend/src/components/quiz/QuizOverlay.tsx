@@ -18,9 +18,11 @@ import {
   Easing,
   Dimensions,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 import type {
@@ -51,6 +53,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
   onSkip,
   onViewVideo,
 }) => {
+  const { t } = useTranslation('quiz');
   const styles = useStyles();
   const theme = useTheme();
 
@@ -154,11 +157,11 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
       setIsSubmitted(true);
     } catch (error) {
       console.error('Failed to submit quiz attempt:', error);
-      // TODO: Show error toast
+      Alert.alert(t('overlay.submitError'));
     } finally {
       setIsSubmitting(false);
     }
-  }, [quiz, selectedOptionIds, isSubmitting, onSubmit]);
+  }, [quiz, selectedOptionIds, isSubmitting, onSubmit, t]);
 
   // Handle retry
   const handleRetry = useCallback(() => {
@@ -237,7 +240,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
               <Text style={styles.questionText}>{quiz.question}</Text>
               {quiz.allowMultipleAnswers && (
                 <Text style={styles.multipleAnswerHint}>
-                  복수 정답 선택 가능
+                  {t('overlay.multipleAnswerHint')}
                 </Text>
               )}
             </View>
@@ -347,10 +350,10 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                   color={attemptResult.isCorrect ? theme.colors.success : theme.colors.error}
                 />
                 <Text style={styles.resultText}>
-                  {attemptResult.isCorrect ? '정답입니다!' : '오답입니다!'}
+                  {attemptResult.isCorrect ? t('overlay.resultCorrect') : t('overlay.resultIncorrect')}
                 </Text>
                 <Text style={styles.attemptCountText}>
-                  {attemptResult.attemptNumber}번째 시도
+                  {t('overlay.attemptCount', { count: attemptResult.attemptNumber })}
                 </Text>
               </View>
             )}
@@ -359,7 +362,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
             {isSubmitted && (
               <View style={styles.statsContainer}>
                 <Text style={styles.statsText}>
-                  총 {quiz.totalAttempts}명 참여
+                  {t('overlay.totalParticipants', { count: quiz.totalAttempts })}
                 </Text>
               </View>
             )}
@@ -375,9 +378,12 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                   ]}
                   onPress={handleSubmit}
                   disabled={selectedOptionIds.length === 0 || isSubmitting}
+                  accessibilityLabel={t('overlay.submit')}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: selectedOptionIds.length === 0 || isSubmitting }}
                 >
                   <Text style={styles.submitButtonText}>
-                    {isSubmitting ? '제출 중...' : '제출하기'}
+                    {isSubmitting ? t('overlay.submitting') : t('overlay.submit')}
                   </Text>
                 </TouchableOpacity>
               ) : (
@@ -386,9 +392,11 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                   <TouchableOpacity
                     style={styles.retryButton}
                     onPress={handleRetry}
+                    accessibilityLabel={t('overlay.retry')}
+                    accessibilityRole="button"
                   >
                     <Ionicons name="refresh" size={20} color={theme.colors.primary} />
-                    <Text style={styles.retryButtonText}>다시 풀기</Text>
+                    <Text style={styles.retryButtonText}>{t('overlay.retry')}</Text>
                   </TouchableOpacity>
 
                   {onViewVideo && (
@@ -398,9 +406,11 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                         onViewVideo();
                         onClose();
                       }}
+                      accessibilityLabel={t('overlay.viewVideo')}
+                      accessibilityRole="button"
                     >
                       <Ionicons name="play-circle" size={20} color={theme.colors.text.primary} />
-                      <Text style={styles.viewVideoButtonText}>비디오 보기</Text>
+                      <Text style={styles.viewVideoButtonText}>{t('overlay.viewVideo')}</Text>
                     </TouchableOpacity>
                   )}
                 </>
@@ -414,8 +424,10 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                     onSkip();
                     onClose();
                   }}
+                  accessibilityLabel={t('overlay.skip')}
+                  accessibilityRole="button"
                 >
-                  <Text style={styles.skipButtonText}>건너뛰기</Text>
+                  <Text style={styles.skipButtonText}>{t('overlay.skip')}</Text>
                 </TouchableOpacity>
               )}
             </View>

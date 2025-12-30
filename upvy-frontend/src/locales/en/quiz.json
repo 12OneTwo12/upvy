@@ -1,0 +1,36 @@
+{
+  "overlay": {
+    "multipleAnswerHint": "Multiple answers allowed",
+    "submitting": "Submitting...",
+    "submit": "Submit",
+    "resultCorrect": "Correct!",
+    "resultIncorrect": "Incorrect!",
+    "attemptCount": "Attempt #{{count}}",
+    "totalParticipants": "{{count}} participants",
+    "retry": "Try Again",
+    "viewVideo": "Watch Video",
+    "skip": "Skip",
+    "submitError": "Failed to submit quiz. Please try again."
+  },
+  "actionButton": {
+    "label": "View Quiz"
+  },
+  "toggleButton": {
+    "label": "Quiz"
+  },
+  "upload": {
+    "addQuiz": "Add Quiz",
+    "question": "Question",
+    "required": "Required",
+    "questionPlaceholder": "Enter quiz question",
+    "options": "Options (Check correct answers)",
+    "optionPlaceholder": "Option {{number}}",
+    "allowMultipleAnswers": "Allow multiple answers",
+    "validation": {
+      "questionRequired": "Please enter a quiz question.",
+      "minOptions": "Please enter at least 2 options.",
+      "minCorrectAnswers": "Please select at least 1 correct answer.",
+      "singleAnswerOnly": "Only 1 correct answer allowed in single answer mode."
+    }
+  }
+}

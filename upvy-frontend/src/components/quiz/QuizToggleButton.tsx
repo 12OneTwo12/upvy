@@ -8,6 +8,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
@@ -20,6 +21,7 @@ export const QuizToggleButton: React.FC<QuizToggleButtonProps> = ({
   isEnabled,
   onToggle,
 }) => {
+  const { t } = useTranslation('quiz');
   const styles = useStyles();
   const theme = useTheme();
 
@@ -31,6 +33,10 @@ export const QuizToggleButton: React.FC<QuizToggleButtonProps> = ({
       ]}
       onPress={onToggle}
       activeOpacity={0.8}
+      accessibilityLabel={t('toggleButton.label')}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: isEnabled }}
+      accessibilityHint={isEnabled ? 'Disable auto quiz display' : 'Enable auto quiz display'}
     >
       <Ionicons
         name={isEnabled ? "bulb" : "bulb-outline"}
@@ -43,7 +49,7 @@ export const QuizToggleButton: React.FC<QuizToggleButtonProps> = ({
           isEnabled ? styles.textEnabled : styles.textDisabled,
         ]}
       >
-        퀴즈
+        {t('toggleButton.label')}
       </Text>
     </TouchableOpacity>
   );

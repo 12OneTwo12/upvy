@@ -9,6 +9,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
 
@@ -21,6 +22,7 @@ export const QuizActionButton: React.FC<QuizActionButtonProps> = ({
   hasAttempted,
   onPress,
 }) => {
+  const { t } = useTranslation('quiz');
   const styles = useStyles();
   const theme = useTheme();
 
@@ -29,6 +31,9 @@ export const QuizActionButton: React.FC<QuizActionButtonProps> = ({
       style={styles.container}
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityLabel={t('actionButton.label')}
+      accessibilityRole="button"
+      accessibilityHint={hasAttempted ? 'Already attempted' : 'View quiz questions'}
     >
       {/* Icon Container with Badge */}
       <View style={styles.iconContainer}>
@@ -52,7 +57,7 @@ export const QuizActionButton: React.FC<QuizActionButtonProps> = ({
       </View>
 
       {/* Label */}
-      <Text style={styles.label}>문제 보기</Text>
+      <Text style={styles.label}>{t('actionButton.label')}</Text>
     </TouchableOpacity>
   );
 };

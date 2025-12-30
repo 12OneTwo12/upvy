@@ -39,7 +39,7 @@ type Props = NativeStackScreenProps<UploadStackParamList, 'ContentMetadata'>;
 export default function ContentMetadataScreen({ navigation, route }: Props) {
   const styles = useStyles();
   const dynamicTheme = useTheme();
-  const { t } = useTranslation(['upload', 'common', 'search']);
+  const { t } = useTranslation(['upload', 'common', 'search', 'quiz']);
   const { contentId, contentType, mediaInfo } = route.params;
   const queryClient = useQueryClient();
   const currentLanguage = useLanguageStore((state) => state.currentLanguage);
@@ -138,23 +138,23 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
     // 퀴즈 유효성 검사
     if (addQuiz) {
       if (!quizQuestion.trim()) {
-        Alert.alert(t('common:label.notice', 'Notice'), '퀴즈 질문을 입력해주세요.');
+        Alert.alert(t('common:label.notice', 'Notice'), t('quiz:upload.validation.questionRequired'));
         return;
       }
 
       const validOptions = quizOptions.filter(opt => opt.trim());
       if (validOptions.length < 2) {
-        Alert.alert(t('common:label.notice', 'Notice'), '최소 2개의 선택지를 입력해주세요.');
+        Alert.alert(t('common:label.notice', 'Notice'), t('quiz:upload.validation.minOptions'));
         return;
       }
 
       if (correctOptionIndices.length === 0) {
-        Alert.alert(t('common:label.notice', 'Notice'), '최소 1개의 정답을 선택해주세요.');
+        Alert.alert(t('common:label.notice', 'Notice'), t('quiz:upload.validation.minCorrectAnswers'));
         return;
       }
 
       if (!allowMultipleAnswers && correctOptionIndices.length > 1) {
-        Alert.alert(t('common:label.notice', 'Notice'), '단일 정답 모드에서는 1개의 정답만 선택 가능합니다.');
+        Alert.alert(t('common:label.notice', 'Notice'), t('quiz:upload.validation.singleAnswerOnly'));
         return;
       }
     }
@@ -451,13 +451,15 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           <TouchableOpacity
             style={styles.checkboxRow}
             onPress={() => setAddQuiz(!addQuiz)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: addQuiz }}
           >
             <Ionicons
               name={addQuiz ? 'checkbox' : 'square-outline'}
               size={24}
               color={dynamicTheme.colors.primary[500]}
             />
-            <Text style={styles.checkboxLabel}>퀴즈 추가</Text>
+            <Text style={styles.checkboxLabel}>{t('quiz:upload.addQuiz')}</Text>
           </TouchableOpacity>
 
           {addQuiz && (
@@ -465,23 +467,24 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
               {/* 질문 */}
               <View style={styles.quizSection}>
                 <Text style={styles.label}>
-                  질문 <Text style={styles.required}>{t('upload:metadata.required')}</Text>
+                  {t('quiz:upload.question')} <Text style={styles.required}>{t('quiz:upload.required')}</Text>
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="퀴즈 질문을 입력하세요"
+                  placeholder={t('quiz:upload.questionPlaceholder')}
                   placeholderTextColor={dynamicTheme.colors.text.tertiary}
                   value={quizQuestion}
                   onChangeText={setQuizQuestion}
                   maxLength={500}
                   multiline
+                  accessibilityLabel={t('quiz:upload.question')}
                 />
                 <Text style={styles.counter}>{quizQuestion.length}/500</Text>
               </View>
 
               {/* 선택지 */}
               <View style={styles.quizSection}>
-                <Text style={styles.label}>선택지 (정답 체크)</Text>
+                <Text style={styles.label}>{t('quiz:upload.options')}</Text>
                 {quizOptions.map((option, index) => (
                   <View key={index} style={styles.optionRow}>
                     <TouchableOpacity
@@ -495,6 +498,9 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                         }
                       }}
                       style={styles.optionCheckbox}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: correctOptionIndices.includes(index) }}
+                      accessibilityLabel={`Correct answer ${index + 1}`}
                     >
                       <Ionicons
                         name={correctOptionIndices.includes(index) ? 'checkbox' : 'square-outline'}
@@ -504,7 +510,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                     </TouchableOpacity>
                     <TextInput
                       style={styles.optionInput}
-                      placeholder={`선택지 ${index + 1}`}
+                      placeholder={t('quiz:upload.optionPlaceholder', { number: index + 1 })}
                       placeholderTextColor={dynamicTheme.colors.text.tertiary}
                       value={option}
                       onChangeText={(text) => {
@@ -513,6 +519,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                         setQuizOptions(newOptions);
                       }}
                       maxLength={200}
+                      accessibilityLabel={t('quiz:upload.optionPlaceholder', { number: index + 1 })}
                     />
                   </View>
                 ))}
@@ -528,13 +535,15 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                     setCorrectOptionIndices([correctOptionIndices[0]]);
                   }
                 }}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: allowMultipleAnswers }}
               >
                 <Ionicons
                   name={allowMultipleAnswers ? 'checkbox' : 'square-outline'}
                   size={20}
                   color={dynamicTheme.colors.primary[500]}
                 />
-                <Text style={styles.checkboxLabel}>복수 정답 허용</Text>
+                <Text style={styles.checkboxLabel}>{t('quiz:upload.allowMultipleAnswers')}</Text>
               </TouchableOpacity>
             </View>
           )}
