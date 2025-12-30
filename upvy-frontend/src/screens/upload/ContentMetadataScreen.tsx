@@ -30,6 +30,7 @@ import { useLanguageStore } from '@/stores/languageStore';
 import type { UploadStackParamList } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createContent } from '@/api/content.api';
+import { createQuiz } from '@/api/quiz.api';
 import type { Category } from '@/types/content.types';
 import { CATEGORIES } from '@/types/content.types';
 
@@ -50,6 +51,13 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [language, setLanguage] = useState(currentLanguage);
+
+  // 퀴즈 상태
+  const [addQuiz, setAddQuiz] = useState(false);
+  const [quizQuestion, setQuizQuestion] = useState('');
+  const [quizOptions, setQuizOptions] = useState(['', '', '', '']);
+  const [allowMultipleAnswers, setAllowMultipleAnswers] = useState(false);
+  const [correctOptionIndices, setCorrectOptionIndices] = useState<number[]>([]);
 
   // UI 상태
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -127,6 +135,30 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
       return;
     }
 
+    // 퀴즈 유효성 검사
+    if (addQuiz) {
+      if (!quizQuestion.trim()) {
+        Alert.alert(t('common:label.notice', 'Notice'), '퀴즈 질문을 입력해주세요.');
+        return;
+      }
+
+      const validOptions = quizOptions.filter(opt => opt.trim());
+      if (validOptions.length < 2) {
+        Alert.alert(t('common:label.notice', 'Notice'), '최소 2개의 선택지를 입력해주세요.');
+        return;
+      }
+
+      if (correctOptionIndices.length === 0) {
+        Alert.alert(t('common:label.notice', 'Notice'), '최소 1개의 정답을 선택해주세요.');
+        return;
+      }
+
+      if (!allowMultipleAnswers && correctOptionIndices.length > 1) {
+        Alert.alert(t('common:label.notice', 'Notice'), '단일 정답 모드에서는 1개의 정답만 선택 가능합니다.');
+        return;
+      }
+    }
+
     try {
       setIsPublishing(true);
 
@@ -144,6 +176,20 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
         width: mediaInfo.width,
         height: mediaInfo.height,
       });
+
+      // 퀴즈 생성
+      if (addQuiz && quizQuestion.trim()) {
+        const validOptions = quizOptions.filter(opt => opt.trim());
+        await createQuiz(contentId, {
+          question: quizQuestion.trim(),
+          allowMultipleAnswers,
+          options: validOptions.map((optionText, index) => ({
+            optionText,
+            displayOrder: index + 1,
+            isCorrect: correctOptionIndices.includes(quizOptions.indexOf(optionText)),
+          })),
+        });
+      }
 
       // Profile 화면의 내 콘텐츠 목록 자동 새로고침
       queryClient.invalidateQueries({ queryKey: ['myContents'] });
@@ -400,6 +446,100 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
           </View>
         </View>
 
+        {/* 퀴즈 */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.checkboxRow}
+            onPress={() => setAddQuiz(!addQuiz)}
+          >
+            <Ionicons
+              name={addQuiz ? 'checkbox' : 'square-outline'}
+              size={24}
+              color={dynamicTheme.colors.primary[500]}
+            />
+            <Text style={styles.checkboxLabel}>퀴즈 추가</Text>
+          </TouchableOpacity>
+
+          {addQuiz && (
+            <View style={styles.quizForm}>
+              {/* 질문 */}
+              <View style={styles.quizSection}>
+                <Text style={styles.label}>
+                  질문 <Text style={styles.required}>{t('upload:metadata.required')}</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="퀴즈 질문을 입력하세요"
+                  placeholderTextColor={dynamicTheme.colors.text.tertiary}
+                  value={quizQuestion}
+                  onChangeText={setQuizQuestion}
+                  maxLength={500}
+                  multiline
+                />
+                <Text style={styles.counter}>{quizQuestion.length}/500</Text>
+              </View>
+
+              {/* 선택지 */}
+              <View style={styles.quizSection}>
+                <Text style={styles.label}>선택지 (정답 체크)</Text>
+                {quizOptions.map((option, index) => (
+                  <View key={index} style={styles.optionRow}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (allowMultipleAnswers) {
+                          setCorrectOptionIndices(prev =>
+                            prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+                          );
+                        } else {
+                          setCorrectOptionIndices([index]);
+                        }
+                      }}
+                      style={styles.optionCheckbox}
+                    >
+                      <Ionicons
+                        name={correctOptionIndices.includes(index) ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={correctOptionIndices.includes(index) ? dynamicTheme.colors.success[500] : dynamicTheme.colors.text.tertiary}
+                      />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={styles.optionInput}
+                      placeholder={`선택지 ${index + 1}`}
+                      placeholderTextColor={dynamicTheme.colors.text.tertiary}
+                      value={option}
+                      onChangeText={(text) => {
+                        const newOptions = [...quizOptions];
+                        newOptions[index] = text;
+                        setQuizOptions(newOptions);
+                      }}
+                      maxLength={200}
+                    />
+                  </View>
+                ))}
+              </View>
+
+              {/* 복수 정답 허용 */}
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => {
+                  setAllowMultipleAnswers(!allowMultipleAnswers);
+                  // 모드 전환 시 정답 선택 초기화
+                  if (!allowMultipleAnswers && correctOptionIndices.length > 1) {
+                    setCorrectOptionIndices([correctOptionIndices[0]]);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={allowMultipleAnswers ? 'checkbox' : 'square-outline'}
+                  size={20}
+                  color={dynamicTheme.colors.primary[500]}
+                />
+                <Text style={styles.checkboxLabel}>복수 정답 허용</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         {/* 안내 메시지 */}
         <View style={styles.infoSection}>
           <Text style={styles.infoTitle}>💡 {t('upload:metadata.info.title')}</Text>
@@ -635,5 +775,45 @@ const useStyles = createStyleSheet((theme) => ({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing[1],
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+    paddingVertical: theme.spacing[2],
+  },
+  checkboxLabel: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.primary,
+  },
+  quizForm: {
+    marginTop: theme.spacing[3],
+    padding: theme.spacing[4],
+    backgroundColor: theme.colors.gray[50],
+    borderRadius: theme.borderRadius.base,
+  },
+  quizSection: {
+    marginBottom: theme.spacing[4],
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+    marginBottom: theme.spacing[2],
+  },
+  optionCheckbox: {
+    padding: theme.spacing[1],
+  },
+  optionInput: {
+    flex: 1,
+    paddingVertical: theme.spacing[3],
+    paddingHorizontal: theme.spacing[4],
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+    borderRadius: theme.borderRadius.base,
+    backgroundColor: theme.colors.background.primary,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
   },
 }));
