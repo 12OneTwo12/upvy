@@ -43,6 +43,7 @@ interface FeedItemProps {
   onShare?: () => void;
   onFollow?: () => void;
   onCreatorPress?: () => void;
+  onQuizPress?: () => void; // 퀴즈 보기 버튼 클릭 시 호출
   onBlockSuccess?: () => void; // 차단 성공 시 호출
   onDeleteSuccess?: () => void; // 삭제 성공 시 호출
 }
@@ -59,6 +60,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   onShare,
   onFollow,
   onCreatorPress,
+  onQuizPress,
   onBlockSuccess,
   onDeleteSuccess,
 }) => {
@@ -255,12 +257,14 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           contentId={item.contentId}
           category={item.category}
           tags={item.tags}
+          quiz={item.quiz}
           onLike={onLike}
           onComment={onComment}
           onSave={onSave}
           onShare={onShare}
           onFollow={onFollow}
           onCreatorPress={onCreatorPress}
+          onQuizPress={onQuizPress}
           onBlockSuccess={onBlockSuccess}
           onDeleteSuccess={onDeleteSuccess}
           isExpanded={isExpanded}

@@ -16,11 +16,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/stores/authStore';
+import { useQuizStore } from '@/stores/quizStore';
 import { ReportModal } from '@/components/report/ReportModal';
 import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
 import { BlockConfirmModal } from '@/components/block/BlockConfirmModal';
 import { DeleteConfirmModal, ContentEditModal } from '@/components/content';
+import { QuizActionButton, QuizToggleButton } from '@/components/quiz';
 import type { CreatorInfo, InteractionInfo, Category } from '@/types/feed.types';
+import type { QuizMetadataResponse } from '@/types/quiz.types';
 import type { BlockType } from '@/types/block.types';
 import type { RootStackParamList } from '@/types/navigation.types';
 
@@ -38,12 +41,14 @@ interface FeedOverlayProps {
   category: Category; // 수정 기능을 위한 카테고리
   tags: string[]; // 수정 기능을 위한 태그
   language?: string; // 수정 기능을 위한 언어 (기본값: 'ko')
+  quiz?: QuizMetadataResponse | null; // 퀴즈 메타데이터
   onLike?: () => void;
   onComment?: () => void;
   onSave?: () => void;
   onShare?: () => void;
   onFollow?: () => void;
   onCreatorPress?: () => void;
+  onQuizPress?: () => void; // 퀴즈 보기 버튼 클릭 시 호출
   onBlockSuccess?: () => void; // 차단 성공 시 호출
   onDeleteSuccess?: () => void; // 삭제 성공 시 호출
   onEditSuccess?: () => void; // 수정 성공 시 호출
@@ -101,12 +106,14 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   category,
   tags,
   language = 'ko',
+  quiz,
   onLike,
   onComment,
   onSave,
   onShare,
   onFollow,
   onCreatorPress,
+  onQuizPress,
   onBlockSuccess,
   onDeleteSuccess,
   onEditSuccess,
@@ -118,6 +125,9 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const navigation = useNavigation<NavigationProp>();
+
+  // Quiz store
+  const { isQuizAutoDisplayEnabled, toggleQuizAutoDisplay } = useQuizStore();
   const currentUser = useAuthStore((state) => state.user);
   const isLoading = isLoadingState(creator);
   const isOwnPost = !isLoading && currentUser && currentUser.id === creator.userId;
@@ -292,6 +302,21 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           }
         ]}
       >
+        {/* 오른쪽 상단: 퀴즈 버튼들 (퀴즈가 있는 경우에만 표시) */}
+        {quiz && onQuizPress && (
+          <View style={styles.quizButtonsContainer}>
+            <QuizActionButton
+              hasAttempted={quiz.hasAttempted}
+              onPress={onQuizPress}
+            />
+            <View style={{ width: 8 }} />
+            <QuizToggleButton
+              isEnabled={isQuizAutoDisplayEnabled}
+              onToggle={toggleQuizAutoDisplay}
+            />
+          </View>
+        )}
+
         <View style={styles.content}>
           {/* 좌측: 크리에이터 정보 + 콘텐츠 정보 */}
           <View style={styles.leftSection}>
@@ -561,6 +586,14 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 12,
     // paddingBottom은 동적으로 설정됨
+  },
+  quizButtonsContainer: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
   },
   content: {
     flexDirection: 'row',
