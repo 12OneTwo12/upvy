@@ -524,9 +524,8 @@ class ContentServiceImpl(
                         projections.associate { it.contentId to it.tags }
                     }
 
-                Mono.zip(photoUrlsMapMono, tagsMapMono)
-                    .map { tuple ->
-                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                Mono.zip(photoUrlsMapMono, tagsMapMono) { photoUrlsMap, tagsMap ->
+                        Triple(contentWithMetadataList, photoUrlsMap, tagsMap)
                     }
             }
             .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
@@ -614,9 +613,8 @@ class ContentServiceImpl(
                         projections.associate { it.contentId to it.tags }
                     }
 
-                Mono.zip(photoUrlsMapMono, tagsMapMono)
-                    .map { tuple ->
-                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                Mono.zip(photoUrlsMapMono, tagsMapMono) { photoUrlsMap, tagsMap ->
+                        Triple(contentWithMetadataList, photoUrlsMap, tagsMap)
                     }
             }
             .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
@@ -706,9 +704,8 @@ class ContentServiceImpl(
                         projections.associate { it.contentId to it.tags }
                     }
 
-                Mono.zip(photoUrlsMapMono, tagsMapMono)
-                    .map { tuple ->
-                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                Mono.zip(photoUrlsMapMono, tagsMapMono) { photoUrlsMap, tagsMap ->
+                        Triple(contentWithMetadataList, photoUrlsMap, tagsMap)
                     }
             }
             .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->

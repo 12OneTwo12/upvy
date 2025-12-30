@@ -103,8 +103,7 @@ class CommentServiceImpl(
                 Mono.zip(
                     contentInteractionService.incrementCommentCount(contentId).thenReturn(Unit),
                     userProfileRepository.findUserInfosByUserIds(setOf(userId))
-                ).map { tuple ->
-                    val userInfoMap = tuple.t2
+                ) { _, userInfoMap ->
                     val userInfo = userInfoMap[userId] ?: UserInfo("Unknown", null)
                     CommentResponse(
                         id = savedComment.id!!.toString(),

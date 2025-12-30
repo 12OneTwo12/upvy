@@ -232,9 +232,9 @@ class UserServiceImpl(
                 Mono.zip(
                     userRepository.updateStatus(userId, newStatus, changedBy),
                     userStatusHistoryRepository.save(history)
-                ).map { tuple ->
+                ) { updatedUser, _ ->
                     logger.info("User status changed: userId=$userId, ${user.status} → $newStatus")
-                    tuple.t1
+                    updatedUser
                 }
             }
     }
