@@ -179,15 +179,18 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
 
       // 퀴즈 생성
       if (addQuiz && quizQuestion.trim()) {
-        const validOptions = quizOptions.filter(opt => opt.trim());
+        const payloadOptions = quizOptions
+          .map((optionText, index) => ({
+            optionText: optionText.trim(),
+            displayOrder: index + 1,
+            isCorrect: correctOptionIndices.includes(index),
+          }))
+          .filter(opt => opt.optionText !== '');
+
         await createQuiz(contentId, {
           question: quizQuestion.trim(),
           allowMultipleAnswers,
-          options: validOptions.map((optionText, index) => ({
-            optionText,
-            displayOrder: index + 1,
-            isCorrect: correctOptionIndices.includes(quizOptions.indexOf(optionText)),
-          })),
+          options: payloadOptions,
         });
       }
 

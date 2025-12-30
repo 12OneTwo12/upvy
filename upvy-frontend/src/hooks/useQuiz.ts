@@ -120,7 +120,7 @@ export const useQuizStatsQuery = (quizId: string, enabled: boolean = true) => {
  * 퀴즈 조회와 시도 제출을 한 번에 사용할 수 있는 통합 Hook
  */
 export const useQuiz = (contentId: string, options?: UseQuizAttemptOptions) => {
-  const quizQuery = useQuizQuery(contentId);
+  const quizQuery = useQuizQuery(contentId, !!contentId);
   const quizId = quizQuery.data?.id;
 
   const attemptMutation = useQuizAttempt(quizId ?? '', contentId, options);
