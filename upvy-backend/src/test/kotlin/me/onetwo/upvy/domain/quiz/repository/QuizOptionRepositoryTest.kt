@@ -3,6 +3,7 @@ package me.onetwo.upvy.domain.quiz.repository
 import me.onetwo.upvy.domain.content.model.Content
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.repository.ContentRepository
+import me.onetwo.upvy.domain.quiz.exception.QuizException
 import me.onetwo.upvy.domain.quiz.model.Quiz
 import me.onetwo.upvy.domain.quiz.model.QuizOption
 import me.onetwo.upvy.domain.user.model.User
@@ -24,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import reactor.core.publisher.Mono
+import reactor.test.StepVerifier
 import java.util.UUID
 
 /**
@@ -278,18 +280,21 @@ class QuizOptionRepositoryTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("존재하지 않는 보기 ID로 조회하면, 빈 Mono를 반환한다")
-        fun findById_WhenOptionNotExists_ReturnsEmpty() {
-            // When: 존재하지 않는 ID로 조회
-            val foundOption = quizOptionRepository.findById(UUID.randomUUID()).block()
+        @DisplayName("존재하지 않는 보기 ID로 조회하면, 예외가 발생한다")
+        fun findById_WhenOptionNotExists_ThrowsException() {
+            // Given: 존재하지 않는 ID
+            val nonExistingId = UUID.randomUUID()
 
-            // Then: null 반환
-            assertThat(foundOption).isNull()
+            // When & Then: 예외 발생
+            val result = quizOptionRepository.findById(nonExistingId)
+            StepVerifier.create(result)
+                .expectError(QuizException.QuizOptionNotFoundException::class.java)
+                .verify()
         }
 
         @Test
-        @DisplayName("삭제된 보기 ID로 조회하면, 빈 Mono를 반환한다 (Soft Delete)")
-        fun findById_WhenOptionDeleted_ReturnsEmpty() {
+        @DisplayName("삭제된 보기 ID로 조회하면, 예외가 발생한다 (Soft Delete)")
+        fun findById_WhenOptionDeleted_ThrowsException() {
             // Given: 보기 저장 후 삭제
             val savedOption = quizOptionRepository.save(
                 QuizOption(
@@ -304,11 +309,11 @@ class QuizOptionRepositoryTest : AbstractIntegrationTest() {
 
             quizOptionRepository.deleteByQuizId(testQuiz.id!!, testUser.id!!).block()
 
-            // When: 삭제된 보기 ID로 조회
-            val foundOption = quizOptionRepository.findById(savedOption.id!!).block()
-
-            // Then: null 반환 (soft delete)
-            assertThat(foundOption).isNull()
+            // When & Then: 예외 발생 (soft delete)
+            val result = quizOptionRepository.findById(savedOption.id!!)
+            StepVerifier.create(result)
+                .expectError(QuizException.QuizOptionNotFoundException::class.java)
+                .verify()
         }
     }
 

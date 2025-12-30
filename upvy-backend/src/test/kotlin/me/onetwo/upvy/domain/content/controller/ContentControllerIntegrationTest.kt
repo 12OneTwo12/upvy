@@ -377,9 +377,10 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
                 .exchange()
                 .expectStatus().isNoContent
 
-            // Then: 소프트 삭제 확인 (findById는 삭제된 콘텐츠를 반환하지 않음)
-            val deletedContent = contentRepository.findById(content.id!!).block()
-            assertThat(deletedContent).isNull()
+            // Then: 소프트 삭제 확인 (findById는 삭제된 콘텐츠에 대해 예외를 발생시킴)
+            org.junit.jupiter.api.assertThrows<me.onetwo.upvy.domain.content.exception.ContentException.ContentNotFoundException> {
+                contentRepository.findById(content.id!!).block()
+            }
         }
 
         @Test

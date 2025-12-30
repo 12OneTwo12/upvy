@@ -61,7 +61,7 @@ abstract class AbstractIntegrationTest : BaseReactiveTest {
     protected lateinit var dslContext: DSLContext
 
     /**
-     * 각 테스트 실행 전에 데이터베이스의 모든 테이블 데이터를 정리합니다.
+     * 각 테스트 실행 전에 데이터베이스의 모든 데이터를 정리합니다.
      *
      * 테스트 간 데이터 격리를 보장하여 테스트 실행 순서에 관계없이
      * 독립적인 테스트 환경을 제공합니다.

@@ -10,6 +10,7 @@ import me.onetwo.upvy.domain.user.exception.UserNotFoundException
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.service.UserService
+import me.onetwo.upvy.infrastructure.redis.RefreshTokenRepository
 import me.onetwo.upvy.util.mockUser
 import me.onetwo.upvy.infrastructure.common.ApiPaths
 import me.onetwo.upvy.infrastructure.config.BaseReactiveTest
@@ -42,6 +43,9 @@ class UserControllerTest : BaseReactiveTest {
 
     @MockkBean
     private lateinit var userService: UserService
+
+    @MockkBean
+    private lateinit var refreshTokenRepository: RefreshTokenRepository
 
     private val testUserId = UUID.randomUUID()
     private val testUser = User(
@@ -139,6 +143,7 @@ class UserControllerTest : BaseReactiveTest {
     fun withdrawMe_Success() {
         // Given
         every { userService.withdrawUser(testUserId) } returns Mono.empty()
+        every { refreshTokenRepository.deleteByUserId(testUserId) } returns Mono.just(true)
         // When & Then
         webTestClient
             .mutateWith(mockUser(testUserId))
@@ -156,5 +161,6 @@ class UserControllerTest : BaseReactiveTest {
             )
 
         verify(exactly = 1) { userService.withdrawUser(testUserId) }
+        verify(exactly = 1) { refreshTokenRepository.deleteByUserId(testUserId) }
     }
 }

@@ -86,4 +86,24 @@ sealed class QuizException(message: String) : RuntimeException(message) {
      */
     class QuizAlreadyExistsException(contentId: String) :
         QuizException("Quiz already exists for content: $contentId")
+
+    /**
+     * 퀴즈 시도를 찾을 수 없는 경우
+     *
+     * HTTP 상태 코드: 404 Not Found
+     *
+     * @param attemptId 퀴즈 시도 ID
+     */
+    class QuizAttemptNotFoundException(attemptId: String) :
+        QuizException("Quiz attempt not found: $attemptId")
+
+    /**
+     * 퀴즈 옵션을 찾을 수 없는 경우
+     *
+     * HTTP 상태 코드: 404 Not Found
+     *
+     * @param optionId 퀴즈 옵션 ID
+     */
+    class QuizOptionNotFoundException(optionId: String) :
+        QuizException("Quiz option not found: $optionId")
 }

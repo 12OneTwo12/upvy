@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.quiz.repository
 
+import me.onetwo.upvy.domain.quiz.exception.QuizException.QuizAttemptNotFoundException
 import me.onetwo.upvy.domain.quiz.model.QuizAttempt
 import me.onetwo.upvy.jooq.generated.tables.references.QUIZ_ATTEMPTS
 import org.jooq.DSLContext
@@ -64,7 +65,7 @@ class QuizAttemptRepositoryImpl(
                 isCorrect = record.getValue(QUIZ_ATTEMPTS.IS_CORRECT)!!,
                 createdAt = record.getValue(QUIZ_ATTEMPTS.CREATED_AT)!!
             )
-        }
+        }.switchIfEmpty(Mono.error(QuizAttemptNotFoundException(attemptId.toString())))
     }
 
     override fun findByQuizIdAndUserId(quizId: UUID, userId: UUID): Flux<QuizAttempt> {

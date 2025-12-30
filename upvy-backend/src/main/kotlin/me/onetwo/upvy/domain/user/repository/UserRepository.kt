@@ -1,10 +1,11 @@
 package me.onetwo.upvy.domain.user.repository
 
-import me.onetwo.upvy.jooq.generated.tables.references.USERS
+import me.onetwo.upvy.domain.user.exception.UserNotFoundException
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.domain.user.model.UserStatus
 import me.onetwo.upvy.jooq.generated.tables.records.UsersRecord
+import me.onetwo.upvy.jooq.generated.tables.references.USERS
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
@@ -69,7 +70,9 @@ class UserRepository(
                 .where(USERS.EMAIL.eq(email))
                 .and(USERS.STATUS.ne(UserStatus.DELETED.name))
                 .and(USERS.DELETED_AT.isNull)
-        ).map { record -> mapToUser(record) }
+        )
+            .map { record -> mapToUser(record) }
+            .switchIfEmpty(Mono.error(UserNotFoundException("User not found with email: $email")))
     }
 
     /**
@@ -95,7 +98,9 @@ class UserRepository(
             )
                 .from(USERS)
                 .where(USERS.EMAIL.eq(email))
-        ).map { record -> mapToUser(record) }
+        )
+            .map { record -> mapToUser(record) }
+            .switchIfEmpty(Mono.error(UserNotFoundException("User not found with email (including deleted): $email")))
     }
 
     /**
@@ -121,7 +126,9 @@ class UserRepository(
                 .where(USERS.ID.eq(id.toString()))
                 .and(USERS.STATUS.ne(UserStatus.DELETED.name))
                 .and(USERS.DELETED_AT.isNull)
-        ).map { record -> mapToUser(record) }
+        )
+            .map { record -> mapToUser(record) }
+            .switchIfEmpty(Mono.error(UserNotFoundException("User not found with id: $id")))
     }
 
     /**
@@ -145,7 +152,9 @@ class UserRepository(
             )
                 .from(USERS)
                 .where(USERS.ID.eq(id.toString()))
-        ).map { record -> mapToUser(record) }
+        )
+            .map { record -> mapToUser(record) }
+            .switchIfEmpty(Mono.error(UserNotFoundException("User not found with id (including deleted): $id")))
     }
 
     /**

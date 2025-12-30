@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.tag.repository
 
+import me.onetwo.upvy.domain.tag.exception.TagNotFoundException
 import me.onetwo.upvy.domain.tag.model.ContentTagsProjection
 import me.onetwo.upvy.domain.tag.model.Tag
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_TAGS
@@ -76,7 +77,7 @@ class TagRepositoryImpl(
                 updatedBy = record.getValue(TAGS.UPDATED_BY),
                 deletedAt = record.getValue(TAGS.DELETED_AT)
             )
-        }
+        }.switchIfEmpty(Mono.error(TagNotFoundException("Tag not found with id: $tagId")))
     }
 
     override fun findByName(name: String): Mono<Tag> {
@@ -108,7 +109,7 @@ class TagRepositoryImpl(
                 updatedBy = record.getValue(TAGS.UPDATED_BY),
                 deletedAt = record.getValue(TAGS.DELETED_AT)
             )
-        }
+        }.switchIfEmpty(Mono.error(TagNotFoundException("Tag not found with name: $name")))
     }
 
     override fun findByNormalizedName(normalizedName: String): Mono<Tag> {
@@ -140,7 +141,7 @@ class TagRepositoryImpl(
                 updatedBy = record.getValue(TAGS.UPDATED_BY),
                 deletedAt = record.getValue(TAGS.DELETED_AT)
             )
-        }
+        }.switchIfEmpty(Mono.error(TagNotFoundException("Tag not found with normalizedName: $normalizedName")))
     }
 
     override fun findByNormalizedNames(normalizedNames: List<String>): Flux<Tag> {

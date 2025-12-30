@@ -2,6 +2,7 @@ package me.onetwo.upvy.domain.user.repository
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 
 import java.util.UUID
+import me.onetwo.upvy.domain.user.exception.UserNotFoundException
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserRole
 import me.onetwo.upvy.jooq.generated.tables.references.FOLLOWS
@@ -9,6 +10,7 @@ import me.onetwo.upvy.jooq.generated.tables.references.USER_PROFILES
 import me.onetwo.upvy.jooq.generated.tables.references.USERS
 import org.jooq.DSLContext
 import reactor.core.publisher.Mono
+import reactor.test.StepVerifier
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -83,10 +85,12 @@ class UserRepositoryTest : AbstractIntegrationTest() {
     @DisplayName("이메일로 사용자 조회 - 존재하지 않는 경우")
     fun findByEmail_NonExistingUser_ReturnsNull() {
         // When
-        val foundUser = userRepository.findByEmail("nonexistent@example.com").block()
+        val result = userRepository.findByEmail("nonexistent@example.com")
 
         // Then
-        assertNull(foundUser)
+        StepVerifier.create(result)
+            .expectError(UserNotFoundException::class.java)
+            .verify()
     }
 
     @Test
@@ -108,10 +112,12 @@ class UserRepositoryTest : AbstractIntegrationTest() {
     @DisplayName("ID로 사용자 조회 - 존재하지 않는 경우")
     fun findById_NonExistingUser_ReturnsNull() {
         // When
-        val foundUser = userRepository.findById(UUID.randomUUID()).block()
+        val result = userRepository.findById(UUID.randomUUID())
 
         // Then
-        assertNull(foundUser)
+        StepVerifier.create(result)
+            .expectError(UserNotFoundException::class.java)
+            .verify()
     }
 
     @Test

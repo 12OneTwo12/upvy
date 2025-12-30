@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.quiz.repository
 
+import me.onetwo.upvy.domain.quiz.exception.QuizException.QuizOptionNotFoundException
 import me.onetwo.upvy.domain.quiz.model.QuizOption
 import me.onetwo.upvy.jooq.generated.tables.references.QUIZ_OPTIONS
 import org.jooq.DSLContext
@@ -111,7 +112,7 @@ class QuizOptionRepositoryImpl(
                 updatedBy = record.getValue(QUIZ_OPTIONS.UPDATED_BY),
                 deletedAt = record.getValue(QUIZ_OPTIONS.DELETED_AT)
             )
-        }
+        }.switchIfEmpty(Mono.error(QuizOptionNotFoundException(optionId.toString())))
     }
 
     override fun findByIdIn(optionIds: List<UUID>): Flux<QuizOption> {

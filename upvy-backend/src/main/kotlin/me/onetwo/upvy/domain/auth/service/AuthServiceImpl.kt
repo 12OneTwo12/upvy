@@ -89,22 +89,23 @@ class AuthServiceImpl(
         val userId = jwtTokenProvider.getUserIdFromToken(refreshToken)
 
         // Redis에 저장된 Refresh Token과 비교
-        val storedRefreshToken = refreshTokenRepository.findByUserId(userId)
-            ?: return Mono.error(IllegalArgumentException("Refresh Token을 찾을 수 없습니다"))
-
-        if (storedRefreshToken != refreshToken) {
-            return Mono.error(IllegalArgumentException("Refresh Token이 일치하지 않습니다"))
-        }
-
-        // 사용자 정보 조회하고 새로운 Access Token 생성
-        return userService.getUserById(userId)
-            .map { user ->
-                val newAccessToken = jwtTokenProvider.generateAccessToken(
-                    userId = user.id!!,
-                    email = user.email,
-                    role = user.role
-                )
-                RefreshTokenResponse(accessToken = newAccessToken)
+        return refreshTokenRepository.findByUserId(userId)
+            .switchIfEmpty(Mono.error(IllegalArgumentException("Refresh Token을 찾을 수 없습니다")))
+            .flatMap { storedRefreshToken ->
+                if (storedRefreshToken != refreshToken) {
+                    Mono.error(IllegalArgumentException("Refresh Token이 일치하지 않습니다"))
+                } else {
+                    // 사용자 정보 조회하고 새로운 Access Token 생성
+                    userService.getUserById(userId)
+                        .map { user ->
+                            val newAccessToken = jwtTokenProvider.generateAccessToken(
+                                userId = user.id!!,
+                                email = user.email,
+                                role = user.role
+                            )
+                            RefreshTokenResponse(accessToken = newAccessToken)
+                        }
+                }
             }
     }
 
@@ -114,20 +115,22 @@ class AuthServiceImpl(
      * Redis에 저장된 Refresh Token을 삭제하여 로그아웃 처리합니다.
      *
      * @param refreshToken Refresh Token
+     * @return Mono<Void> 완료 신호
      * @throws IllegalArgumentException Refresh Token이 유효하지 않은 경우
      */
     @Transactional
-    override fun logout(refreshToken: String) {
+    override fun logout(refreshToken: String): Mono<Void> {
         // Refresh Token 유효성 검증
         if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw IllegalArgumentException("유효하지 않은 Refresh Token입니다")
+            return Mono.error(IllegalArgumentException("유효하지 않은 Refresh Token입니다"))
         }
 
         // Refresh Token에서 사용자 ID 추출
         val userId = jwtTokenProvider.getUserIdFromToken(refreshToken)
 
         // Redis에서 Refresh Token 삭제
-        refreshTokenRepository.deleteByUserId(userId)
+        return refreshTokenRepository.deleteByUserId(userId)
+            .then()
     }
 
     /**
@@ -136,21 +139,23 @@ class AuthServiceImpl(
      * Redis에 저장된 Refresh Token을 사용자 ID로 삭제하여 로그아웃 처리합니다.
      *
      * @param userId 사용자 ID
+     * @return Mono<Void> 완료 신호
      */
     @Transactional
-    override fun logoutByUserId(userId: UUID) {
+    override fun logoutByUserId(userId: UUID): Mono<Void> {
         // Redis에서 Refresh Token 삭제
-        refreshTokenRepository.deleteByUserId(userId)
-        logger.info("User logged out by userId: $userId")
+        return refreshTokenRepository.deleteByUserId(userId)
+            .doOnSuccess { logger.info("User logged out by userId: $userId") }
+            .then()
     }
 
     /**
      * 사용자 ID로 Refresh Token 조회
      *
      * @param userId 사용자 ID
-     * @return Refresh Token (존재하지 않으면 null)
+     * @return Refresh Token (존재하지 않으면 empty Mono)
      */
-    override fun getRefreshTokenByUserId(userId: UUID): String? {
+    override fun getRefreshTokenByUserId(userId: UUID): Mono<String> {
         return refreshTokenRepository.findByUserId(userId)
     }
 
@@ -307,43 +312,68 @@ class AuthServiceImpl(
      */
     @Transactional
     override fun verifyEmailCode(email: String, code: String): Mono<EmailVerifyResponse> {
+        return validateVerificationCode(email, code)
+            .flatMap { validated -> markEmailAsVerified(validated) }
+            .flatMap { user -> cleanupAndGenerateTokens(user) }
+            .doOnSuccess { logger.info("Email verification completed via code for user: ${it.userId}, email: ${it.email}") }
+    }
+
+    /**
+     * 검증된 이메일 인증 정보를 담는 데이터 클래스
+     */
+    private data class ValidatedVerification(
+        val user: User,
+        val token: EmailVerificationToken,
+        val authMethod: UserAuthenticationMethod
+    )
+
+    /**
+     * 이메일 인증 코드 검증
+     *
+     * @param email 이메일 주소
+     * @param code 인증 코드
+     * @return 검증된 인증 정보
+     */
+    private fun validateVerificationCode(email: String, code: String): Mono<ValidatedVerification> {
         return userRepository.findByEmail(email)
             .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
             .flatMap { user ->
-                // 사용자 ID + 코드로 인증 토큰 조회
                 emailVerificationTokenRepository.findByUserIdAndToken(user.id!!, code)
                     .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
-                    .flatMap { verificationToken ->
-                        // 코드 만료 여부 확인
-                        if (verificationToken.isExpired()) {
-                            return@flatMap Mono.error<EmailVerifyResponse>(TokenExpiredException())
+                    .handle { token, sink ->
+                        when {
+                            token.isExpired() -> sink.error(TokenExpiredException())
+                            !token.isValid() -> sink.error(InvalidVerificationTokenException())
+                            else -> sink.next(token)
                         }
-
-                        // 코드 유효성 확인
-                        if (!verificationToken.isValid()) {
-                            return@flatMap Mono.error<EmailVerifyResponse>(InvalidVerificationTokenException())
-                        }
-
-                        // EMAIL 인증 수단 조회 및 업데이트
-                        authMethodRepository.findByUserIdAndProvider(user.id!!, OAuthProvider.EMAIL)
-                            .flatMap { authMethod ->
-                                authMethodRepository.updateEmailVerified(authMethod.id!!, verified = true)
-                                    .then(Mono.defer {
-                                        // 사용된 코드 무효화
-                                        emailVerificationTokenRepository.softDeleteAllByUserId(user.id)
-                                            .then(Mono.defer {
-                                                // JWT 토큰 발급 및 EmailVerifyResponse 생성
-                                                generateTokensAndResponse(user)
-                                                    .doOnSuccess {
-                                                        logger.info(
-                                                            "Email verification completed via code for user: ${user.id}, email: ${user.email}"
-                                                        )
-                                                    }
-                                            })
-                                    })
-                            }
+                    }
+                    .flatMap { token ->
+                        authMethodRepository.findByUserIdAndProvider(user.id, OAuthProvider.EMAIL)
+                            .map { authMethod -> ValidatedVerification(user, token, authMethod) }
                     }
             }
+    }
+
+    /**
+     * 이메일 인증 완료 처리
+     *
+     * @param validated 검증된 인증 정보
+     * @return 사용자
+     */
+    private fun markEmailAsVerified(validated: ValidatedVerification): Mono<User> {
+        return authMethodRepository.updateEmailVerified(validated.authMethod.id!!, verified = true)
+            .thenReturn(validated.user)
+    }
+
+    /**
+     * 인증 코드 무효화 및 JWT 토큰 발급
+     *
+     * @param user 사용자
+     * @return JWT 토큰과 사용자 정보
+     */
+    private fun cleanupAndGenerateTokens(user: User): Mono<EmailVerifyResponse> {
+        return emailVerificationTokenRepository.softDeleteAllByUserId(user.id!!)
+            .then(generateTokensAndResponse(user))
     }
 
     /**
@@ -474,9 +504,8 @@ class AuthServiceImpl(
         )
 
         // Redis에 Refresh Token 저장
-        refreshTokenRepository.save(user.id!!, jwtTokens.refreshToken)
-
-        return Mono.just(jwtTokens)
+        return refreshTokenRepository.save(user.id!!, jwtTokens.refreshToken)
+            .thenReturn(jwtTokens)
     }
 
     /**
@@ -664,40 +693,61 @@ class AuthServiceImpl(
      */
     @Transactional
     override fun resetPasswordConfirm(email: String, code: String, newPassword: String): Mono<Void> {
+        return validatePasswordResetCode(email, code)
+            .flatMap { validated -> updatePasswordAndCleanup(validated, newPassword) }
+            .doOnSuccess { logger.info("Password reset successful for user: ${it.user.id}, email: ${it.user.email}") }
+            .then()
+    }
+
+    /**
+     * 검증된 비밀번호 재설정 정보를 담는 데이터 클래스
+     */
+    private data class ValidatedPasswordReset(
+        val user: User,
+        val token: EmailVerificationToken,
+        val authMethod: UserAuthenticationMethod
+    )
+
+    /**
+     * 비밀번호 재설정 코드 검증
+     *
+     * @param email 이메일 주소
+     * @param code 인증 코드
+     * @return 검증된 비밀번호 재설정 정보
+     */
+    private fun validatePasswordResetCode(email: String, code: String): Mono<ValidatedPasswordReset> {
         return userRepository.findByEmail(email)
             .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
             .flatMap { user ->
-                // 사용자 ID + 코드로 인증 토큰 조회
                 emailVerificationTokenRepository.findByUserIdAndToken(user.id!!, code)
                     .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
-                    .flatMap { verificationToken ->
-                        // 코드 만료 여부 확인
-                        if (verificationToken.isExpired()) {
-                            return@flatMap Mono.error<Void>(TokenExpiredException())
+                    .handle { token, sink ->
+                        when {
+                            token.isExpired() -> sink.error(TokenExpiredException())
+                            !token.isValid() -> sink.error(InvalidVerificationTokenException())
+                            else -> sink.next(token)
                         }
-
-                        // 코드 유효성 확인
-                        if (!verificationToken.isValid()) {
-                            return@flatMap Mono.error<Void>(InvalidVerificationTokenException())
-                        }
-
-                        // EMAIL 인증 수단 조회
+                    }
+                    .flatMap { token ->
                         authMethodRepository.findByUserIdAndProvider(user.id, OAuthProvider.EMAIL)
                             .switchIfEmpty(Mono.error(OAuthOnlyUserException()))
-                            .flatMap { authMethod ->
-                                // 새 비밀번호로 업데이트 (BCrypt 암호화)
-                                val encodedPassword = passwordEncoder.encode(newPassword)
-                                authMethodRepository.updatePassword(authMethod.id!!, encodedPassword)
-                                    .then(
-                                        // 사용된 코드 무효화
-                                        emailVerificationTokenRepository.softDelete(verificationToken.id!!)
-                                    )
-                                    .doOnSuccess {
-                                        logger.info("Password reset successful for user: ${user.id}, email: ${user.email}")
-                                    }
-                            }
+                            .map { authMethod -> ValidatedPasswordReset(user, token, authMethod) }
                     }
             }
+    }
+
+    /**
+     * 비밀번호 업데이트 및 코드 무효화
+     *
+     * @param validated 검증된 비밀번호 재설정 정보
+     * @param newPassword 새 비밀번호
+     * @return 검증된 비밀번호 재설정 정보
+     */
+    private fun updatePasswordAndCleanup(validated: ValidatedPasswordReset, newPassword: String): Mono<ValidatedPasswordReset> {
+        val encodedPassword = passwordEncoder.encode(newPassword)
+        return authMethodRepository.updatePassword(validated.authMethod.id!!, encodedPassword)
+            .then(emailVerificationTokenRepository.softDelete(validated.token.id!!))
+            .thenReturn(validated)
     }
 
     /**

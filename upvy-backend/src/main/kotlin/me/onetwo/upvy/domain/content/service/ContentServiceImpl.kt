@@ -69,6 +69,48 @@ class ContentServiceImpl(
     private val logger = LoggerFactory.getLogger(ContentServiceImpl::class.java)
 
     /**
+     * 콘텐츠 생성을 위한 준비 데이터
+     */
+    private data class PreparedContent(
+        val content: Content,
+        val metadata: ContentMetadata,
+        val contentType: ContentType
+    )
+
+    /**
+     * 저장된 콘텐츠와 메타데이터
+     */
+    private data class SavedContent(
+        val content: Content,
+        val metadata: ContentMetadata,
+        val contentType: ContentType
+    )
+
+    /**
+     * 콘텐츠 생성 결과
+     */
+    private data class FinalizedContent(
+        val content: Content,
+        val metadata: ContentMetadata,
+        val contentId: UUID
+    )
+
+    /**
+     * 인터랙션 집계 데이터
+     *
+     * 7-tuple 사용을 피하고 가독성을 높이기 위한 WebFlux Best Practice 적용
+     */
+    private data class InteractionData(
+        val likeCount: Int,
+        val commentCount: Int,
+        val saveCount: Int,
+        val shareCount: Int,
+        val viewCount: Int,
+        val isLiked: Boolean,
+        val isSaved: Boolean
+    )
+
+    /**
      * S3 Presigned URL을 생성합니다.
      *
      * 클라이언트가 S3에 직접 파일을 업로드할 수 있도록 Presigned URL을 발급합니다.
@@ -118,6 +160,42 @@ class ContentServiceImpl(
     ): Mono<ContentResponse> {
         logger.info("Creating content: userId=$userId, contentId=${request.contentId}")
 
+        return validateAndPrepareContent(userId, request)
+            .flatMap { prepared -> saveContentAndMetadata(prepared) }
+            .flatMap { saved -> attachTagsIfNeeded(saved, request, userId) }
+            .flatMap { saved -> savePhotosIfNeeded(saved, request, userId) }
+            .flatMap { saved -> finalizeContentCreation(saved, request, userId) }
+            .map { result -> buildContentResponse(result, request) }
+            .doOnSuccess { response ->
+                eventPublisher.publish(
+                    ContentCreatedEvent(
+                        contentId = UUID.fromString(response.id),
+                        creatorId = userId
+                    )
+                )
+                logger.info("Content created successfully: contentId=${response.id}")
+            }
+            .doOnError { error ->
+                logger.error("Failed to create content: userId=$userId, contentId=${request.contentId}", error)
+            }
+    }
+
+    /**
+     * 콘텐츠 생성 전 검증 및 준비
+     *
+     * 1. Redis에서 업로드 세션 조회
+     * 2. 권한 확인
+     * 3. S3 파일 존재 확인
+     * 4. Content 및 ContentMetadata 엔티티 생성
+     *
+     * @param userId 사용자 ID
+     * @param request 콘텐츠 생성 요청
+     * @return 준비된 콘텐츠 데이터
+     */
+    private fun validateAndPrepareContent(
+        userId: UUID,
+        request: ContentCreateRequest
+    ): Mono<PreparedContent> {
         return Mono.fromCallable {
             val contentId = UUID.fromString(request.contentId)
             val now = Instant.now()
@@ -173,122 +251,176 @@ class ContentServiceImpl(
                 updatedBy = userId.toString()
             )
 
-            Triple(content, metadata, uploadSession.contentType)
-        }.flatMap { (content, metadata, contentType) ->
-            // Save content and metadata reactively
-            contentRepository.save(content)
-                .switchIfEmpty(Mono.error(IllegalStateException("Failed to save content")))
-                .flatMap { savedContent ->
-                    contentRepository.saveMetadata(metadata)
-                        .switchIfEmpty(Mono.error(IllegalStateException("Failed to save content metadata")))
-                        .flatMap { savedMetadata ->
-                            // Tags 연결 (tags가 있는 경우에만)
-                            if (!request.tags.isNullOrEmpty()) {
-                                tagService.attachTagsToContent(
-                                    contentId = savedContent.id!!,
-                                    tagNames = request.tags!!,
-                                    userId = userId.toString()
-                                )
-                                    .collectList()
-                                    .doOnSuccess { tags ->
-                                        logger.info("Tags attached: contentId=${savedContent.id}, tags=${tags.map { it.name }}")
-                                    }
-                                    .map { Triple(savedContent, savedMetadata, contentType) }
-                            } else {
-                                Mono.just(Triple(savedContent, savedMetadata, contentType))
-                            }
-                        }
-                }
-        }.flatMap { (savedContent, savedMetadata, contentType) ->
-            // 6. PHOTO 타입인 경우 사진 목록 저장
-            val photoSaveMono = if (contentType == ContentType.PHOTO && !request.photoUrls.isNullOrEmpty()) {
-                Flux.fromIterable(request.photoUrls.mapIndexed { index, photoUrl ->
-                    ContentPhoto(
-                        contentId = savedContent.id!!,
-                        photoUrl = photoUrl,
-                        displayOrder = index,
-                        width = request.width,
-                        height = request.height,
-                        createdAt = savedContent.createdAt,
-                        createdBy = userId.toString(),
-                        updatedAt = savedContent.updatedAt,
-                        updatedBy = userId.toString()
-                    )
-                })
-                .flatMap { photo ->
-                    contentPhotoRepository.save(photo)
-                        .onErrorMap { IllegalStateException("Failed to save content photo: ${it.message}") }
-                }
-                .then()
-                .doOnSuccess {
-                    logger.info("Content photos saved: contentId=${savedContent.id}, count=${request.photoUrls.size}")
-                }
-            } else {
-                Mono.empty()
-            }
+            PreparedContent(
+                content = content,
+                metadata = metadata,
+                contentType = uploadSession.contentType
+            )
+        }
+    }
 
-            photoSaveMono
-                .then(contentInteractionService.createContentInteraction(savedContent.id!!, userId))
-                .then(
-                    Mono.fromCallable {
-                        // 7. Redis에서 업로드 세션 삭제 (1회성 토큰)
-                        uploadSessionRepository.deleteById(request.contentId)
-                        logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
-
-                        ContentCreationResult(
+    /**
+     * Content와 ContentMetadata를 DB에 저장
+     *
+     * @param prepared 준비된 콘텐츠 데이터
+     * @return 저장된 콘텐츠와 메타데이터
+     */
+    private fun saveContentAndMetadata(
+        prepared: PreparedContent
+    ): Mono<SavedContent> {
+        return contentRepository.save(prepared.content)
+            .switchIfEmpty(Mono.error(IllegalStateException("Failed to save content")))
+            .flatMap { savedContent ->
+                contentRepository.saveMetadata(prepared.metadata)
+                    .switchIfEmpty(Mono.error(IllegalStateException("Failed to save content metadata")))
+                    .map { savedMetadata ->
+                        SavedContent(
                             content = savedContent,
                             metadata = savedMetadata,
-                            contentId = savedContent.id!!
+                            contentType = prepared.contentType
                         )
                     }
-                )
-        }.map { result ->
-            // PHOTO 타입인 경우 사진 목록 (이미 저장된 request.photoUrls 사용)
-            val photoUrls = if (result.content.contentType == ContentType.PHOTO) {
-                request.photoUrls
-            } else {
-                null
             }
+    }
 
-            val response = ContentResponse(
-                id = result.content.id.toString(),
-                creatorId = result.content.creatorId.toString(),
-                contentType = result.content.contentType,
-                url = result.content.url,
-                photoUrls = photoUrls,
-                thumbnailUrl = result.content.thumbnailUrl,
-                duration = result.content.duration,
-                width = result.content.width,
-                height = result.content.height,
-                status = result.content.status,
-                title = result.metadata.title,
-                description = result.metadata.description,
-                category = result.metadata.category,
-                tags = result.metadata.tags,
-                language = result.metadata.language,
-                createdAt = result.content.createdAt,
-                updatedAt = result.content.updatedAt
-            )
-
-            ContentResponseWithMetadata(
-                response = response,
-                contentId = result.contentId
-            )
-        }.doOnSuccess { result ->
-            logger.info("Content created successfully: contentId=${result.response.id}")
-
-            eventPublisher.publish(
-                ContentCreatedEvent(
-                    contentId = result.contentId,
-                    creatorId = userId
-                )
-            )
-            logger.info("ContentCreatedEvent published: contentId=${result.contentId}")
-        }.map { result ->
-            result.response
-        }.doOnError { error ->
-            logger.error("Failed to create content: userId=$userId, contentId=${request.contentId}", error)
+    /**
+     * 태그 연결 (tags가 있는 경우에만)
+     *
+     * @param saved 저장된 콘텐츠
+     * @param request 콘텐츠 생성 요청
+     * @param userId 사용자 ID
+     * @return 저장된 콘텐츠 (변경 없음)
+     */
+    private fun attachTagsIfNeeded(
+        saved: SavedContent,
+        request: ContentCreateRequest,
+        userId: UUID
+    ): Mono<SavedContent> {
+        if (request.tags.isNullOrEmpty()) {
+            return Mono.just(saved)
         }
+
+        return tagService.attachTagsToContent(
+            contentId = saved.content.id!!,
+            tagNames = request.tags!!,
+            userId = userId.toString()
+        )
+            .collectList()
+            .doOnSuccess { tags ->
+                logger.info("Tags attached: contentId=${saved.content.id}, tags=${tags.map { it.name }}")
+            }
+            .thenReturn(saved)
+    }
+
+    /**
+     * PHOTO 타입인 경우 사진 목록 저장
+     *
+     * @param saved 저장된 콘텐츠
+     * @param request 콘텐츠 생성 요청
+     * @param userId 사용자 ID
+     * @return 저장된 콘텐츠 (변경 없음)
+     */
+    private fun savePhotosIfNeeded(
+        saved: SavedContent,
+        request: ContentCreateRequest,
+        userId: UUID
+    ): Mono<SavedContent> {
+        if (saved.contentType != ContentType.PHOTO || request.photoUrls.isNullOrEmpty()) {
+            return Mono.just(saved)
+        }
+
+        return Flux.fromIterable(request.photoUrls.mapIndexed { index, photoUrl ->
+            ContentPhoto(
+                contentId = saved.content.id!!,
+                photoUrl = photoUrl,
+                displayOrder = index,
+                width = request.width,
+                height = request.height,
+                createdAt = saved.content.createdAt,
+                createdBy = userId.toString(),
+                updatedAt = saved.content.updatedAt,
+                updatedBy = userId.toString()
+            )
+        })
+            .flatMap { photo ->
+                contentPhotoRepository.save(photo)
+                    .onErrorMap { IllegalStateException("Failed to save content photo: ${it.message}") }
+            }
+            .then()
+            .doOnSuccess {
+                logger.info("Content photos saved: contentId=${saved.content.id}, count=${request.photoUrls.size}")
+            }
+            .thenReturn(saved)
+    }
+
+    /**
+     * 콘텐츠 생성 마무리
+     *
+     * 1. ContentInteraction 생성
+     * 2. Redis 업로드 세션 삭제
+     *
+     * @param saved 저장된 콘텐츠
+     * @param request 콘텐츠 생성 요청
+     * @param userId 사용자 ID
+     * @return 최종 콘텐츠 생성 결과
+     */
+    private fun finalizeContentCreation(
+        saved: SavedContent,
+        request: ContentCreateRequest,
+        userId: UUID
+    ): Mono<FinalizedContent> {
+        return contentInteractionService.createContentInteraction(saved.content.id!!, userId)
+            .then(
+                Mono.fromCallable {
+                    // Redis에서 업로드 세션 삭제 (1회성 토큰)
+                    uploadSessionRepository.deleteById(request.contentId)
+                    logger.info("Upload session deleted from Redis: contentId=${request.contentId}")
+
+                    FinalizedContent(
+                        content = saved.content,
+                        metadata = saved.metadata,
+                        contentId = saved.content.id!!
+                    )
+                }
+            )
+    }
+
+    /**
+     * ContentResponse 생성
+     *
+     * @param result 최종 콘텐츠 생성 결과
+     * @param request 콘텐츠 생성 요청
+     * @return ContentResponse
+     */
+    private fun buildContentResponse(
+        result: FinalizedContent,
+        request: ContentCreateRequest
+    ): ContentResponse {
+        val photoUrls = if (result.content.contentType == ContentType.PHOTO) {
+            request.photoUrls
+        } else {
+            null
+        }
+
+        return ContentResponse(
+            id = result.content.id.toString(),
+            creatorId = result.content.creatorId.toString(),
+            contentType = result.content.contentType,
+            url = result.content.url,
+            photoUrls = photoUrls,
+            thumbnailUrl = result.content.thumbnailUrl,
+            duration = result.content.duration,
+            width = result.content.width,
+            height = result.content.height,
+            status = result.content.status,
+            title = result.metadata.title,
+            description = result.metadata.description,
+            category = result.metadata.category,
+            tags = result.metadata.tags,
+            language = result.metadata.language,
+            createdAt = result.content.createdAt,
+            updatedAt = result.content.updatedAt
+        )
     }
 
     /**
@@ -301,14 +433,15 @@ class ContentServiceImpl(
     override fun getContent(contentId: UUID, userId: UUID?): Mono<ContentResponse> {
         logger.info("Getting content: contentId=$contentId, userId=$userId")
 
-        return contentRepository.findById(contentId)
-            .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId")))
-            .flatMap { content ->
-                contentRepository.findMetadataByContentId(contentId)
-                    .switchIfEmpty(Mono.error(NoSuchElementException("Content metadata not found: $contentId")))
-                    .map { metadata -> content to metadata }
-            }
-            .flatMap { (content, metadata) ->
+        // Parallel fetch: content와 metadata를 동시에 조회하여 성능 향상
+        return Mono.zip(
+            contentRepository.findById(contentId)
+                .switchIfEmpty(Mono.error(NoSuchElementException("Content not found: $contentId"))),
+            contentRepository.findMetadataByContentId(contentId)
+                .switchIfEmpty(Mono.error(NoSuchElementException("Content metadata not found: $contentId")))
+        ) { content, metadata ->
+            content to metadata
+        }.flatMap { (content, metadata) ->
                 // PHOTO 타입인 경우 사진 목록 조회, 아니면 null 반환
                 val photoUrlsMono = if (content.contentType == ContentType.PHOTO) {
                     contentPhotoRepository.findByContentId(content.id!!)
@@ -390,9 +523,8 @@ class ContentServiceImpl(
                         projections.associate { it.contentId to it.tags }
                     }
 
-                Mono.zip(photoUrlsMapMono, tagsMapMono)
-                    .map { tuple ->
-                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                Mono.zip(photoUrlsMapMono, tagsMapMono) { photoUrlsMap, tagsMap ->
+                        Triple(contentWithMetadataList, photoUrlsMap, tagsMap)
                     }
             }
             .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
@@ -480,9 +612,8 @@ class ContentServiceImpl(
                         projections.associate { it.contentId to it.tags }
                     }
 
-                Mono.zip(photoUrlsMapMono, tagsMapMono)
-                    .map { tuple ->
-                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                Mono.zip(photoUrlsMapMono, tagsMapMono) { photoUrlsMap, tagsMap ->
+                        Triple(contentWithMetadataList, photoUrlsMap, tagsMap)
                     }
             }
             .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
@@ -572,9 +703,8 @@ class ContentServiceImpl(
                         projections.associate { it.contentId to it.tags }
                     }
 
-                Mono.zip(photoUrlsMapMono, tagsMapMono)
-                    .map { tuple ->
-                        Triple(contentWithMetadataList, tuple.t1, tuple.t2)
+                Mono.zip(photoUrlsMapMono, tagsMapMono) { photoUrlsMap, tagsMap ->
+                        Triple(contentWithMetadataList, photoUrlsMap, tagsMap)
                     }
             }
             .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
@@ -867,7 +997,7 @@ class ContentServiceImpl(
             isLikedMono,
             isSavedMono
         ).map { tuple ->
-            InteractionInfoResponse(
+            val data = InteractionData(
                 likeCount = tuple.t1,
                 commentCount = tuple.t2,
                 saveCount = tuple.t3,
@@ -875,6 +1005,15 @@ class ContentServiceImpl(
                 viewCount = tuple.t5,
                 isLiked = tuple.t6,
                 isSaved = tuple.t7
+            )
+            InteractionInfoResponse(
+                likeCount = data.likeCount,
+                commentCount = data.commentCount,
+                saveCount = data.saveCount,
+                shareCount = data.shareCount,
+                viewCount = data.viewCount,
+                isLiked = data.isLiked,
+                isSaved = data.isSaved
             )
         }
     }

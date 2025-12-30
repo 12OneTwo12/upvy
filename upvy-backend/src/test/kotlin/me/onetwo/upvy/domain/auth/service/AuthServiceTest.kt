@@ -81,7 +81,7 @@ class AuthServiceTest : BaseReactiveTest {
 
         every { jwtTokenProvider.validateToken(refreshToken) } returns true
         every { jwtTokenProvider.getUserIdFromToken(refreshToken) } returns testUserId
-        every { refreshTokenRepository.findByUserId(testUserId) } returns refreshToken
+        every { refreshTokenRepository.findByUserId(testUserId) } returns Mono.just(refreshToken)
         every { userService.getUserById(testUserId) } returns Mono.just(testUser)
         every {
             jwtTokenProvider.generateAccessToken(testUserId, testUser.email, testUser.role)
@@ -129,7 +129,7 @@ class AuthServiceTest : BaseReactiveTest {
 
         every { jwtTokenProvider.validateToken(refreshToken) } returns true
         every { jwtTokenProvider.getUserIdFromToken(refreshToken) } returns testUserId
-        every { refreshTokenRepository.findByUserId(testUserId) } returns null
+        every { refreshTokenRepository.findByUserId(testUserId) } returns Mono.empty()
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
@@ -151,7 +151,7 @@ class AuthServiceTest : BaseReactiveTest {
 
         every { jwtTokenProvider.validateToken(requestToken) } returns true
         every { jwtTokenProvider.getUserIdFromToken(requestToken) } returns testUserId
-        every { refreshTokenRepository.findByUserId(testUserId) } returns storedToken
+        every { refreshTokenRepository.findByUserId(testUserId) } returns Mono.just(storedToken)
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
@@ -172,10 +172,10 @@ class AuthServiceTest : BaseReactiveTest {
 
         every { jwtTokenProvider.validateToken(refreshToken) } returns true
         every { jwtTokenProvider.getUserIdFromToken(refreshToken) } returns testUserId
-        every { refreshTokenRepository.deleteByUserId(testUserId) } returns Unit
+        every { refreshTokenRepository.deleteByUserId(testUserId) } returns Mono.just(true)
 
         // When
-        authService.logout(refreshToken)
+        authService.logout(refreshToken).block()
 
         // Then
         verify(exactly = 1) { jwtTokenProvider.validateToken(refreshToken) }
@@ -193,7 +193,7 @@ class AuthServiceTest : BaseReactiveTest {
 
         // When & Then
         val exception = assertThrows<IllegalArgumentException> {
-            authService.logout(invalidToken)
+            authService.logout(invalidToken).block()
         }
 
         assertEquals("유효하지 않은 Refresh Token입니다", exception.message)
@@ -208,10 +208,10 @@ class AuthServiceTest : BaseReactiveTest {
         // Given
         val expectedToken = "stored-refresh-token"
 
-        every { refreshTokenRepository.findByUserId(testUserId) } returns expectedToken
+        every { refreshTokenRepository.findByUserId(testUserId) } returns Mono.just(expectedToken)
 
         // When
-        val result = authService.getRefreshTokenByUserId(testUserId)
+        val result = authService.getRefreshTokenByUserId(testUserId).block()
 
         // Then
         assertEquals(expectedToken, result)
@@ -222,10 +222,10 @@ class AuthServiceTest : BaseReactiveTest {
     @DisplayName("사용자 ID로 Refresh Token 조회 - 토큰 없음")
     fun getRefreshTokenByUserId_NoToken_ReturnsNull() {
         // Given
-        every { refreshTokenRepository.findByUserId(testUserId) } returns null
+        every { refreshTokenRepository.findByUserId(testUserId) } returns Mono.empty()
 
         // When
-        val result = authService.getRefreshTokenByUserId(testUserId)
+        val result = authService.getRefreshTokenByUserId(testUserId).block()
 
         // Then
         assertEquals(null, result)
