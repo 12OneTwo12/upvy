@@ -21,7 +21,9 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
+import { QuizToggleButton } from '@/components/quiz';
 import { useFeed } from '@/hooks/useFeed';
+import { useQuizStore } from '@/stores/quizStore';
 import type { FeedTab, FeedItem as FeedItemType } from '@/types/feed.types';
 
 export default function FeedScreen() {
@@ -30,6 +32,9 @@ export default function FeedScreen() {
   const queryClient = useQueryClient();
   const navigation = useNavigation();
   const isScreenFocused = useIsFocused();
+
+  // Quiz store
+  const { isQuizAutoDisplayEnabled, toggleQuizAutoDisplay } = useQuizStore();
 
   // 피드 타입 결정
   const feedType = currentTab === 'recommended' ? 'main' : 'following';
@@ -230,6 +235,20 @@ export default function FeedScreen() {
             {t('tabs.forYou')}
           </Text>
         </TouchableOpacity>
+
+        {/* Quiz Toggle Button */}
+        <View
+          style={{
+            position: 'absolute',
+            right: 16,
+            pointerEvents: 'auto',
+          }}
+        >
+          <QuizToggleButton
+            isEnabled={isQuizAutoDisplayEnabled}
+            onToggle={toggleQuizAutoDisplay}
+          />
+        </View>
       </View>
 
       {/* Pull-to-Refresh 인디케이터 */}
