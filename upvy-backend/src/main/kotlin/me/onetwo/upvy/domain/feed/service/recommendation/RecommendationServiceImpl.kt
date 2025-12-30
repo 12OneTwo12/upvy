@@ -37,6 +37,20 @@ class RecommendationServiceImpl(
     private val collaborativeFilteringService: CollaborativeFilteringService
 ) : RecommendationService {
 
+    private val logger = LoggerFactory.getLogger(RecommendationServiceImpl::class.java)
+
+    /**
+     * 추천 전략별 결과를 저장하는 Data Class
+     */
+    private data class StrategyResults(
+        val collaborative: List<UUID>,
+        val popular: List<UUID>,
+        val new: List<UUID>,
+        val random: List<UUID>
+    ) {
+        fun allIds(): List<UUID> = collaborative + popular + new + random
+    }
+
     /**
      * 추천 콘텐츠 ID 목록 조회
      *
@@ -124,10 +138,11 @@ class RecommendationServiceImpl(
                 excludeCategory
             ).collectList()
         ).map { tuple ->
+            StrategyResults(tuple.t1, tuple.t2, tuple.t3, tuple.t4)
+        }.map { results ->
             // 모든 전략 결과를 합친 후 중복 제거 (Issue #149)
             // LinkedHashSet을 사용하여 순서를 유지하면서 중복 제거
-            val allIds = (tuple.t1 + tuple.t2 + tuple.t3 + tuple.t4)
-            val uniqueIds = LinkedHashSet(allIds)
+            val uniqueIds = LinkedHashSet(results.allIds())
 
             // 중복 제거 후 필요한 개수만큼만 반환하고 섞기
             uniqueIds.take(limit).shuffled()

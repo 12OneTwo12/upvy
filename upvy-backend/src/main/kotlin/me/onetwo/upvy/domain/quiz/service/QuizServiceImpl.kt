@@ -37,6 +37,25 @@ class QuizServiceImpl(
 
     private val logger = LoggerFactory.getLogger(QuizServiceImpl::class.java)
 
+    /**
+     * 퀴즈 상세 조회 시 필요한 데이터를 저장하는 Data Class
+     */
+    private data class QuizDetailsData(
+        val options: List<QuizOption>,
+        val totalAttempts: Int,
+        val userAttemptCount: Int,
+        val hasAttempted: Boolean
+    )
+
+    /**
+     * 퀴즈 통계 조회 시 필요한 데이터를 저장하는 Data Class
+     */
+    private data class QuizStatsData(
+        val totalAttempts: Int,
+        val uniqueUsers: Int,
+        val options: List<QuizOption>
+    )
+
     override fun createQuiz(contentId: UUID, request: QuizCreateRequest, createdBy: UUID): Mono<QuizResponse> {
         logger.info("Creating quiz for contentId=$contentId")
 
@@ -127,14 +146,12 @@ class QuizServiceImpl(
                 }
 
                 Mono.zip(optionsMono, totalAttemptsMono, userAttemptCountMono, hasAttemptedMono)
-                    .flatMap { tuple ->
-                        val options = tuple.t1
-                        val totalAttempts = tuple.t2
-                        val userAttemptCount = tuple.t3
-                        val hasAttempted = tuple.t4
-
+                    .map { tuple ->
+                        QuizDetailsData(tuple.t1, tuple.t2, tuple.t3, tuple.t4)
+                    }
+                    .flatMap { data ->
                         // 각 보기별 선택 횟수 계산 (최적화된 GROUP BY 쿼리 사용)
-                        calculateOptionStats(quizId, options, totalAttempts)
+                        calculateOptionStats(quizId, data.options, data.totalAttempts)
                             .map { optionResponses ->
                                 QuizResponse(
                                     id = quizId.toString(),
@@ -143,14 +160,14 @@ class QuizServiceImpl(
                                     allowMultipleAnswers = quiz.allowMultipleAnswers,
                                     options = optionResponses.map { optionResponse ->
                                         // 사용자가 이미 시도했으면 정답 공개, 아니면 숨김
-                                        if (hasAttempted) {
+                                        if (data.hasAttempted) {
                                             optionResponse
                                         } else {
                                             optionResponse.copy(isCorrect = null)
                                         }
                                     },
-                                    userAttemptCount = if (userId != null) userAttemptCount else null,
-                                    totalAttempts = totalAttempts
+                                    userAttemptCount = if (userId != null) data.userAttemptCount else null,
+                                    totalAttempts = data.totalAttempts
                                 )
                             }
                     }
@@ -288,17 +305,16 @@ class QuizServiceImpl(
                 val optionsMono = quizOptionRepository.findByQuizId(quizId).collectList()
 
                 Mono.zip(totalAttemptsMono, uniqueUsersMono, optionsMono)
-                    .flatMap { tuple ->
-                        val totalAttempts = tuple.t1
-                        val uniqueUsers = tuple.t2
-                        val options = tuple.t3
-
-                        calculateOptionStats(quizId, options, totalAttempts)
+                    .map { tuple ->
+                        QuizStatsData(tuple.t1, tuple.t2, tuple.t3)
+                    }
+                    .flatMap { data ->
+                        calculateOptionStats(quizId, data.options, data.totalAttempts)
                             .map { optionStats ->
                                 QuizStatsResponse(
                                     quizId = quizId.toString(),
-                                    totalAttempts = totalAttempts,
-                                    uniqueUsers = uniqueUsers,
+                                    totalAttempts = data.totalAttempts,
+                                    uniqueUsers = data.uniqueUsers,
                                     options = optionStats.map { stat ->
                                         QuizOptionStatsResponse(
                                             optionId = stat.id,
