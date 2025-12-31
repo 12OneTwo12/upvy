@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
 import org.springframework.context.annotation.Import
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.restdocs.payload.PayloadDocumentation.responseFields
 import org.springframework.restdocs.request.RequestDocumentation.parameterWithName
@@ -185,6 +186,10 @@ class SearchControllerTest : BaseReactiveTest {
                             fieldWithPath("content[].interactions.isLiked").description("현재 사용자 좋아요 여부"),
                             fieldWithPath("content[].interactions.isSaved").description("현재 사용자 저장 여부"),
                             fieldWithPath("content[].subtitles[]").description("자막 정보 목록"),
+                            fieldWithPath("content[].quiz").type(JsonFieldType.OBJECT).description("퀴즈 메타데이터 (퀴즈가 없으면 null)").optional(),
+                            fieldWithPath("content[].quiz.quizId").type(JsonFieldType.STRING).description("퀴즈 ID").optional(),
+                            fieldWithPath("content[].quiz.hasAttempted").type(JsonFieldType.BOOLEAN).description("사용자가 한 번이라도 풀었는지 여부").optional(),
+                            fieldWithPath("content[].quiz.attemptCount").type(JsonFieldType.NUMBER).description("사용자의 시도 횟수").optional(),
                             fieldWithPath("nextCursor").description("다음 페이지 커서 (없으면 null)"),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
                             fieldWithPath("count").description("현재 페이지 항목 수")

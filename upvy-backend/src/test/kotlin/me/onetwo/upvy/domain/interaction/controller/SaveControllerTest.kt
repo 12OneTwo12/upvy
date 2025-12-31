@@ -19,6 +19,7 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
 import org.springframework.context.annotation.Import
 import org.springframework.restdocs.operation.preprocess.Preprocessors.*
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.*
 import org.springframework.restdocs.request.RequestDocumentation.*
 import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document
@@ -259,10 +260,10 @@ class SaveControllerTest : BaseReactiveTest {
                             fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부"),
                             fieldWithPath("content[].createdAt").description("생성 시각"),
                             fieldWithPath("content[].updatedAt").description("수정 시각"),
-                            fieldWithPath("content[].quiz").description("퀴즈 메타데이터 (퀴즈가 없으면 null)").optional(),
-                            fieldWithPath("content[].quiz.quizId").description("퀴즈 ID").optional(),
-                            fieldWithPath("content[].quiz.hasAttempted").description("사용자가 한 번이라도 풀었는지 여부").optional(),
-                            fieldWithPath("content[].quiz.attemptCount").description("사용자의 시도 횟수").optional(),
+                            fieldWithPath("content[].quiz").type(JsonFieldType.OBJECT).description("퀴즈 메타데이터 (퀴즈가 없으면 null)").optional(),
+                            fieldWithPath("content[].quiz.quizId").type(JsonFieldType.STRING).description("퀴즈 ID").optional(),
+                            fieldWithPath("content[].quiz.hasAttempted").type(JsonFieldType.BOOLEAN).description("사용자가 한 번이라도 풀었는지 여부").optional(),
+                            fieldWithPath("content[].quiz.attemptCount").type(JsonFieldType.NUMBER).description("사용자의 시도 횟수").optional(),
                             fieldWithPath("nextCursor").description("다음 페이지 커서 (없으면 null)").optional(),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
                             fieldWithPath("count").description("현재 페이지의 항목 수")
