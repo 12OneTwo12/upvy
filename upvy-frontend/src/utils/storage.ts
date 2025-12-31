@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: '@upvy/refresh-token',
   USER_INFO: '@upvy/user-info',
   THEME_MODE: '@upvy/theme-mode',
+  QUIZ_AUTO_DISPLAY: '@upvy/quiz-auto-display',
 } as const;
 
 /**

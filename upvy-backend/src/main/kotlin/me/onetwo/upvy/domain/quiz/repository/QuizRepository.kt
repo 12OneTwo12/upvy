@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.quiz.repository
 
+import me.onetwo.upvy.domain.quiz.dto.QuizMetadataResponse
 import me.onetwo.upvy.domain.quiz.model.Quiz
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -60,4 +61,17 @@ interface QuizRepository {
      * @return 존재 여부 (Mono<Boolean>)
      */
     fun existsByContentId(contentId: UUID): Mono<Boolean>
+
+    /**
+     * 여러 콘텐츠의 퀴즈 메타데이터를 배치 조회합니다 (N+1 문제 방지).
+     *
+     * 각 콘텐츠에 대해:
+     * - 퀴즈가 있으면 QuizMetadataResponse 반환
+     * - 퀴즈가 없으면 Map에 해당 contentId 키가 없음
+     *
+     * @param contentIds 콘텐츠 ID 목록
+     * @param userId 사용자 ID (시도 횟수 조회용, nullable)
+     * @return contentId를 키로 하는 QuizMetadataResponse 맵
+     */
+    fun findQuizMetadataByContentIds(contentIds: List<UUID>, userId: UUID?): Mono<Map<UUID, QuizMetadataResponse>>
 }

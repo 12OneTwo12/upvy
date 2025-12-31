@@ -5,11 +5,13 @@
  * 참조: upvy-backend/src/main/kotlin/me/onetwo/upvy/domain/content/
  */
 
+import { QuizMetadataResponse } from './quiz.types';
+
 /**
  * 콘텐츠 타입
  * 백엔드: ContentType.kt
  */
-export type ContentType = 'VIDEO' | 'PHOTO';
+export type ContentType = 'VIDEO' | 'PHOTO' | 'QUIZ';
 
 /**
  * 콘텐츠 상태
@@ -194,6 +196,7 @@ export interface ContentResponse {
   tags: string[];
   language: string;
   interactions?: InteractionInfoResponse; // 인터랙션 정보 (인증된 사용자의 경우 isLiked, isSaved 포함)
+  quiz: QuizMetadataResponse | null; // 퀴즈 메타데이터 (퀴즈가 있는 경우)
   createdAt: string;
   updatedAt: string;
 }

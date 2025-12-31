@@ -1,0 +1,36 @@
+{
+  "overlay": {
+    "multipleAnswerHint": "복수 정답 선택 가능",
+    "submitting": "제출 중...",
+    "submit": "제출하기",
+    "resultCorrect": "정답입니다!",
+    "resultIncorrect": "오답입니다!",
+    "attemptCount": "{{count}}번째 시도",
+    "totalParticipants": "총 {{count}}명 참여",
+    "retry": "다시 풀기",
+    "viewVideo": "비디오 보기",
+    "skip": "건너뛰기",
+    "submitError": "퀴즈 제출에 실패했습니다. 다시 시도해주세요."
+  },
+  "actionButton": {
+    "label": "문제 보기"
+  },
+  "toggleButton": {
+    "label": "퀴즈"
+  },
+  "upload": {
+    "addQuiz": "퀴즈 추가",
+    "question": "질문",
+    "required": "필수",
+    "questionPlaceholder": "퀴즈 질문을 입력하세요",
+    "options": "선택지 (정답 체크)",
+    "optionPlaceholder": "선택지 {{number}}",
+    "allowMultipleAnswers": "복수 정답 허용",
+    "validation": {
+      "questionRequired": "퀴즈 질문을 입력해주세요.",
+      "minOptions": "최소 2개의 선택지를 입력해주세요.",
+      "minCorrectAnswers": "최소 1개의 정답을 선택해주세요.",
+      "singleAnswerOnly": "단일 정답 모드에서는 1개의 정답만 선택 가능합니다."
+    }
+  }
+}

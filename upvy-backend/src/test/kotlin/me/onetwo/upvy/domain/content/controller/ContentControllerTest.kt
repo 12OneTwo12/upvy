@@ -25,6 +25,7 @@ import org.springframework.http.MediaType
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.restdocs.payload.PayloadDocumentation.requestFields
 import org.springframework.restdocs.payload.PayloadDocumentation.responseFields
@@ -218,7 +219,11 @@ class ContentControllerTest : BaseReactiveTest {
                             fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
                             fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성 시각"),
-                            fieldWithPath("updatedAt").description("수정 시각")
+                            fieldWithPath("updatedAt").description("수정 시각"),
+                            fieldWithPath("quiz").type(JsonFieldType.OBJECT).description("퀴즈 메타데이터 (퀴즈가 없으면 null)").optional(),
+                            fieldWithPath("quiz.quizId").type(JsonFieldType.STRING).description("퀴즈 ID").optional(),
+                            fieldWithPath("quiz.hasAttempted").type(JsonFieldType.BOOLEAN).description("사용자가 한 번이라도 풀었는지 여부").optional(),
+                            fieldWithPath("quiz.attemptCount").type(JsonFieldType.NUMBER).description("사용자의 시도 횟수").optional()
                         )
                     )
                 )
@@ -306,7 +311,11 @@ class ContentControllerTest : BaseReactiveTest {
                             fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
                             fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성 시각"),
-                            fieldWithPath("updatedAt").description("수정 시각")
+                            fieldWithPath("updatedAt").description("수정 시각"),
+                            fieldWithPath("quiz").type(JsonFieldType.OBJECT).description("퀴즈 메타데이터 (퀴즈가 없으면 null)").optional(),
+                            fieldWithPath("quiz.quizId").type(JsonFieldType.STRING).description("퀴즈 ID").optional(),
+                            fieldWithPath("quiz.hasAttempted").type(JsonFieldType.BOOLEAN).description("사용자가 한 번이라도 풀었는지 여부").optional(),
+                            fieldWithPath("quiz.attemptCount").type(JsonFieldType.NUMBER).description("사용자의 시도 횟수").optional()
                         )
                     )
                 )
@@ -466,6 +475,10 @@ class ContentControllerTest : BaseReactiveTest {
                             fieldWithPath("content[].interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("content[].createdAt").description("생성 시각"),
                             fieldWithPath("content[].updatedAt").description("수정 시각"),
+                            fieldWithPath("content[].quiz").type(JsonFieldType.OBJECT).description("퀴즈 메타데이터 (퀴즈가 없으면 null)").optional(),
+                            fieldWithPath("content[].quiz.quizId").type(JsonFieldType.STRING).description("퀴즈 ID").optional(),
+                            fieldWithPath("content[].quiz.hasAttempted").type(JsonFieldType.BOOLEAN).description("사용자가 한 번이라도 풀었는지 여부").optional(),
+                            fieldWithPath("content[].quiz.attemptCount").type(JsonFieldType.NUMBER).description("사용자의 시도 횟수").optional(),
                             fieldWithPath("nextCursor").description("다음 페이지 커서 (없으면 null)").optional(),
                             fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
                             fieldWithPath("count").description("현재 페이지의 항목 수")
@@ -588,7 +601,11 @@ class ContentControllerTest : BaseReactiveTest {
                             fieldWithPath("interactions.isLiked").description("현재 사용자의 좋아요 여부").optional(),
                             fieldWithPath("interactions.isSaved").description("현재 사용자의 저장 여부").optional(),
                             fieldWithPath("createdAt").description("생성일시"),
-                            fieldWithPath("updatedAt").description("수정일시")
+                            fieldWithPath("updatedAt").description("수정일시"),
+                            fieldWithPath("quiz").type(JsonFieldType.OBJECT).description("퀴즈 메타데이터 (퀴즈가 없으면 null)").optional(),
+                            fieldWithPath("quiz.quizId").type(JsonFieldType.STRING).description("퀴즈 ID").optional(),
+                            fieldWithPath("quiz.hasAttempted").type(JsonFieldType.BOOLEAN).description("사용자가 한 번이라도 풀었는지 여부").optional(),
+                            fieldWithPath("quiz.attemptCount").type(JsonFieldType.NUMBER).description("사용자의 시도 횟수").optional()
                         )
                     )
                 )

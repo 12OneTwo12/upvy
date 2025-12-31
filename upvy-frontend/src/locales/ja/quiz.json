@@ -1,0 +1,36 @@
+{
+  "overlay": {
+    "multipleAnswerHint": "複数回答可能",
+    "submitting": "送信中...",
+    "submit": "送信",
+    "resultCorrect": "正解です！",
+    "resultIncorrect": "不正解です！",
+    "attemptCount": "{{count}}回目の挑戦",
+    "totalParticipants": "合計{{count}}名参加",
+    "retry": "再挑戦",
+    "viewVideo": "動画を見る",
+    "skip": "スキップ",
+    "submitError": "クイズの送信に失敗しました。もう一度お試しください。"
+  },
+  "actionButton": {
+    "label": "問題を見る"
+  },
+  "toggleButton": {
+    "label": "クイズ"
+  },
+  "upload": {
+    "addQuiz": "クイズを追加",
+    "question": "質問",
+    "required": "必須",
+    "questionPlaceholder": "クイズの質問を入力してください",
+    "options": "選択肢（正解にチェック）",
+    "optionPlaceholder": "選択肢{{number}}",
+    "allowMultipleAnswers": "複数回答を許可",
+    "validation": {
+      "questionRequired": "クイズの質問を入力してください。",
+      "minOptions": "最低2つの選択肢を入力してください。",
+      "minCorrectAnswers": "最低1つの正解を選択してください。",
+      "singleAnswerOnly": "単一回答モードでは1つの正解のみ選択できます。"
+    }
+  }
+}
