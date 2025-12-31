@@ -178,6 +178,24 @@ export const API_ENDPOINTS = {
     // 앱 버전 체크
     CHECK: '/app-version/check',
   },
+
+  // Quiz (퀴즈)
+  QUIZ: {
+    // 퀴즈 생성
+    CREATE: (contentId: string) => `/contents/${contentId}/quiz`,
+    // 퀴즈 조회
+    GET: (contentId: string) => `/contents/${contentId}/quiz`,
+    // 퀴즈 수정
+    UPDATE: (contentId: string) => `/contents/${contentId}/quiz`,
+    // 퀴즈 삭제
+    DELETE: (contentId: string) => `/contents/${contentId}/quiz`,
+    // 퀴즈 시도 제출
+    SUBMIT_ATTEMPT: (quizId: string) => `/quizzes/${quizId}/attempts`,
+    // 내 퀴즈 시도 기록 조회
+    MY_ATTEMPTS: (quizId: string) => `/quizzes/${quizId}/my-attempts`,
+    // 퀴즈 통계 조회
+    STATS: (quizId: string) => `/quizzes/${quizId}/stats`,
+  },
 } as const;
 
 /**

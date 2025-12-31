@@ -436,6 +436,7 @@ export default function EditProfileScreen() {
             >
               <ProfileAvatar
                 imageUrl={profileImageUrl}
+                nickname={nickname}
                 size="xlarge"
                 showBorder={true}
               />

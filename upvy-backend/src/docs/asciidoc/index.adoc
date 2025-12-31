@@ -112,6 +112,24 @@ include::content/get.adoc[]
 include::content/update.adoc[]
 include::content/delete.adoc[]
 
+[[quiz-api]]
+== Quiz API
+
+교육용 퀴즈 생성 및 관리 API. Instagram 폴 스타일의 인터랙티브 퀴즈를 지원합니다.
+
+=== 퀴즈 관리
+
+include::quiz/create.adoc[]
+include::quiz/get.adoc[]
+include::quiz/update.adoc[]
+include::quiz/delete.adoc[]
+
+=== 퀴즈 시도
+
+include::quiz/submit-attempt.adoc[]
+include::quiz/get-my-attempts.adoc[]
+include::quiz/get-stats.adoc[]
+
 [[feed-api]]
 == Feed API
 

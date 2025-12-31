@@ -8,6 +8,7 @@ import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.ContentStatus
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
+import me.onetwo.upvy.domain.quiz.dto.QuizMetadataResponse
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import java.time.Instant
 
@@ -164,6 +165,7 @@ data class ContentUpdateRequest(
  * @property tags 태그 목록
  * @property language 언어
  * @property interactions 인터랙션 정보 (좋아요, 댓글, 저장, 공유, 조회수 등)
+ * @property quiz 퀴즈 메타데이터 (퀴즈가 있는 경우)
  * @property createdAt 생성 시각
  * @property updatedAt 수정 시각
  */
@@ -184,6 +186,7 @@ data class ContentResponse(
     val tags: List<String>,
     val language: String,
     val interactions: InteractionInfoResponse? = null,
+    val quiz: QuizMetadataResponse? = null,
     val createdAt: Instant,
     val updatedAt: Instant
 )

@@ -205,13 +205,17 @@ class UserProfileController(
     ): Mono<ResponseEntity<ContentPageResponse>> {
         // Principal에서 userId 추출 (비인증 사용자는 null)
         val userIdMono = principal?.toUserId() ?: Mono.empty()
+        val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
 
         return userIdMono
-            .defaultIfEmpty(UUID(0, 0)) // 비인증 사용자용 기본 UUID
             .flatMap { userId ->
-                val pageRequest = CursorPageRequest(cursor = cursor, limit = limit)
+                // 인증된 사용자: userId 전달
                 contentService.getContentsByCreatorWithCursor(targetUserId, userId, pageRequest)
             }
+            .switchIfEmpty(
+                // 비인증 사용자: null 전달
+                Mono.defer { contentService.getContentsByCreatorWithCursor(targetUserId, null, pageRequest) }
+            )
             .map { contents -> ResponseEntity.ok(contents) }
     }
 }

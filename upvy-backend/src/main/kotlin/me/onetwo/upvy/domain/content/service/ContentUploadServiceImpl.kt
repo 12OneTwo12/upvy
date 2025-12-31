@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.content.service
 
+import me.onetwo.upvy.domain.content.exception.ContentException
 import me.onetwo.upvy.domain.content.model.ContentType
 import me.onetwo.upvy.domain.content.model.UploadSession
 import me.onetwo.upvy.domain.content.repository.UploadSessionRepository
@@ -122,11 +123,13 @@ class ContentUploadServiceImpl(
         val maxSize = when (contentType) {
             ContentType.VIDEO -> MAX_VIDEO_SIZE
             ContentType.PHOTO -> MAX_PHOTO_SIZE
+            ContentType.QUIZ -> throw ContentException.UnsupportedContentTypeException(contentType.name, "file uploads")
         }
 
         if (fileSize > maxSize) {
-            throw IllegalArgumentException(
-                "File size exceeds maximum allowed size for $contentType: ${maxSize / 1024 / 1024}MB"
+            throw ContentException.FileSizeLimitExceededException(
+                contentType.name,
+                maxSize / 1024 / 1024
             )
         }
 
@@ -134,10 +137,11 @@ class ContentUploadServiceImpl(
         val allowedTypes = when (contentType) {
             ContentType.VIDEO -> ALLOWED_VIDEO_TYPES
             ContentType.PHOTO -> ALLOWED_PHOTO_TYPES
+            ContentType.QUIZ -> throw ContentException.UnsupportedContentTypeException(contentType.name, "file uploads")
         }
 
         if (mimeType !in allowedTypes) {
-            throw IllegalArgumentException(
+            throw ContentException.InvalidFileException(
                 "Unsupported file type: $mimeType. Allowed types for $contentType: $allowedTypes"
             )
         }
@@ -182,15 +186,16 @@ class ContentUploadServiceImpl(
                 "mp4" -> "video/mp4"
                 "mov" -> "video/quicktime"
                 "avi" -> "video/x-msvideo"
-                else -> throw IllegalArgumentException("Unsupported video extension: $extension")
+                else -> throw ContentException.InvalidFileException("Unsupported video extension: $extension")
             }
             ContentType.PHOTO -> when (extension) {
                 "jpg", "jpeg" -> "image/jpeg"
                 "png" -> "image/png"
                 "heic" -> "image/heic"
                 "heif" -> "image/heif"
-                else -> throw IllegalArgumentException("Unsupported photo extension: $extension")
+                else -> throw ContentException.InvalidFileException("Unsupported photo extension: $extension")
             }
+            ContentType.QUIZ -> throw ContentException.UnsupportedContentTypeException(contentType.name, "file uploads")
         }
     }
 

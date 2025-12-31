@@ -118,9 +118,6 @@ class ContentController(
             contentService.getContent(contentId, null)
         )
             .map { ResponseEntity.ok(it) }
-            .onErrorResume(NoSuchElementException::class.java) {
-                Mono.just(ResponseEntity.notFound().build())
-            }
             .defaultIfEmpty(ResponseEntity.notFound().build())
     }
 
@@ -173,13 +170,6 @@ class ContentController(
                 contentService.updateContent(userId, contentId, request)
             }
             .map { ResponseEntity.ok(it) }
-            .onErrorResume { error ->
-                when (error) {
-                    is NoSuchElementException -> Mono.just(ResponseEntity.notFound().build())
-                    is IllegalAccessException -> Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build())
-                    else -> Mono.error(error)
-                }
-            }
     }
 
     /**
@@ -204,12 +194,5 @@ class ContentController(
                 contentService.deleteContent(userId, contentId)
             }
             .then(Mono.just(ResponseEntity.noContent().build<Void>()))
-            .onErrorResume { error ->
-                when (error) {
-                    is NoSuchElementException -> Mono.just(ResponseEntity.notFound().build())
-                    is IllegalAccessException -> Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build())
-                    else -> Mono.error(error)
-                }
-            }
     }
 }

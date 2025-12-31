@@ -129,7 +129,7 @@ class AuthControllerTest : BaseReactiveTest {
             refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         )
 
-        every { authService.logout(request.refreshToken) } returns Unit
+        every { authService.logout(request.refreshToken) } returns Mono.empty()
 
         // When & Then
         webTestClient.post()
@@ -192,7 +192,7 @@ class AuthControllerTest : BaseReactiveTest {
         // Given
         val userId = UUID.randomUUID()
 
-        every { authService.logoutByUserId(userId) } returns Unit
+        every { authService.logoutByUserId(userId) } returns Mono.empty()
 
         // When & Then
         webTestClient

@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.app.repository
 
+import me.onetwo.upvy.domain.app.exception.AppVersionNotFoundException
 import me.onetwo.upvy.domain.app.model.AppVersion
 import me.onetwo.upvy.domain.app.model.Platform
 import me.onetwo.upvy.jooq.generated.tables.references.APP_VERSIONS
@@ -60,7 +61,7 @@ class AppVersionRepositoryImpl(
             )
         }.doOnNext { appVersion ->
             logger.debug("AppVersion found: platform=${appVersion.platform}, minimumVersion=${appVersion.minimumVersion}, latestVersion=${appVersion.latestVersion}")
-        }
+        }.switchIfEmpty(Mono.error(AppVersionNotFoundException(platform.name)))
     }
 
     override fun save(appVersion: AppVersion): Mono<AppVersion> {

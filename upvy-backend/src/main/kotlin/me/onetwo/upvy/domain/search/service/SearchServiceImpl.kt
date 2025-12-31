@@ -4,6 +4,7 @@ import me.onetwo.upvy.domain.feed.dto.FeedItemResponse
 import me.onetwo.upvy.domain.feed.repository.FeedRepository
 import me.onetwo.upvy.domain.search.dto.AutocompleteRequest
 import me.onetwo.upvy.domain.search.dto.AutocompleteResponse
+import me.onetwo.upvy.domain.search.dto.AutocompleteSuggestion
 import me.onetwo.upvy.domain.search.dto.ContentSearchRequest
 import me.onetwo.upvy.domain.search.dto.ContentSearchResponse
 import me.onetwo.upvy.domain.search.dto.SearchHistoryItem
@@ -17,6 +18,7 @@ import me.onetwo.upvy.domain.search.event.SearchPerformedEvent
 import me.onetwo.upvy.domain.search.model.SearchType
 import me.onetwo.upvy.domain.search.repository.SearchHistoryRepository
 import me.onetwo.upvy.domain.search.repository.SearchRepository
+import me.onetwo.upvy.domain.user.dto.UserInfo
 import me.onetwo.upvy.domain.user.repository.UserProfileRepository
 import me.onetwo.upvy.infrastructure.common.dto.CursorPageResponse
 import me.onetwo.upvy.infrastructure.event.ReactiveEventPublisher
@@ -24,6 +26,19 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import java.util.UUID
+
+/**
+ * 자동완성 처리 중 사용되는 중간 데이터
+ *
+ * WebFlux Best Practice: Tuple 대신 Data Class 사용하여 타입 안전성 확보
+ *
+ * @property suggestions 원본 자동완성 제안 목록
+ * @property userInfoMap 사용자 ID를 키로 하는 프로필 정보 Map
+ */
+private data class AutocompleteData(
+    val suggestions: List<AutocompleteSuggestion>,
+    val userInfoMap: Map<UUID, UserInfo>
+)
 
 /**
  * SearchService 구현체
@@ -190,38 +205,8 @@ class SearchServiceImpl(
             query = request.q,
             limit = request.limit
         )
-            .flatMap { suggestions ->
-                // USER 타입 제안들의 userId 수집
-                val userIds = suggestions
-                    .filter { it.type == SuggestionType.USER }
-                    .mapNotNull { suggestion ->
-                        suggestion.userId?.let { UUID.fromString(it) }
-                    }
-                    .toSet()
-
-                if (userIds.isEmpty()) {
-                    // USER 타입 제안이 없으면 그대로 반환
-                    Mono.just(suggestions)
-                } else {
-                    // 프로필 이미지 조회
-                    userProfileRepository.findUserInfosByUserIds(userIds)
-                        .map { userInfoMap ->
-                            // USER 타입 제안에 프로필 이미지 추가
-                            suggestions.map { suggestion ->
-                                if (suggestion.type == SuggestionType.USER && suggestion.userId != null) {
-                                    val userId = UUID.fromString(suggestion.userId)
-                                    val userInfo = userInfoMap[userId]
-                                    suggestion.copy(profileImageUrl = userInfo?.profileImageUrl)
-                                } else {
-                                    suggestion
-                                }
-                            }
-                        }
-                }
-            }
-            .map { suggestions ->
-                AutocompleteResponse(suggestions)
-            }
+            .flatMap { suggestions -> enrichWithUserProfiles(suggestions) }
+            .map { enrichedSuggestions -> AutocompleteResponse(enrichedSuggestions) }
             .doOnSuccess { response ->
                 logger.debug("Autocomplete completed: count={}", response.suggestions.size)
             }
@@ -230,6 +215,50 @@ class SearchServiceImpl(
             }
             .onErrorResume {
                 Mono.just(AutocompleteResponse.empty())
+            }
+    }
+
+    /**
+     * 자동완성 제안 목록에 사용자 프로필 정보를 추가합니다.
+     *
+     * @param suggestions 원본 자동완성 제안 목록
+     * @return 프로필 이미지가 추가된 제안 목록
+     */
+    private fun enrichWithUserProfiles(
+        suggestions: List<AutocompleteSuggestion>
+    ): Mono<List<AutocompleteSuggestion>> {
+        // USER 타입 제안들의 userId 수집
+        val userIds = suggestions
+            .filter { it.type == SuggestionType.USER }
+            .mapNotNull { suggestion ->
+                suggestion.userId?.let { UUID.fromString(it) }
+            }
+            .toSet()
+
+        if (userIds.isEmpty()) {
+            // USER 타입 제안이 없으면 그대로 반환
+            return Mono.just(suggestions)
+        }
+
+        // 프로필 이미지 조회 후 Data Class로 타입 안전하게 처리
+        return userProfileRepository.findUserInfosByUserIds(userIds)
+            .map { userInfoMap ->
+                AutocompleteData(
+                    suggestions = suggestions,
+                    userInfoMap = userInfoMap
+                )
+            }
+            .map { data ->
+                // USER 타입 제안에 프로필 이미지 추가
+                data.suggestions.map { suggestion ->
+                    if (suggestion.type == SuggestionType.USER && suggestion.userId != null) {
+                        val userId = UUID.fromString(suggestion.userId)
+                        val userInfo = data.userInfoMap[userId]
+                        suggestion.copy(profileImageUrl = userInfo?.profileImageUrl)
+                    } else {
+                        suggestion
+                    }
+                }
             }
     }
 

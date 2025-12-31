@@ -69,7 +69,7 @@ s3:
 # 배치 스케줄링
 batch:
   schedule:
-    cron: "0 0 1 * * *"  # 매일 새벽 1시
+    cron: "0 0 1,13 * * *"  # 매일 1시, 13시
   chunk-size: 5
   retry:
     max-attempts: 3

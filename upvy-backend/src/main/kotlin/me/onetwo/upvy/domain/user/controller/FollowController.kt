@@ -98,8 +98,8 @@ class FollowController(
         return Mono.zip(
             followService.getFollowerCount(targetUserId),
             followService.getFollowingCount(targetUserId)
-        ).map { tuple ->
-            ResponseEntity.ok(FollowStatsResponse(targetUserId, tuple.t1, tuple.t2))
+        ) { followerCount, followingCount ->
+            ResponseEntity.ok(FollowStatsResponse(targetUserId, followerCount, followingCount))
         }
     }
 
@@ -119,8 +119,8 @@ class FollowController(
                 Mono.zip(
                     followService.getFollowerCount(userId),
                     followService.getFollowingCount(userId)
-                ).map { tuple ->
-                    ResponseEntity.ok(FollowStatsResponse(userId, tuple.t1, tuple.t2))
+                ) { followerCount, followingCount ->
+                    ResponseEntity.ok(FollowStatsResponse(userId, followerCount, followingCount))
                 }
             }
     }

@@ -302,7 +302,7 @@ class AuthServiceImplTest : BaseReactiveTest {
             every { jwtTokenProvider.generateRefreshToken(user.id!!) } returns refreshToken
             every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns user.id!!
             every { jwtTokenProvider.getEmailFromToken(accessToken) } returns user.email
-            every { refreshTokenRepository.save(user.id!!, refreshToken) } just Runs
+            every { refreshTokenRepository.save(user.id!!, refreshToken) } returns Mono.just(true)
 
             // When: 이메일 로그인
             val result = authService.signIn(email, rawPassword)
@@ -501,7 +501,7 @@ class AuthServiceImplTest : BaseReactiveTest {
             every { jwtTokenProvider.generateRefreshToken(userId) } returns refreshToken
             every { jwtTokenProvider.getUserIdFromToken(accessToken) } returns userId
             every { jwtTokenProvider.getEmailFromToken(accessToken) } returns user.email
-            every { refreshTokenRepository.save(userId, refreshToken) } just Runs
+            every { refreshTokenRepository.save(userId, refreshToken) } returns Mono.just(true)
 
             // When: 이메일 코드 인증
             val result = authService.verifyEmailCode(email, code)

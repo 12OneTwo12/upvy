@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.app.repository
 
+import me.onetwo.upvy.domain.app.exception.AppVersionNotFoundException
 import me.onetwo.upvy.domain.app.model.AppVersion
 import me.onetwo.upvy.domain.app.model.Platform
 import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
@@ -186,7 +187,8 @@ class AppVersionRepositoryTest : AbstractIntegrationTest() {
 
             // Then
             StepVerifier.create(result)
-                .verifyComplete()
+                .expectError(AppVersionNotFoundException::class.java)
+                .verify()
         }
     }
 

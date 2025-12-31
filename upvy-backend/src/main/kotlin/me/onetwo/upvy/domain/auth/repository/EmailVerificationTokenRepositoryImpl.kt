@@ -1,5 +1,6 @@
 package me.onetwo.upvy.domain.auth.repository
 
+import me.onetwo.upvy.domain.auth.exception.InvalidVerificationTokenException
 import me.onetwo.upvy.domain.auth.model.EmailVerificationToken
 import me.onetwo.upvy.jooq.generated.tables.EmailVerificationTokens
 import org.jooq.DSLContext
@@ -72,6 +73,7 @@ class EmailVerificationTokenRepositoryImpl(
                 .where(TOKEN.TOKEN.eq(token))
                 .and(TOKEN.DELETED_AT.isNull)
         ).map { record -> mapToEmailVerificationToken(record) }
+            .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
     }
 
     /**
@@ -102,6 +104,7 @@ class EmailVerificationTokenRepositoryImpl(
                 .and(TOKEN.TOKEN.eq(token))
                 .and(TOKEN.DELETED_AT.isNull)
         ).map { record -> mapToEmailVerificationToken(record) }
+            .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
     }
 
     /**
@@ -131,6 +134,7 @@ class EmailVerificationTokenRepositoryImpl(
                 .orderBy(TOKEN.CREATED_AT.desc())
                 .limit(1)
         ).map { record -> mapToEmailVerificationToken(record) }
+            .switchIfEmpty(Mono.error(InvalidVerificationTokenException()))
     }
 
     /**

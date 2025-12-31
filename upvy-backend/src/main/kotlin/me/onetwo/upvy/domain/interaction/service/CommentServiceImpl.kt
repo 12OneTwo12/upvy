@@ -46,6 +46,25 @@ class CommentServiceImpl(
 ) : CommentService {
 
     /**
+     * 댓글 목록 조회 시 필요한 메타데이터를 저장하는 Data Class
+     */
+    private data class CommentListMetadata(
+        val userInfoMap: Map<UUID, UserInfo>,
+        val replyCountMap: Map<UUID, Int>,
+        val likeCountMap: Map<UUID, Int>,
+        val likedCommentIds: Set<UUID>
+    )
+
+    /**
+     * 답글 목록 조회 시 필요한 메타데이터를 저장하는 Data Class
+     */
+    private data class ReplyListMetadata(
+        val userInfoMap: Map<UUID, UserInfo>,
+        val likeCountMap: Map<UUID, Int>,
+        val likedReplyIds: Set<UUID>
+    )
+
+    /**
      * 댓글 작성
      *
      * @param userId 작성자 ID
@@ -78,12 +97,28 @@ class CommentServiceImpl(
                 ).switchIfEmpty(Mono.error(IllegalStateException("Failed to create comment")))
             )
             .flatMap { savedComment ->
-                // 카운트 증가를 메인 체인에 포함 ← 즉시 반영
-                logger.debug("Incrementing comment count for contentId={}", contentId)
-                contentInteractionService.incrementCommentCount(contentId)
-                    .thenReturn(savedComment)
+                logger.debug("Incrementing comment count and fetching user profile: contentId={}", contentId)
+
+                // Parallel execution: 카운트 증가와 사용자 프로필 조회를 동시에 실행하여 성능 향상
+                Mono.zip(
+                    contentInteractionService.incrementCommentCount(contentId).thenReturn(Unit),
+                    userProfileRepository.findUserInfosByUserIds(setOf(userId))
+                ) { _, userInfoMap ->
+                    val userInfo = userInfoMap[userId] ?: UserInfo("Unknown", null)
+                    CommentResponse(
+                        id = savedComment.id!!.toString(),
+                        contentId = savedComment.contentId.toString(),
+                        userId = savedComment.userId.toString(),
+                        userNickname = userInfo.nickname,
+                        userProfileImageUrl = userInfo.profileImageUrl,
+                        content = savedComment.content,
+                        parentCommentId = savedComment.parentCommentId?.toString(),
+                        createdAt = savedComment.createdAt.toString()
+                    )
+                }
             }
-            .doOnSuccess { savedComment ->
+            .doOnSuccess { response ->
+                logger.debug("Comment created successfully: commentId={}", response.id)
                 logger.debug("Publishing UserInteractionEvent: userId={}, contentId={}", userId, contentId)
                 // 협업 필터링만 이벤트로 처리 (실패해도 OK)
                 eventPublisher.publish(
@@ -94,23 +129,6 @@ class CommentServiceImpl(
                     )
                 )
             }
-            .flatMap { savedComment: Comment ->
-                userProfileRepository.findUserInfosByUserIds(setOf(userId))
-                    .map { userInfoMap ->
-                        val userInfo = userInfoMap[userId] ?: UserInfo("Unknown", null)
-                        CommentResponse(
-                            id = savedComment.id!!.toString(),
-                            contentId = savedComment.contentId.toString(),
-                            userId = savedComment.userId.toString(),
-                            userNickname = userInfo.nickname,
-                            userProfileImageUrl = userInfo.profileImageUrl,
-                            content = savedComment.content,
-                            parentCommentId = savedComment.parentCommentId?.toString(),
-                            createdAt = savedComment.createdAt.toString()
-                        )
-                    }
-            }
-            .doOnSuccess { response -> logger.debug("Comment created successfully: commentId={}", response.id) }
             .doOnError { error ->
                 logger.error("Failed to create comment: userId={}, contentId={}", userId, contentId, error)
             }
@@ -172,16 +190,14 @@ class CommentServiceImpl(
 
                 Mono.zip(userInfoMapMono, replyCountMapMono, likeCountMapMono, likedCommentIdsMono)
                     .map { tuple ->
-                        val userInfoMap = tuple.t1
-                        val replyCountMap = tuple.t2
-                        val likeCountMap = tuple.t3
-                        val likedCommentIds = tuple.t4
-
+                        CommentListMetadata(tuple.t1, tuple.t2, tuple.t3, tuple.t4)
+                    }
+                    .map { metadata ->
                         val responseList = actualComments.map { comment ->
-                            val userInfo = userInfoMap[comment.userId] ?: UserInfo("Unknown", null)
-                            val replyCount = replyCountMap[comment.id] ?: 0
-                            val likeCount = likeCountMap[comment.id] ?: 0
-                            val isLiked = comment.id in likedCommentIds
+                            val userInfo = metadata.userInfoMap[comment.userId] ?: UserInfo("Unknown", null)
+                            val replyCount = metadata.replyCountMap[comment.id] ?: 0
+                            val likeCount = metadata.likeCountMap[comment.id] ?: 0
+                            val isLiked = comment.id in metadata.likedCommentIds
 
                             mapToCommentResponse(comment, userInfo, replyCount, likeCount, isLiked)
                         }
@@ -239,14 +255,13 @@ class CommentServiceImpl(
 
                 Mono.zip(userInfoMapMono, likeCountMapMono, likedReplyIdsMono)
                     .map { tuple ->
-                        val userInfoMap = tuple.t1
-                        val likeCountMap = tuple.t2
-                        val likedReplyIds = tuple.t3
-
+                        ReplyListMetadata(tuple.t1, tuple.t2, tuple.t3)
+                    }
+                    .map { metadata ->
                         val responseList = actualReplies.map { reply ->
-                            val userInfo = userInfoMap[reply.userId] ?: UserInfo("Unknown", null)
-                            val likeCount = likeCountMap[reply.id] ?: 0
-                            val isLiked = reply.id in likedReplyIds
+                            val userInfo = metadata.userInfoMap[reply.userId] ?: UserInfo("Unknown", null)
+                            val likeCount = metadata.likeCountMap[reply.id] ?: 0
+                            val isLiked = reply.id in metadata.likedReplyIds
                             mapToCommentResponse(reply, userInfo, 0, likeCount, isLiked)
                         }
 

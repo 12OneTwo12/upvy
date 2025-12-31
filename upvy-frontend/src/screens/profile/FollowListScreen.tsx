@@ -301,6 +301,7 @@ export default function FollowListScreen() {
         <View style={styles.userInfo}>
           <ProfileAvatar
             imageUrl={item.profileImageUrl}
+            nickname={item.nickname}
             size="medium"
             onPress={() => handleUserPress(item.userId)}
           />

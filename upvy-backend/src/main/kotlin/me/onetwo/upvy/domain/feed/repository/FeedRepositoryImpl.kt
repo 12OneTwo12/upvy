@@ -6,6 +6,8 @@ import me.onetwo.upvy.domain.feed.dto.CreatorInfoResponse
 import me.onetwo.upvy.domain.feed.dto.FeedItemResponse
 import me.onetwo.upvy.domain.feed.dto.InteractionInfoResponse
 import me.onetwo.upvy.domain.feed.dto.SubtitleInfoResponse
+import me.onetwo.upvy.domain.quiz.dto.QuizMetadataResponse
+import me.onetwo.upvy.domain.quiz.repository.QuizRepository
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENTS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_BLOCKS
 import me.onetwo.upvy.jooq.generated.tables.references.CONTENT_INTERACTIONS
@@ -36,10 +38,12 @@ import java.util.UUID
  * JOOQ를 사용하여 피드 데이터를 조회합니다.
  *
  * @property dslContext JOOQ DSL Context
+ * @property quizRepository 퀴즈 레포지토리 (퀴즈 메타데이터 배치 조회용)
  */
 @Repository
 class FeedRepositoryImpl(
-    private val dslContext: DSLContext
+    private val dslContext: DSLContext,
+    private val quizRepository: QuizRepository
 ) : FeedRepository {
 
     private val logger = LoggerFactory.getLogger(FeedRepositoryImpl::class.java)
@@ -152,14 +156,19 @@ class FeedRepositoryImpl(
                 // 사진 배치 조회 (N+1 문제 방지)
                 val photosMono = findPhotosByContentIdsReactive(contentIds)
 
-                // 두 맵을 병렬로 조회한 후 결합
-                Mono.zip(subtitlesMono, photosMono)
+                // 퀴즈 메타데이터 배치 조회 (N+1 문제 방지)
+                val quizMetadataMono = quizRepository.findQuizMetadataByContentIds(contentIds, userId)
+
+                // 세 맵을 병렬로 조회한 후 결합
+                Mono.zip(subtitlesMono, photosMono, quizMetadataMono)
                     .flatMapMany { tuple ->
                         val subtitlesMap = tuple.t1
                         val photosMap = tuple.t2
+                        val quizMetadataMap = tuple.t3
+
                         // 레코드를 FeedItemResponse로 변환
                         Flux.fromIterable(records.map { record ->
-                            mapRecordToFeedItem(record, subtitlesMap, photosMap)
+                            mapRecordToFeedItem(record, subtitlesMap, photosMap, quizMetadataMap)
                         })
                     }
             }
@@ -192,12 +201,14 @@ class FeedRepositoryImpl(
      * @param record JOOQ 레코드
      * @param subtitlesMap 콘텐츠 ID를 키로 하는 자막 정보 맵
      * @param photosMap 콘텐츠 ID를 키로 하는 사진 URL 목록 맵
+     * @param quizMetadataMap 콘텐츠 ID를 키로 하는 퀴즈 메타데이터 맵
      * @return FeedItemResponse
      */
     private fun mapRecordToFeedItem(
         record: Record,
         subtitlesMap: Map<UUID, List<SubtitleInfoResponse>>,
-        photosMap: Map<UUID, List<String>>
+        photosMap: Map<UUID, List<String>>,
+        quizMetadataMap: Map<UUID, QuizMetadataResponse>
     ): FeedItemResponse {
         val contentId = UUID.fromString(record.get(CONTENTS.ID))
 
@@ -206,6 +217,9 @@ class FeedRepositoryImpl(
 
         // 사진 URL 목록은 미리 조회한 맵에서 가져오기
         val photoUrls = photosMap[contentId]
+
+        // 퀴즈 메타데이터는 미리 조회한 맵에서 가져오기
+        val quizMetadata = quizMetadataMap[contentId]
 
         return FeedItemResponse(
             contentId = contentId,
@@ -236,7 +250,8 @@ class FeedRepositoryImpl(
                 isLiked = record.get("IS_LIKED", Boolean::class.java) ?: false,
                 isSaved = record.get("IS_SAVED", Boolean::class.java) ?: false
             ),
-            subtitles = subtitles
+            subtitles = subtitles,
+            quiz = quizMetadata
         )
     }
 
@@ -564,14 +579,19 @@ class FeedRepositoryImpl(
                 // 사진 배치 조회 (N+1 문제 방지)
                 val photosMono = findPhotosByContentIdsReactive(contentIds)
 
-                // 두 맵을 병렬로 조회한 후 결합
-                Mono.zip(subtitlesMono, photosMono)
+                // 퀴즈 메타데이터 배치 조회 (N+1 문제 방지)
+                val quizMetadataMono = quizRepository.findQuizMetadataByContentIds(contentIds, userId)
+
+                // 세 맵을 병렬로 조회한 후 결합
+                Mono.zip(subtitlesMono, photosMono, quizMetadataMono)
                     .flatMapMany { tuple ->
                         val subtitlesMap = tuple.t1
                         val photosMap = tuple.t2
+                        val quizMetadataMap = tuple.t3
+
                         // 레코드를 FeedItemResponse로 변환
                         val feedItemsMap = records
-                            .map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap) }
+                            .map { record -> mapRecordToFeedItem(record, subtitlesMap, photosMap, quizMetadataMap) }
                             .associateBy { it.contentId }
 
                         // 입력된 ID 순서대로 정렬하여 반환

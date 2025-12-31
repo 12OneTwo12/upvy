@@ -29,9 +29,10 @@ interface AuthService {
      * Redis에 저장된 Refresh Token을 삭제하여 로그아웃 처리합니다.
      *
      * @param refreshToken Refresh Token
+     * @return Mono<Void> 완료 신호
      * @throws IllegalArgumentException Refresh Token이 유효하지 않은 경우
      */
-    fun logout(refreshToken: String)
+    fun logout(refreshToken: String): Mono<Void>
 
     /**
      * 사용자 ID로 로그아웃
@@ -39,16 +40,17 @@ interface AuthService {
      * Redis에 저장된 Refresh Token을 사용자 ID로 삭제하여 로그아웃 처리합니다.
      *
      * @param userId 사용자 ID
+     * @return Mono<Void> 완료 신호
      */
-    fun logoutByUserId(userId: UUID)
+    fun logoutByUserId(userId: UUID): Mono<Void>
 
     /**
      * 사용자 ID로 Refresh Token 조회
      *
      * @param userId 사용자 ID
-     * @return Refresh Token (존재하지 않으면 null)
+     * @return Refresh Token (존재하지 않으면 empty Mono)
      */
-    fun getRefreshTokenByUserId(userId: UUID): String?
+    fun getRefreshTokenByUserId(userId: UUID): Mono<String>
 
     /**
      * 이메일 회원가입

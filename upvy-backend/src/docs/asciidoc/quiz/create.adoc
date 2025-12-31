@@ -1,0 +1,53 @@
+[[quiz-create]]
+=== 퀴즈 생성
+
+콘텐츠에 대한 퀴즈를 생성합니다. 하나의 콘텐츠에는 하나의 퀴즈만 생성할 수 있습니다 (1:1 관계).
+
+==== Request
+
+include::{snippets}/quiz-create/http-request.adoc[]
+include::{snippets}/quiz-create/request-fields.adoc[]
+
+==== Response
+
+include::{snippets}/quiz-create/http-response.adoc[]
+include::{snippets}/quiz-create/response-fields.adoc[]
+
+==== Example
+
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/v1/contents/{contentId}/quiz \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Kotlin에서 val과 var의 차이는 무엇인가요?",
+    "allowMultipleAnswers": false,
+    "options": [
+      {
+        "optionText": "val은 불변, var는 가변",
+        "isCorrect": true
+      },
+      {
+        "optionText": "val은 가변, var는 불변",
+        "isCorrect": false
+      },
+      {
+        "optionText": "차이가 없다",
+        "isCorrect": false
+      },
+      {
+        "optionText": "val만 사용 가능",
+        "isCorrect": false
+      }
+    ]
+  }'
+----
+
+==== Notes
+
+* 최소 2개 이상의 보기가 필요합니다
+* 최소 1개 이상의 정답이 필요합니다
+* `allowMultipleAnswers`가 true면 복수 정답 선택 가능
+* 이미 퀴즈가 존재하는 콘텐츠에는 생성 불가 (409 Conflict)
+* 본인이 소유한 콘텐츠에만 퀴즈 생성 가능

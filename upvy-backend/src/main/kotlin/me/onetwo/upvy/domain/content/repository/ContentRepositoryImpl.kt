@@ -1,6 +1,7 @@
 package me.onetwo.upvy.domain.content.repository
 
 import me.onetwo.upvy.domain.content.dto.ContentWithMetadata
+import me.onetwo.upvy.domain.content.exception.ContentException.ContentNotFoundException
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.Content
 import me.onetwo.upvy.domain.content.model.ContentMetadata
@@ -39,10 +40,12 @@ class ContentRepositoryImpl(
      * @return 저장된 콘텐츠 (Mono)
      */
     override fun save(content: Content): Mono<Content> {
+        val contentId = content.id ?: UUID.randomUUID()
+
         return Mono.from(
             dslContext
                 .insertInto(CONTENTS)
-                .set(CONTENTS.ID, content.id.toString())
+                .set(CONTENTS.ID, contentId.toString())
                 .set(CONTENTS.CREATOR_ID, content.creatorId.toString())
                 .set(CONTENTS.CONTENT_TYPE, content.contentType.name)
                 .set(CONTENTS.URL, content.url)
@@ -57,8 +60,8 @@ class ContentRepositoryImpl(
                 .set(CONTENTS.UPDATED_BY, content.updatedBy?.toString())
                 .returningResult(CONTENTS.ID)
         ).map { record ->
-            logger.debug("Content saved: contentId=${content.id}")
-            content
+            logger.debug("Content saved: contentId=$contentId")
+            content.copy(id = contentId)
         }
     }
 
@@ -90,24 +93,26 @@ class ContentRepositoryImpl(
                 .from(CONTENTS)
                 .where(CONTENTS.ID.eq(contentId.toString()))
                 .and(CONTENTS.DELETED_AT.isNull)
-        ).map { record ->
-            Content(
-                id = UUID.fromString(record.getValue(CONTENTS.ID)),
-                creatorId = UUID.fromString(record.getValue(CONTENTS.CREATOR_ID)),
-                contentType = ContentType.valueOf(record.getValue(CONTENTS.CONTENT_TYPE)!!),
-                url = record.getValue(CONTENTS.URL)!!,
-                thumbnailUrl = record.getValue(CONTENTS.THUMBNAIL_URL)!!,
-                duration = record.getValue(CONTENTS.DURATION),
-                width = record.getValue(CONTENTS.WIDTH)!!,
-                height = record.getValue(CONTENTS.HEIGHT)!!,
-                status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
-                createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
-                createdBy = record.getValue(CONTENTS.CREATED_BY),
-                updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
-                updatedBy = record.getValue(CONTENTS.UPDATED_BY),
-                deletedAt = record.getValue(CONTENTS.DELETED_AT)
-            )
-        }
+        )
+            .map { record ->
+                Content(
+                    id = UUID.fromString(record.getValue(CONTENTS.ID)),
+                    creatorId = UUID.fromString(record.getValue(CONTENTS.CREATOR_ID)),
+                    contentType = ContentType.valueOf(record.getValue(CONTENTS.CONTENT_TYPE)!!),
+                    url = record.getValue(CONTENTS.URL)!!,
+                    thumbnailUrl = record.getValue(CONTENTS.THUMBNAIL_URL)!!,
+                    duration = record.getValue(CONTENTS.DURATION),
+                    width = record.getValue(CONTENTS.WIDTH)!!,
+                    height = record.getValue(CONTENTS.HEIGHT)!!,
+                    status = ContentStatus.valueOf(record.getValue(CONTENTS.STATUS)!!),
+                    createdAt = record.getValue(CONTENTS.CREATED_AT)!!,
+                    createdBy = record.getValue(CONTENTS.CREATED_BY),
+                    updatedAt = record.getValue(CONTENTS.UPDATED_AT)!!,
+                    updatedBy = record.getValue(CONTENTS.UPDATED_BY),
+                    deletedAt = record.getValue(CONTENTS.DELETED_AT)
+                )
+            }
+            .switchIfEmpty(Mono.error(ContentNotFoundException("Content not found: $contentId")))
     }
 
     /**
@@ -361,22 +366,24 @@ class ContentRepositoryImpl(
                 .from(CONTENT_METADATA)
                 .where(CONTENT_METADATA.CONTENT_ID.eq(contentId.toString()))
                 .and(CONTENT_METADATA.DELETED_AT.isNull)
-        ).map { record ->
-            ContentMetadata(
-                id = record.getValue(CONTENT_METADATA.ID),
-                contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
-                title = record.getValue(CONTENT_METADATA.TITLE)!!,
-                description = record.getValue(CONTENT_METADATA.DESCRIPTION),
-                category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
-                tags = emptyList(),
-                language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
-                createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
-                createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
-                updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
-                updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
-                deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
-            )
-        }
+        )
+            .map { record ->
+                ContentMetadata(
+                    id = record.getValue(CONTENT_METADATA.ID),
+                    contentId = UUID.fromString(record.getValue(CONTENT_METADATA.CONTENT_ID)),
+                    title = record.getValue(CONTENT_METADATA.TITLE)!!,
+                    description = record.getValue(CONTENT_METADATA.DESCRIPTION),
+                    category = Category.valueOf(record.getValue(CONTENT_METADATA.CATEGORY)!!),
+                    tags = emptyList(),
+                    language = record.getValue(CONTENT_METADATA.LANGUAGE)!!,
+                    createdAt = record.getValue(CONTENT_METADATA.CREATED_AT)!!,
+                    createdBy = record.getValue(CONTENT_METADATA.CREATED_BY),
+                    updatedAt = record.getValue(CONTENT_METADATA.UPDATED_AT)!!,
+                    updatedBy = record.getValue(CONTENT_METADATA.UPDATED_BY),
+                    deletedAt = record.getValue(CONTENT_METADATA.DELETED_AT)
+                )
+            }
+            .switchIfEmpty(Mono.error(ContentNotFoundException("Content metadata not found for contentId: $contentId")))
     }
 
     /**

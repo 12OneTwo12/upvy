@@ -111,7 +111,7 @@ class AiPoweredSearchReader(
         }
 
         val targetCategory = category?.takeIf { it.isNotBlank() && it != "ALL" }
-        val maxVideoLimit = maxVideos?.toInt() ?: 5
+        val maxVideoLimit = maxVideos?.toInt() ?: 100
 
         logger.info("AI 기반 검색 시작: category={}, maxVideos={}", targetCategory ?: "ALL", maxVideoLimit)
 

@@ -32,6 +32,7 @@ import org.springframework.core.io.ClassPathResource
 import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.restdocs.operation.preprocess.Preprocessors.*
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.*
 import org.springframework.restdocs.request.RequestDocumentation.*
 import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document
@@ -621,6 +622,10 @@ class UserProfileControllerTest : BaseReactiveTest {
                         fieldWithPath("content[].interactions.isSaved").description("사용자의 저장 여부 (인증된 경우)"),
                         fieldWithPath("content[].createdAt").description("생성일시"),
                         fieldWithPath("content[].updatedAt").description("수정일시"),
+                        fieldWithPath("content[].quiz").type(JsonFieldType.OBJECT).description("퀴즈 메타데이터 (퀴즈가 없으면 null)").optional(),
+                        fieldWithPath("content[].quiz.quizId").type(JsonFieldType.STRING).description("퀴즈 ID").optional(),
+                        fieldWithPath("content[].quiz.hasAttempted").type(JsonFieldType.BOOLEAN).description("사용자가 한 번이라도 풀었는지 여부").optional(),
+                        fieldWithPath("content[].quiz.attemptCount").type(JsonFieldType.NUMBER).description("사용자의 시도 횟수").optional(),
                         fieldWithPath("nextCursor").description("다음 페이지 커서 (없으면 null)").optional(),
                         fieldWithPath("hasNext").description("다음 페이지 존재 여부"),
                         fieldWithPath("count").description("현재 페이지의 항목 수")

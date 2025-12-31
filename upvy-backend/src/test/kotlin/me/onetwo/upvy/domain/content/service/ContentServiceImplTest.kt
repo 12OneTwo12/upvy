@@ -86,6 +86,9 @@ class ContentServiceImplTest : BaseReactiveTest {
     @MockK
     private lateinit var tagService: TagService
 
+    @MockK
+    private lateinit var quizRepository: me.onetwo.upvy.domain.quiz.repository.QuizRepository
+
     private lateinit var contentService: ContentServiceImpl
 
     @BeforeEach
@@ -102,6 +105,7 @@ class ContentServiceImplTest : BaseReactiveTest {
             userLikeRepository = userLikeRepository,
             userSaveRepository = userSaveRepository,
             tagService = tagService,
+            quizRepository = quizRepository,
             bucketName = "test-bucket",
             region = "ap-northeast-2"
         )
@@ -546,6 +550,7 @@ class ContentServiceImplTest : BaseReactiveTest {
             every { contentInteractionRepository.getShareCount(contentId) } returns Mono.just(0)
             every { contentInteractionRepository.getViewCount(contentId) } returns Mono.just(0)
             every { tagService.getTagsByContentId(contentId) } returns Flux.empty()
+            every { quizRepository.findQuizMetadataByContentIds(any(), any()) } returns Mono.just(emptyMap())
 
             // When: 메서드 실행
             val result = contentService.getContent(contentId, null)
