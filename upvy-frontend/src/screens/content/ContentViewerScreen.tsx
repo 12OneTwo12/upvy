@@ -110,6 +110,7 @@ export default function ContentViewerScreen() {
           isLiked: content.interactions?.isLiked ?? false,
           isSaved: content.interactions?.isSaved ?? false,
         },
+        quiz: content.quiz ?? null, // 퀴즈 메타데이터
         subtitles: [],
       }
     : null;
