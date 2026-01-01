@@ -74,10 +74,10 @@ const useStyles = createStyleSheet((theme) => ({
     elevation: 5, // Android shadow
   },
   containerEnabled: {
-    backgroundColor: 'rgba(34, 197, 94, 0.85)', // Bright green for enabled state
+    backgroundColor: 'rgba(34, 197, 94, 0.8)', // Bright green for enabled state
   },
   containerDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // White background
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // White background
     borderWidth: 1.5,
     borderColor: 'rgba(0, 0, 0, 0.15)',
   },

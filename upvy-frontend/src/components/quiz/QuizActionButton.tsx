@@ -79,7 +79,7 @@ const useStyles = createStyleSheet((theme) => ({
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // White background
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // White background
     borderRadius: theme.borderRadius.full,
     borderWidth: 1.5,
     borderColor: 'rgba(0, 0, 0, 0.15)',
@@ -105,7 +105,7 @@ const useStyles = createStyleSheet((theme) => ({
     color: '#1f2937',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: theme.borderRadius.md,
     overflow: 'hidden',
     // Add shadow for better visibility
