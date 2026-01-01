@@ -4,7 +4,7 @@
  * FeedScreen과 동일하지만 스크롤 비활성화 (단일 콘텐츠만 표시)
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Dimensions, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -62,11 +62,14 @@ export default function ContentViewerScreen() {
   const queryClient = useQueryClient();
 
   // 콘텐츠 데이터 로드 (인터랙션 정보 포함)
-  const { data: content, isLoading: contentLoading } = useQuery({
+  const { data: content, isLoading: contentLoading, refetch: refetchContent } = useQuery({
     queryKey: ['content', contentId],
     queryFn: () => getContent(contentId),
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 0, // 항상 fresh한 데이터 가져오기
+    refetchOnMount: 'always', // 마운트 시 항상 refetch
+    refetchOnWindowFocus: true, // 화면 포커스 시 refetch
   });
 
   // 크리에이터 프로필 로드 (콘텐츠 로드 후)
@@ -79,6 +82,17 @@ export default function ContentViewerScreen() {
   });
 
   const isLoading = contentLoading || creatorLoading;
+
+  // 화면이 focus될 때마다 콘텐츠 새로고침 (무한 루프 방지를 위해 refetchContent는 dependency에서 제외)
+  useEffect(() => {
+    if (isScreenFocused) {
+      // 캐시를 완전히 제거하고 fresh한 데이터 가져오기
+      queryClient.removeQueries({ queryKey: ['content', contentId] });
+      queryClient.removeQueries({ queryKey: ['quiz', contentId] });
+      refetchContent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScreenFocused]);
 
   // ContentResponse를 FeedItem 타입으로 변환
   const feedItem: FeedItemType | null = content && creatorProfile
@@ -327,6 +341,12 @@ export default function ContentViewerScreen() {
     navigation.goBack();
   };
 
+  // 수정 성공 핸들러: 프로필로 돌아가기
+  const handleEditSuccess = () => {
+    // FeedOverlay에서 이미 모든 쿼리를 refetch했으므로 그냥 돌아가기만 하면 됨
+    navigation.goBack();
+  };
+
   // 표시할 아이템 결정: 로딩 중이면 스켈레톤, 아니면 실제 데이터
   const displayItem = isLoading ? loadingFeedItem : feedItem;
 
@@ -375,6 +395,7 @@ export default function ContentViewerScreen() {
           onFollow={handleFollow}
           onCreatorPress={handleCreatorPress}
           onDeleteSuccess={handleDeleteSuccess}
+          onEditSuccess={handleEditSuccess}
         />
 
         {/* 로딩 중일 때 중앙 스피너 추가 (FeedScreen과 동일) */}

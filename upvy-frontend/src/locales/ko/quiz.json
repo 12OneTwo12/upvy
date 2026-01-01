@@ -26,11 +26,14 @@
     "options": "선택지 (정답 체크)",
     "optionPlaceholder": "선택지 {{number}}",
     "allowMultipleAnswers": "복수 정답 허용",
+    "addOption": "선택지 추가",
     "validation": {
       "questionRequired": "퀴즈 질문을 입력해주세요.",
       "minOptions": "최소 2개의 선택지를 입력해주세요.",
       "minCorrectAnswers": "최소 1개의 정답을 선택해주세요.",
-      "singleAnswerOnly": "단일 정답 모드에서는 1개의 정답만 선택 가능합니다."
+      "singleAnswerOnly": "단일 정답 모드에서는 1개의 정답만 선택 가능합니다.",
+      "minOptionsRequired": "최소 2개의 선택지가 필요합니다.",
+      "maxOptions": "최대 4개의 선택지까지 추가할 수 있습니다."
     }
   }
 }

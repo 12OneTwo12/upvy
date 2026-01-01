@@ -26,11 +26,14 @@
     "options": "選択肢（正解にチェック）",
     "optionPlaceholder": "選択肢{{number}}",
     "allowMultipleAnswers": "複数回答を許可",
+    "addOption": "選択肢を追加",
     "validation": {
       "questionRequired": "クイズの質問を入力してください。",
       "minOptions": "最低2つの選択肢を入力してください。",
       "minCorrectAnswers": "最低1つの正解を選択してください。",
-      "singleAnswerOnly": "単一回答モードでは1つの正解のみ選択できます。"
+      "singleAnswerOnly": "単一回答モードでは1つの正解のみ選択できます。",
+      "minOptionsRequired": "最低2つの選択肢が必要です。",
+      "maxOptions": "選択肢は最大4つまで追加できます。"
     }
   }
 }

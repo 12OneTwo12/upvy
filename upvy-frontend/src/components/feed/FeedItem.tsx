@@ -49,6 +49,7 @@ interface FeedItemProps {
   onCreatorPress?: () => void;
   onBlockSuccess?: () => void; // 차단 성공 시 호출
   onDeleteSuccess?: () => void; // 삭제 성공 시 호출
+  onEditSuccess?: () => void; // 수정 성공 시 호출
 }
 
 export const FeedItem: React.FC<FeedItemProps> = ({
@@ -65,6 +66,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   onCreatorPress,
   onBlockSuccess,
   onDeleteSuccess,
+  onEditSuccess,
 }) => {
   const tabBarHeight = useSafeBottomTabBarHeight();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -377,6 +379,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           onQuizPress={handleQuizPress}
           onBlockSuccess={onBlockSuccess}
           onDeleteSuccess={onDeleteSuccess}
+          onEditSuccess={onEditSuccess}
           isExpanded={isExpanded}
           setIsExpanded={setIsExpanded}
           tabBarHeight={tabBarHeight}

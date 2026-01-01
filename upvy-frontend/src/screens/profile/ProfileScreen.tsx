@@ -213,6 +213,7 @@ export default function ProfileScreen() {
     gcTime: 1000 * 60 * 30,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    refetchOnMount: 'always', // 화면이 마운트될 때 항상 refetch
   });
   const contents = contentsData?.pages.flatMap(page => page.content) || [];
 

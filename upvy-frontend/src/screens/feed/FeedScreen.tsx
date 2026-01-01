@@ -134,6 +134,7 @@ export default function FeedScreen() {
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
           onBlockSuccess={handleBlockSuccess}
           onDeleteSuccess={handleDeleteSuccess}
+          onEditSuccess={() => {}}
         />
 
         {isLoadingItem && (

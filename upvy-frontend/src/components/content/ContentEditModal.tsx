@@ -41,9 +41,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { theme } from '@/theme';
 import { updateContent } from '@/api/content.api';
+import { createQuiz, updateQuiz, deleteQuiz, getQuiz } from '@/api/quiz.api';
 import { getErrorMessage } from '@/utils/errorHandler';
 import type { ContentUpdateRequest, Category } from '@/types/content.types';
 import { CATEGORIES } from '@/types/content.types';
+import type { QuizResponse } from '@/types/quiz.types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -57,6 +59,7 @@ interface ContentEditModalProps {
   initialCategory: Category;
   initialTags: string[];
   initialLanguage: string;
+  initialQuiz?: QuizResponse | null;
 }
 
 export const ContentEditModal: React.FC<ContentEditModalProps> = ({
@@ -69,8 +72,9 @@ export const ContentEditModal: React.FC<ContentEditModalProps> = ({
   initialCategory,
   initialTags,
   initialLanguage,
+  initialQuiz,
 }) => {
-  const { t } = useTranslation(['feed', 'upload', 'common', 'search']);
+  const { t } = useTranslation(['feed', 'upload', 'common', 'search', 'quiz']);
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription || '');
   const [selectedCategory, setSelectedCategory] = useState<Category>(initialCategory);
@@ -79,6 +83,21 @@ export const ContentEditModal: React.FC<ContentEditModalProps> = ({
   const [language, setLanguage] = useState(initialLanguage);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 퀴즈 관련 state
+  const [addQuiz, setAddQuiz] = useState(!!initialQuiz);
+  const [quizQuestion, setQuizQuestion] = useState(initialQuiz?.question || '');
+  const [quizOptions, setQuizOptions] = useState<string[]>(
+    initialQuiz?.options.map(opt => opt.optionText) || ['', '']
+  );
+  const [correctOptionIndices, setCorrectOptionIndices] = useState<number[]>(
+    initialQuiz?.options
+      .map((opt, idx) => opt.isCorrect === true ? idx : -1)
+      .filter(idx => idx !== -1) || []
+  );
+  const [allowMultipleAnswers, setAllowMultipleAnswers] = useState(
+    initialQuiz?.allowMultipleAnswers || false
+  );
 
   // 모달이 열릴 때 초기값 설정
   useEffect(() => {
@@ -91,15 +110,56 @@ export const ContentEditModal: React.FC<ContentEditModalProps> = ({
       setTagInput('');
       setShowCategoryPicker(false);
       setIsSubmitting(false); // 모달 열릴 때 로딩 상태 초기화
+
+      // 퀴즈 상태 초기화
+      setAddQuiz(!!initialQuiz);
+      setQuizQuestion(initialQuiz?.question || '');
+      setQuizOptions(
+        initialQuiz?.options.map(opt => opt.optionText) || ['', '']
+      );
+      setCorrectOptionIndices(
+        initialQuiz?.options
+          .map((opt, idx) => opt.isCorrect === true ? idx : -1)
+          .filter(idx => idx !== -1) || []
+      );
+      setAllowMultipleAnswers(initialQuiz?.allowMultipleAnswers || false);
     }
-  }, [visible, initialTitle, initialDescription, initialCategory, initialTags, initialLanguage]);
+  }, [visible, initialTitle, initialDescription, initialCategory, initialTags, initialLanguage, initialQuiz]);
+
+  // 퀴즈 변경 여부 확인
+  const hasQuizChanges = (() => {
+    // 퀴즈 추가/삭제 여부
+    if (addQuiz !== !!initialQuiz) return true;
+
+    // 퀴즈가 없는 경우
+    if (!addQuiz) return false;
+
+    // 퀴즈 내용 변경 여부
+    if (quizQuestion !== (initialQuiz?.question || '')) return true;
+    if (allowMultipleAnswers !== (initialQuiz?.allowMultipleAnswers || false)) return true;
+
+    // 옵션 텍스트 변경 여부
+    const initialOptions = initialQuiz?.options.map(opt => opt.optionText) || ['', ''];
+    if (JSON.stringify(quizOptions) !== JSON.stringify(initialOptions)) return true;
+
+    // 정답 인덱스 변경 여부
+    const initialCorrectIndices = initialQuiz?.options
+      .map((opt, idx) => opt.isCorrect === true ? idx : -1)
+      .filter(idx => idx !== -1)
+      .sort((a, b) => a - b) || [];
+    const currentCorrectIndices = [...correctOptionIndices].sort((a, b) => a - b);
+    if (JSON.stringify(currentCorrectIndices) !== JSON.stringify(initialCorrectIndices)) return true;
+
+    return false;
+  })();
 
   const hasChanges =
     title !== initialTitle ||
     description !== (initialDescription || '') ||
     selectedCategory !== initialCategory ||
     JSON.stringify(tags) !== JSON.stringify(initialTags) ||
-    language !== initialLanguage;
+    language !== initialLanguage ||
+    hasQuizChanges;
 
   const isValid = title.trim().length > 0 && title.length <= 200 && description.length <= 2000;
 
@@ -126,8 +186,59 @@ export const ContentEditModal: React.FC<ContentEditModalProps> = ({
     setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
+  // 퀴즈 옵션 추가 (최대 4개)
+  const handleAddQuizOption = () => {
+    if (quizOptions.length >= 4) {
+      Alert.alert(t('common:label.notice'), t('quiz:upload.validation.maxOptions'));
+      return;
+    }
+    setQuizOptions([...quizOptions, '']);
+  };
+
+  // 퀴즈 옵션 삭제 (최소 2개)
+  const handleRemoveQuizOption = (index: number) => {
+    if (quizOptions.length <= 2) {
+      Alert.alert(t('common:label.notice'), t('quiz:upload.validation.minOptionsRequired'));
+      return;
+    }
+
+    // 옵션 삭제
+    const newOptions = quizOptions.filter((_, i) => i !== index);
+    setQuizOptions(newOptions);
+
+    // 정답 인덱스 조정
+    const newCorrectIndices = correctOptionIndices
+      .filter(i => i !== index) // 삭제된 옵션이 정답이었으면 제거
+      .map(i => i > index ? i - 1 : i); // 삭제된 옵션 뒤의 인덱스들은 -1
+    setCorrectOptionIndices(newCorrectIndices);
+  };
+
   const handleSubmit = async () => {
     if (!isValid || !hasChanges) return;
+
+    // 퀴즈 유효성 검사
+    if (addQuiz) {
+      if (!quizQuestion.trim()) {
+        Alert.alert(t('common:label.notice'), t('quiz:upload.validation.questionRequired'));
+        return;
+      }
+
+      const validOptions = quizOptions.filter(opt => opt.trim());
+      if (validOptions.length < 2) {
+        Alert.alert(t('common:label.notice'), t('quiz:upload.validation.minOptions'));
+        return;
+      }
+
+      if (correctOptionIndices.length === 0) {
+        Alert.alert(t('common:label.notice'), t('quiz:upload.validation.minCorrectAnswers'));
+        return;
+      }
+
+      if (!allowMultipleAnswers && correctOptionIndices.length > 1) {
+        Alert.alert(t('common:label.notice'), t('quiz:upload.validation.singleAnswerOnly'));
+        return;
+      }
+    }
 
     setIsSubmitting(true);
 
@@ -151,15 +262,54 @@ export const ContentEditModal: React.FC<ContentEditModalProps> = ({
         request.language = language;
       }
 
+      // 콘텐츠 메타데이터 업데이트
       await updateContent(contentId, request);
+
+      // 퀴즈 변경 사항 처리
+      if (hasQuizChanges) {
+        if (!addQuiz && initialQuiz) {
+          // 퀴즈 삭제
+          await deleteQuiz(contentId);
+        } else if (addQuiz && !initialQuiz) {
+          // 퀴즈 생성
+          const payloadOptions = quizOptions
+            .map((optionText, index) => ({
+              optionText: optionText.trim(),
+              displayOrder: index + 1,
+              isCorrect: correctOptionIndices.includes(index),
+            }))
+            .filter(opt => opt.optionText !== '');
+
+          await createQuiz(contentId, {
+            question: quizQuestion.trim(),
+            allowMultipleAnswers,
+            options: payloadOptions,
+          });
+        } else if (addQuiz && initialQuiz) {
+          // 퀴즈 수정
+          const payloadOptions = quizOptions
+            .map((optionText, index) => ({
+              optionText: optionText.trim(),
+              displayOrder: index + 1,
+              isCorrect: correctOptionIndices.includes(index),
+            }))
+            .filter(opt => opt.optionText !== '');
+
+          await updateQuiz(contentId, {
+            question: quizQuestion.trim(),
+            allowMultipleAnswers,
+            options: payloadOptions,
+          });
+        }
+      }
 
       Alert.alert(
         t('feed:editContent.successTitle'),
         t('feed:editContent.successMessage'),
         [{
           text: t('common:button.confirm'),
-          onPress: () => {
-            onSuccess?.();
+          onPress: async () => {
+            await onSuccess?.();
             onClose();
           }
         }]
@@ -438,6 +588,144 @@ export const ContentEditModal: React.FC<ContentEditModalProps> = ({
                 </View>
               </View>
 
+              {/* 퀴즈 */}
+              <View style={styles.section}>
+                <TouchableOpacity
+                  style={styles.checkboxRow}
+                  onPress={() => setAddQuiz(!addQuiz)}
+                  disabled={isSubmitting}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: addQuiz }}
+                >
+                  <Ionicons
+                    name={addQuiz ? 'checkbox' : 'square-outline'}
+                    size={24}
+                    color={theme.colors.primary[500]}
+                  />
+                  <Text style={styles.checkboxLabel}>{t('quiz:upload.addQuiz')}</Text>
+                </TouchableOpacity>
+
+                {addQuiz && (
+                  <View style={styles.quizForm}>
+                    {/* 질문 */}
+                    <View style={styles.quizSection}>
+                      <Text style={styles.label}>
+                        {t('quiz:upload.question')} <Text style={styles.required}>{t('quiz:upload.required')}</Text>
+                      </Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder={t('quiz:upload.questionPlaceholder')}
+                        placeholderTextColor={theme.colors.text.tertiary}
+                        value={quizQuestion}
+                        onChangeText={setQuizQuestion}
+                        maxLength={500}
+                        multiline
+                        editable={!isSubmitting}
+                        accessibilityLabel={t('quiz:upload.question')}
+                      />
+                      <Text style={styles.charCount}>{quizQuestion.length}/500</Text>
+                    </View>
+
+                    {/* 선택지 */}
+                    <View style={styles.quizSection}>
+                      <Text style={styles.label}>{t('quiz:upload.options')}</Text>
+                      {quizOptions.map((option, index) => (
+                        <View key={index} style={styles.optionRow}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              if (allowMultipleAnswers) {
+                                setCorrectOptionIndices(prev =>
+                                  prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+                                );
+                              } else {
+                                setCorrectOptionIndices([index]);
+                              }
+                            }}
+                            style={styles.optionCheckbox}
+                            disabled={isSubmitting}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: correctOptionIndices.includes(index) }}
+                            accessibilityLabel={`Correct answer ${index + 1}`}
+                          >
+                            <Ionicons
+                              name={correctOptionIndices.includes(index) ? 'checkbox' : 'square-outline'}
+                              size={20}
+                              color={correctOptionIndices.includes(index) ? theme.colors.success[500] : theme.colors.text.tertiary}
+                            />
+                          </TouchableOpacity>
+                          <TextInput
+                            style={styles.optionInput}
+                            placeholder={t('quiz:upload.optionPlaceholder', { number: index + 1 })}
+                            placeholderTextColor={theme.colors.text.tertiary}
+                            value={option}
+                            onChangeText={(text) => {
+                              const newOptions = [...quizOptions];
+                              newOptions[index] = text;
+                              setQuizOptions(newOptions);
+                            }}
+                            maxLength={200}
+                            editable={!isSubmitting}
+                            accessibilityLabel={t('quiz:upload.optionPlaceholder', { number: index + 1 })}
+                          />
+                          {quizOptions.length > 2 && (
+                            <TouchableOpacity
+                              onPress={() => handleRemoveQuizOption(index)}
+                              style={styles.optionRemoveButton}
+                              disabled={isSubmitting}
+                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                              <Ionicons
+                                name="close-circle"
+                                size={24}
+                                color={theme.colors.error}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      ))}
+
+                      {/* 옵션 추가 버튼 */}
+                      {quizOptions.length < 4 && (
+                        <TouchableOpacity
+                          style={styles.addOptionButton}
+                          onPress={handleAddQuizOption}
+                          disabled={isSubmitting}
+                        >
+                          <Ionicons
+                            name="add-circle-outline"
+                            size={20}
+                            color={theme.colors.primary[500]}
+                          />
+                          <Text style={styles.addOptionText}>{t('quiz:upload.addOption')}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* 복수 정답 허용 */}
+                    <TouchableOpacity
+                      style={styles.checkboxRow}
+                      onPress={() => {
+                        setAllowMultipleAnswers(!allowMultipleAnswers);
+                        // 모드 전환 시 정답 선택 초기화
+                        if (!allowMultipleAnswers && correctOptionIndices.length > 1) {
+                          setCorrectOptionIndices([correctOptionIndices[0]]);
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: allowMultipleAnswers }}
+                    >
+                      <Ionicons
+                        name={allowMultipleAnswers ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={theme.colors.primary[500]}
+                      />
+                      <Text style={styles.checkboxLabel}>{t('quiz:upload.allowMultipleAnswers')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
               {/* 하단 여백 */}
               <View style={styles.bottomSpacer} />
             </ScrollView>
@@ -662,6 +950,62 @@ const styles = StyleSheet.create({
   },
   languageButtonTextActive: {
     color: theme.colors.text.inverse,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+  },
+  checkboxLabel: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.primary,
+  },
+  quizForm: {
+    marginTop: theme.spacing[4],
+    gap: theme.spacing[4],
+  },
+  quizSection: {
+    gap: theme.spacing[2],
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+    marginBottom: theme.spacing[2],
+  },
+  optionCheckbox: {
+    padding: theme.spacing[1],
+  },
+  optionInput: {
+    flex: 1,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    padding: theme.spacing[3],
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.background.primary,
+  },
+  optionRemoveButton: {
+    padding: theme.spacing[1],
+  },
+  addOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+    paddingVertical: theme.spacing[3],
+    paddingHorizontal: theme.spacing[4],
+    marginTop: theme.spacing[2],
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
+    borderRadius: theme.borderRadius.md,
+    borderStyle: 'dashed',
+  },
+  addOptionText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.primary[500],
   },
   bottomSpacer: {
     height: theme.spacing[10],

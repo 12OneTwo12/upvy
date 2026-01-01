@@ -29,7 +29,8 @@ export const useQuizQuery = (contentId: string, enabled: boolean = true) => {
     queryKey: ['quiz', contentId],
     queryFn: () => getQuiz(contentId),
     enabled,
-    staleTime: 1000 * 60 * 5, // 5분간 캐시 유지
+    staleTime: 0, // 항상 최신 데이터 사용 (퀴즈 수정 시 즉시 반영)
+    refetchOnMount: 'always', // 마운트 시 항상 refetch
   });
 };
 
