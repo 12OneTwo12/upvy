@@ -41,6 +41,7 @@ interface QuizOverlayProps {
   attemptResult?: QuizAttemptResponse | null;
   isSubmitting?: boolean;
   isSubmitSuccess?: boolean;
+  isAutoDisplayed?: boolean;
   onRetry?: () => void;
   onSkip?: () => void;
   onViewVideo?: () => void;
@@ -54,6 +55,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
   attemptResult: externalAttemptResult,
   isSubmitting: externalIsSubmitting,
   isSubmitSuccess: externalIsSubmitSuccess,
+  isAutoDisplayed = false,
   onRetry,
   onSkip,
   onViewVideo,
@@ -139,9 +141,9 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
     }).start();
   }, [visible, fadeAnim]);
 
-  // 정답일 경우 2초 후 자동으로 모달 닫기 (페이드 아웃 애니메이션 포함)
+  // 정답일 경우 2초 후 자동으로 모달 닫기 (자동 표시된 경우만)
   useEffect(() => {
-    if (isSubmitted && attemptResult?.isCorrect && visible) {
+    if (isSubmitted && attemptResult?.isCorrect && visible && isAutoDisplayed) {
       const timer = setTimeout(() => {
         // 페이드 아웃 애니메이션 시작
         Animated.timing(fadeAnim, {
@@ -156,7 +158,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [isSubmitted, attemptResult?.isCorrect, visible, onClose, fadeAnim]);
+  }, [isSubmitted, attemptResult?.isCorrect, visible, isAutoDisplayed, onClose, fadeAnim]);
 
   // Handle option selection
   const handleOptionPress = useCallback((optionId: string) => {

@@ -351,6 +351,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           attemptResult={attemptResult}
           isSubmitting={isSubmitting}
           isSubmitSuccess={isSubmitSuccess}
+          isAutoDisplayed={hasAutoShownQuiz}
         />
       )}
 
