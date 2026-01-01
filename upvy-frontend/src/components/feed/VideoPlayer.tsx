@@ -156,8 +156,13 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               onVideoLoaded();
             }
 
-            if (isFocused && !externalIsDragging && !userPaused) {
-              // 포커스 시 재생 (사용자가 수동으로 일시정지하지 않았을 때만)
+            // 외부 제어 중이면 무조건 일시정지
+            if (disableAutoControl) {
+              if (status.isPlaying) {
+                await videoRef.current.pauseAsync();
+              }
+            } else if (isFocused && !externalIsDragging && !userPaused) {
+              // 포커스 시 재생 (외부 제어 중이 아니고 사용자가 수동으로 일시정지하지 않았을 때만)
               if (!status.isPlaying) {
                 await videoRef.current.playAsync();
               }
@@ -182,6 +187,23 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
 
     controlPlayback();
   }, [isFocused, isLoadingSkeleton, externalIsDragging, userPaused, hasBeenLoaded, onVideoLoaded, clearAllTimers, disableAutoControl]);
+
+  // 외부 제어 활성화 시 비디오 일시정지
+  useEffect(() => {
+    if (disableAutoControl && videoRef.current) {
+      const pauseIfPlaying = async () => {
+        try {
+          const status = await videoRef.current.getStatusAsync();
+          if (status.isLoaded && status.isPlaying) {
+            await videoRef.current.pauseAsync();
+          }
+        } catch (error) {
+          // 비디오 준비 안됨 - 무시
+        }
+      };
+      pauseIfPlaying();
+    }
+  }, [disableAutoControl]);
 
   // 포커스 해제 시 롱프레스 상태 및 수동 일시정지 상태 리셋
   useEffect(() => {
@@ -239,6 +261,11 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
     if (status.isLoaded) {
       // 로드 성공 시 타이머 정리
       clearAllTimers();
+
+      // 외부 제어 중인데 재생되고 있으면 즉시 일시정지
+      if (disableAutoControl && status.isPlaying && videoRef.current) {
+        videoRef.current.pauseAsync().catch(() => {});
+      }
 
       setIsPlaying(status.isPlaying);
 
@@ -492,7 +519,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
               style={{ width: SCREEN_WIDTH, height: videoContainerHeight }}
               resizeMode={ResizeMode.CONTAIN}
               isLooping
-              shouldPlay={isFocused && !externalIsDragging && !userPaused}
+              shouldPlay={isFocused && !externalIsDragging && !userPaused && !disableAutoControl}
               isMuted={false}
               onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
               onError={(error) => handleVideoError(error)}
