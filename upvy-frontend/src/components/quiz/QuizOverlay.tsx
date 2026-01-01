@@ -139,16 +139,24 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
     }).start();
   }, [visible, fadeAnim]);
 
-  // 정답일 경우 2초 후 자동으로 모달 닫기
+  // 정답일 경우 2초 후 자동으로 모달 닫기 (페이드 아웃 애니메이션 포함)
   useEffect(() => {
     if (isSubmitted && attemptResult?.isCorrect && visible) {
       const timer = setTimeout(() => {
-        onClose();
+        // 페이드 아웃 애니메이션 시작
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          // 애니메이션 완료 후 onClose 호출
+          onClose();
+        });
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [isSubmitted, attemptResult?.isCorrect, visible, onClose]);
+  }, [isSubmitted, attemptResult?.isCorrect, visible, onClose, fadeAnim]);
 
   // Handle option selection
   const handleOptionPress = useCallback((optionId: string) => {
