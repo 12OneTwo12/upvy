@@ -16,12 +16,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/stores/authStore';
-import { useQuizStore } from '@/stores/quizStore';
 import { ReportModal } from '@/components/report/ReportModal';
 import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
 import { BlockConfirmModal } from '@/components/block/BlockConfirmModal';
 import { DeleteConfirmModal, ContentEditModal } from '@/components/content';
-import { QuizActionButton, QuizToggleButton } from '@/components/quiz';
 import { getQuiz } from '@/api/quiz.api';
 import type { CreatorInfo, InteractionInfo, Category } from '@/types/feed.types';
 import type { QuizMetadataResponse, QuizResponse } from '@/types/quiz.types';
@@ -49,7 +47,6 @@ interface FeedOverlayProps {
   onShare?: () => void;
   onFollow?: () => void;
   onCreatorPress?: () => void;
-  onQuizPress?: () => void; // 퀴즈 보기 버튼 클릭 시 호출
   onBlockSuccess?: () => void; // 차단 성공 시 호출
   onDeleteSuccess?: () => void; // 삭제 성공 시 호출
   onEditSuccess?: () => void; // 수정 성공 시 호출
@@ -114,7 +111,6 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onShare,
   onFollow,
   onCreatorPress,
-  onQuizPress,
   onBlockSuccess,
   onDeleteSuccess,
   onEditSuccess,
@@ -127,8 +123,6 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const queryClient = useQueryClient();
   const navigation = useNavigation<NavigationProp>();
 
-  // Quiz store
-  const { isQuizAutoDisplayEnabled, toggleQuizAutoDisplay } = useQuizStore();
   const currentUser = useAuthStore((state) => state.user);
   const isLoading = isLoadingState(creator);
   const isOwnPost = !isLoading && currentUser && currentUser.id === creator.userId;
@@ -324,25 +318,6 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         ]}
         pointerEvents="none"
       />
-
-      {/* 오른쪽 상단: 퀴즈 버튼들 */}
-      {/* QuizToggleButton: 항상 표시 (전역 설정) */}
-      {/* QuizActionButton: 퀴즈가 있을 때만 표시 */}
-      <View style={[styles.quizButtonsContainer, { top: insets.top + 8 }]}>
-        <QuizToggleButton
-          isEnabled={isQuizAutoDisplayEnabled}
-          onToggle={toggleQuizAutoDisplay}
-        />
-        {quiz && onQuizPress && (
-          <>
-            <View style={{ width: 8 }} />
-            <QuizActionButton
-              hasAttempted={quiz.hasAttempted}
-              onPress={onQuizPress}
-            />
-          </>
-        )}
-      </View>
 
       {/* 하단 콘텐츠 - Animated */}
       <View
@@ -639,13 +614,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 12,
     // paddingBottom은 동적으로 설정됨
-  },
-  quizButtonsContainer: {
-    position: 'absolute',
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 10,
   },
   content: {
     flexDirection: 'row',

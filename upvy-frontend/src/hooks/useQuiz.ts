@@ -133,7 +133,8 @@ export const useQuiz = (contentId: string, options?: UseQuizAttemptOptions) => {
   const attemptMutation = useQuizAttempt(quizId ?? '', contentId, options);
 
   // 마지막 시도 결과 (이미 시도한 경우 or 새로 제출한 결과)
-  let lastAttemptResult = attemptMutation.data;
+  // IMPORTANT: attemptMutation.data가 현재 quizId와 일치하는지 확인 (contentId 변경 시 이전 결과 무시)
+  let lastAttemptResult = attemptMutation.data?.quizId === quizId ? attemptMutation.data : undefined;
 
   // 이미 시도한 퀴즈의 경우, UserQuizAttemptDetail을 QuizAttemptResponse로 변환
   if (!lastAttemptResult && attemptsQuery.data?.attempts && attemptsQuery.data.attempts.length > 0 && quizQuery.data) {

@@ -173,15 +173,39 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   // 정답일 경우 2초 후 자동으로 모달 닫기 (자동 표시된 경우만)
   useEffect(() => {
-    if (isSubmitted && attemptResult?.isCorrect && visible && isAutoDisplayed) {
+    if (!isSubmitted || !visible || !isAutoDisplayed) return;
+
+    // 새로 제출한 경우: attemptResult 확인
+    const isCorrectFromResult = attemptResult?.isCorrect;
+
+    // 이미 푼 퀴즈인 경우: 모든 정답 옵션이 선택되고 모든 오답 옵션이 선택되지 않았으면 정답
+    const wasCorrectBefore = hasAttempted && quiz?.options.every(opt => {
+      const isCorrectOption = opt.isCorrect === true;
+      const isSelectedOption = opt.isSelected === true;
+
+      if (isCorrectOption) {
+        return isSelectedOption; // 정답은 선택되어야 함
+      } else {
+        return !isSelectedOption; // 오답은 선택되면 안 됨
+      }
+    });
+
+    if (isCorrectFromResult || wasCorrectBefore) {
       const timer = setTimeout(() => {
-        // onClose 호출하면 자동으로 fadeOut 애니메이션 실행됨
-        onClose();
+        // fadeOut 애니메이션 시작
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          // fadeOut 완료 후 onClose 호출 (비디오 재생은 이 시점에 시작됨)
+          onClose();
+        });
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [isSubmitted, attemptResult?.isCorrect, visible, isAutoDisplayed, onClose]);
+  }, [isSubmitted, attemptResult?.isCorrect, hasAttempted, quiz, visible, isAutoDisplayed, onClose, fadeAnim]);
 
   // Handle option selection
   const handleOptionPress = useCallback((optionId: string) => {
@@ -245,12 +269,6 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
     return quiz?.options ?? [];
   }, [attemptResult, quiz, isRetrying]);
 
-  // Calculate max percentage for scaling progress bars
-  const maxPercentage = useMemo(() => {
-    if (!displayOptions || displayOptions.length === 0) return 1;
-    const percentages = displayOptions.map(opt => opt.selectionPercentage || 0);
-    return Math.max(...percentages, 1); // Minimum 1 to avoid division by zero
-  }, [displayOptions]);
 
   if (!quiz) return null;
 
@@ -321,7 +339,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                 const isCorrect = option.isCorrect === true;
                 const isWrong = isSubmitted && wasSubmitted && option.isCorrect === false;
                 const showProgress = isSubmitted;
-                const progressWidth = (option.selectionPercentage / maxPercentage) * 100;
+                const progressWidth = option.selectionPercentage || 0;
 
                 return (
                   <TouchableOpacity
