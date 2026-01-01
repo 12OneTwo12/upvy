@@ -475,6 +475,7 @@ const useStyles = createStyleSheet((theme) => ({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    zIndex: 9999,
   },
   backdropTouchable: {
     flex: 1,
@@ -488,6 +489,7 @@ const useStyles = createStyleSheet((theme) => ({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[4],
+    zIndex: 10000,
   },
   modal: {
     backgroundColor: 'rgba(50, 50, 50, 0.95)',

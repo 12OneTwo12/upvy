@@ -339,20 +339,20 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           setIsExpanded={setIsExpanded}
           tabBarHeight={tabBarHeight}
         />
-
-        {/* 퀴즈 오버레이 */}
-        {quiz && submitAttemptAsync && (
-          <QuizOverlay
-            visible={quizVisible}
-            onClose={handleQuizClose}
-            quiz={quiz}
-            onSubmit={submitAttemptAsync}
-            attemptResult={attemptResult}
-            isSubmitting={isSubmitting}
-            isSubmitSuccess={isSubmitSuccess}
-          />
-        )}
       </Animated.View>
+
+      {/* 퀴즈 오버레이 - 최상위 레이어 */}
+      {quiz && submitAttemptAsync && (
+        <QuizOverlay
+          visible={quizVisible}
+          onClose={handleQuizClose}
+          quiz={quiz}
+          onSubmit={submitAttemptAsync}
+          attemptResult={attemptResult}
+          isSubmitting={isSubmitting}
+          isSubmitSuccess={isSubmitSuccess}
+        />
+      )}
 
       {/* 비디오 진행률 바 - 탭바 바로 위 */}
       {item.contentType === 'VIDEO' && item.url && (
