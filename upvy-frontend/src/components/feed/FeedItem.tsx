@@ -127,23 +127,20 @@ export const FeedItem: React.FC<FeedItemProps> = ({
       if (!videoPlayerRef.current) return;
 
       if (quizVisible) {
-        // 퀴즈 열림 → 현재 재생 상태 저장 후 일시정지
+        // 퀴즈 열림 → 일시정지
         try {
-          const isPlaying = await videoPlayerRef.current.getIsPlaying();
-          wasPlayingBeforeQuiz.current = isPlaying;
-          await videoPlayerRef.current.pauseAsync();
+          await videoPlayerRef.current.externalPauseAsync();
         } catch (error) {
-          // VideoPlayer가 아직 초기화 중일 수 있음 - 무시
-          console.log('Video not ready yet, skipping pause');
+          // VideoPlayer 준비 안됨 - 무시
         }
       } else {
-        // 퀴즈 닫힘 → 기본값은 재생 (단, 사용자가 명시적으로 일시정지했으면 제외)
+        // 퀴즈 닫힘 → 사용자가 일시정지하지 않았으면 재생
         const userPaused = videoPlayerRef.current.getUserPaused();
         if (!userPaused) {
           try {
-            await videoPlayerRef.current.playAsync();
+            await videoPlayerRef.current.externalPlayAsync();
           } catch (error) {
-            console.log('Video not ready yet, skipping play');
+            // VideoPlayer 준비 안됨 - 무시
           }
         }
       }
@@ -332,6 +329,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           hasBeenLoaded={hasBeenLoaded}
           isDragging={isDragging}
           isExpanded={isExpanded}
+          disableAutoControl={quizVisible} // 퀴즈 모달 열림 시 자동 제어 비활성화
           onVideoLoaded={onVideoLoaded}
           onDoubleTap={handleLike}
           onTap={handleContentTap}
