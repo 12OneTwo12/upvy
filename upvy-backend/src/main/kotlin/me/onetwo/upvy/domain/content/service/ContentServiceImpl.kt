@@ -622,11 +622,19 @@ class ContentServiceImpl(
                         projections.associate { it.contentId to it.tags }
                     }
 
-                Mono.zip(photoUrlsMapMono, tagsMapMono) { photoUrlsMap, tagsMap ->
-                        Triple(contentWithMetadataList, photoUrlsMap, tagsMap)
+                // N+1 방지: 퀴즈 메타데이터 일괄 조회
+                val quizMetadataMapMono = quizRepository.findQuizMetadataByContentIds(contentIds, userId)
+
+                Mono.zip(photoUrlsMapMono, tagsMapMono, quizMetadataMapMono)
+                    .map { tuple ->
+                        val photoUrlsMap = tuple.t1
+                        val tagsMap = tuple.t2
+                        val quizMetadataMap = tuple.t3
+                        contentWithMetadataList to Triple(photoUrlsMap, tagsMap, quizMetadataMap)
                     }
             }
-            .flatMapMany { (contentWithMetadataList, photoUrlsMap, tagsMap) ->
+            .flatMapMany { (contentWithMetadataList, maps) ->
+                val (photoUrlsMap, tagsMap, quizMetadataMap) = maps
                 Flux.fromIterable(contentWithMetadataList).concatMap { contentWithMetadata ->
                     val content = contentWithMetadata.content
                     val metadata = contentWithMetadata.metadata
@@ -636,6 +644,7 @@ class ContentServiceImpl(
                         null
                     }
                     val tags = tagsMap[content.id] ?: emptyList()
+                    val quizMetadata = quizMetadataMap[content.id]  // Map에서 해당 contentId의 퀴즈 메타데이터 추출
 
                     // Interaction 정보 조회
                     getInteractionInfo(content.id!!, userId).map { interactions ->
@@ -656,6 +665,7 @@ class ContentServiceImpl(
                             tags = tags,
                             language = metadata.language,
                             interactions = interactions,
+                            quiz = quizMetadata,
                             createdAt = content.createdAt,
                             updatedAt = content.updatedAt
                         )
