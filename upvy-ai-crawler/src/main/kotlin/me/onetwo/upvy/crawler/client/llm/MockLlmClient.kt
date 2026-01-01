@@ -157,35 +157,36 @@ class MockLlmClient : LlmClient {
         logger.debug("MockLlmClient.generateQuizFromDescription called: title={}, language={}, difficulty={}",
             title, contentLanguage.code, difficulty?.name ?: "N/A")
 
+        // Mock: 궁금증 유발형 퀴즈 반환
         return when (contentLanguage) {
             ContentLanguage.KO -> QuizData(
-                question = "이 콘텐츠의 핵심 내용은 무엇인가요?",
+                question = "개발자가 가장 많이 쓰는 툴은?",
                 allowMultipleAnswers = false,
                 options = listOf(
-                    QuizOption("정답 보기", isCorrect = true),
-                    QuizOption("오답 보기 1", isCorrect = false),
-                    QuizOption("오답 보기 2", isCorrect = false),
-                    QuizOption("오답 보기 3", isCorrect = false)
+                    QuizOption("VS Code", isCorrect = true),
+                    QuizOption("메모장", isCorrect = false),
+                    QuizOption("워드", isCorrect = false),
+                    QuizOption("엑셀", isCorrect = false)
                 )
             )
             ContentLanguage.EN -> QuizData(
-                question = "What is the key concept of this content?",
+                question = "Most popular dev tool?",
                 allowMultipleAnswers = false,
                 options = listOf(
-                    QuizOption("Correct answer", isCorrect = true),
-                    QuizOption("Wrong answer 1", isCorrect = false),
-                    QuizOption("Wrong answer 2", isCorrect = false),
-                    QuizOption("Wrong answer 3", isCorrect = false)
+                    QuizOption("VS Code", isCorrect = true),
+                    QuizOption("Notepad", isCorrect = false),
+                    QuizOption("Word", isCorrect = false),
+                    QuizOption("Excel", isCorrect = false)
                 )
             )
             ContentLanguage.JA -> QuizData(
-                question = "このコンテンツの核心内容は何ですか？",
+                question = "開発者が一番使うツールは？",
                 allowMultipleAnswers = false,
                 options = listOf(
-                    QuizOption("正解", isCorrect = true),
-                    QuizOption("不正解 1", isCorrect = false),
-                    QuizOption("不正解 2", isCorrect = false),
-                    QuizOption("不正解 3", isCorrect = false)
+                    QuizOption("VS Code", isCorrect = true),
+                    QuizOption("メモ帳", isCorrect = false),
+                    QuizOption("Word", isCorrect = false),
+                    QuizOption("Excel", isCorrect = false)
                 )
             )
         }
