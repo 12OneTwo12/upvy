@@ -1,7 +1,10 @@
 package me.onetwo.upvy.crawler.backoffice.service
 
+import kotlinx.coroutines.runBlocking
 import me.onetwo.upvy.crawler.backoffice.domain.PendingContent
 import me.onetwo.upvy.crawler.backoffice.repository.PendingContentRepository
+import me.onetwo.upvy.crawler.client.LlmClient
+import me.onetwo.upvy.crawler.domain.ContentLanguage
 import me.onetwo.upvy.crawler.domain.content.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -15,6 +18,7 @@ import kotlin.jvm.optionals.getOrNull
  * 콘텐츠 게시 서비스
  *
  * 승인된 콘텐츠를 백엔드 contents/content_metadata/content_interactions 테이블에 INSERT합니다.
+ * 또한 LLM을 통해 퀴즈를 자동 생성하여 함께 저장합니다.
  */
 @Service
 class ContentPublishService(
@@ -24,6 +28,9 @@ class ContentPublishService(
     private val publishedContentInteractionRepository: PublishedContentInteractionRepository,
     private val tagRepository: TagRepository,
     private val contentTagRepository: ContentTagRepository,
+    private val quizRepository: QuizRepository,
+    private val quizOptionRepository: QuizOptionRepository,
+    private val llmClient: LlmClient,
     @Value("\${crawler.system-user-id:00000000-0000-0000-0000-000000000001}")
     private val systemUserId: String,
     @Value("\${s3.bucket:upvy-ai-media}")
@@ -74,6 +81,15 @@ class ContentPublishService(
         if (tagsList.isNotEmpty()) {
             saveTagsAndRelations(contentId, tagsList, now)
             logger.debug("tags 및 content_tags INSERT 완료: contentId={}, tags={}", contentId, tagsList)
+        }
+
+        // 5. 퀴즈 생성 및 발행
+        try {
+            createQuizForContent(contentId, pendingContent)
+            logger.info("퀴즈 생성 완료: contentId={}", contentId)
+        } catch (e: Exception) {
+            logger.error("퀴즈 생성 실패 (콘텐츠 발행은 계속): contentId={}", contentId, e)
+            // 퀴즈 생성 실패해도 콘텐츠 발행은 계속 진행
         }
 
         logger.info(
@@ -228,5 +244,74 @@ class ContentPublishService(
      */
     private fun buildS3PublicUrl(s3Key: String): String {
         return "https://$s3Bucket.s3.$s3Region.amazonaws.com/$s3Key"
+    }
+
+    /**
+     * 콘텐츠에 퀴즈 생성
+     *
+     * LLM을 사용하여 콘텐츠 설명 기반 퀴즈를 생성하고,
+     * quizzes 및 quiz_options 테이블에 직접 INSERT합니다.
+     *
+     * @param contentId 콘텐츠 ID
+     * @param pendingContent 승인 대기 콘텐츠
+     * @throws Exception 퀴즈 생성 또는 INSERT 실패 시
+     */
+    private fun createQuizForContent(contentId: String, pendingContent: PendingContent) {
+        // description이 없으면 퀴즈 생성 불가
+        val description = pendingContent.description
+        if (description.isNullOrBlank()) {
+            logger.warn("퀴즈 생성 스킵: description이 없음, contentId={}", contentId)
+            return
+        }
+
+        logger.debug("퀴즈 생성 시작: contentId={}, title={}", contentId, pendingContent.title)
+
+        val now = Instant.now()
+        val quizId = UUID.randomUUID().toString()
+
+        // 1. LLM으로 퀴즈 생성
+        val contentLanguage = ContentLanguage.fromCode(pendingContent.language) ?: ContentLanguage.KO
+        val quizData = runBlocking {
+            llmClient.generateQuizFromDescription(
+                description = description,
+                title = pendingContent.title,
+                contentLanguage = contentLanguage,
+                difficulty = pendingContent.difficulty
+            )
+        }
+
+        logger.debug("LLM 퀴즈 생성 완료: question={}, options count={}",
+            quizData.question.take(50), quizData.options.size)
+
+        // 2. quizzes 테이블 INSERT
+        val quiz = Quiz(
+            id = quizId,
+            contentId = contentId,
+            question = quizData.question,
+            allowMultipleAnswers = quizData.allowMultipleAnswers,
+            createdAt = now,
+            createdBy = systemUserId,
+            updatedAt = now,
+            updatedBy = systemUserId
+        )
+        quizRepository.save(quiz)
+        logger.debug("quizzes INSERT 완료: quizId={}", quizId)
+
+        // 3. quiz_options 테이블 INSERT
+        quizData.options.forEachIndexed { index, option ->
+            val quizOption = QuizOption(
+                id = UUID.randomUUID().toString(),
+                quizId = quizId,
+                optionText = option.optionText,
+                isCorrect = option.isCorrect,
+                displayOrder = index + 1,  // 1부터 시작
+                createdAt = now,
+                createdBy = systemUserId,
+                updatedAt = now,
+                updatedBy = systemUserId
+            )
+            quizOptionRepository.save(quizOption)
+        }
+        logger.debug("quiz_options INSERT 완료: count={}", quizData.options.size)
     }
 }

@@ -202,3 +202,25 @@ data class ClipSegment(
     val description: String? = null, // 클립 설명 (왜 이 구간을 선택했는지)
     val keywords: List<String> = emptyList()
 )
+
+/**
+ * AI 생성 퀴즈 데이터
+ *
+ * LLM이 콘텐츠 설명을 기반으로 생성한 퀴즈 정보
+ */
+data class QuizData(
+    val question: String,
+    val allowMultipleAnswers: Boolean,
+    val options: List<QuizOption>
+)
+
+/**
+ * 퀴즈 보기
+ *
+ * @property optionText 보기 텍스트
+ * @property isCorrect 정답 여부
+ */
+data class QuizOption(
+    val optionText: String,
+    val isCorrect: Boolean
+)

@@ -2,8 +2,10 @@ package me.onetwo.upvy.crawler.client
 
 import me.onetwo.upvy.crawler.domain.ContentLanguage
 import me.onetwo.upvy.crawler.domain.ContentMetadata
+import me.onetwo.upvy.crawler.domain.Difficulty
 import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
+import me.onetwo.upvy.crawler.domain.QuizData
 import me.onetwo.upvy.crawler.domain.SearchContext
 import me.onetwo.upvy.crawler.domain.SearchQuery
 import me.onetwo.upvy.crawler.domain.Segment
@@ -78,4 +80,23 @@ interface LlmClient {
      * @return 평가 결과 (관련성 점수, 교육적 가치, 추천 등급)
      */
     suspend fun evaluateVideos(candidates: List<VideoCandidate>): List<EvaluatedVideo>
+
+    /**
+     * 콘텐츠 설명 기반 퀴즈 생성
+     *
+     * 승인된 콘텐츠의 설명(description)을 기반으로 교육용 퀴즈를 자동 생성합니다.
+     * 콘텐츠 제목과 언어, 난이도를 참고하여 적절한 난이도의 퀴즈를 생성합니다.
+     *
+     * @param description 콘텐츠 설명
+     * @param title 콘텐츠 제목 (컨텍스트 제공)
+     * @param contentLanguage 콘텐츠 언어
+     * @param difficulty 난이도 (nullable)
+     * @return 생성된 퀴즈 데이터
+     */
+    suspend fun generateQuizFromDescription(
+        description: String,
+        title: String,
+        contentLanguage: ContentLanguage,
+        difficulty: Difficulty?
+    ): QuizData
 }

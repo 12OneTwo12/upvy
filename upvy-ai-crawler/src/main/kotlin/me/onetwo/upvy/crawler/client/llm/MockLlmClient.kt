@@ -7,6 +7,8 @@ import me.onetwo.upvy.crawler.domain.ContentMetadata
 import me.onetwo.upvy.crawler.domain.Difficulty
 import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
+import me.onetwo.upvy.crawler.domain.QuizData
+import me.onetwo.upvy.crawler.domain.QuizOption
 import me.onetwo.upvy.crawler.domain.Recommendation
 import me.onetwo.upvy.crawler.domain.SearchContext
 import me.onetwo.upvy.crawler.domain.SearchQuery
@@ -142,6 +144,50 @@ class MockLlmClient : LlmClient {
                 predictedQuality = 82,
                 recommendation = Recommendation.RECOMMENDED,
                 reasoning = "Mock evaluation: Good educational content"
+            )
+        }
+    }
+
+    override suspend fun generateQuizFromDescription(
+        description: String,
+        title: String,
+        contentLanguage: ContentLanguage,
+        difficulty: Difficulty?
+    ): QuizData {
+        logger.debug("MockLlmClient.generateQuizFromDescription called: title={}, language={}, difficulty={}",
+            title, contentLanguage.code, difficulty?.name ?: "N/A")
+
+        // Mock: 궁금증 유발형 퀴즈 반환
+        return when (contentLanguage) {
+            ContentLanguage.KO -> QuizData(
+                question = "개발자가 가장 많이 쓰는 툴은?",
+                allowMultipleAnswers = false,
+                options = listOf(
+                    QuizOption("VS Code", isCorrect = true),
+                    QuizOption("메모장", isCorrect = false),
+                    QuizOption("워드", isCorrect = false),
+                    QuizOption("엑셀", isCorrect = false)
+                )
+            )
+            ContentLanguage.EN -> QuizData(
+                question = "Most popular dev tool?",
+                allowMultipleAnswers = false,
+                options = listOf(
+                    QuizOption("VS Code", isCorrect = true),
+                    QuizOption("Notepad", isCorrect = false),
+                    QuizOption("Word", isCorrect = false),
+                    QuizOption("Excel", isCorrect = false)
+                )
+            )
+            ContentLanguage.JA -> QuizData(
+                question = "開発者が一番使うツールは？",
+                allowMultipleAnswers = false,
+                options = listOf(
+                    QuizOption("VS Code", isCorrect = true),
+                    QuizOption("メモ帳", isCorrect = false),
+                    QuizOption("Word", isCorrect = false),
+                    QuizOption("Excel", isCorrect = false)
+                )
             )
         }
     }
