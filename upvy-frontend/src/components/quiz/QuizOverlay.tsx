@@ -555,7 +555,7 @@ const useStyles = createStyleSheet((theme) => ({
     paddingBottom: theme.spacing[8],
   },
   questionContainer: {
-    marginTop: theme.spacing[2], // X 버튼이 작아져서 원래대로
+    marginTop: theme.spacing[5], // X 버튼과 여유 공간
     marginBottom: theme.spacing[5],
   },
   questionText: {
