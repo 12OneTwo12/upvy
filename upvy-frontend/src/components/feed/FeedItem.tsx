@@ -120,22 +120,37 @@ export const FeedItem: React.FC<FeedItemProps> = ({
 
   // 퀴즈 모달 열림/닫힘 시 비디오 제어
   useEffect(() => {
+    // VIDEO 타입일 때만 비디오 제어
+    if (item.contentType !== 'VIDEO') return;
+
     const controlVideoForQuiz = async () => {
       if (!videoPlayerRef.current) return;
 
       if (quizVisible) {
         // 퀴즈 열림 → 현재 재생 상태 저장 후 일시정지
-        const isPlaying = await videoPlayerRef.current.getIsPlaying();
-        wasPlayingBeforeQuiz.current = isPlaying;
-        await videoPlayerRef.current.pauseAsync();
-      } else if (wasPlayingBeforeQuiz.current) {
-        // 퀴즈 닫힘 → 이전에 재생 중이었으면 재생 재개 (기본값: 재생)
-        await videoPlayerRef.current.playAsync();
+        try {
+          const isPlaying = await videoPlayerRef.current.getIsPlaying();
+          wasPlayingBeforeQuiz.current = isPlaying;
+          await videoPlayerRef.current.pauseAsync();
+        } catch (error) {
+          // VideoPlayer가 아직 초기화 중일 수 있음 - 무시
+          console.log('Video not ready yet, skipping pause');
+        }
+      } else {
+        // 퀴즈 닫힘 → 기본값은 재생 (단, 사용자가 명시적으로 일시정지했으면 제외)
+        const userPaused = videoPlayerRef.current.getUserPaused();
+        if (!userPaused) {
+          try {
+            await videoPlayerRef.current.playAsync();
+          } catch (error) {
+            console.log('Video not ready yet, skipping play');
+          }
+        }
       }
     };
 
     controlVideoForQuiz();
-  }, [quizVisible]);
+  }, [quizVisible, item.contentType]);
 
   // 퀴즈 자동 표시 로직
   useEffect(() => {
@@ -144,9 +159,14 @@ export const FeedItem: React.FC<FeedItemProps> = ({
     if (isLoadingQuiz) return;
 
     if (quiz && item.quiz) {
-      setQuizVisible(true);
-      setHasAutoShownQuiz(true);
-      setWasAutoOpened(true); // 자동으로 열었으므로 true
+      // VideoPlayer 초기화 시간을 위해 약간 지연 (재마운트 시 타이밍 이슈 방지)
+      const timer = setTimeout(() => {
+        setQuizVisible(true);
+        setHasAutoShownQuiz(true);
+        setWasAutoOpened(true); // 자동으로 열었으므로 true
+      }, 300);
+
+      return () => clearTimeout(timer);
     }
   }, [isFocused, isQuizAutoDisplayEnabled, hasAutoShownQuiz, quizVisible, quiz, isLoadingQuiz, item.quiz, item.contentId]);
 

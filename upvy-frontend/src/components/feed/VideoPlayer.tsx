@@ -41,6 +41,7 @@ export interface VideoPlayerRef {
   pauseAsync: () => Promise<void>;
   playAsync: () => Promise<void>;
   getIsPlaying: () => Promise<boolean>;
+  getUserPaused: () => boolean;
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, ref) => {
@@ -406,7 +407,8 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
         return false;
       }
     },
-  }), [duration]);
+    getUserPaused: () => userPaused, // 사용자가 명시적으로 일시정지했는지 확인
+  }), [duration, userPaused]);
 
   // 탭 이벤트 처리 (싱글/더블 구분)
   const handleTap = () => {
