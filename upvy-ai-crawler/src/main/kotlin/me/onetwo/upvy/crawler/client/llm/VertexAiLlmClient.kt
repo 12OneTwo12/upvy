@@ -547,100 +547,133 @@ class VertexAiLlmClient(
 
         val goodExamples = when (contentLanguage) {
             ContentLanguage.KO -> """
-                |좋은 예시 (궁금증 유발형):
+                |좋은 예시 (명확하고 구체적):
                 |영상: "주피터 노트북 사용법"
-                |질문: "데이터 분석가가 가장 많이 쓰는 툴은?"
-                |보기: "Jupyter", "Excel", "Tableau", "SQL"
-                |→ 사용자: "어? 뭔데? 궁금한데!" → 영상 시청
+                |질문: "Python을 웹에서 바로 실행하려면?"
+                |보기: "Jupyter", "메모장", "Word", "카톡"
+                |→ 맥락 명확! 정답 하나뿐! (Jupyter 외엔 웹에서 실행 안됨)
                 |
-                |영상: "재귀함수 개념 설명"
-                |질문: "함수가 자기 자신을 호출하면?"
-                |보기: "무한루프", "스택오버플로", "정상작동", "에러"
-                |→ 사용자: "어떻게 되는거지?" → 영상 시청
+                |영상: "Git 기초"
+                |질문: "코드 저장소로 가장 많이 쓰는 곳은?"
+                |보기: "GitHub", "Google Drive", "Dropbox", "USB"
+                |→ 맥락 명확! GitHub 외엔 코드 저장소 아님!
                 |
-                |영상: "Git 브랜치 전략"
-                |질문: "협업 시 코드 충돌 방지법은?"
-                |보기: "브랜치", "복사", "주석", "삭제"
-                |→ 사용자: "아 이거 궁금했는데!" → 영상 시청
+                |영상: "웹 개발 입문"
+                |질문: "웹사이트 만들 때 반드시 필요한 언어는?"
+                |보기: "HTML", "Python", "Java", "C++"
+                |→ 명확! HTML만 필수, 나머지는 선택!
+                |
+                |영상: "VSCode 사용법"
+                |질문: "코드 편집기로 개발자들이 가장 많이 쓰는 건?"
+                |보기: "VSCode", "메모장", "한글", "Excel"
+                |→ 구체적! VSCode 외엔 코드 편집기 아님!
             """.trimMargin()
             ContentLanguage.EN -> """
-                |Good examples (curiosity-driven):
+                |Good examples (clear and specific):
                 |Video: "Jupyter Notebook Tutorial"
-                |Question: "Data scientists' favorite tool?"
-                |Options: "Jupyter", "Excel", "Tableau", "SQL"
-                |→ User: "What is it?" → Watch video
+                |Question: "Run Python code in browser with?"
+                |Options: "Jupyter", "Notepad", "Word", "Chat"
+                |→ Clear context! Only Jupyter runs Python in browser!
                 |
-                |Video: "Recursion Explained"
-                |Question: "Function calls itself, then?"
-                |Options: "Infinite loop", "Stack overflow", "Works fine", "Error"
-                |→ User: "How does it work?" → Watch video
+                |Video: "Git Basics"
+                |Question: "Most popular code hosting platform?"
+                |Options: "GitHub", "Google Drive", "Dropbox", "USB"
+                |→ Clear! GitHub is the only code platform!
                 |
-                |Video: "Git Branching Strategy"
-                |Question: "Prevent code conflicts in teams?"
-                |Options: "Branching", "Copying", "Comments", "Deleting"
-                |→ User: "I wondered about this!" → Watch video
+                |Video: "Web Dev Intro"
+                |Question: "Must-have language for websites?"
+                |Options: "HTML", "Python", "Java", "C++"
+                |→ Clear! Only HTML is required!
+                |
+                |Video: "VSCode Tutorial"
+                |Question: "Most used code editor by developers?"
+                |Options: "VSCode", "Notepad", "Word", "Excel"
+                |→ Specific! VSCode is the only code editor!
             """.trimMargin()
             ContentLanguage.JA -> """
-                |良い例 (好奇心を刺激):
+                |良い例 (明確で具体的):
                 |動画: "Jupyter Notebook使い方"
-                |質問: "データ分析で一番使うツールは？"
-                |選択肢: "Jupyter", "Excel", "Tableau", "SQL"
-                |→ ユーザー: "何だろう？" → 動画視聴
+                |質問: "Pythonをブラウザで実行するには？"
+                |選択肢: "Jupyter", "メモ帳", "Word", "LINE"
+                |→ 文脈明確！Jupyter以外ブラウザで実行不可！
                 |
-                |動画: "再帰関数の概念"
-                |質問: "関数が自分を呼び出すと？"
-                |選択肢: "無限ループ", "スタックオーバーフロー", "正常動作", "エラー"
-                |→ ユーザー: "どうなるの？" → 動画視聴
+                |動画: "Git基礎"
+                |質問: "コード保存で一番使われる場所は？"
+                |選択肢: "GitHub", "Google Drive", "Dropbox", "USB"
+                |→ 明確！GitHubだけがコードホスティング！
                 |
-                |動画: "Gitブランチ戦略"
-                |質問: "チームでコード競合を防ぐには？"
-                |選択肢: "ブランチ", "コピー", "コメント", "削除"
-                |→ ユーザー: "気になってた！" → 動画視聴
+                |動画: "Web開発入門"
+                |質問: "Webサイトに絶対必要な言語は？"
+                |選択肢: "HTML", "Python", "Java", "C++"
+                |→ 明確！HTMLだけが必須！
+                |
+                |動画: "VSCode使い方"
+                |質問: "開発者が一番使うコードエディタは？"
+                |選択肢: "VSCode", "メモ帳", "Word", "Excel"
+                |→ 具体的！VSCodeだけがコードエディタ！
             """.trimMargin()
         }
 
         val badExamples = when (contentLanguage) {
             ContentLanguage.KO -> """
-                |나쁜 예시 (영상 봐야 답 가능 / 맥락 없음):
+                |나쁜 예시 (모호하고 불명확):
+                |❌ "버전 관리 필수 도구는?"
+                |   → "버전 관리가 뭔지 모호" (문서? 코드? 디자인?)
+                |
+                |❌ "데이터 분석에 쓰는 툴은?"
+                |   → "답이 여러개" (Excel? Python? Tableau?)
+                |
+                |❌ "협업 도구는?"
+                |   → "맥락 없음" (Slack? Jira? Git? Notion?)
+                |
+                |❌ "개발 환경은?"
+                |   → "정답이 애매" (VS Code? IntelliJ? Eclipse?)
+                |
                 |❌ "실습 환경 구축 도구는?"
-                |   → 사용자: "뭔 소리야? 무슨 실습?"
+                |   → "전문 용어" (초보자는 무슨 말인지 모름)
                 |
                 |❌ "이 영상의 주제는?"
-                |   → 사용자: "영상도 안 봤는데?"
-                |
-                |❌ "커널 재시작 단축키는?"
-                |   → 사용자: "몰라... 넘어가야지"
-                |
-                |❌ "영상에서 설명한 세 번째 기능은?"
-                |   → 사용자: "아직 안 봤는데 어떻게 알아?"
+                |   → "영상 봐야 답 가능" (영상 안 봤는데?)
             """.trimMargin()
             ContentLanguage.EN -> """
-                |Bad examples (requires watching / no context):
-                |❌ "Development environment setup tool?"
-                |   → User: "What? What environment?"
+                |Bad examples (vague and unclear):
+                |❌ "Version control essential tool?"
+                |   → "Vague meaning" (documents? code? design?)
+                |
+                |❌ "Data analysis tool?"
+                |   → "Multiple answers" (Excel? Python? Tableau?)
+                |
+                |❌ "Collaboration tool?"
+                |   → "No context" (Slack? Jira? Git? Notion?)
+                |
+                |❌ "Development environment?"
+                |   → "Unclear answer" (VS Code? IntelliJ? Eclipse?)
+                |
+                |❌ "Dev environment setup tool?"
+                |   → "Technical jargon" (beginners don't understand)
                 |
                 |❌ "This video's topic?"
-                |   → User: "Haven't watched yet"
-                |
-                |❌ "Kernel restart shortcut?"
-                |   → User: "Don't know... skip"
-                |
-                |❌ "Third feature explained in video?"
-                |   → User: "How would I know before watching?"
+                |   → "Requires watching" (haven't watched yet?)
             """.trimMargin()
             ContentLanguage.JA -> """
-                |悪い例 (視聴必須 / 文脈なし):
+                |悪い例 (曖昧で不明確):
+                |❌ "バージョン管理必須ツールは？"
+                |   → "意味が曖昧" (文書？コード？デザイン？)
+                |
+                |❌ "データ分析に使うツールは？"
+                |   → "答えが複数" (Excel？Python？Tableau？)
+                |
+                |❌ "コラボレーションツールは？"
+                |   → "文脈なし" (Slack？Jira？Git？Notion？)
+                |
+                |❌ "開発環境は？"
+                |   → "答えが曖昧" (VS Code？IntelliJ？Eclipse？)
+                |
                 |❌ "実習環境構築ツールは？"
-                |   → ユーザー: "何の話？"
+                |   → "専門用語" (初心者は意味不明)
                 |
                 |❌ "この動画のテーマは？"
-                |   → ユーザー: "まだ見てないのに"
-                |
-                |❌ "カーネル再起動のショートカットは？"
-                |   → ユーザー: "知らない...スキップ"
-                |
-                |❌ "動画で説明した3番目の機能は？"
-                |   → ユーザー: "見る前にどうやって？"
+                |   → "視聴必須" (まだ見てないのに？)
             """.trimMargin()
         }
 
@@ -693,22 +726,28 @@ class VertexAiLlmClient(
             |   - "어? 뭔데? 궁금한데!" → 영상 시청 동기 부여
             |   - 질문 자체가 흥미롭고 일반적인 호기심 자극
             |
-            |2. **영상 안 봐도 이해 가능한 질문**
-            |   - 제목과 설명만 봐도 질문의 의미를 알 수 있어야 함
+            |2. **명확성 = 맥락 + 구체적 상황**
+            |   - 질문만 봐도 무슨 상황인지 정확히 알 수 있어야 함
+            |   - 전문 용어는 OK, BUT 반드시 맥락과 함께!
+            |   - ❌ "버전 관리 도구는?" → ✅ "코드 변경 이력을 저장하려면?"
+            |   - ❌ "커널 재시작은?" → ✅ "Jupyter에서 코드 실행 초기화하려면?"
+            |
+            |3. **정답이 명백히 하나뿐**
+            |   - 다른 보기는 완전히 다른 카테고리여야 함
+            |   - ❌ "협업 도구는?" (Slack? Jira? Git? 다 맞음)
+            |   - ✅ "코드 저장소로 가장 많이 쓰는 곳은?" (GitHub만 코드 저장소)
+            |
+            |4. **영상 안 봐도 질문 이해 가능**
             |   - 맥락 없이 갑자기 나와도 이해 가능
             |   - "이거 나도 궁금했는데!" 느낌
+            |   - 답은 영상 보면 알 것 같은 기대감
             |
-            |3. **답은 영상 보면 알 수 있을 것 같은 기대감**
-            |   - "영상 보면 알겠지?" 기대
-            |   - 영상 내용과 관련 있지만 직접적이지 않음
-            |   - 일반적인 문제/상황 제시
-            |
-            |4. **극도로 간결**
+            |5. **극도로 간결**
             |   - 질문: 15-30자 / 5-10 단어
             |   - 보기: 2-15자 / 1-5 단어
             |   - 3초 안에 읽고 이해 가능
             |
-            |5. **보기 구성**
+            |6. **보기 구성**
             |   - 3-4개 (너무 많으면 안 됨)
             |   - 단일 정답 (복수 정답 X)
             |   - 모두 그럴듯하게 (너무 명백한 오답 X)
@@ -716,8 +755,9 @@ class VertexAiLlmClient(
             |**절대 금지사항:**
             |❌ "이 영상의..." / "영상에서..." 같은 표현
             |❌ 영상 봐야만 답할 수 있는 세부 질문
-            |❌ 맥락 없는 전문 용어 ("커널 재시작은?")
+            |❌ 맥락 없이 전문 용어만 던지기 ("커널 재시작은?", "버전 관리는?")
             |❌ 순서/단계 질문 ("세 번째 기능은?")
+            |❌ 정답이 여러개인 모호한 질문 ("협업 도구는?", "데이터 분석 툴은?")
             |❌ 긴 문장형 질문 / 설명 포함 보기
             |
             |JSON 형식으로만 응답해주세요 (${contentLanguage.nativeName}로 작성):
