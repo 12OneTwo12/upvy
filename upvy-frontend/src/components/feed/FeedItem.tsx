@@ -81,6 +81,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const [quizVisible, setQuizVisible] = useState(false);
   const { isQuizAutoDisplayEnabled } = useQuizStore();
   const [hasAutoShownQuiz, setHasAutoShownQuiz] = useState(false);
+  const [wasAutoOpened, setWasAutoOpened] = useState(false); // 현재 열린 퀴즈가 자동으로 열린 것인지
 
   // 퀴즈 로직
   const {
@@ -102,10 +103,12 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   // 퀴즈 핸들러
   const handleQuizPress = useCallback(() => {
     setQuizVisible(true);
+    setWasAutoOpened(false); // 수동으로 열었으므로 false
   }, []);
 
   const handleQuizClose = useCallback(() => {
     setQuizVisible(false);
+    setWasAutoOpened(false); // 닫을 때 리셋
   }, []);
 
   // 아이템 변경 시 자동 표시 상태 리셋
@@ -123,6 +126,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
     if (quiz && item.quiz) {
       setQuizVisible(true);
       setHasAutoShownQuiz(true);
+      setWasAutoOpened(true); // 자동으로 열었으므로 true
     }
   }, [isFocused, isQuizAutoDisplayEnabled, hasAutoShownQuiz, quizVisible, quiz, isLoadingQuiz, item.quiz, item.contentId]);
 
@@ -351,7 +355,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           attemptResult={attemptResult}
           isSubmitting={isSubmitting}
           isSubmitSuccess={isSubmitSuccess}
-          isAutoDisplayed={hasAutoShownQuiz}
+          isAutoDisplayed={wasAutoOpened}
         />
       )}
 
