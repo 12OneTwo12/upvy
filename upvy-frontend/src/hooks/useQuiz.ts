@@ -136,6 +136,7 @@ export const useQuiz = (contentId: string, options?: UseQuizAttemptOptions) => {
 
   // 이미 시도한 퀴즈의 경우, UserQuizAttemptDetail을 QuizAttemptResponse로 변환
   if (!lastAttemptResult && attemptsQuery.data?.attempts && attemptsQuery.data.attempts.length > 0 && quizQuery.data) {
+    // 백엔드가 이미 최신순(createdAt DESC)으로 정렬해서 반환하므로 첫 번째 시도가 최신
     const latestAttempt = attemptsQuery.data.attempts[0];
     const selectedOptionIds = latestAttempt.selectedOptions;
 
