@@ -266,7 +266,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
           {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={theme.colors.text.secondary} />
+            <Ionicons name="close" size={28} color="#FFFFFF" />
           </TouchableOpacity>
 
           <ScrollView
@@ -544,13 +544,7 @@ const useStyles = createStyleSheet((theme) => ({
     top: theme.spacing[3],
     right: theme.spacing[3],
     zIndex: 10,
-    padding: theme.spacing[2],
-    backgroundColor: theme.colors.gray[200],
-    borderRadius: 24,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: theme.spacing[1], // 댓글 모달과 동일
   },
   scrollView: {
     maxHeight: SCREEN_HEIGHT * 0.7,
@@ -561,7 +555,7 @@ const useStyles = createStyleSheet((theme) => ({
     paddingBottom: theme.spacing[8],
   },
   questionContainer: {
-    marginTop: theme.spacing[2],
+    marginTop: theme.spacing[2], // X 버튼이 작아져서 원래대로
     marginBottom: theme.spacing[5],
   },
   questionText: {
