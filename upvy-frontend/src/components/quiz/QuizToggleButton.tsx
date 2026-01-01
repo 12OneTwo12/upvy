@@ -42,8 +42,8 @@ export const QuizToggleButton: React.FC<QuizToggleButtonProps> = ({
         <Ionicons
           name={isEnabled ? "bulb" : "bulb-outline"}
           size={20}
-          color={isEnabled ? theme.colors.white : '#1f2937'}
-          style={styles.icon}
+          color={isEnabled ? '#FFFFFF' : '#1f2937'}
+          style={isEnabled ? styles.iconEnabled : styles.iconDisabled}
         />
       </View>
       <Text
@@ -84,24 +84,31 @@ const useStyles = createStyleSheet((theme) => ({
   text: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
-    // Text shadow for better readability
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
   },
   textEnabled: {
-    color: theme.colors.white,
+    color: '#FFFFFF', // Pure white text on green background
+    textShadowColor: 'rgba(0, 0, 0, 0.2)', // Subtle shadow for depth
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   textDisabled: {
     color: '#1f2937', // Dark gray text on white background
+    textShadowColor: 'transparent', // No shadow needed on white background
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 0,
   },
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  icon: {
-    textShadowColor: 'rgba(0, 0, 0, 0.15)',
+  iconEnabled: {
+    textShadowColor: 'rgba(0, 0, 0, 0.2)', // Subtle shadow for white icon
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    textShadowRadius: 2,
+  },
+  iconDisabled: {
+    textShadowColor: 'transparent', // No shadow for dark icon on white
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 0,
   },
 }));
