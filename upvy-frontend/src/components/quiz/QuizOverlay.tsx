@@ -121,7 +121,14 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
         setSubmittedOptionIds(selectedIds);
       }
     }
-  }, [externalAttemptResult, visible, quiz, isRetrying]);
+  }, [externalAttemptResult, visible, quiz]);
+
+  // isRetrying 상태 변경 시 외부 결과 재적용 방지
+  useEffect(() => {
+    if (isRetrying) {
+      hasAppliedExternalResult.current = true;
+    }
+  }, [isRetrying]);
 
   // Animation
   useEffect(() => {
@@ -131,6 +138,17 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
       useNativeDriver: true,
     }).start();
   }, [visible, fadeAnim]);
+
+  // 정답일 경우 2초 후 자동으로 모달 닫기
+  useEffect(() => {
+    if (isSubmitted && attemptResult?.isCorrect && visible) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isSubmitted, attemptResult?.isCorrect, visible, onClose]);
 
   // Handle option selection
   const handleOptionPress = useCallback((optionId: string) => {
@@ -171,7 +189,6 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   // Handle retry
   const handleRetry = useCallback(() => {
-    hasAppliedExternalResult.current = false;
     setIsRetrying(true);
     setSelectedOptionIds([]);
     setSubmittedOptionIds([]);
