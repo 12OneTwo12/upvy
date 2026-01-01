@@ -8,7 +8,7 @@
  * - 재시도, 건너뛰기, 비디오 보기 버튼
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
@@ -61,8 +62,15 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
   onViewVideo,
 }) => {
   const { t } = useTranslation('quiz');
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const styles = useStyles();
   const theme = useTheme();
+
+  // Calculate modal container style with tab bar adjustment
+  const modalContainerStyle = useMemo(() => ({
+    ...styles.modalContainer,
+    paddingBottom: tabBarHeight > 0 ? tabBarHeight / 2 : 0,
+  }), [styles.modalContainer, tabBarHeight]);
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -127,9 +135,10 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
     if (hasAttempted && quiz) {
       setIsSubmitted(true);
       // Show user's previous selections if available
-      const correctOptions = quiz.options.filter(opt => opt.isCorrect === true);
-      if (correctOptions.length > 0) {
-        setSelectedOptionIds(correctOptions.map(opt => opt.id));
+      const userSelectedOptions = quiz.options.filter(opt => opt.isSelected === true);
+      if (userSelectedOptions.length > 0) {
+        setSelectedOptionIds(userSelectedOptions.map(opt => opt.id));
+        setSubmittedOptionIds(userSelectedOptions.map(opt => opt.id));
       }
     }
   }, [hasAttempted, quiz]);
@@ -295,7 +304,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
       {/* Quiz Modal */}
       <Animated.View
         style={[
-          styles.modalContainer,
+          modalContainerStyle,
           {
             opacity: fadeAnim,
           },
