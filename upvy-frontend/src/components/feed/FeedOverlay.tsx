@@ -128,6 +128,11 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
 
   // Quiz store
   const { isQuizAutoDisplayEnabled, toggleQuizAutoDisplay } = useQuizStore();
+
+  // Debug: Log quiz data
+  useEffect(() => {
+    console.log(`[FeedOverlay] contentId: ${contentId}, quiz:`, quiz);
+  }, [contentId, quiz]);
   const currentUser = useAuthStore((state) => state.user);
   const isLoading = isLoadingState(creator);
   const isOwnPost = !isLoading && currentUser && currentUser.id === creator.userId;
@@ -301,15 +306,23 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           isEnabled={isQuizAutoDisplayEnabled}
           onToggle={toggleQuizAutoDisplay}
         />
-        {quiz && onQuizPress && (
-          <>
-            <View style={{ width: 8 }} />
-            <QuizActionButton
-              hasAttempted={quiz.hasAttempted}
-              onPress={onQuizPress}
-            />
-          </>
-        )}
+        {(() => {
+          const shouldShowQuizButton = quiz && onQuizPress;
+          if (!shouldShowQuizButton) {
+            console.log(`[FeedOverlay] Quiz button NOT shown - quiz: ${!!quiz}, onQuizPress: ${!!onQuizPress}`);
+          } else {
+            console.log(`[FeedOverlay] Quiz button shown - quizId: ${quiz.quizId}, hasAttempted: ${quiz.hasAttempted}`);
+          }
+          return shouldShowQuizButton ? (
+            <>
+              <View style={{ width: 8 }} />
+              <QuizActionButton
+                hasAttempted={quiz.hasAttempted}
+                onPress={onQuizPress}
+              />
+            </>
+          ) : null;
+        })()}
       </View>
 
       {/* 하단 콘텐츠 - Animated */}
