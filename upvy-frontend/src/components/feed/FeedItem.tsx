@@ -82,6 +82,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const { isQuizAutoDisplayEnabled } = useQuizStore();
   const [hasAutoShownQuiz, setHasAutoShownQuiz] = useState(false);
   const [wasAutoOpened, setWasAutoOpened] = useState(false); // 현재 열린 퀴즈가 자동으로 열린 것인지
+  const wasPlayingBeforeQuiz = useRef(false); // 퀴즈 열기 전 재생 상태 저장
 
   // 퀴즈 로직
   const {
@@ -116,6 +117,25 @@ export const FeedItem: React.FC<FeedItemProps> = ({
     setHasAutoShownQuiz(false);
     setQuizVisible(false);
   }, [item.contentId]);
+
+  // 퀴즈 모달 열림/닫힘 시 비디오 제어
+  useEffect(() => {
+    const controlVideoForQuiz = async () => {
+      if (!videoPlayerRef.current) return;
+
+      if (quizVisible) {
+        // 퀴즈 열림 → 현재 재생 상태 저장 후 일시정지
+        const isPlaying = await videoPlayerRef.current.getIsPlaying();
+        wasPlayingBeforeQuiz.current = isPlaying;
+        await videoPlayerRef.current.pauseAsync();
+      } else if (wasPlayingBeforeQuiz.current) {
+        // 퀴즈 닫힘 → 이전에 재생 중이었으면 재생 재개 (기본값: 재생)
+        await videoPlayerRef.current.playAsync();
+      }
+    };
+
+    controlVideoForQuiz();
+  }, [quizVisible]);
 
   // 퀴즈 자동 표시 로직
   useEffect(() => {

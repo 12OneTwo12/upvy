@@ -38,6 +38,9 @@ interface VideoPlayerProps {
 export interface VideoPlayerRef {
   seek: (progress: number, durationMillis?: number) => Promise<void>;
   getDuration: () => number;
+  pauseAsync: () => Promise<void>;
+  playAsync: () => Promise<void>;
+  getIsPlaying: () => Promise<boolean>;
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, ref) => {
@@ -375,6 +378,34 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>((props, 
       }
     },
     getDuration: () => duration,
+    pauseAsync: async () => {
+      if (!videoRef.current) return;
+      try {
+        await videoRef.current.pauseAsync();
+        setUserPaused(true); // 외부에서 일시정지 요청
+      } catch (error) {
+        console.error('Pause error:', error);
+      }
+    },
+    playAsync: async () => {
+      if (!videoRef.current) return;
+      try {
+        await videoRef.current.playAsync();
+        setUserPaused(false); // 외부에서 재생 요청
+      } catch (error) {
+        console.error('Play error:', error);
+      }
+    },
+    getIsPlaying: async () => {
+      if (!videoRef.current) return false;
+      try {
+        const status = await videoRef.current.getStatusAsync();
+        return status.isLoaded && status.isPlaying;
+      } catch (error) {
+        console.error('Get status error:', error);
+        return false;
+      }
+    },
   }), [duration]);
 
   // 탭 이벤트 처리 (싱글/더블 구분)
