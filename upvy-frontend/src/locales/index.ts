@@ -14,6 +14,7 @@ import enSearch from './en/search.json';
 import enInteractions from './en/interactions.json';
 import enLegal from './en/legal.json';
 import enNotification from './en/notification.json';
+import enQuiz from './en/quiz.json';
 
 import koCommon from './ko/common.json';
 import koErrors from './ko/errors.json';
@@ -26,6 +27,7 @@ import koSearch from './ko/search.json';
 import koInteractions from './ko/interactions.json';
 import koLegal from './ko/legal.json';
 import koNotification from './ko/notification.json';
+import koQuiz from './ko/quiz.json';
 
 import jaCommon from './ja/common.json';
 import jaErrors from './ja/errors.json';
@@ -38,6 +40,7 @@ import jaSearch from './ja/search.json';
 import jaInteractions from './ja/interactions.json';
 import jaLegal from './ja/legal.json';
 import jaNotification from './ja/notification.json';
+import jaQuiz from './ja/quiz.json';
 
 // Language resources
 const resources = {
@@ -53,6 +56,7 @@ const resources = {
     interactions: enInteractions,
     legal: enLegal,
     notification: enNotification,
+    quiz: enQuiz,
   },
   ko: {
     common: koCommon,
@@ -66,6 +70,7 @@ const resources = {
     interactions: koInteractions,
     legal: koLegal,
     notification: koNotification,
+    quiz: koQuiz,
   },
   ja: {
     common: jaCommon,
@@ -79,6 +84,7 @@ const resources = {
     interactions: jaInteractions,
     legal: jaLegal,
     notification: jaNotification,
+    quiz: jaQuiz,
   },
 };
 
@@ -112,7 +118,7 @@ i18n
     lng: getDeviceLanguage(),
     fallbackLng: 'ko',
     defaultNS: 'common',
-    ns: ['common', 'errors', 'auth', 'settings', 'profile', 'feed', 'upload', 'search', 'interactions', 'legal', 'notification'],
+    ns: ['common', 'errors', 'auth', 'settings', 'profile', 'feed', 'upload', 'search', 'interactions', 'legal', 'notification', 'quiz'],
     interpolation: {
       escapeValue: false, // React already escapes values
     },
