@@ -45,6 +45,7 @@ export default function CategoryFeedScreen() {
   // 퀴즈 모달 상태
   const [quizModalVisible, setQuizModalVisible] = useState(false);
   const [selectedQuizContentId, setSelectedQuizContentId] = useState<string | null>(null);
+  const [dismissedQuizIds, setDismissedQuizIds] = useState<Set<string>>(new Set());
   const { isQuizAutoDisplayEnabled } = useQuizStore();
 
   // 선택된 카테고리 정보
@@ -113,18 +114,31 @@ export default function CategoryFeedScreen() {
     setQuizModalVisible(true);
   };
 
+  // 퀴즈 모달 닫기 핸들러
+  const handleQuizClose = () => {
+    if (selectedQuizContentId) {
+      setDismissedQuizIds(prev => new Set(prev).add(selectedQuizContentId));
+    }
+    setQuizModalVisible(false);
+  };
+
   // 퀴즈 자동 표시 로직
   useEffect(() => {
     if (!isQuizAutoDisplayEnabled || !isScreenFocused) return;
 
     if (currentIndex < displayItems.length) {
       const currentItem = displayItems[currentIndex];
-      // 퀴즈가 있고, 아직 시도하지 않았고, 모달이 열려있지 않을 때만 자동 표시
-      if (currentItem.quiz && !currentItem.quiz.hasAttempted && !quizModalVisible) {
+      // 퀴즈가 있고, 아직 시도하지 않았고, 사용자가 닫지 않았고, 모달이 열려있지 않을 때만 자동 표시
+      if (
+        currentItem.quiz &&
+        !currentItem.quiz.hasAttempted &&
+        !dismissedQuizIds.has(currentItem.contentId) &&
+        !quizModalVisible
+      ) {
         handleQuizPress(currentItem.contentId);
       }
     }
-  }, [currentIndex, isQuizAutoDisplayEnabled, displayItems, isScreenFocused, quizModalVisible]);
+  }, [currentIndex, isQuizAutoDisplayEnabled, displayItems, isScreenFocused, quizModalVisible, dismissedQuizIds]);
 
   /**
    * handleRefresh의 최신 버전을 ref로 유지
@@ -385,7 +399,7 @@ export default function CategoryFeedScreen() {
       {quiz && submitAttemptAsync && (
         <QuizOverlay
           visible={quizModalVisible}
-          onClose={() => setQuizModalVisible(false)}
+          onClose={handleQuizClose}
           quiz={quiz}
           onSubmit={submitAttemptAsync}
           attemptResult={attemptResult}
