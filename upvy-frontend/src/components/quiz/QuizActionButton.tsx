@@ -39,7 +39,7 @@ export const QuizActionButton: React.FC<QuizActionButtonProps> = ({
       <View style={styles.iconContainer}>
         <Ionicons
           name="help-circle"
-          size={40}
+          size={32}
           color={theme.colors.white}
           style={styles.icon}
         />
@@ -66,6 +66,12 @@ const useStyles = createStyleSheet((theme) => ({
   container: {
     alignItems: 'center',
     gap: theme.spacing[1],
+    // Shadow for better visibility
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4, // Android shadow
   },
   iconContainer: {
     position: 'relative',
@@ -73,6 +79,10 @@ const useStyles = createStyleSheet((theme) => ({
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(28, 28, 30, 0.75)', // Semi-transparent background
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   icon: {
     // Add shadow for better visibility

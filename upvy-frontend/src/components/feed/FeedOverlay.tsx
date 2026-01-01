@@ -305,20 +305,20 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         {/* 오른쪽 상단: 퀴즈 버튼들 */}
         {/* QuizToggleButton: 항상 표시 (전역 설정) */}
         {/* QuizActionButton: 퀴즈가 있을 때만 표시 */}
-        <View style={styles.quizButtonsContainer}>
-          {quiz && onQuizPress && (
-            <>
-              <QuizActionButton
-                hasAttempted={quiz.hasAttempted}
-                onPress={onQuizPress}
-              />
-              <View style={{ width: 8 }} />
-            </>
-          )}
+        <View style={[styles.quizButtonsContainer, { top: insets.top + 8 }]}>
           <QuizToggleButton
             isEnabled={isQuizAutoDisplayEnabled}
             onToggle={toggleQuizAutoDisplay}
           />
+          {quiz && onQuizPress && (
+            <>
+              <View style={{ width: 8 }} />
+              <QuizActionButton
+                hasAttempted={quiz.hasAttempted}
+                onPress={onQuizPress}
+              />
+            </>
+          )}
         </View>
 
         <View style={styles.content}>
@@ -593,8 +593,7 @@ const styles = StyleSheet.create({
   },
   quizButtonsContainer: {
     position: 'absolute',
-    top: 60,
-    right: 16,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 10,

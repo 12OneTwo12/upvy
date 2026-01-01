@@ -38,11 +38,14 @@ export const QuizToggleButton: React.FC<QuizToggleButtonProps> = ({
       accessibilityState={{ checked: isEnabled }}
       accessibilityHint={isEnabled ? 'Disable auto quiz display' : 'Enable auto quiz display'}
     >
-      <Ionicons
-        name={isEnabled ? "bulb" : "bulb-outline"}
-        size={20}
-        color={isEnabled ? theme.colors.white : theme.colors.text.secondary}
-      />
+      <View style={styles.iconContainer}>
+        <Ionicons
+          name={isEnabled ? "bulb" : "bulb-outline"}
+          size={20}
+          color={isEnabled ? theme.colors.white : 'rgba(255, 255, 255, 0.85)'}
+          style={styles.icon}
+        />
+      </View>
       <Text
         style={[
           styles.text,
@@ -63,23 +66,42 @@ const useStyles = createStyleSheet((theme) => ({
     paddingVertical: theme.spacing[2],
     borderRadius: theme.borderRadius.full,
     gap: theme.spacing[1],
+    // Shadow for better visibility on video background
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 5, // Android shadow
   },
   containerEnabled: {
     backgroundColor: theme.colors.primary,
   },
   containerDisabled: {
-    backgroundColor: theme.colors.background.secondary,
-    borderWidth: 1,
-    borderColor: theme.colors.border.light,
+    backgroundColor: 'rgba(28, 28, 30, 0.85)', // Semi-transparent dark background
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   text: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
+    // Text shadow for better readability
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   textEnabled: {
     color: theme.colors.white,
   },
   textDisabled: {
-    color: theme.colors.text.secondary,
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  icon: {
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 }));
