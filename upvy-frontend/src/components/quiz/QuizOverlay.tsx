@@ -259,7 +259,13 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
             opacity: fadeAnim,
           },
         ]}
+        pointerEvents="box-none"
       >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={onClose}
+        />
         <View style={styles.modal}>
           {/* Handle Bar */}
           <View style={styles.handleBar} />
@@ -517,6 +523,13 @@ const useStyles = createStyleSheet((theme) => ({
     alignItems: 'center',
     paddingHorizontal: theme.spacing[4],
     zIndex: 10000,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modal: {
     backgroundColor: 'rgba(50, 50, 50, 0.95)',
