@@ -564,9 +564,9 @@ class VertexAiLlmClient(
                 |→ 명확! HTML만 필수, 나머지는 선택!
                 |
                 |영상: "VSCode 사용법"
-                |질문: "코드 편집기로 개발자들이 가장 많이 쓰는 건?"
+                |질문: "다음 중 코드 작성 전용 도구는?"
                 |보기: "VSCode", "메모장", "한글", "Excel"
-                |→ 구체적! VSCode 외엔 코드 편집기 아님!
+                |→ 명확! VSCode만 코드 전용 도구!
             """.trimMargin()
             ContentLanguage.EN -> """
                 |Good examples (clear and specific):
@@ -586,9 +586,9 @@ class VertexAiLlmClient(
                 |→ Clear! Only HTML is required!
                 |
                 |Video: "VSCode Tutorial"
-                |Question: "Most used code editor by developers?"
+                |Question: "Which one is for writing code?"
                 |Options: "VSCode", "Notepad", "Word", "Excel"
-                |→ Specific! VSCode is the only code editor!
+                |→ Clear! Only VSCode is a code-specific tool!
             """.trimMargin()
             ContentLanguage.JA -> """
                 |良い例 (明確で具体的):
@@ -608,9 +608,9 @@ class VertexAiLlmClient(
                 |→ 明確！HTMLだけが必須！
                 |
                 |動画: "VSCode使い方"
-                |質問: "開発者が一番使うコードエディタは？"
+                |質問: "次のうちコード作成専用ツールは？"
                 |選択肢: "VSCode", "メモ帳", "Word", "Excel"
-                |→ 具体的！VSCodeだけがコードエディタ！
+                |→ 明確！VSCodeだけがコード専用ツール！
             """.trimMargin()
         }
 
@@ -628,6 +628,9 @@ class VertexAiLlmClient(
                 |
                 |❌ "개발 환경은?"
                 |   → "정답이 애매" (VS Code? IntelliJ? Eclipse?)
+                |
+                |❌ "코드 편집기로 가장 많이 쓰는 건?"
+                |   → "보기 범위 명시 안함" (IntelliJ? WebStorm? 다른 것도 많음)
                 |
                 |❌ "실습 환경 구축 도구는?"
                 |   → "전문 용어" (초보자는 무슨 말인지 모름)
@@ -649,6 +652,9 @@ class VertexAiLlmClient(
                 |❌ "Development environment?"
                 |   → "Unclear answer" (VS Code? IntelliJ? Eclipse?)
                 |
+                |❌ "Most popular code editor?"
+                |   → "Scope not specified" (IntelliJ? WebStorm? Many others)
+                |
                 |❌ "Dev environment setup tool?"
                 |   → "Technical jargon" (beginners don't understand)
                 |
@@ -668,6 +674,9 @@ class VertexAiLlmClient(
                 |
                 |❌ "開発環境は？"
                 |   → "答えが曖昧" (VS Code？IntelliJ？Eclipse？)
+                |
+                |❌ "開発者が一番使うコードエディタは？"
+                |   → "範囲指定なし" (IntelliJ？WebStorm？他にも多い)
                 |
                 |❌ "実習環境構築ツールは？"
                 |   → "専門用語" (初心者は意味不明)
@@ -732,10 +741,13 @@ class VertexAiLlmClient(
             |   - ❌ "버전 관리 도구는?" → ✅ "코드 변경 이력을 저장하려면?"
             |   - ❌ "커널 재시작은?" → ✅ "Jupyter에서 코드 실행 초기화하려면?"
             |
-            |3. **정답이 명백히 하나뿐**
+            |3. **정답이 명백히 하나뿐 + 보기 범위 명시**
+            |   - "다음 중" 같은 한정어로 보기 범위를 명확히!
             |   - 다른 보기는 완전히 다른 카테고리여야 함
             |   - ❌ "협업 도구는?" (Slack? Jira? Git? 다 맞음)
-            |   - ✅ "코드 저장소로 가장 많이 쓰는 곳은?" (GitHub만 코드 저장소)
+            |   - ❌ "코드 편집기로 가장 많이 쓰는 건?" (IntelliJ? WebStorm? 다른 것도 많음)
+            |   - ✅ "다음 중 코드 작성 전용 도구는?" (VSCode만 코드 전용, 나머지는 범용)
+            |   - ✅ "웹 브라우저로 쓰이는 건?" (Chrome만 브라우저, 나머지는 앱)
             |
             |4. **영상 안 봐도 질문 이해 가능**
             |   - 맥락 없이 갑자기 나와도 이해 가능
@@ -758,6 +770,7 @@ class VertexAiLlmClient(
             |❌ 맥락 없이 전문 용어만 던지기 ("커널 재시작은?", "버전 관리는?")
             |❌ 순서/단계 질문 ("세 번째 기능은?")
             |❌ 정답이 여러개인 모호한 질문 ("협업 도구는?", "데이터 분석 툴은?")
+            |❌ 보기 범위 명시 안함 ("가장 많이 쓰는 건?" → 보기 밖에 더 많은 답이 있음)
             |❌ 긴 문장형 질문 / 설명 포함 보기
             |
             |JSON 형식으로만 응답해주세요 (${contentLanguage.nativeName}로 작성):
