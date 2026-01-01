@@ -68,6 +68,9 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const hasAppliedExternalResult = useRef(false);
 
+  // Internal state to control actual rendering (for smooth animation)
+  const [isRendered, setIsRendered] = useState(false);
+
   // Selection state
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [submittedOptionIds, setSubmittedOptionIds] = useState<string[]>([]); // 제출한 옵션 ID 저장
@@ -76,9 +79,34 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
   const [attemptResult, setAttemptResult] = useState<QuizAttemptResponse | null>(externalAttemptResult || null);
   const [isSubmitting, setIsSubmitting] = useState(externalIsSubmitting || false);
 
-  // Reset state when quiz changes or modal closes
+  // Handle visible prop changes with smooth animation
   useEffect(() => {
-    if (!visible) {
+    if (visible) {
+      // Show modal: render first, then animate in
+      setIsRendered(true);
+    } else {
+      // Hide modal: animate out first, then unmount
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsRendered(false);
+        // Reset state after animation completes
+        setSelectedOptionIds([]);
+        setSubmittedOptionIds([]);
+        setIsSubmitted(false);
+        setIsRetrying(false);
+        setAttemptResult(null);
+        setIsSubmitting(false);
+        hasAppliedExternalResult.current = false;
+      });
+    }
+  }, [visible, fadeAnim]);
+
+  // Reset state when quiz changes
+  useEffect(() => {
+    if (visible && quiz?.id) {
       setSelectedOptionIds([]);
       setSubmittedOptionIds([]);
       setIsSubmitted(false);
@@ -87,7 +115,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
       setIsSubmitting(false);
       hasAppliedExternalResult.current = false;
     }
-  }, [visible, quiz?.id]);
+  }, [quiz?.id, visible]);
 
   // Check if user has already attempted (정답이 공개된 경우)
   const hasAttempted = useMemo(() => {
@@ -132,33 +160,28 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
     }
   }, [isRetrying]);
 
-  // Animation
+  // Fade in animation when rendered
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: visible ? 1 : 0,
-      duration: visible ? 300 : 200,
-      useNativeDriver: true,
-    }).start();
-  }, [visible, fadeAnim]);
+    if (isRendered) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isRendered, fadeAnim]);
 
   // 정답일 경우 2초 후 자동으로 모달 닫기 (자동 표시된 경우만)
   useEffect(() => {
     if (isSubmitted && attemptResult?.isCorrect && visible && isAutoDisplayed) {
       const timer = setTimeout(() => {
-        // 페이드 아웃 애니메이션 시작
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
-          // 애니메이션 완료 후 onClose 호출
-          onClose();
-        });
+        // onClose 호출하면 자동으로 fadeOut 애니메이션 실행됨
+        onClose();
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [isSubmitted, attemptResult?.isCorrect, visible, isAutoDisplayed, onClose, fadeAnim]);
+  }, [isSubmitted, attemptResult?.isCorrect, visible, isAutoDisplayed, onClose]);
 
   // Handle option selection
   const handleOptionPress = useCallback((optionId: string) => {
@@ -231,7 +254,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   if (!quiz) return null;
 
-  if (!visible) return null;
+  if (!isRendered) return null;
 
   return (
     <>
