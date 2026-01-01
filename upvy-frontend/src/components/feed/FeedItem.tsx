@@ -13,6 +13,9 @@ import { VideoPlayer, VideoPlayerRef } from './VideoPlayer';
 import { PhotoGallery } from './PhotoGallery';
 import { FeedOverlay } from './FeedOverlay';
 import { LikeAnimation } from './LikeAnimation';
+import { QuizOverlay } from '@/components/quiz';
+import { useQuiz } from '@/hooks/useQuiz';
+import { useQuizStore } from '@/stores/quizStore';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 
 /**
@@ -44,7 +47,6 @@ interface FeedItemProps {
   onShare?: () => void;
   onFollow?: () => void;
   onCreatorPress?: () => void;
-  onQuizPress?: () => void; // 퀴즈 보기 버튼 클릭 시 호출
   onBlockSuccess?: () => void; // 차단 성공 시 호출
   onDeleteSuccess?: () => void; // 삭제 성공 시 호출
 }
@@ -61,7 +63,6 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   onShare,
   onFollow,
   onCreatorPress,
-  onQuizPress,
   onBlockSuccess,
   onDeleteSuccess,
 }) => {
@@ -76,14 +77,73 @@ export const FeedItem: React.FC<FeedItemProps> = ({
   const overlayOpacity = useRef(new Animated.Value(1)).current;
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
 
-  // 컨텐츠 탭 시 더보기 닫기
+  // 퀴즈 상태
+  const [quizVisible, setQuizVisible] = useState(false);
+  const { isQuizAutoDisplayEnabled } = useQuizStore();
+  const [hasAutoShownQuiz, setHasAutoShownQuiz] = useState(false);
+
+  // 퀴즈 로직
+  const {
+    quiz,
+    isLoadingQuiz,
+    submitAttemptAsync,
+    attemptResult,
+    isSubmitting,
+    isSubmitSuccess,
+  } = useQuiz(
+    item.contentId,
+    {
+      onSuccess: () => {
+        // 퀴즈 제출 성공 시 처리
+      },
+    }
+  );
+
+  // 퀴즈 핸들러
+  const handleQuizPress = useCallback(() => {
+    setQuizVisible(true);
+  }, []);
+
+  const handleQuizClose = useCallback(() => {
+    setQuizVisible(false);
+  }, []);
+
+  // 아이템 변경 시 자동 표시 상태 리셋
+  useEffect(() => {
+    setHasAutoShownQuiz(false);
+    setQuizVisible(false);
+  }, [item.contentId]);
+
+  // 퀴즈 자동 표시 로직
+  useEffect(() => {
+    // 포커스되지 않았거나 자동 표시가 비활성화되어 있으면 리턴
+    if (!isFocused || !isQuizAutoDisplayEnabled) return;
+
+    // 이미 표시했으면 리턴
+    if (hasAutoShownQuiz || quizVisible) return;
+
+    // quiz 데이터가 로드 중이면 기다림
+    if (isLoadingQuiz) return;
+
+    // quiz 데이터가 완전히 로드되었고, item.quiz 메타데이터가 있으며, 아직 시도하지 않았으면 표시
+    if (quiz && item.quiz && !item.quiz.hasAttempted) {
+      setQuizVisible(true);
+      setHasAutoShownQuiz(true);
+    }
+  }, [isFocused, isQuizAutoDisplayEnabled, hasAutoShownQuiz, quizVisible, quiz, isLoadingQuiz, item.quiz, item.contentId]);
+
+  // 컨텐츠 탭 시 더보기 또는 퀴즈 닫기
   const handleContentTap = useCallback(() => {
+    if (quizVisible) {
+      setQuizVisible(false);
+      return true;
+    }
     if (isExpanded) {
       setIsExpanded(false);
       return true;
     }
     return false;
-  }, [isExpanded]);
+  }, [isExpanded, quizVisible]);
 
   // 좋아요 핸들러 (하트 애니메이션 포함)
   const handleLike = useCallback(() => {
@@ -278,13 +338,26 @@ export const FeedItem: React.FC<FeedItemProps> = ({
           onShare={onShare}
           onFollow={onFollow}
           onCreatorPress={onCreatorPress}
-          onQuizPress={onQuizPress}
+          onQuizPress={handleQuizPress}
           onBlockSuccess={onBlockSuccess}
           onDeleteSuccess={onDeleteSuccess}
           isExpanded={isExpanded}
           setIsExpanded={setIsExpanded}
           tabBarHeight={tabBarHeight}
         />
+
+        {/* 퀴즈 오버레이 */}
+        {quiz && submitAttemptAsync && (
+          <QuizOverlay
+            visible={quizVisible}
+            onClose={handleQuizClose}
+            quiz={quiz}
+            onSubmit={submitAttemptAsync}
+            attemptResult={attemptResult}
+            isSubmitting={isSubmitting}
+            isSubmitSuccess={isSubmitSuccess}
+          />
+        )}
       </Animated.View>
 
       {/* 비디오 진행률 바 - 탭바 바로 위 */}
