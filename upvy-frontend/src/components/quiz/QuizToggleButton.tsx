@@ -42,7 +42,7 @@ export const QuizToggleButton: React.FC<QuizToggleButtonProps> = ({
         <Ionicons
           name={isEnabled ? "bulb" : "bulb-outline"}
           size={20}
-          color={isEnabled ? theme.colors.white : 'rgba(255, 255, 255, 0.85)'}
+          color={isEnabled ? theme.colors.white : '#1f2937'}
           style={styles.icon}
         />
       </View>
@@ -74,34 +74,34 @@ const useStyles = createStyleSheet((theme) => ({
     elevation: 5, // Android shadow
   },
   containerEnabled: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#22c55e', // Bright green for enabled state
   },
   containerDisabled: {
-    backgroundColor: 'rgba(28, 28, 30, 0.85)', // Semi-transparent dark background
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', // White background
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(0, 0, 0, 0.15)',
   },
   text: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
     // Text shadow for better readability
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 1,
   },
   textEnabled: {
     color: theme.colors.white,
   },
   textDisabled: {
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#1f2937', // Dark gray text on white background
   },
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   icon: {
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0, 0, 0, 0.15)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 1,
   },
 }));

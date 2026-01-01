@@ -40,7 +40,7 @@ export const QuizActionButton: React.FC<QuizActionButtonProps> = ({
         <Ionicons
           name="help-circle"
           size={32}
-          color={theme.colors.white}
+          color="#22c55e"
           style={styles.icon}
         />
 
@@ -79,16 +79,16 @@ const useStyles = createStyleSheet((theme) => ({
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(28, 28, 30, 0.75)', // Semi-transparent background
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', // White background
     borderRadius: theme.borderRadius.full,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(0, 0, 0, 0.15)',
   },
   icon: {
-    // Add shadow for better visibility
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    // Add subtle shadow
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
   },
   badge: {
     position: 'absolute',
@@ -102,10 +102,15 @@ const useStyles = createStyleSheet((theme) => ({
   label: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.white,
+    color: '#1f2937',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
     // Add shadow for better visibility
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 1,
   },
 }));
