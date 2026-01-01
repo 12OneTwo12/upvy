@@ -116,17 +116,11 @@ export const FeedItem: React.FC<FeedItemProps> = ({
 
   // 퀴즈 자동 표시 로직
   useEffect(() => {
-    // 포커스되지 않았거나 자동 표시가 비활성화되어 있으면 리턴
     if (!isFocused || !isQuizAutoDisplayEnabled) return;
-
-    // 이미 표시했으면 리턴
     if (hasAutoShownQuiz || quizVisible) return;
-
-    // quiz 데이터가 로드 중이면 기다림
     if (isLoadingQuiz) return;
 
-    // quiz 데이터가 완전히 로드되었고, item.quiz 메타데이터가 있으며, 아직 시도하지 않았으면 표시
-    if (quiz && item.quiz && !item.quiz.hasAttempted) {
+    if (quiz && item.quiz) {
       setQuizVisible(true);
       setHasAutoShownQuiz(true);
     }

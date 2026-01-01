@@ -38,6 +38,9 @@ interface QuizOverlayProps {
   onClose: () => void;
   quiz: QuizResponse | null;
   onSubmit: (request: QuizAttemptRequest) => Promise<QuizAttemptResponse>;
+  attemptResult?: QuizAttemptResponse | null;
+  isSubmitting?: boolean;
+  isSubmitSuccess?: boolean;
   onRetry?: () => void;
   onSkip?: () => void;
   onViewVideo?: () => void;
@@ -48,6 +51,9 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
   onClose,
   quiz,
   onSubmit,
+  attemptResult: externalAttemptResult,
+  isSubmitting: externalIsSubmitting,
+  isSubmitSuccess: externalIsSubmitSuccess,
   onRetry,
   onSkip,
   onViewVideo,
@@ -58,13 +64,15 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const hasAppliedExternalResult = useRef(false);
 
   // Selection state
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [submittedOptionIds, setSubmittedOptionIds] = useState<string[]>([]); // 제출한 옵션 ID 저장
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [attemptResult, setAttemptResult] = useState<QuizAttemptResponse | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false); // 다시 풀기 모드
+  const [attemptResult, setAttemptResult] = useState<QuizAttemptResponse | null>(externalAttemptResult || null);
+  const [isSubmitting, setIsSubmitting] = useState(externalIsSubmitting || false);
 
   // Reset state when quiz changes or modal closes
   useEffect(() => {
@@ -72,8 +80,10 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
       setSelectedOptionIds([]);
       setSubmittedOptionIds([]);
       setIsSubmitted(false);
+      setIsRetrying(false);
       setAttemptResult(null);
       setIsSubmitting(false);
+      hasAppliedExternalResult.current = false;
     }
   }, [visible, quiz?.id]);
 
@@ -93,6 +103,25 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
       }
     }
   }, [hasAttempted, quiz]);
+
+  // 외부에서 전달받은 attemptResult가 있으면 결과 화면 표시 (한 번만, 다시 풀기 모드가 아닐 때만)
+  useEffect(() => {
+    if (externalAttemptResult && visible && !hasAppliedExternalResult.current && !isRetrying) {
+      hasAppliedExternalResult.current = true;
+      setAttemptResult(externalAttemptResult);
+      setIsSubmitted(true);
+
+      // 사용자가 선택한 옵션들 설정
+      if (externalAttemptResult.options && Array.isArray(externalAttemptResult.options)) {
+        const selectedIds = externalAttemptResult.options
+          .filter(opt => opt.isSelected)
+          .map(opt => opt.id);
+
+        setSelectedOptionIds(selectedIds);
+        setSubmittedOptionIds(selectedIds);
+      }
+    }
+  }, [externalAttemptResult, visible, quiz, isRetrying]);
 
   // Animation
   useEffect(() => {
@@ -130,6 +159,8 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
       setSubmittedOptionIds([...selectedOptionIds]); // 제출한 옵션 ID 저장
       setAttemptResult(result);
       setIsSubmitted(true);
+      setIsRetrying(false); // 다시 풀기 모드 종료
+      hasAppliedExternalResult.current = true; // 외부 결과 재적용 방지
     } catch (error) {
       console.error('Failed to submit quiz attempt:', error);
       Alert.alert(t('overlay.submitError'));
@@ -140,6 +171,8 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   // Handle retry
   const handleRetry = useCallback(() => {
+    hasAppliedExternalResult.current = false;
+    setIsRetrying(true);
     setSelectedOptionIds([]);
     setSubmittedOptionIds([]);
     setIsSubmitted(false);
@@ -151,15 +184,21 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   // Get option display data (either from attempt result or original quiz)
   const displayOptions = useMemo(() => {
-    if (attemptResult) {
+    // 다시 풀기 모드면 항상 원본 퀴즈 옵션 사용
+    if (isRetrying) {
+      return quiz?.options ?? [];
+    }
+    // 제출 결과가 있으면 결과 옵션 사용
+    if (attemptResult && attemptResult.options) {
       return attemptResult.options;
     }
     return quiz?.options ?? [];
-  }, [attemptResult, quiz]);
+  }, [attemptResult, quiz, isRetrying]);
 
   // Calculate max percentage for scaling progress bars
   const maxPercentage = useMemo(() => {
-    const percentages = displayOptions.map(opt => opt.selectionPercentage);
+    if (!displayOptions || displayOptions.length === 0) return 1;
+    const percentages = displayOptions.map(opt => opt.selectionPercentage || 0);
     return Math.max(...percentages, 1); // Minimum 1 to avoid division by zero
   }, [displayOptions]);
 
