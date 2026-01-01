@@ -7,7 +7,7 @@
  * - 커서 기반 페이지네이션
  */
 
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect, useState } from 'react';
 import {
   View,
   FlatList,
@@ -23,7 +23,10 @@ import { useTheme } from '@/theme';
 import type { ExploreStackParamList } from '@/types/navigation.types';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
+import { QuizOverlay } from '@/components/quiz';
 import { useFeed } from '@/hooks/useFeed';
+import { useQuizStore } from '@/stores/quizStore';
+import { useQuiz } from '@/hooks/useQuiz';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 import { CATEGORIES } from '@/types/content.types';
 
@@ -38,6 +41,11 @@ export default function CategoryFeedScreen() {
   const navigation = useNavigation();
   const isScreenFocused = useIsFocused();
   const { t } = useTranslation('search');
+
+  // 퀴즈 모달 상태
+  const [quizModalVisible, setQuizModalVisible] = useState(false);
+  const [selectedQuizContentId, setSelectedQuizContentId] = useState<string | null>(null);
+  const { isQuizAutoDisplayEnabled } = useQuizStore();
 
   // 선택된 카테고리 정보
   const categoryInfo = CATEGORIES.find((c) => c.value === category);
@@ -80,6 +88,43 @@ export default function CategoryFeedScreen() {
     SCREEN_HEIGHT,
     handleRefresh,
   } = feed;
+
+  // 퀴즈 로직
+  const {
+    quiz,
+    isLoadingQuiz,
+    submitAttemptAsync,
+    attemptResult,
+    isSubmitting,
+    isSubmitSuccess,
+  } = useQuiz(
+    selectedQuizContentId ?? '',
+    {
+      onSuccess: (attemptResult) => {
+        // 퀴즈 제출 성공 시 처리
+        // React Query가 자동으로 캐시 무효화하므로 별도 처리 불필요
+      },
+    }
+  );
+
+  // 퀴즈 보기 핸들러
+  const handleQuizPress = (contentId: string) => {
+    setSelectedQuizContentId(contentId);
+    setQuizModalVisible(true);
+  };
+
+  // 퀴즈 자동 표시 로직
+  useEffect(() => {
+    if (!isQuizAutoDisplayEnabled || !isScreenFocused) return;
+
+    if (currentIndex < displayItems.length) {
+      const currentItem = displayItems[currentIndex];
+      // 퀴즈가 있고, 아직 시도하지 않았고, 모달이 열려있지 않을 때만 자동 표시
+      if (currentItem.quiz && !currentItem.quiz.hasAttempted && !quizModalVisible) {
+        handleQuizPress(currentItem.contentId);
+      }
+    }
+  }, [currentIndex, isQuizAutoDisplayEnabled, displayItems, isScreenFocused, quizModalVisible]);
 
   /**
    * handleRefresh의 최신 버전을 ref로 유지
@@ -130,6 +175,7 @@ export default function CategoryFeedScreen() {
           onShare={() => handleShare(item.contentId)}
           onFollow={() => handleFollow(item.creator.userId, item.creator.isFollowing ?? false)}
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
+          onQuizPress={() => handleQuizPress(item.contentId)}
           onBlockSuccess={handleBlockSuccess}
           onDeleteSuccess={handleDeleteSuccess}
         />
@@ -332,6 +378,19 @@ export default function CategoryFeedScreen() {
           visible={commentModalVisible}
           contentId={selectedContentId}
           onClose={() => setCommentModalVisible(false)}
+        />
+      )}
+
+      {/* 퀴즈 모달 */}
+      {quiz && submitAttemptAsync && (
+        <QuizOverlay
+          visible={quizModalVisible}
+          onClose={() => setQuizModalVisible(false)}
+          quiz={quiz}
+          onSubmit={submitAttemptAsync}
+          attemptResult={attemptResult}
+          isSubmitting={isSubmitting}
+          isSubmitSuccess={isSubmitSuccess}
         />
       )}
     </View>
