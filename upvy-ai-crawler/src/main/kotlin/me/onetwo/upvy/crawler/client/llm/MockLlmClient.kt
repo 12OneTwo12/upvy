@@ -7,6 +7,8 @@ import me.onetwo.upvy.crawler.domain.ContentMetadata
 import me.onetwo.upvy.crawler.domain.Difficulty
 import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
+import me.onetwo.upvy.crawler.domain.QuizData
+import me.onetwo.upvy.crawler.domain.QuizOption
 import me.onetwo.upvy.crawler.domain.Recommendation
 import me.onetwo.upvy.crawler.domain.SearchContext
 import me.onetwo.upvy.crawler.domain.SearchQuery
@@ -142,6 +144,49 @@ class MockLlmClient : LlmClient {
                 predictedQuality = 82,
                 recommendation = Recommendation.RECOMMENDED,
                 reasoning = "Mock evaluation: Good educational content"
+            )
+        }
+    }
+
+    override suspend fun generateQuizFromDescription(
+        description: String,
+        title: String,
+        contentLanguage: ContentLanguage,
+        difficulty: Difficulty?
+    ): QuizData {
+        logger.debug("MockLlmClient.generateQuizFromDescription called: title={}, language={}, difficulty={}",
+            title, contentLanguage.code, difficulty?.name ?: "N/A")
+
+        return when (contentLanguage) {
+            ContentLanguage.KO -> QuizData(
+                question = "이 콘텐츠의 핵심 내용은 무엇인가요?",
+                allowMultipleAnswers = false,
+                options = listOf(
+                    QuizOption("정답 보기", isCorrect = true),
+                    QuizOption("오답 보기 1", isCorrect = false),
+                    QuizOption("오답 보기 2", isCorrect = false),
+                    QuizOption("오답 보기 3", isCorrect = false)
+                )
+            )
+            ContentLanguage.EN -> QuizData(
+                question = "What is the key concept of this content?",
+                allowMultipleAnswers = false,
+                options = listOf(
+                    QuizOption("Correct answer", isCorrect = true),
+                    QuizOption("Wrong answer 1", isCorrect = false),
+                    QuizOption("Wrong answer 2", isCorrect = false),
+                    QuizOption("Wrong answer 3", isCorrect = false)
+                )
+            )
+            ContentLanguage.JA -> QuizData(
+                question = "このコンテンツの核心内容は何ですか？",
+                allowMultipleAnswers = false,
+                options = listOf(
+                    QuizOption("正解", isCorrect = true),
+                    QuizOption("不正解 1", isCorrect = false),
+                    QuizOption("不正解 2", isCorrect = false),
+                    QuizOption("不正解 3", isCorrect = false)
+                )
             )
         }
     }

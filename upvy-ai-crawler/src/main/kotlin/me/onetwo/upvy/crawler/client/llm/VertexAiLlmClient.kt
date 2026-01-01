@@ -16,6 +16,8 @@ import me.onetwo.upvy.crawler.domain.ContentMetadata
 import me.onetwo.upvy.crawler.domain.Difficulty
 import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
+import me.onetwo.upvy.crawler.domain.QuizData
+import me.onetwo.upvy.crawler.domain.QuizOption
 import me.onetwo.upvy.crawler.domain.Recommendation
 import me.onetwo.upvy.crawler.domain.SearchContext
 import me.onetwo.upvy.crawler.domain.SearchQuery
@@ -242,6 +244,34 @@ class VertexAiLlmClient(
 
         logger.info("비디오 평가 완료: 전체 {}개 중 {}개 평가됨", candidates.size, allEvaluations.size)
         allEvaluations
+    }
+
+    override suspend fun generateQuizFromDescription(
+        description: String,
+        title: String,
+        contentLanguage: ContentLanguage,
+        difficulty: Difficulty?
+    ): QuizData = withContext(Dispatchers.IO) {
+        logger.info("퀴즈 생성 시작: title={}, language={}, difficulty={}",
+            title, contentLanguage.code, difficulty?.name ?: "N/A")
+
+        val prompt = buildQuizGenerationPrompt(description, title, contentLanguage, difficulty)
+
+        try {
+            val response = model.generateContent(prompt)
+            val responseText = ResponseHandler.getText(response)
+            val jsonResponse = extractJsonFromResponse(responseText.ifEmpty { "{}" })
+
+            val quiz = parseQuizFromJson(jsonResponse)
+
+            logger.info("퀴즈 생성 완료: question={}, options count={}",
+                quiz.question.take(50), quiz.options.size)
+            quiz
+
+        } catch (e: Exception) {
+            logger.error("퀴즈 생성 실패: title={}", title, e)
+            throw LlmException("Failed to generate quiz", e)
+        }
     }
 
     // ========== Prompt Builders ==========
@@ -480,6 +510,156 @@ class VertexAiLlmClient(
         """.trimMargin()
     }
 
+    private fun buildQuizGenerationPrompt(
+        description: String,
+        title: String,
+        contentLanguage: ContentLanguage,
+        difficulty: Difficulty?
+    ): String {
+        val languageInstruction = when (contentLanguage) {
+            ContentLanguage.KO -> "한국어로 퀴즈를 생성해주세요."
+            ContentLanguage.EN -> "Generate the quiz in English."
+            ContentLanguage.JA -> "日本語でクイズを生成してください。"
+        }
+
+        val difficultyGuidance = when (difficulty) {
+            Difficulty.BEGINNER -> when (contentLanguage) {
+                ContentLanguage.KO -> "초급 수준: 기본 개념을 묻는 쉬운 문제"
+                ContentLanguage.EN -> "Beginner level: Easy questions about basic concepts"
+                ContentLanguage.JA -> "初級レベル：基本概念についての簡単な問題"
+            }
+            Difficulty.INTERMEDIATE -> when (contentLanguage) {
+                ContentLanguage.KO -> "중급 수준: 개념 이해와 적용을 묻는 문제"
+                ContentLanguage.EN -> "Intermediate level: Questions about understanding and application"
+                ContentLanguage.JA -> "中級レベル：理解と応用についての問題"
+            }
+            Difficulty.ADVANCED -> when (contentLanguage) {
+                ContentLanguage.KO -> "고급 수준: 심화 개념과 분석을 묻는 어려운 문제"
+                ContentLanguage.EN -> "Advanced level: Difficult questions about advanced concepts and analysis"
+                ContentLanguage.JA -> "上級レベル：高度な概念と分析についての難しい問題"
+            }
+            null -> when (contentLanguage) {
+                ContentLanguage.KO -> "중급 수준: 개념 이해를 묻는 문제"
+                ContentLanguage.EN -> "Intermediate level: Questions about understanding concepts"
+                ContentLanguage.JA -> "中級レベル：概念理解についての問題"
+            }
+        }
+
+        val goodExamples = when (contentLanguage) {
+            ContentLanguage.KO -> """
+                |좋은 예시 (간결하고 명확):
+                |질문: "이 개념의 핵심은?"
+                |보기: "재귀함수", "반복문", "변수", "상수"
+                |
+                |질문: "영상의 주제는?"
+                |보기: "시간 복잡도", "공간 복잡도", "알고리즘 설계"
+            """.trimMargin()
+            ContentLanguage.EN -> """
+                |Good examples (short and clear):
+                |Question: "What is the key concept?"
+                |Options: "Recursion", "Loop", "Variable", "Constant"
+                |
+                |Question: "Main topic?"
+                |Options: "Time complexity", "Space complexity", "Algorithm design"
+            """.trimMargin()
+            ContentLanguage.JA -> """
+                |良い例 (簡潔で明確):
+                |質問: "この概念のポイントは？"
+                |選択肢: "再帰関数", "ループ", "変数", "定数"
+                |
+                |質問: "動画のテーマは？"
+                |選択肢: "時間計算量", "空間計算量", "アルゴリズム設計"
+            """.trimMargin()
+        }
+
+        val badExamples = when (contentLanguage) {
+            ContentLanguage.KO -> """
+                |나쁜 예시 (너무 길고 장황함):
+                |질문: "이 영상에서 설명한 프로그래밍의 핵심 개념 중 함수가 자기 자신을 호출하는 방식은?"
+                |보기: "함수가 자기 자신을 반복적으로 호출하여 문제를 해결하는 재귀함수 방식"
+            """.trimMargin()
+            ContentLanguage.EN -> """
+                |Bad examples (too long and wordy):
+                |Question: "In this video, what is the programming concept where a function calls itself repeatedly?"
+                |Options: "A recursive function that solves problems by calling itself repeatedly"
+            """.trimMargin()
+            ContentLanguage.JA -> """
+                |悪い例 (長すぎて冗長):
+                |質問: "この動画で説明されたプログラミングの核心概念の中で、関数が自分自身を呼び出す方式は？"
+                |選択肢: "関数が自分自身を繰り返し呼び出して問題を解決する再帰関数方式"
+            """.trimMargin()
+        }
+
+        val lengthGuidance = when (contentLanguage) {
+            ContentLanguage.KO -> """
+                |**길이 제한 (매우 중요!):**
+                |- 질문: 15-30자 이내 (짧고 간결하게!)
+                |- 각 보기: 2-15자 이내 (단어나 짧은 구절 수준!)
+                |- 시험 문제처럼 간결하고 명확하게
+                |- 숏폼 콘텐츠이므로 빠르게 읽고 답할 수 있어야 함
+            """.trimMargin()
+            ContentLanguage.EN -> """
+                |**Length limits (CRITICAL!):**
+                |- Question: 5-10 words max (short and clear!)
+                |- Each option: 1-5 words max (word or short phrase level!)
+                |- Like exam questions: concise and clear
+                |- Short-form content: must be quick to read and answer
+            """.trimMargin()
+            ContentLanguage.JA -> """
+                |**長さ制限 (非常に重要!):**
+                |- 質問: 15-30文字以内 (短く簡潔に!)
+                |- 各選択肢: 2-15文字以内 (単語や短いフレーズレベル!)
+                |- 試験問題のように簡潔で明確に
+                |- ショート動画なので素早く読んで答えられること
+            """.trimMargin()
+        }
+
+        return """
+            |당신은 숏폼 교육 콘텐츠 퀴즈 전문가입니다. Instagram Poll처럼 빠르게 읽고 답할 수 있는 퀴즈를 생성해주세요.
+            |
+            |**중요: $languageInstruction**
+            |타겟 언어: ${contentLanguage.nativeName} (${contentLanguage.code})
+            |
+            |콘텐츠 제목: $title
+            |콘텐츠 설명:
+            |$description
+            |
+            |난이도: $difficultyGuidance
+            |
+            |$lengthGuidance
+            |
+            |$goodExamples
+            |
+            |$badExamples
+            |
+            |퀴즈 생성 원칙:
+            |1. **극도로 간결**: 질문과 보기 모두 최소한의 단어로 표현
+            |2. **명확성**: 짧지만 의미가 명확해야 함
+            |3. **속도**: 3초 안에 읽고 이해 가능해야 함
+            |4. **핵심만**: 부연 설명 없이 핵심 키워드만 사용
+            |5. **보기 개수**: 3-4개 (너무 많으면 안 됨)
+            |6. **정답 개수**: 1개 (단일 정답 권장)
+            |
+            |절대 금지사항:
+            |❌ 긴 문장형 질문
+            |❌ 설명이 포함된 보기
+            |❌ 불필요한 수식어
+            |❌ 중복되는 표현
+            |
+            |JSON 형식으로만 응답해주세요 (${contentLanguage.nativeName}로 작성):
+            |{
+            |  "question": "핵심 질문 (15-30자)",
+            |  "allowMultipleAnswers": false,
+            |  "options": [
+            |    {"optionText": "짧은 보기1 (2-15자)", "isCorrect": true},
+            |    {"optionText": "짧은 보기2", "isCorrect": false},
+            |    {"optionText": "짧은 보기3", "isCorrect": false},
+            |    {"optionText": "짧은 보기4", "isCorrect": false}
+            |  ]
+            |}
+        """.trimMargin()
+    }
+
     // ========== JSON Parsers ==========
 
     private fun extractJsonFromResponse(response: String): String {
@@ -644,6 +824,35 @@ class VertexAiLlmClient(
                     reasoning = "평가 파싱 실패로 기본값 사용"
                 )
             }
+        }
+    }
+
+    private fun parseQuizFromJson(json: String): QuizData {
+        return try {
+            logger.debug("퀴즈 JSON 파싱 시작: {} chars", json.length)
+
+            val quizMap: Map<String, Any> = objectMapper.readValue(json)
+            val optionsData = quizMap["options"] as? List<Map<String, Any>> ?: emptyList()
+
+            logger.debug("퀴즈 보기 개수: {}", optionsData.size)
+
+            val options = optionsData.map { option ->
+                QuizOption(
+                    optionText = option["optionText"] as String,
+                    isCorrect = option["isCorrect"] as Boolean
+                )
+            }
+
+            QuizData(
+                question = quizMap["question"] as String,
+                allowMultipleAnswers = quizMap["allowMultipleAnswers"] as? Boolean ?: false,
+                options = options
+            )
+        } catch (e: Exception) {
+            logger.warn("퀴즈 JSON 파싱 실패: {}", e.message, e)
+            logger.debug("파싱 실패한 JSON: {}", json.take(500))
+            // Fallback: 기본 퀴즈 반환 (실패해도 전체 publish 과정은 계속되도록)
+            throw LlmException("Failed to parse quiz JSON", e)
         }
     }
 }
