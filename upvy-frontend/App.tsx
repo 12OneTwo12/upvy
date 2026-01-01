@@ -9,6 +9,7 @@ import { ErrorBoundary } from './src/components/common';
 import { logError } from './src/utils/errorHandler';
 import { useLanguageStore } from './src/stores/languageStore';
 import { useThemeStore } from './src/stores/themeStore';
+import { useQuizStore } from './src/stores/quizStore';
 import { initializeSentry, Sentry } from './src/config/sentry';
 import { Analytics } from './src/utils/analytics';
 import './src/locales'; // Initialize i18n
@@ -45,6 +46,11 @@ export default Sentry.wrap(function App() {
   // Initialize theme on app start
   useEffect(() => {
     useThemeStore.getState().initializeTheme();
+  }, []);
+
+  // Initialize quiz settings on app start
+  useEffect(() => {
+    useQuizStore.getState().initializeQuizSettings();
   }, []);
 
   // Configure audio mode to interrupt background audio (music, etc.)
