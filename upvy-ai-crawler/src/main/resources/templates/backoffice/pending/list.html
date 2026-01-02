@@ -81,18 +81,56 @@
         </div>
 
         <!-- Pagination -->
-        <nav th:if="${contents.totalPages > 1}" class="mt-4">
+        <nav th:if="${contents.totalPages > 1}" class="mt-4"
+             th:with="
+                pageGroupSize=10,
+                currentGroup=${currentPage / pageGroupSize},
+                startPage=${currentGroup * pageGroupSize},
+                endPage=${#numbers.min(startPage + pageGroupSize - 1, contents.totalPages - 1)}">
             <ul class="pagination justify-content-center">
+                <!-- First Page -->
                 <li class="page-item" th:classappend="${contents.first} ? 'disabled'">
-                    <a class="page-link" th:href="@{/backoffice/pending(page=${currentPage - 1})}">Previous</a>
+                    <a class="page-link" th:href="@{/backoffice/pending(page=0)}" title="First">
+                        <i class="bi bi-chevron-bar-left"></i>
+                    </a>
                 </li>
-                <li th:each="i : ${#numbers.sequence(0, contents.totalPages - 1)}"
+
+                <!-- Previous Page -->
+                <li class="page-item" th:classappend="${contents.first} ? 'disabled'">
+                    <a class="page-link" th:href="@{/backoffice/pending(page=${currentPage - 1})}" title="Previous">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+
+                <!-- Previous Group -->
+                <li class="page-item" th:if="${startPage > 0}">
+                    <a class="page-link" th:href="@{/backoffice/pending(page=${startPage - 1})}" title="Previous 10 pages">...</a>
+                </li>
+
+                <!-- Page Numbers (10 at a time) -->
+                <li th:each="i : ${#numbers.sequence(startPage, endPage)}"
                     class="page-item"
                     th:classappend="${i == currentPage} ? 'active'">
                     <a class="page-link" th:href="@{/backoffice/pending(page=${i})}" th:text="${i + 1}">1</a>
                 </li>
+
+                <!-- Next Group -->
+                <li class="page-item" th:if="${endPage < contents.totalPages - 1}">
+                    <a class="page-link" th:href="@{/backoffice/pending(page=${endPage + 1})}" title="Next 10 pages">...</a>
+                </li>
+
+                <!-- Next Page -->
                 <li class="page-item" th:classappend="${contents.last} ? 'disabled'">
-                    <a class="page-link" th:href="@{/backoffice/pending(page=${currentPage + 1})}">Next</a>
+                    <a class="page-link" th:href="@{/backoffice/pending(page=${currentPage + 1})}" title="Next">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+
+                <!-- Last Page -->
+                <li class="page-item" th:classappend="${contents.last} ? 'disabled'">
+                    <a class="page-link" th:href="@{/backoffice/pending(page=${contents.totalPages - 1})}" title="Last">
+                        <i class="bi bi-chevron-bar-right"></i>
+                    </a>
                 </li>
             </ul>
         </nav>
