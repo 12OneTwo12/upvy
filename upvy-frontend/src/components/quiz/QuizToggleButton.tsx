@@ -84,7 +84,7 @@ const useStyles = createStyleSheet((theme) => ({
     gap: theme.spacing[2],
     paddingVertical: theme.spacing[1.5],
     paddingHorizontal: theme.spacing[1],
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Semi-transparent white
+    backgroundColor: 'rgba(255, 255, 255, 0.75)', // Semi-transparent white
     borderRadius: theme.borderRadius.lg,
     // Strong shadow for better visibility on video background
     shadowColor: '#000',

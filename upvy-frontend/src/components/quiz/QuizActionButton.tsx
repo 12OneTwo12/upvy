@@ -41,20 +41,21 @@ export const QuizActionButton: React.FC<QuizActionButtonProps> = ({
           <View style={styles.checkmarkBackground}>
             <Ionicons
               name="checkmark-circle"
-              size={24}
+              size={22}
               color="#FFFFFF"
             />
           </View>
         </View>
       )}
 
-      {/* Top: Icon */}
-      <Ionicons
-        name="help-circle"
-        size={28}
-        color="#22c55e"
-        style={styles.icon}
-      />
+      {/* Top: Filled Icon */}
+      <View style={styles.iconCircle}>
+        <Ionicons
+          name="help-circle"
+          size={22}
+          color="#FFFFFF"
+        />
+      </View>
 
       {/* Bottom: Label */}
       <Text style={styles.label}>{t('actionButton.labelShort')}</Text>
@@ -69,10 +70,10 @@ const useStyles = createStyleSheet((theme) => ({
     height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: theme.spacing[1.5],
+    gap: 5, // spacing[1.25] equivalent: 4 + (8-4) * 0.25
     paddingVertical: theme.spacing[1.5],
     paddingHorizontal: theme.spacing[1],
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Semi-transparent white
+    backgroundColor: 'rgba(255, 255, 255, 0.75)', // Semi-transparent white
     borderRadius: theme.borderRadius.lg,
     // Strong shadow for better visibility on video background
     shadowColor: '#000',
@@ -81,16 +82,10 @@ const useStyles = createStyleSheet((theme) => ({
     shadowRadius: 6,
     elevation: 8, // Android shadow
   },
-  icon: {
-    // Add subtle shadow
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
   badge: {
     position: 'absolute',
-    top: -8,
-    right: -8,
+    top: -7,
+    right: -7,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -98,10 +93,18 @@ const useStyles = createStyleSheet((theme) => ({
     elevation: 5,
   },
   checkmarkBackground: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     borderRadius: 12,
     backgroundColor: '#22c55e', // Green filled background
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 12,
+    backgroundColor: '#22c55e', // Green filled circle
     justifyContent: 'center',
     alignItems: 'center',
   },
