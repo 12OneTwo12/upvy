@@ -55,7 +55,7 @@ export const QuizToggleButton: React.FC<QuizToggleButtonProps> = ({
         <Ionicons
           name="bulb"
           size={14}
-          color="#1f2937"
+          color="#525252"
         />
         <Text style={styles.label}>{t('toggleButton.label')}</Text>
       </View>
@@ -101,7 +101,7 @@ const useStyles = createStyleSheet((theme) => ({
   label: {
     fontSize: 11,
     fontWeight: theme.typography.fontWeight.semibold,
-    color: '#1f2937',
+    color: '#525252',
   },
   track: {
     width: 28,

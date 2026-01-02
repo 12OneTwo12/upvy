@@ -38,11 +38,13 @@ export const QuizActionButton: React.FC<QuizActionButtonProps> = ({
       {/* Checkmark Badge (shown when attempted) */}
       {hasAttempted && (
         <View style={styles.badge}>
-          <Ionicons
-            name="checkmark-circle"
-            size={24}
-            color={theme.colors.success}
-          />
+          <View style={styles.checkmarkBackground}>
+            <Ionicons
+              name="checkmark-circle"
+              size={24}
+              color="#FFFFFF"
+            />
+          </View>
         </View>
       )}
 
@@ -89,18 +91,23 @@ const useStyles = createStyleSheet((theme) => ({
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.full,
-    padding: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 5,
   },
+  checkmarkBackground: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#22c55e', // Green filled background
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   label: {
     fontSize: 11,
     fontWeight: theme.typography.fontWeight.semibold,
-    color: '#1f2937',
+    color: '#525252',
   },
 }));
