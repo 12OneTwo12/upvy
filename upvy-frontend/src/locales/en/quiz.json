@@ -13,7 +13,8 @@
     "submitError": "Failed to submit quiz. Please try again."
   },
   "actionButton": {
-    "label": "View Quiz"
+    "label": "View Quiz",
+    "labelShort": "Quiz"
   },
   "toggleButton": {
     "label": "Quiz"

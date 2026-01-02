@@ -13,7 +13,8 @@
     "submitError": "クイズの送信に失敗しました。もう一度お試しください。"
   },
   "actionButton": {
-    "label": "問題を見る"
+    "label": "問題を見る",
+    "labelShort": "問題"
   },
   "toggleButton": {
     "label": "クイズ"
