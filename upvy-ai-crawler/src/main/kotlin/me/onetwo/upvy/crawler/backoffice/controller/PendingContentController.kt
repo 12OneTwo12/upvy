@@ -64,12 +64,13 @@ class PendingContentController(
     @PostMapping("/{id}/approve")
     fun approve(
         @PathVariable id: Long,
+        @RequestParam(defaultValue = "true") createQuiz: Boolean,
         principal: Principal,
         redirectAttributes: RedirectAttributes
     ): String {
         return try {
-            // 백엔드 contents 테이블에 INSERT
-            val publishedContentId = contentPublishService.publishContent(id)
+            // 백엔드 contents 테이블에 INSERT (퀴즈 생성 여부 전달)
+            val publishedContentId = contentPublishService.publishContent(id, createQuiz)
 
             // pending_contents 상태 업데이트
             pendingContentService.approve(id, principal.name, publishedContentId)

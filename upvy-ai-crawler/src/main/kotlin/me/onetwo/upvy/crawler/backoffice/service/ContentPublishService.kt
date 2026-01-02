@@ -49,10 +49,11 @@ class ContentPublishService(
      * content_interactions 테이블에 INSERT합니다.
      *
      * @param pendingContentId 승인 대기 콘텐츠 ID
+     * @param createQuiz 퀴즈 생성 여부 (기본값: true)
      * @return 생성된 contents.id (UUID)
      */
     @Transactional
-    fun publishContent(pendingContentId: Long): String {
+    fun publishContent(pendingContentId: Long, createQuiz: Boolean = true): String {
         val pendingContent = pendingContentRepository.findById(pendingContentId)
             .orElseThrow { IllegalArgumentException("콘텐츠를 찾을 수 없습니다: id=$pendingContentId") }
 
@@ -83,13 +84,17 @@ class ContentPublishService(
             logger.debug("tags 및 content_tags INSERT 완료: contentId={}, tags={}", contentId, tagsList)
         }
 
-        // 5. 퀴즈 생성 및 발행
-        try {
-            createQuizForContent(contentId, pendingContent)
-            logger.info("퀴즈 생성 완료: contentId={}", contentId)
-        } catch (e: Exception) {
-            logger.error("퀴즈 생성 실패 (콘텐츠 발행은 계속): contentId={}", contentId, e)
-            // 퀴즈 생성 실패해도 콘텐츠 발행은 계속 진행
+        // 5. 퀴즈 생성 및 발행 (createQuiz가 true일 때만)
+        if (createQuiz) {
+            try {
+                createQuizForContent(contentId, pendingContent)
+                logger.info("퀴즈 생성 완료: contentId={}", contentId)
+            } catch (e: Exception) {
+                logger.error("퀴즈 생성 실패 (콘텐츠 발행은 계속): contentId={}", contentId, e)
+                // 퀴즈 생성 실패해도 콘텐츠 발행은 계속 진행
+            }
+        } else {
+            logger.info("퀴즈 생성 스킵 (관리자 선택): contentId={}", contentId)
         }
 
         logger.info(
@@ -297,8 +302,8 @@ class ContentPublishService(
         quizRepository.save(quiz)
         logger.debug("quizzes INSERT 완료: quizId={}", quizId)
 
-        // 3. quiz_options 테이블 INSERT
-        quizData.options.forEachIndexed { index, option ->
+        // 3. quiz_options 테이블 INSERT (정답 위치 랜덤화를 위해 셔플)
+        quizData.options.shuffled().forEachIndexed { index, option ->
             val quizOption = QuizOption(
                 id = UUID.randomUUID().toString(),
                 quizId = quizId,
