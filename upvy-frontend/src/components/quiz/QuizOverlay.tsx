@@ -74,7 +74,6 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const hasAppliedExternalResult = useRef(false);
 
   // Internal state to control actual rendering (for smooth animation)
   const [isRendered, setIsRendered] = useState(false);
@@ -107,50 +106,26 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
         setIsRetrying(false);
         setAttemptResult(null);
         setIsSubmitting(false);
-        hasAppliedExternalResult.current = false;
       });
     }
   }, [visible, fadeAnim]);
-
-  // Reset state when quiz changes
-  useEffect(() => {
-    if (visible && quiz?.id) {
-      setSelectedOptionIds([]);
-      setSubmittedOptionIds([]);
-      setIsSubmitted(false);
-      setIsRetrying(false);
-      setAttemptResult(null);
-      setIsSubmitting(false);
-      hasAppliedExternalResult.current = false;
-    }
-  }, [quiz?.id, visible]);
 
   // Check if user has already attempted (정답이 공개된 경우)
   const hasAttempted = useMemo(() => {
     return quiz?.options.some(option => option.isCorrect !== null) ?? false;
   }, [quiz]);
 
-  // Set isSubmitted if user has already attempted
+  // Apply quiz state when modal opens or quiz/result changes
+  // Backend now provides isSelected field, so we just use it!
   useEffect(() => {
-    if (hasAttempted && quiz) {
-      setIsSubmitted(true);
-      // Show user's previous selections if available
-      const userSelectedOptions = quiz.options.filter(opt => opt.isSelected === true);
-      if (userSelectedOptions.length > 0) {
-        setSelectedOptionIds(userSelectedOptions.map(opt => opt.id));
-        setSubmittedOptionIds(userSelectedOptions.map(opt => opt.id));
-      }
-    }
-  }, [hasAttempted, quiz]);
+    if (!visible || isRetrying) return;
 
-  // 외부에서 전달받은 attemptResult가 있으면 결과 화면 표시 (한 번만, 다시 풀기 모드가 아닐 때만)
-  useEffect(() => {
-    if (externalAttemptResult && visible && !hasAppliedExternalResult.current && !isRetrying) {
-      hasAppliedExternalResult.current = true;
+    // Priority 1: Use externalAttemptResult if available (just submitted or reopened after submission)
+    if (externalAttemptResult) {
       setAttemptResult(externalAttemptResult);
       setIsSubmitted(true);
 
-      // 사용자가 선택한 옵션들 설정
+      // Backend provides isSelected field
       if (externalAttemptResult.options && Array.isArray(externalAttemptResult.options)) {
         const selectedIds = externalAttemptResult.options
           .filter(opt => opt.isSelected)
@@ -159,15 +134,27 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
         setSelectedOptionIds(selectedIds);
         setSubmittedOptionIds(selectedIds);
       }
+      return;
     }
-  }, [externalAttemptResult, visible, quiz]);
 
-  // isRetrying 상태 변경 시 외부 결과 재적용 방지
-  useEffect(() => {
-    if (isRetrying) {
-      hasAppliedExternalResult.current = true;
+    // Priority 2: Use quiz.options if already attempted (backend provides isSelected in quiz response)
+    if (hasAttempted && quiz) {
+      setIsSubmitted(true);
+
+      const userSelectedOptions = quiz.options.filter(opt => opt.isSelected === true);
+      if (userSelectedOptions.length > 0) {
+        setSelectedOptionIds(userSelectedOptions.map(opt => opt.id));
+        setSubmittedOptionIds(userSelectedOptions.map(opt => opt.id));
+      }
+      return;
     }
-  }, [isRetrying]);
+
+    // Priority 3: Not attempted yet - reset to initial state
+    setSelectedOptionIds([]);
+    setSubmittedOptionIds([]);
+    setIsSubmitted(false);
+    setAttemptResult(null);
+  }, [visible, quiz, externalAttemptResult, hasAttempted, isRetrying]);
 
   // Fade in animation when rendered
   useEffect(() => {
@@ -240,11 +227,11 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
     setIsSubmitting(true);
     try {
       const result = await onSubmit({ selectedOptionIds });
+      // Backend now provides isSelected in result.options
       setSubmittedOptionIds([...selectedOptionIds]); // 제출한 옵션 ID 저장
       setAttemptResult(result);
       setIsSubmitted(true);
       setIsRetrying(false); // 다시 풀기 모드 종료
-      hasAppliedExternalResult.current = true; // 외부 결과 재적용 방지
     } catch (error) {
       console.error('Failed to submit quiz attempt:', error);
       Alert.alert(t('overlay.submitError'));
