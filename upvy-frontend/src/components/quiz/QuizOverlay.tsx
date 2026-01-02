@@ -69,7 +69,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
   // Calculate modal container style with tab bar adjustment
   const modalContainerStyle = useMemo(() => ({
     ...styles.modalContainer,
-    paddingBottom: tabBarHeight > 0 ? tabBarHeight / 2 : 0,
+    paddingTop: tabBarHeight > 0 ? tabBarHeight / 2 : 0,
   }), [styles.modalContainer, tabBarHeight]);
 
   // Animation refs
