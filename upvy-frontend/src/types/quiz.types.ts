@@ -46,6 +46,7 @@ export interface QuizUpdateRequest {
  * 퀴즈 보기 응답
  *
  * @property isCorrect 정답 여부 (사용자가 이미 풀었을 경우에만 노출)
+ * @property isSelected 사용자가 선택한 보기인지 여부 (퀴즈 제출 후 또는 이미 풀었을 경우에만 노출)
  */
 export interface QuizOptionResponse {
   id: string;
@@ -54,6 +55,7 @@ export interface QuizOptionResponse {
   selectionCount: number;
   selectionPercentage: number;
   isCorrect: boolean | null;
+  isSelected?: boolean | null;
 }
 
 /**

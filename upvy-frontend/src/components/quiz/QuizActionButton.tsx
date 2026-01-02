@@ -35,67 +35,82 @@ export const QuizActionButton: React.FC<QuizActionButtonProps> = ({
       accessibilityRole="button"
       accessibilityHint={hasAttempted ? 'Already attempted' : 'View quiz questions'}
     >
-      {/* Icon Container with Badge */}
-      <View style={styles.iconContainer}>
-        <Ionicons
-          name="help-circle"
-          size={40}
-          color={theme.colors.white}
-          style={styles.icon}
-        />
-
-        {/* Checkmark Badge (shown when attempted) */}
-        {hasAttempted && (
-          <View style={styles.badge}>
+      {/* Checkmark Badge (shown when attempted) */}
+      {hasAttempted && (
+        <View style={styles.badge}>
+          <View style={styles.checkmarkBackground}>
             <Ionicons
               name="checkmark-circle"
-              size={18}
-              color={theme.colors.success}
+              size={22}
+              color="#FFFFFF"
             />
           </View>
-        )}
+        </View>
+      )}
+
+      {/* Top: Filled Icon */}
+      <View style={styles.iconCircle}>
+        <Ionicons
+          name="help-circle"
+          size={22}
+          color="#FFFFFF"
+        />
       </View>
 
-      {/* Label */}
-      <Text style={styles.label}>{t('actionButton.label')}</Text>
+      {/* Bottom: Label */}
+      <Text style={styles.label}>{t('actionButton.labelShort')}</Text>
     </TouchableOpacity>
   );
 };
 
 const useStyles = createStyleSheet((theme) => ({
   container: {
-    alignItems: 'center',
-    gap: theme.spacing[1],
-  },
-  iconContainer: {
     position: 'relative',
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  icon: {
-    // Add shadow for better visibility
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    gap: 5, // spacing[1.25] equivalent: 4 + (8-4) * 0.25
+    paddingVertical: theme.spacing[1.5],
+    paddingHorizontal: theme.spacing[1],
+    backgroundColor: 'rgba(255, 255, 255, 0.75)', // Semi-transparent white
+    borderRadius: theme.borderRadius.lg,
+    // Strong shadow for better visibility on video background
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 8, // Android shadow
   },
   badge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.full,
-    padding: 1,
-    ...theme.shadows.sm,
+    top: -7,
+    right: -7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  checkmarkBackground: {
+    width: 22,
+    height: 22,
+    borderRadius: 12,
+    backgroundColor: '#22c55e', // Green filled background
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 12,
+    backgroundColor: '#22c55e', // Green filled circle
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   label: {
-    fontSize: theme.typography.fontSize.xs,
+    fontSize: 11,
     fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.white,
-    // Add shadow for better visibility
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    color: '#525252',
   },
 }));

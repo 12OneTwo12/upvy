@@ -8,9 +8,8 @@
  * - 재시도, 건너뛰기, 비디오 보기 버튼
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useContext } from 'react';
 import {
-  Modal,
   View,
   Text,
   TouchableOpacity,
@@ -22,6 +21,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
@@ -39,6 +39,10 @@ interface QuizOverlayProps {
   onClose: () => void;
   quiz: QuizResponse | null;
   onSubmit: (request: QuizAttemptRequest) => Promise<QuizAttemptResponse>;
+  attemptResult?: QuizAttemptResponse | null;
+  isSubmitting?: boolean;
+  isSubmitSuccess?: boolean;
+  isAutoDisplayed?: boolean;
   onRetry?: () => void;
   onSkip?: () => void;
   onViewVideo?: () => void;
@@ -49,85 +53,155 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
   onClose,
   quiz,
   onSubmit,
+  attemptResult: externalAttemptResult,
+  isSubmitting: externalIsSubmitting,
+  isSubmitSuccess: externalIsSubmitSuccess,
+  isAutoDisplayed = false,
   onRetry,
   onSkip,
   onViewVideo,
 }) => {
   const { t } = useTranslation('quiz');
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const styles = useStyles();
   const theme = useTheme();
 
+  // Calculate modal container style with tab bar adjustment
+  const modalContainerStyle = useMemo(() => ({
+    ...styles.modalContainer,
+    paddingTop: tabBarHeight > 0 ? tabBarHeight : 0,
+  }), [styles.modalContainer, tabBarHeight]);
+
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
+  // Internal state to control actual rendering (for smooth animation)
+  const [isRendered, setIsRendered] = useState(false);
 
   // Selection state
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
+  const [submittedOptionIds, setSubmittedOptionIds] = useState<string[]>([]); // 제출한 옵션 ID 저장
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [attemptResult, setAttemptResult] = useState<QuizAttemptResponse | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false); // 다시 풀기 모드
+  const [attemptResult, setAttemptResult] = useState<QuizAttemptResponse | null>(externalAttemptResult || null);
+  const [isSubmitting, setIsSubmitting] = useState(externalIsSubmitting || false);
 
-  // Reset state when quiz changes or modal closes
+  // Handle visible prop changes with smooth animation
   useEffect(() => {
-    if (!visible) {
-      setSelectedOptionIds([]);
-      setIsSubmitted(false);
-      setAttemptResult(null);
-      setIsSubmitting(false);
+    if (visible) {
+      // Show modal: render first, then animate in
+      setIsRendered(true);
+    } else {
+      // Hide modal: animate out first, then unmount
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsRendered(false);
+        // Reset state after animation completes
+        setSelectedOptionIds([]);
+        setSubmittedOptionIds([]);
+        setIsSubmitted(false);
+        setIsRetrying(false);
+        setAttemptResult(null);
+        setIsSubmitting(false);
+      });
     }
-  }, [visible, quiz?.id]);
+  }, [visible, fadeAnim]);
 
   // Check if user has already attempted (정답이 공개된 경우)
   const hasAttempted = useMemo(() => {
     return quiz?.options.some(option => option.isCorrect !== null) ?? false;
   }, [quiz]);
 
-  // Set isSubmitted if user has already attempted
+  // Apply quiz state when modal opens or quiz/result changes
+  // Backend now provides isSelected field, so we just use it!
   useEffect(() => {
+    if (!visible || isRetrying) return;
+
+    // Priority 1: Use externalAttemptResult if available (just submitted or reopened after submission)
+    if (externalAttemptResult) {
+      setAttemptResult(externalAttemptResult);
+      setIsSubmitted(true);
+
+      // Backend provides isSelected field
+      if (externalAttemptResult.options && Array.isArray(externalAttemptResult.options)) {
+        const selectedIds = externalAttemptResult.options
+          .filter(opt => opt.isSelected)
+          .map(opt => opt.id);
+
+        setSelectedOptionIds(selectedIds);
+        setSubmittedOptionIds(selectedIds);
+      }
+      return;
+    }
+
+    // Priority 2: Use quiz.options if already attempted (backend provides isSelected in quiz response)
     if (hasAttempted && quiz) {
       setIsSubmitted(true);
-      // Show user's previous selections if available
-      const correctOptions = quiz.options.filter(opt => opt.isCorrect === true);
-      if (correctOptions.length > 0) {
-        setSelectedOptionIds(correctOptions.map(opt => opt.id));
-      }
-    }
-  }, [hasAttempted, quiz]);
 
-  // Animation
+      const userSelectedOptions = quiz.options.filter(opt => opt.isSelected === true);
+      if (userSelectedOptions.length > 0) {
+        setSelectedOptionIds(userSelectedOptions.map(opt => opt.id));
+        setSubmittedOptionIds(userSelectedOptions.map(opt => opt.id));
+      }
+      return;
+    }
+
+    // Priority 3: Not attempted yet - reset to initial state
+    setSelectedOptionIds([]);
+    setSubmittedOptionIds([]);
+    setIsSubmitted(false);
+    setAttemptResult(null);
+  }, [visible, quiz, externalAttemptResult, hasAttempted, isRetrying]);
+
+  // Fade in animation when rendered
   useEffect(() => {
-    if (visible) {
-      // Open animation
-      Animated.parallel([
+    if (isRendered) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isRendered, fadeAnim]);
+
+  // 정답일 경우 2초 후 자동으로 모달 닫기 (자동 표시된 경우만)
+  useEffect(() => {
+    if (!isSubmitted || !visible || !isAutoDisplayed) return;
+
+    // 새로 제출한 경우: attemptResult 확인
+    const isCorrectFromResult = attemptResult?.isCorrect;
+
+    // 이미 푼 퀴즈인 경우: 모든 정답 옵션이 선택되고 모든 오답 옵션이 선택되지 않았으면 정답
+    const wasCorrectBefore = hasAttempted && quiz?.options.every(opt => {
+      const isCorrectOption = opt.isCorrect === true;
+      const isSelectedOption = opt.isSelected === true;
+
+      if (isCorrectOption) {
+        return isSelectedOption; // 정답은 선택되어야 함
+      } else {
+        return !isSelectedOption; // 오답은 선택되면 안 됨
+      }
+    });
+
+    if (isCorrectFromResult || wasCorrectBefore) {
+      const timer = setTimeout(() => {
+        // fadeOut 애니메이션 시작
         Animated.timing(fadeAnim, {
-          toValue: 1,
+          toValue: 0,
           duration: 300,
           useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 65,
-          friction: 11,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      // Close animation
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 200,
-          easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]).start();
+        }).start(() => {
+          // fadeOut 완료 후 onClose 호출 (비디오 재생은 이 시점에 시작됨)
+          onClose();
+        });
+      }, 2000);
+
+      return () => clearTimeout(timer);
     }
-  }, [visible, fadeAnim, slideAnim]);
+  }, [isSubmitted, attemptResult?.isCorrect, hasAttempted, quiz, visible, isAutoDisplayed, onClose, fadeAnim]);
 
   // Handle option selection
   const handleOptionPress = useCallback((optionId: string) => {
@@ -153,8 +227,11 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
     setIsSubmitting(true);
     try {
       const result = await onSubmit({ selectedOptionIds });
+      // Backend now provides isSelected in result.options
+      setSubmittedOptionIds([...selectedOptionIds]); // 제출한 옵션 ID 저장
       setAttemptResult(result);
       setIsSubmitted(true);
+      setIsRetrying(false); // 다시 풀기 모드 종료
     } catch (error) {
       console.error('Failed to submit quiz attempt:', error);
       Alert.alert(t('overlay.submitError'));
@@ -165,7 +242,9 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   // Handle retry
   const handleRetry = useCallback(() => {
+    setIsRetrying(true);
     setSelectedOptionIds([]);
+    setSubmittedOptionIds([]);
     setIsSubmitted(false);
     setAttemptResult(null);
     if (onRetry) {
@@ -175,27 +254,24 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
   // Get option display data (either from attempt result or original quiz)
   const displayOptions = useMemo(() => {
-    if (attemptResult) {
+    // 다시 풀기 모드면 항상 원본 퀴즈 옵션 사용
+    if (isRetrying) {
+      return quiz?.options ?? [];
+    }
+    // 제출 결과가 있으면 결과 옵션 사용
+    if (attemptResult && attemptResult.options) {
       return attemptResult.options;
     }
     return quiz?.options ?? [];
-  }, [attemptResult, quiz]);
+  }, [attemptResult, quiz, isRetrying]);
 
-  // Calculate max percentage for scaling progress bars
-  const maxPercentage = useMemo(() => {
-    const percentages = displayOptions.map(opt => opt.selectionPercentage);
-    return Math.max(...percentages, 1); // Minimum 1 to avoid division by zero
-  }, [displayOptions]);
 
   if (!quiz) return null;
 
+  if (!isRendered) return null;
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
+    <>
       {/* Backdrop */}
       <Animated.View
         style={[
@@ -215,19 +291,25 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
       {/* Quiz Modal */}
       <Animated.View
         style={[
-          styles.modalContainer,
+          modalContainerStyle,
           {
-            transform: [{ translateY: slideAnim }],
+            opacity: fadeAnim,
           },
         ]}
+        pointerEvents="box-none"
       >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={onClose}
+        />
         <View style={styles.modal}>
           {/* Handle Bar */}
           <View style={styles.handleBar} />
 
           {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={theme.colors.text.secondary} />
+            <Ionicons name="close" size={28} color="#FFFFFF" />
           </TouchableOpacity>
 
           <ScrollView
@@ -249,10 +331,11 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
             <View style={styles.optionsContainer}>
               {displayOptions.map((option, index) => {
                 const isSelected = selectedOptionIds.includes(option.id);
+                const wasSubmitted = submittedOptionIds.includes(option.id);
                 const isCorrect = option.isCorrect === true;
-                const isWrong = isSubmitted && isSelected && option.isCorrect === false;
+                const isWrong = isSubmitted && wasSubmitted && option.isCorrect === false;
                 const showProgress = isSubmitted;
-                const progressWidth = (option.selectionPercentage / maxPercentage) * 100;
+                const progressWidth = option.selectionPercentage || 0;
 
                 return (
                   <TouchableOpacity
@@ -260,8 +343,8 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                     style={[
                       styles.optionButton,
                       isSelected && !isSubmitted && styles.optionButtonSelected,
-                      isCorrect && isSubmitted && styles.optionButtonCorrect,
-                      isWrong && styles.optionButtonWrong,
+                      isSubmitted && isCorrect && styles.optionButtonCorrect,
+                      isSubmitted && isWrong && styles.optionButtonWrong,
                     ]}
                     onPress={() => handleOptionPress(option.id)}
                     disabled={isSubmitted}
@@ -275,8 +358,10 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                           {
                             width: `${progressWidth}%`,
                             backgroundColor: isCorrect
-                              ? theme.colors.success + '30'
-                              : theme.colors.gray[200],
+                              ? 'rgba(76, 175, 80, 0.5)'
+                              : isWrong
+                              ? 'rgba(244, 67, 54, 0.5)'
+                              : 'rgba(150, 150, 150, 0.3)',
                           },
                         ]}
                       />
@@ -288,21 +373,23 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                       <View
                         style={[
                           styles.optionCircle,
-                          isSelected && styles.optionCircleSelected,
-                          isCorrect && isSubmitted && styles.optionCircleCorrect,
-                          isWrong && styles.optionCircleWrong,
+                          isSelected && !isSubmitted && styles.optionCircleSelected,
+                          isSubmitted && isCorrect && styles.optionCircleCorrect,
+                          isSubmitted && isWrong && styles.optionCircleWrong,
                         ]}
                       >
-                        {isSelected && (
+                        {/* 제출 전: 선택한 것만 체크마크 */}
+                        {/* 제출 후: 내가 고른 것만 체크마크 (정답이든 오답이든) */}
+                        {((!isSubmitted && isSelected) || (isSubmitted && wasSubmitted)) && (
                           <Ionicons
                             name="checkmark"
                             size={16}
                             color={
                               isSubmitted
-                                ? isCorrect
-                                  ? theme.colors.success
-                                  : theme.colors.error
-                                : theme.colors.primary
+                                ? isWrong
+                                  ? '#F44336'
+                                  : '#4CAF50'
+                                : '#FFFFFF'
                             }
                           />
                         )}
@@ -313,8 +400,8 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                         style={[
                           styles.optionText,
                           isSelected && !isSubmitted && styles.optionTextSelected,
-                          isCorrect && isSubmitted && styles.optionTextCorrect,
-                          isWrong && styles.optionTextWrong,
+                          isSubmitted && isCorrect && styles.optionTextCorrect,
+                          isSubmitted && isWrong && styles.optionTextWrong,
                         ]}
                       >
                         {option.optionText}
@@ -322,17 +409,26 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
 
                       {/* Percentage (shown after submission) */}
                       {showProgress && (
-                        <Text style={styles.percentageText}>
+                        <Text style={[
+                          styles.percentageText,
+                          {
+                            color: isCorrect
+                              ? '#4CAF50'
+                              : isWrong
+                              ? '#F44336'
+                              : '#AAAAAA'
+                          }
+                        ]}>
                           {option.selectionPercentage.toFixed(1)}%
                         </Text>
                       )}
 
                       {/* Correct/Wrong Icon */}
-                      {isSubmitted && isSelected && (
+                      {isSubmitted && wasSubmitted && (
                         <Ionicons
                           name={isCorrect ? "checkmark-circle" : "close-circle"}
                           size={20}
-                          color={isCorrect ? theme.colors.success : theme.colors.error}
+                          color={isCorrect ? '#4CAF50' : '#F44336'}
                         />
                       )}
                     </View>
@@ -382,7 +478,10 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
                   accessibilityRole="button"
                   accessibilityState={{ disabled: selectedOptionIds.length === 0 || isSubmitting }}
                 >
-                  <Text style={styles.submitButtonText}>
+                  <Text style={[
+                    styles.submitButtonText,
+                    selectedOptionIds.length === 0 && styles.submitButtonTextDisabled,
+                  ]}>
                     {isSubmitting ? t('overlay.submitting') : t('overlay.submit')}
                   </Text>
                 </TouchableOpacity>
@@ -434,7 +533,7 @@ export const QuizOverlay: React.FC<QuizOverlayProps> = ({
           </ScrollView>
         </View>
       </Animated.View>
-    </Modal>
+    </>
   );
 };
 
@@ -445,23 +544,41 @@ const useStyles = createStyleSheet((theme) => ({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    zIndex: 9999,
   },
   backdropTouchable: {
     flex: 1,
   },
   modalContainer: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    maxHeight: SCREEN_HEIGHT * 0.85,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    zIndex: 10000,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modal: {
-    backgroundColor: theme.colors.background.primary,
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
-    paddingBottom: theme.spacing[6],
+    backgroundColor: 'rgba(50, 50, 50, 0.95)',
+    borderRadius: 24,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: SCREEN_HEIGHT * 0.8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   handleBar: {
     width: 40,
@@ -469,36 +586,37 @@ const useStyles = createStyleSheet((theme) => ({
     backgroundColor: theme.colors.gray[300],
     borderRadius: 2,
     alignSelf: 'center',
-    marginTop: theme.spacing[2],
+    marginTop: theme.spacing[3],
     marginBottom: theme.spacing[2],
   },
   closeButton: {
     position: 'absolute',
-    top: theme.spacing[2],
-    right: theme.spacing[4],
+    top: theme.spacing[3],
+    right: theme.spacing[3],
     zIndex: 10,
-    padding: theme.spacing[2],
+    padding: theme.spacing[1], // 댓글 모달과 동일
   },
   scrollView: {
-    maxHeight: SCREEN_HEIGHT * 0.75,
+    maxHeight: SCREEN_HEIGHT * 0.7,
   },
   scrollContent: {
-    paddingHorizontal: theme.spacing[4],
-    paddingBottom: theme.spacing[4],
+    paddingHorizontal: theme.spacing[5],
+    paddingTop: theme.spacing[2],
+    paddingBottom: theme.spacing[8],
   },
   questionContainer: {
-    marginTop: theme.spacing[4],
-    marginBottom: theme.spacing[6],
+    marginTop: theme.spacing[5], // X 버튼과 여유 공간
+    marginBottom: theme.spacing[5],
   },
   questionText: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-    lineHeight: theme.typography.fontSize.lg * 1.5,
+    color: '#FFFFFF',
+    lineHeight: theme.typography.fontSize.xl * 1.4,
   },
   multipleAnswerHint: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
+    color: '#AAAAAA',
     marginTop: theme.spacing[2],
   },
   optionsContainer: {
@@ -507,22 +625,26 @@ const useStyles = createStyleSheet((theme) => ({
   optionButton: {
     position: 'relative',
     borderWidth: 2,
-    borderColor: theme.colors.border.light,
-    borderRadius: theme.borderRadius.md,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 16,
     marginBottom: theme.spacing[3],
     overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   optionButtonSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '10',
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderWidth: 2.5,
   },
   optionButtonCorrect: {
-    borderColor: theme.colors.success,
-    backgroundColor: theme.colors.success + '10',
+    borderColor: '#4CAF50',
+    backgroundColor: 'rgba(76, 175, 80, 0.3)',
+    borderWidth: 2.5,
   },
   optionButtonWrong: {
-    borderColor: theme.colors.error,
-    backgroundColor: theme.colors.error + '10',
+    borderColor: '#F44336',
+    backgroundColor: 'rgba(244, 67, 54, 0.3)',
+    borderWidth: 2.5,
   },
   progressBar: {
     position: 'absolute',
@@ -543,43 +665,43 @@ const useStyles = createStyleSheet((theme) => ({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: theme.colors.gray[400],
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: theme.spacing[3],
   },
   optionCircleSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '20',
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   optionCircleCorrect: {
-    borderColor: theme.colors.success,
-    backgroundColor: theme.colors.success + '20',
+    borderColor: '#4CAF50',
+    backgroundColor: 'rgba(76, 175, 80, 0.3)',
   },
   optionCircleWrong: {
-    borderColor: theme.colors.error,
-    backgroundColor: theme.colors.error + '20',
+    borderColor: '#F44336',
+    backgroundColor: 'rgba(244, 67, 54, 0.3)',
   },
   optionText: {
     flex: 1,
     fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.primary,
+    color: '#FFFFFF',
     fontWeight: theme.typography.fontWeight.medium,
   },
   optionTextSelected: {
-    color: theme.colors.primary,
-    fontWeight: theme.typography.fontWeight.semibold,
+    color: '#FFFFFF',
+    fontWeight: theme.typography.fontWeight.bold,
   },
   optionTextCorrect: {
-    color: theme.colors.success,
-    fontWeight: theme.typography.fontWeight.semibold,
+    color: '#FFFFFF',
+    fontWeight: theme.typography.fontWeight.bold,
   },
   optionTextWrong: {
-    color: theme.colors.error,
+    color: '#FFFFFF',
+    fontWeight: theme.typography.fontWeight.bold,
   },
   percentageText: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
     fontWeight: theme.typography.fontWeight.semibold,
     marginRight: theme.spacing[2],
   },
@@ -587,18 +709,18 @@ const useStyles = createStyleSheet((theme) => ({
     alignItems: 'center',
     paddingVertical: theme.spacing[4],
     marginVertical: theme.spacing[4],
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: theme.borderRadius.md,
   },
   resultText: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
+    color: '#FFFFFF',
     marginTop: theme.spacing[2],
   },
   attemptCountText: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
+    color: '#AAAAAA',
     marginTop: theme.spacing[1],
   },
   statsContainer: {
@@ -608,24 +730,35 @@ const useStyles = createStyleSheet((theme) => ({
   },
   statsText: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
+    color: '#AAAAAA',
   },
   actionsContainer: {
     gap: theme.spacing[2],
   },
   submitButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#FFFFFF',
     paddingVertical: theme.spacing[4],
-    borderRadius: theme.borderRadius.md,
+    borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
+    marginTop: theme.spacing[2],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   submitButtonDisabled: {
-    backgroundColor: theme.colors.gray[300],
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitButtonText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.white,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: '#000000',
+  },
+  submitButtonTextDisabled: {
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   retryButton: {
     flexDirection: 'row',

@@ -7,7 +7,7 @@
  * - 커서 기반 페이지네이션
  */
 
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -23,6 +23,9 @@ import { useTheme } from '@/theme';
 import type { ExploreStackParamList } from '@/types/navigation.types';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
+import { QuizActionButton, QuizToggleButton, QuizOverlay } from '@/components/quiz';
+import { useQuizStore } from '@/stores/quizStore';
+import { useQuiz } from '@/hooks/useQuiz';
 import { useFeed } from '@/hooks/useFeed';
 import type { FeedItem as FeedItemType } from '@/types/feed.types';
 import { CATEGORIES } from '@/types/content.types';
@@ -38,9 +41,15 @@ export default function CategoryFeedScreen() {
   const navigation = useNavigation();
   const isScreenFocused = useIsFocused();
   const { t } = useTranslation('search');
+  const { isQuizAutoDisplayEnabled, toggleQuizAutoDisplay } = useQuizStore();
 
   // 선택된 카테고리 정보
   const categoryInfo = CATEGORIES.find((c) => c.value === category);
+
+  // 퀴즈 모달 상태
+  const [quizVisible, setQuizVisible] = useState(false);
+  const [hasAutoShownQuiz, setHasAutoShownQuiz] = useState(false);
+  const [wasAutoOpened, setWasAutoOpened] = useState(false);
 
   // 공통 피드 로직 훅
   const feed = useFeed({
@@ -80,6 +89,81 @@ export default function CategoryFeedScreen() {
     SCREEN_HEIGHT,
     handleRefresh,
   } = feed;
+
+  // 현재 보이는 아이템의 contentId
+  const currentContentId = useMemo(() => {
+    if (!displayItems || displayItems.length === 0) return null;
+    return displayItems[currentIndex]?.contentId || null;
+  }, [displayItems, currentIndex]);
+
+  // 현재 보이는 아이템의 quiz 메타데이터 (버튼 표시용)
+  const currentItemQuiz = useMemo(() => {
+    if (!displayItems || displayItems.length === 0) return null;
+    const currentItem = displayItems[currentIndex];
+    return currentItem?.quiz || null;
+  }, [displayItems, currentIndex]);
+
+  // 현재 아이템의 퀴즈 데이터 로드
+  const {
+    quiz,
+    submitAttemptAsync,
+    attemptResult,
+    isSubmitting,
+    isSubmitSuccess,
+    isLoadingQuiz,
+  } = useQuiz(
+    currentContentId || '',
+    {
+      onSuccess: () => {
+        // 퀴즈 제출 성공 시 처리
+      },
+    }
+  );
+
+  // 퀴즈 버튼 핸들러
+  const handleQuizButtonPress = useCallback(() => {
+    setQuizVisible(true);
+    setWasAutoOpened(false);
+  }, []);
+
+  const handleQuizClose = useCallback(() => {
+    setQuizVisible(false);
+    setWasAutoOpened(false);
+  }, []);
+
+  // 아이템 변경 시 자동 표시 상태 리셋
+  useEffect(() => {
+    setHasAutoShownQuiz(false);
+    setQuizVisible(false);
+    setWasAutoOpened(false);
+  }, [currentContentId]);
+
+  // 퀴즈 자동 표시 로직
+  useEffect(() => {
+    if (!isScreenFocused || !isQuizAutoDisplayEnabled) return;
+    if (hasAutoShownQuiz || quizVisible) return;
+    if (isLoadingQuiz) return;
+
+    if (quiz && currentItemQuiz) {
+      // 약간의 딜레이 후 퀴즈 자동 표시
+      const timer = setTimeout(() => {
+        setQuizVisible(true);
+        setHasAutoShownQuiz(true);
+        setWasAutoOpened(true);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [
+    isScreenFocused,
+    isQuizAutoDisplayEnabled,
+    hasAutoShownQuiz,
+    quizVisible,
+    quiz,
+    isLoadingQuiz,
+    currentItemQuiz,
+    currentContentId,
+  ]);
 
   /**
    * handleRefresh의 최신 버전을 ref로 유지
@@ -132,6 +216,7 @@ export default function CategoryFeedScreen() {
           onCreatorPress={() => handleCreatorPress(item.creator.userId)}
           onBlockSuccess={handleBlockSuccess}
           onDeleteSuccess={handleDeleteSuccess}
+          quizVisible={index === currentIndex ? quizVisible : false}
         />
 
         {isLoadingItem && (
@@ -221,6 +306,30 @@ export default function CategoryFeedScreen() {
         >
           {categoryInfo ? t(`category.${category}.name`, categoryInfo.displayName) : t('explore.categories')}
         </Text>
+      </View>
+
+      {/* 퀴즈 버튼들 - 오른쪽 상단 (세로 배치) */}
+      <View
+        style={{
+          position: 'absolute',
+          top: insets.top + 8,
+          right: 12,
+          zIndex: 9999, // QuizOverlay(z-index: 10000)보다 아래
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <QuizToggleButton
+          isEnabled={isQuizAutoDisplayEnabled}
+          onToggle={toggleQuizAutoDisplay}
+        />
+        {currentItemQuiz && (
+          <QuizActionButton
+            hasAttempted={currentItemQuiz.hasAttempted ?? false}
+            onPress={handleQuizButtonPress}
+          />
+        )}
       </View>
 
       {/* Pull-to-Refresh 인디케이터 */}
@@ -332,6 +441,20 @@ export default function CategoryFeedScreen() {
           visible={commentModalVisible}
           contentId={selectedContentId}
           onClose={() => setCommentModalVisible(false)}
+        />
+      )}
+
+      {/* 퀴즈 모달 */}
+      {quiz && submitAttemptAsync && (
+        <QuizOverlay
+          visible={quizVisible}
+          onClose={handleQuizClose}
+          quiz={quiz}
+          onSubmit={submitAttemptAsync}
+          attemptResult={attemptResult}
+          isSubmitting={isSubmitting}
+          isSubmitSuccess={isSubmitSuccess}
+          isAutoDisplayed={wasAutoOpened}
         />
       )}
     </View>

@@ -149,6 +149,7 @@ class QuizControllerTest : BaseReactiveTest {
                             fieldWithPath("options[].selectionCount").description("선택 횟수"),
                             fieldWithPath("options[].selectionPercentage").description("선택 비율 (0.0 ~ 100.0)"),
                             fieldWithPath("options[].isCorrect").description("정답 여부 (미시도 시 null)").optional(),
+                            fieldWithPath("options[].isSelected").description("사용자 선택 여부 (미시도 시 null)").optional(),
                             fieldWithPath("userAttemptCount").description("현재 사용자 시도 횟수").optional(),
                             fieldWithPath("totalAttempts").description("전체 시도 횟수")
                         )
@@ -230,6 +231,7 @@ class QuizControllerTest : BaseReactiveTest {
                             fieldWithPath("options[].selectionCount").description("선택 횟수"),
                             fieldWithPath("options[].selectionPercentage").description("선택 비율 (0.0 ~ 100.0)"),
                             fieldWithPath("options[].isCorrect").description("정답 여부 (미시도 시 null)").optional(),
+                            fieldWithPath("options[].isSelected").description("사용자 선택 여부 (미시도 시 null)").optional(),
                             fieldWithPath("userAttemptCount").description("현재 사용자 시도 횟수").optional(),
                             fieldWithPath("totalAttempts").description("전체 시도 횟수")
                         )
@@ -319,6 +321,7 @@ class QuizControllerTest : BaseReactiveTest {
                             fieldWithPath("options[].selectionCount").description("선택 횟수"),
                             fieldWithPath("options[].selectionPercentage").description("선택 비율"),
                             fieldWithPath("options[].isCorrect").description("정답 여부").optional(),
+                            fieldWithPath("options[].isSelected").description("사용자 선택 여부").optional(),
                             fieldWithPath("userAttemptCount").description("현재 사용자 시도 횟수").optional(),
                             fieldWithPath("totalAttempts").description("전체 시도 횟수")
                         )
@@ -441,7 +444,8 @@ class QuizControllerTest : BaseReactiveTest {
                             fieldWithPath("options[].displayOrder").description("표시 순서"),
                             fieldWithPath("options[].selectionCount").description("선택 횟수 (업데이트됨)"),
                             fieldWithPath("options[].selectionPercentage").description("선택 비율 (업데이트됨)"),
-                            fieldWithPath("options[].isCorrect").description("정답 여부 (공개됨)").optional()
+                            fieldWithPath("options[].isCorrect").description("정답 여부 (공개됨)").optional(),
+                            fieldWithPath("options[].isSelected").description("사용자가 선택한 보기").optional()
                         )
                     )
                 )

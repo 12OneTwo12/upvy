@@ -44,7 +44,8 @@ class QuizServiceImpl(
         val options: List<QuizOption>,
         val totalAttempts: Int,
         val userAttemptCount: Int,
-        val hasAttempted: Boolean
+        val hasAttempted: Boolean,
+        val selectedOptions: List<UUID> = emptyList()
     )
 
     /**
@@ -145,9 +146,23 @@ class QuizServiceImpl(
                     Mono.just(false)
                 }
 
-                Mono.zip(optionsMono, totalAttemptsMono, userAttemptCountMono, hasAttemptedMono)
+                // 최신 시도의 선택한 옵션 조회
+                val selectedOptionsMono = if (userId != null) {
+                    quizAttemptRepository.findByQuizIdAndUserId(quizId, userId)
+                        .next() // 최신 시도 (첫 번째)
+                        .flatMap { attempt ->
+                            quizAttemptAnswerRepository.findByAttemptId(attempt.id!!)
+                                .map { it.optionId }
+                                .collectList()
+                        }
+                        .defaultIfEmpty(emptyList())
+                } else {
+                    Mono.just(emptyList())
+                }
+
+                Mono.zip(optionsMono, totalAttemptsMono, userAttemptCountMono, hasAttemptedMono, selectedOptionsMono)
                     .map { tuple ->
-                        QuizDetailsData(tuple.t1, tuple.t2, tuple.t3, tuple.t4)
+                        QuizDetailsData(tuple.t1, tuple.t2, tuple.t3, tuple.t4, tuple.t5)
                     }
                     .flatMap { data ->
                         // 각 보기별 선택 횟수 계산 (최적화된 GROUP BY 쿼리 사용)
@@ -159,9 +174,11 @@ class QuizServiceImpl(
                                     question = quiz.question,
                                     allowMultipleAnswers = quiz.allowMultipleAnswers,
                                     options = optionResponses.map { optionResponse ->
-                                        // 사용자가 이미 시도했으면 정답 공개, 아니면 숨김
+                                        // 사용자가 이미 시도했으면 정답 공개 + isSelected 설정, 아니면 숨김
                                         if (data.hasAttempted) {
-                                            optionResponse
+                                            optionResponse.copy(
+                                                isSelected = data.selectedOptions.contains(UUID.fromString(optionResponse.id))
+                                            )
                                         } else {
                                             optionResponse.copy(isCorrect = null)
                                         }
@@ -262,7 +279,8 @@ class QuizServiceImpl(
                                             attemptId = attemptResult.first,
                                             quizId = quizId,
                                             isCorrect = isCorrect,
-                                            attemptNumber = attemptResult.second
+                                            attemptNumber = attemptResult.second,
+                                            selectedOptionIds = selectedOptionIds
                                         )
                                     }
                             }
@@ -456,7 +474,8 @@ class QuizServiceImpl(
         attemptId: UUID,
         quizId: UUID,
         isCorrect: Boolean,
-        attemptNumber: Int
+        attemptNumber: Int,
+        selectedOptionIds: List<UUID>
     ): Mono<QuizAttemptResponse> {
         val totalAttemptsMono = quizAttemptRepository.countByQuizId(quizId)
         val optionsMono = quizOptionRepository.findByQuizId(quizId).collectList()
@@ -465,12 +484,17 @@ class QuizServiceImpl(
             calculateOptionStats(quizId, options, totalAttempts)
         }.flatMap { statsMono ->
             statsMono.map { optionStats ->
+                // Add isSelected field to each option
+                val optionsWithSelection = optionStats.map { option ->
+                    option.copy(isSelected = selectedOptionIds.contains(UUID.fromString(option.id)))
+                }
+
                 QuizAttemptResponse(
                     attemptId = attemptId.toString(),
                     quizId = quizId.toString(),
                     isCorrect = isCorrect,
                     attemptNumber = attemptNumber,
-                    options = optionStats
+                    options = optionsWithSelection
                 )
             }
         }

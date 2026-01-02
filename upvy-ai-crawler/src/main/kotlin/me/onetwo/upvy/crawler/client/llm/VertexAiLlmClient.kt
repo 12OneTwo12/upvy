@@ -16,6 +16,8 @@ import me.onetwo.upvy.crawler.domain.ContentMetadata
 import me.onetwo.upvy.crawler.domain.Difficulty
 import me.onetwo.upvy.crawler.domain.EditPlan
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
+import me.onetwo.upvy.crawler.domain.QuizData
+import me.onetwo.upvy.crawler.domain.QuizOption
 import me.onetwo.upvy.crawler.domain.Recommendation
 import me.onetwo.upvy.crawler.domain.SearchContext
 import me.onetwo.upvy.crawler.domain.SearchQuery
@@ -242,6 +244,34 @@ class VertexAiLlmClient(
 
         logger.info("비디오 평가 완료: 전체 {}개 중 {}개 평가됨", candidates.size, allEvaluations.size)
         allEvaluations
+    }
+
+    override suspend fun generateQuizFromDescription(
+        description: String,
+        title: String,
+        contentLanguage: ContentLanguage,
+        difficulty: Difficulty?
+    ): QuizData = withContext(Dispatchers.IO) {
+        logger.info("퀴즈 생성 시작: title={}, language={}, difficulty={}",
+            title, contentLanguage.code, difficulty?.name ?: "N/A")
+
+        val prompt = buildQuizGenerationPrompt(description, title, contentLanguage, difficulty)
+
+        try {
+            val response = model.generateContent(prompt)
+            val responseText = ResponseHandler.getText(response)
+            val jsonResponse = extractJsonFromResponse(responseText.ifEmpty { "{}" })
+
+            val quiz = parseQuizFromJson(jsonResponse)
+
+            logger.info("퀴즈 생성 완료: question={}, options count={}",
+                quiz.question.take(50), quiz.options.size)
+            quiz
+
+        } catch (e: Exception) {
+            logger.error("퀴즈 생성 실패: title={}", title, e)
+            throw LlmException("Failed to generate quiz", e)
+        }
     }
 
     // ========== Prompt Builders ==========
@@ -480,6 +510,313 @@ class VertexAiLlmClient(
         """.trimMargin()
     }
 
+    private fun buildQuizGenerationPrompt(
+        description: String,
+        title: String,
+        contentLanguage: ContentLanguage,
+        difficulty: Difficulty?
+    ): String {
+        val languageInstruction = when (contentLanguage) {
+            ContentLanguage.KO -> "한국어로 퀴즈를 생성해주세요."
+            ContentLanguage.EN -> "Generate the quiz in English."
+            ContentLanguage.JA -> "日本語でクイズを生成してください。"
+        }
+
+        val difficultyGuidance = when (difficulty) {
+            Difficulty.BEGINNER -> when (contentLanguage) {
+                ContentLanguage.KO -> "초급 수준: 기본 개념을 묻는 쉬운 문제"
+                ContentLanguage.EN -> "Beginner level: Easy questions about basic concepts"
+                ContentLanguage.JA -> "初級レベル：基本概念についての簡単な問題"
+            }
+            Difficulty.INTERMEDIATE -> when (contentLanguage) {
+                ContentLanguage.KO -> "중급 수준: 개념 이해와 적용을 묻는 문제"
+                ContentLanguage.EN -> "Intermediate level: Questions about understanding and application"
+                ContentLanguage.JA -> "中級レベル：理解と応用についての問題"
+            }
+            Difficulty.ADVANCED -> when (contentLanguage) {
+                ContentLanguage.KO -> "고급 수준: 심화 개념과 분석을 묻는 어려운 문제"
+                ContentLanguage.EN -> "Advanced level: Difficult questions about advanced concepts and analysis"
+                ContentLanguage.JA -> "上級レベル：高度な概念と分析についての難しい問題"
+            }
+            null -> when (contentLanguage) {
+                ContentLanguage.KO -> "중급 수준: 개념 이해를 묻는 문제"
+                ContentLanguage.EN -> "Intermediate level: Questions about understanding concepts"
+                ContentLanguage.JA -> "中級レベル：概念理解についての問題"
+            }
+        }
+
+        val goodExamples = when (contentLanguage) {
+            ContentLanguage.KO -> """
+                |✅ 좋은 예시 (명확하고 구체적, 다양한 카테고리):
+                |
+                |[프로그래밍]
+                |질문: "다음 중 Python을 웹에서 바로 실행하는 건?"
+                |보기: "Jupyter", "메모장", "Word", "카톡"
+                |→ 한정어 ✓, 맥락 ✓, 정답 하나 ✓
+                |
+                |[프로그래밍]
+                |질문: "다음 중 코드 저장소로 쓰이는 건?"
+                |보기: "GitHub", "Google Drive", "Dropbox", "USB"
+                |→ 한정어 ✓, 맥락 ✓, GitHub만 저장소 ✓
+                |
+                |[디자인]
+                |질문: "다음 중 벡터 그래픽 편집 도구는?"
+                |보기: "Illustrator", "Photoshop", "PowerPoint", "메모장"
+                |→ 한정어 ✓, Illustrator만 벡터, 나머지는 래스터/문서 ✓
+                |
+                |[생산성]
+                |질문: "다음 중 25분 집중하는 시간관리 기법은?"
+                |보기: "포모도로", "GTD", "칸반", "스크럼"
+                |→ 한정어 ✓, 25분 = 포모도로만 해당 ✓
+                |
+                |[비즈니스]
+                |질문: "다음 중 기업간 거래를 뜻하는 건?"
+                |보기: "B2B", "B2C", "C2C", "D2C"
+                |→ 한정어 ✓, B2B만 기업간 ✓
+            """.trimMargin()
+            ContentLanguage.EN -> """
+                |Good examples (clear and specific):
+                |Video: "Jupyter Notebook Tutorial"
+                |Question: "Run Python code in browser with?"
+                |Options: "Jupyter", "Notepad", "Word", "Chat"
+                |→ Clear context! Only Jupyter runs Python in browser!
+                |
+                |Video: "Git Basics"
+                |Question: "Most popular code hosting platform?"
+                |Options: "GitHub", "Google Drive", "Dropbox", "USB"
+                |→ Clear! GitHub is the only code platform!
+                |
+                |Video: "Web Dev Intro"
+                |Question: "Must-have language for websites?"
+                |Options: "HTML", "Python", "Java", "C++"
+                |→ Clear! Only HTML is required!
+                |
+                |Video: "VSCode Tutorial"
+                |Question: "Which one is for writing code?"
+                |Options: "VSCode", "Notepad", "Word", "Excel"
+                |→ Clear! Only VSCode is a code-specific tool!
+            """.trimMargin()
+            ContentLanguage.JA -> """
+                |良い例 (明確で具体的):
+                |動画: "Jupyter Notebook使い方"
+                |質問: "Pythonをブラウザで実行するには？"
+                |選択肢: "Jupyter", "メモ帳", "Word", "LINE"
+                |→ 文脈明確！Jupyter以外ブラウザで実行不可！
+                |
+                |動画: "Git基礎"
+                |質問: "コード保存で一番使われる場所は？"
+                |選択肢: "GitHub", "Google Drive", "Dropbox", "USB"
+                |→ 明確！GitHubだけがコードホスティング！
+                |
+                |動画: "Web開発入門"
+                |質問: "Webサイトに絶対必要な言語は？"
+                |選択肢: "HTML", "Python", "Java", "C++"
+                |→ 明確！HTMLだけが必須！
+                |
+                |動画: "VSCode使い方"
+                |質問: "次のうちコード作成専用ツールは？"
+                |選択肢: "VSCode", "メモ帳", "Word", "Excel"
+                |→ 明確！VSCodeだけがコード専用ツール！
+            """.trimMargin()
+        }
+
+        val badExamples = when (contentLanguage) {
+            ContentLanguage.KO -> """
+                |나쁜 예시 (모호하고 불명확):
+                |❌ "버전 관리 필수 도구는?"
+                |   → "버전 관리가 뭔지 모호" (문서? 코드? 디자인?)
+                |
+                |❌ "데이터 분석에 쓰는 툴은?"
+                |   → "답이 여러개" (Excel? Python? Tableau?)
+                |
+                |❌ "협업 도구는?"
+                |   → "맥락 없음" (Slack? Jira? Git? Notion?)
+                |
+                |❌ "개발 환경은?"
+                |   → "정답이 애매" (VS Code? IntelliJ? Eclipse?)
+                |
+                |❌ "코드 편집기로 가장 많이 쓰는 건?"
+                |   → "한정어 없음" + "보기 범위 명시 안함"
+                |
+                |❌ "코드를 묶어 재사용하려면 무엇을 쓸까?"
+                |   → "한정어 없음" + "맥락 모호" (묶는다는 게 뭔 소리?)
+                |
+                |❌ "실습 환경 구축 도구는?"
+                |   → "한정어 없음" + "전문 용어" (초보자는 무슨 말인지 모름)
+                |
+                |❌ "이 영상의 주제는?"
+                |   → "영상 봐야 답 가능" (영상 안 봤는데?)
+            """.trimMargin()
+            ContentLanguage.EN -> """
+                |Bad examples (vague and unclear):
+                |❌ "Version control essential tool?"
+                |   → "Vague meaning" (documents? code? design?)
+                |
+                |❌ "Data analysis tool?"
+                |   → "Multiple answers" (Excel? Python? Tableau?)
+                |
+                |❌ "Collaboration tool?"
+                |   → "No context" (Slack? Jira? Git? Notion?)
+                |
+                |❌ "Development environment?"
+                |   → "Unclear answer" (VS Code? IntelliJ? Eclipse?)
+                |
+                |❌ "Most popular code editor?"
+                |   → "Scope not specified" (IntelliJ? WebStorm? Many others)
+                |
+                |❌ "Dev environment setup tool?"
+                |   → "Technical jargon" (beginners don't understand)
+                |
+                |❌ "This video's topic?"
+                |   → "Requires watching" (haven't watched yet?)
+            """.trimMargin()
+            ContentLanguage.JA -> """
+                |悪い例 (曖昧で不明確):
+                |❌ "バージョン管理必須ツールは？"
+                |   → "意味が曖昧" (文書？コード？デザイン？)
+                |
+                |❌ "データ分析に使うツールは？"
+                |   → "答えが複数" (Excel？Python？Tableau？)
+                |
+                |❌ "コラボレーションツールは？"
+                |   → "文脈なし" (Slack？Jira？Git？Notion？)
+                |
+                |❌ "開発環境は？"
+                |   → "答えが曖昧" (VS Code？IntelliJ？Eclipse？)
+                |
+                |❌ "開発者が一番使うコードエディタは？"
+                |   → "範囲指定なし" (IntelliJ？WebStorm？他にも多い)
+                |
+                |❌ "実習環境構築ツールは？"
+                |   → "専門用語" (初心者は意味不明)
+                |
+                |❌ "この動画のテーマは？"
+                |   → "視聴必須" (まだ見てないのに？)
+            """.trimMargin()
+        }
+
+        val lengthGuidance = when (contentLanguage) {
+            ContentLanguage.KO -> """
+                |**길이 제한 (매우 중요!):**
+                |- 질문: 15-30자 이내 (짧고 간결하게!)
+                |- 각 보기: 2-15자 이내 (단어나 짧은 구절 수준!)
+                |- 시험 문제처럼 간결하고 명확하게
+                |- 숏폼 콘텐츠이므로 빠르게 읽고 답할 수 있어야 함
+            """.trimMargin()
+            ContentLanguage.EN -> """
+                |**Length limits (CRITICAL!):**
+                |- Question: 5-10 words max (short and clear!)
+                |- Each option: 1-5 words max (word or short phrase level!)
+                |- Like exam questions: concise and clear
+                |- Short-form content: must be quick to read and answer
+            """.trimMargin()
+            ContentLanguage.JA -> """
+                |**長さ制限 (非常に重要!):**
+                |- 質問: 15-30文字以内 (短く簡潔に!)
+                |- 各選択肢: 2-15文字以内 (単語や短いフレーズレベル!)
+                |- 試験問題のように簡潔で明確に
+                |- ショート動画なので素早く読んで答えられること
+            """.trimMargin()
+        }
+
+        return """
+            |# ROLE & CONTEXT
+            |당신은 숏폼 교육 콘텐츠 퀴즈 전문가입니다.
+            |사용자는 **영상 시청 전**에 퀴즈를 먼저 봅니다 (Instagram Poll 방식).
+            |퀴즈가 궁금증을 유발해야 영상 시청으로 이어집니다.
+            |
+            |타겟 언어: ${contentLanguage.nativeName} (${contentLanguage.code})
+            |**중요: $languageInstruction**
+            |
+            |# INPUT
+            |콘텐츠 제목: $title
+            |콘텐츠 설명:
+            |$description
+            |
+            |난이도: $difficultyGuidance
+            |
+            |# QUIZ GENERATION RULES (절대 준수!)
+            |
+            |## 1. 한정어 강제 (MANDATORY)
+            |질문은 **반드시 "다음 중"으로 시작**해야 합니다.
+            |한정어 없는 질문은 절대 금지!
+            |
+            |## 2. 질문 템플릿
+            |"다음 중 [구체적 맥락] [행위/대상]은?"
+            |
+            |예시:
+            |- "다음 중 Python을 웹에서 실행하는 건?"
+            |- "다음 중 벡터 그래픽 편집 도구는?"
+            |- "다음 중 25분 집중하는 시간관리 기법은?"
+            |
+            |## 3. 맥락 포함 (CLARITY)
+            |전문 용어는 반드시 맥락과 함께 사용하세요.
+            |❌ "버전 관리 도구는?" → ✅ "다음 중 코드 변경 이력을 저장하는 건?"
+            |❌ "커널 재시작은?" → ✅ "다음 중 Jupyter에서 코드 실행을 초기화하는 건?"
+            |
+            |## 4. 단일 정답 (ACCURACY)
+            |정답은 반드시 하나만, 사실에 근거해야 합니다.
+            |질문과 답의 품사/의미가 정확히 일치해야 합니다.
+            |
+            |품사 일치:
+            |❌ "~언어는?" → "프로그래밍" (틀림! 행위)
+            |✅ "~언어는?" → "Python" (맞음! 언어)
+            |✅ "~작업은?" → "프로그래밍" (맞음! 작업)
+            |
+            |## 5. 길이 제한 (BREVITY)
+            |$lengthGuidance
+            |
+            |## 6. 보기 구성
+            |- 3-4개 보기
+            |- 정답 외의 보기는 완전히 다른 카테고리
+            |- 모두 그럴듯하게 (너무 명백한 오답 X)
+            |
+            |# GOOD EXAMPLES (다양한 카테고리)
+            |$goodExamples
+            |
+            |# BAD EXAMPLES (Anti-patterns)
+            |$badExamples
+            |
+            |# ABSOLUTE PROHIBITIONS (절대 금지!)
+            |❌ 한정어 없는 질문 ("~은?", "~를 쓸까?" → 반드시 "다음 중"으로 시작!)
+            |❌ "이 영상의..." / "영상에서..." 같은 표현
+            |❌ 영상 봐야만 답할 수 있는 세부 질문
+            |❌ 맥락 없이 전문 용어만 던지기 ("커널 재시작은?", "버전 관리는?", "코드를 묶어")
+            |❌ 순서/단계 질문 ("세 번째 기능은?")
+            |❌ 정답이 여러개인 모호한 질문 ("협업 도구는?", "데이터 분석 툴은?", "재사용하려면?")
+            |❌ 보기 범위 명시 안함 ("가장 많이 쓰는 건?" → 보기 밖에 더 많은 답이 있음)
+            |❌ 틀린 정답 표시 ("언어는?" → "프로그래밍", "웹 실행?" → "메모장")
+            |❌ 품사/의미 불일치 ("~은?" 물었는데 동사로 답함)
+            |❌ 긴 문장형 질문 / 설명 포함 보기
+            |
+            |# OUTPUT FORMAT
+            |**반드시 JSON 형식으로만 응답하세요 (${contentLanguage.nativeName}로 작성):**
+            |
+            |{
+            |  "question": "다음 중 [구체적 맥락] [행위/대상]은? (15-30자, 한정어 필수!)",
+            |  "allowMultipleAnswers": false,
+            |  "options": [
+            |    {"optionText": "정답 (2-15자, 사실에 근거)", "isCorrect": true},
+            |    {"optionText": "오답1 (다른 카테고리)", "isCorrect": false},
+            |    {"optionText": "오답2 (다른 카테고리)", "isCorrect": false},
+            |    {"optionText": "오답3 (다른 카테고리)", "isCorrect": false}
+            |  ]
+            |}
+            |
+            |예시:
+            |{
+            |  "question": "다음 중 Python을 웹에서 실행하는 건?",
+            |  "allowMultipleAnswers": false,
+            |  "options": [
+            |    {"optionText": "Jupyter", "isCorrect": true},
+            |    {"optionText": "메모장", "isCorrect": false},
+            |    {"optionText": "Word", "isCorrect": false},
+            |    {"optionText": "카톡", "isCorrect": false}
+            |  ]
+            |}
+        """.trimMargin()
+    }
+
     // ========== JSON Parsers ==========
 
     private fun extractJsonFromResponse(response: String): String {
@@ -644,6 +981,35 @@ class VertexAiLlmClient(
                     reasoning = "평가 파싱 실패로 기본값 사용"
                 )
             }
+        }
+    }
+
+    private fun parseQuizFromJson(json: String): QuizData {
+        return try {
+            logger.debug("퀴즈 JSON 파싱 시작: {} chars", json.length)
+
+            val quizMap: Map<String, Any> = objectMapper.readValue(json)
+            val optionsData = quizMap["options"] as? List<Map<String, Any>> ?: emptyList()
+
+            logger.debug("퀴즈 보기 개수: {}", optionsData.size)
+
+            val options = optionsData.map { option ->
+                QuizOption(
+                    optionText = option["optionText"] as String,
+                    isCorrect = option["isCorrect"] as Boolean
+                )
+            }
+
+            QuizData(
+                question = quizMap["question"] as String,
+                allowMultipleAnswers = quizMap["allowMultipleAnswers"] as? Boolean ?: false,
+                options = options
+            )
+        } catch (e: Exception) {
+            logger.warn("퀴즈 JSON 파싱 실패: {}", e.message, e)
+            logger.debug("파싱 실패한 JSON: {}", json.take(500))
+            // Fallback: 기본 퀴즈 반환 (실패해도 전체 publish 과정은 계속되도록)
+            throw LlmException("Failed to parse quiz JSON", e)
         }
     }
 }

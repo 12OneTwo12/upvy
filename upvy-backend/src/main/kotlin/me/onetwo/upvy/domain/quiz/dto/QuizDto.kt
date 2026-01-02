@@ -92,6 +92,7 @@ data class QuizResponse(
  * @property selectionCount 이 보기를 선택한 횟수 (모든 시도 포함)
  * @property selectionPercentage 이 보기를 선택한 비율 (0.0 ~ 100.0)
  * @property isCorrect 정답 여부 (사용자가 이미 풀었을 경우에만 노출)
+ * @property isSelected 사용자가 선택한 보기인지 여부 (퀴즈 제출 후 또는 이미 풀었을 경우에만 노출)
  */
 data class QuizOptionResponse(
     val id: String,
@@ -99,7 +100,8 @@ data class QuizOptionResponse(
     val displayOrder: Int,
     val selectionCount: Int = 0,
     val selectionPercentage: Double = 0.0,
-    val isCorrect: Boolean? = null
+    val isCorrect: Boolean? = null,
+    val isSelected: Boolean? = null
 )
 
 /**

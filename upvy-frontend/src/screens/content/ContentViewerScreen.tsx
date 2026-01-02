@@ -4,14 +4,18 @@
  * FeedScreen과 동일하지만 스크롤 비활성화 (단일 콘텐츠만 표시)
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { View, Dimensions, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { FeedItem } from '@/components/feed';
 import { CommentModal } from '@/components/comment';
+import { QuizActionButton, QuizToggleButton, QuizOverlay } from '@/components/quiz';
+import { useQuizStore } from '@/stores/quizStore';
+import { useQuiz } from '@/hooks/useQuiz';
 import { getContent } from '@/api/content.api';
 import { getProfileByUserId } from '@/api/auth.api';
 import { createLike, deleteLike } from '@/api/like.api';
@@ -53,20 +57,30 @@ const loadingFeedItem: FeedItemType = {
 
 export default function ContentViewerScreen() {
   const { t } = useTranslation('feed');
+  const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const isScreenFocused = useIsFocused();
   const { contentId } = route.params;
+  const { isQuizAutoDisplayEnabled, toggleQuizAutoDisplay } = useQuizStore();
 
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const queryClient = useQueryClient();
 
+  // 퀴즈 모달 상태
+  const [quizVisible, setQuizVisible] = useState(false);
+  const [hasAutoShownQuiz, setHasAutoShownQuiz] = useState(false);
+  const [wasAutoOpened, setWasAutoOpened] = useState(false);
+
   // 콘텐츠 데이터 로드 (인터랙션 정보 포함)
-  const { data: content, isLoading: contentLoading } = useQuery({
+  const { data: content, isLoading: contentLoading, refetch: refetchContent } = useQuery({
     queryKey: ['content', contentId],
     queryFn: () => getContent(contentId),
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 0, // 항상 fresh한 데이터 가져오기
+    refetchOnMount: 'always', // 마운트 시 항상 refetch
+    refetchOnWindowFocus: true, // 화면 포커스 시 refetch
   });
 
   // 크리에이터 프로필 로드 (콘텐츠 로드 후)
@@ -79,6 +93,17 @@ export default function ContentViewerScreen() {
   });
 
   const isLoading = contentLoading || creatorLoading;
+
+  // 화면이 focus될 때마다 콘텐츠 새로고침 (무한 루프 방지를 위해 refetchContent는 dependency에서 제외)
+  useEffect(() => {
+    if (isScreenFocused) {
+      // 캐시를 완전히 제거하고 fresh한 데이터 가져오기
+      queryClient.removeQueries({ queryKey: ['content', contentId] });
+      queryClient.removeQueries({ queryKey: ['quiz', contentId] });
+      refetchContent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScreenFocused]);
 
   // ContentResponse를 FeedItem 타입으로 변환
   const feedItem: FeedItemType | null = content && creatorProfile
@@ -110,9 +135,32 @@ export default function ContentViewerScreen() {
           isLiked: content.interactions?.isLiked ?? false,
           isSaved: content.interactions?.isSaved ?? false,
         },
+        quiz: content.quiz ?? null, // 퀴즈 메타데이터
         subtitles: [],
       }
     : null;
+
+  // 현재 아이템의 quiz 메타데이터 (버튼 표시용)
+  const currentItemQuiz = useMemo(() => {
+    return feedItem?.quiz || null;
+  }, [feedItem]);
+
+  // 현재 아이템의 퀴즈 데이터 로드
+  const {
+    quiz,
+    submitAttemptAsync,
+    attemptResult,
+    isSubmitting,
+    isSubmitSuccess,
+    isLoadingQuiz,
+  } = useQuiz(
+    contentId || '',
+    {
+      onSuccess: () => {
+        // 퀴즈 제출 성공 시 처리
+      },
+    }
+  );
 
   // 좋아요 mutation (Optimistic update)
   const likeMutation = useMutation({
@@ -326,6 +374,57 @@ export default function ContentViewerScreen() {
     navigation.goBack();
   };
 
+  // 수정 성공 핸들러: 프로필로 돌아가기
+  const handleEditSuccess = () => {
+    // FeedOverlay에서 이미 모든 쿼리를 refetch했으므로 그냥 돌아가기만 하면 됨
+    navigation.goBack();
+  };
+
+  // 퀴즈 버튼 핸들러
+  const handleQuizButtonPress = useCallback(() => {
+    setQuizVisible(true);
+    setWasAutoOpened(false);
+  }, []);
+
+  const handleQuizClose = useCallback(() => {
+    setQuizVisible(false);
+    setWasAutoOpened(false);
+  }, []);
+
+  // 아이템 변경 시 자동 표시 상태 리셋
+  useEffect(() => {
+    setHasAutoShownQuiz(false);
+    setQuizVisible(false);
+    setWasAutoOpened(false);
+  }, [contentId]);
+
+  // 퀴즈 자동 표시 로직
+  useEffect(() => {
+    if (!isScreenFocused || !isQuizAutoDisplayEnabled) return;
+    if (hasAutoShownQuiz || quizVisible) return;
+    if (isLoadingQuiz) return;
+
+    if (quiz && currentItemQuiz) {
+      // 약간의 딜레이 후 퀴즈 자동 표시
+      const timer = setTimeout(() => {
+        setQuizVisible(true);
+        setHasAutoShownQuiz(true);
+        setWasAutoOpened(true);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [
+    isScreenFocused,
+    isQuizAutoDisplayEnabled,
+    hasAutoShownQuiz,
+    quizVisible,
+    quiz,
+    isLoadingQuiz,
+    currentItemQuiz,
+    contentId,
+  ]);
+
   // 표시할 아이템 결정: 로딩 중이면 스켈레톤, 아니면 실제 데이터
   const displayItem = isLoading ? loadingFeedItem : feedItem;
 
@@ -359,6 +458,30 @@ export default function ContentViewerScreen() {
         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
 
+      {/* 퀴즈 버튼들 - 오른쪽 상단 (세로 배치) */}
+      <View
+        style={{
+          position: 'absolute',
+          top: insets.top + 8,
+          right: 12,
+          zIndex: 9999, // QuizOverlay(z-index: 10000)보다 아래
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <QuizToggleButton
+          isEnabled={isQuizAutoDisplayEnabled}
+          onToggle={toggleQuizAutoDisplay}
+        />
+        {currentItemQuiz && (
+          <QuizActionButton
+            hasAttempted={currentItemQuiz.hasAttempted ?? false}
+            onPress={handleQuizButtonPress}
+          />
+        )}
+      </View>
+
       {/* 콘텐츠 - FeedScreen과 동일 (스크롤 없음) */}
       <View style={{ height: SCREEN_HEIGHT, backgroundColor: '#000000' }}>
         <FeedItem
@@ -374,6 +497,8 @@ export default function ContentViewerScreen() {
           onFollow={handleFollow}
           onCreatorPress={handleCreatorPress}
           onDeleteSuccess={handleDeleteSuccess}
+          onEditSuccess={handleEditSuccess}
+          quizVisible={quizVisible}
         />
 
         {/* 로딩 중일 때 중앙 스피너 추가 (FeedScreen과 동일) */}
@@ -401,6 +526,20 @@ export default function ContentViewerScreen() {
         contentId={contentId}
         onClose={handleCommentModalClose}
       />
+
+      {/* 퀴즈 모달 */}
+      {quiz && submitAttemptAsync && (
+        <QuizOverlay
+          visible={quizVisible}
+          onClose={handleQuizClose}
+          quiz={quiz}
+          onSubmit={submitAttemptAsync}
+          attemptResult={attemptResult}
+          isSubmitting={isSubmitting}
+          isSubmitSuccess={isSubmitSuccess}
+          isAutoDisplayed={wasAutoOpened}
+        />
+      )}
     </View>
   );
 }

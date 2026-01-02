@@ -29,7 +29,8 @@ export const useQuizQuery = (contentId: string, enabled: boolean = true) => {
     queryKey: ['quiz', contentId],
     queryFn: () => getQuiz(contentId),
     enabled,
-    staleTime: 1000 * 60 * 5, // 5분간 캐시 유지
+    staleTime: 0, // 항상 최신 데이터 사용 (퀴즈 수정 시 즉시 반영)
+    refetchOnMount: 'always', // 마운트 시 항상 refetch
   });
 };
 
@@ -123,21 +124,52 @@ export const useQuiz = (contentId: string, options?: UseQuizAttemptOptions) => {
   const quizQuery = useQuizQuery(contentId, !!contentId);
   const quizId = quizQuery.data?.id;
 
+  // 이미 시도한 퀴즈인지 확인
+  const hasAttempted = quizQuery.data?.options?.some(opt => opt.isCorrect !== null) ?? false;
+
+  // 이미 시도한 퀴즈라면 시도 기록 조회
+  const attemptsQuery = useQuizAttemptsQuery(quizId ?? '', hasAttempted && !!quizId);
+
   const attemptMutation = useQuizAttempt(quizId ?? '', contentId, options);
+
+  // 마지막 시도 결과 (이미 시도한 경우 or 새로 제출한 결과)
+  // IMPORTANT: attemptMutation.data가 현재 quizId와 일치하는지 확인 (contentId 변경 시 이전 결과 무시)
+  let lastAttemptResult = attemptMutation.data?.quizId === quizId ? attemptMutation.data : undefined;
+
+  // 이미 시도한 퀴즈의 경우, UserQuizAttemptDetail을 QuizAttemptResponse로 변환
+  if (!lastAttemptResult && attemptsQuery.data?.attempts && attemptsQuery.data.attempts.length > 0 && quizQuery.data) {
+    // 백엔드가 이미 최신순(createdAt DESC)으로 정렬해서 반환하므로 첫 번째 시도가 최신
+    const latestAttempt = attemptsQuery.data.attempts[0];
+    const selectedOptionIds = latestAttempt.selectedOptions;
+
+    // quiz.options에 isSelected 정보를 추가
+    const optionsWithSelection = quizQuery.data.options.map(opt => ({
+      ...opt,
+      isSelected: selectedOptionIds.includes(opt.id),
+    }));
+
+    lastAttemptResult = {
+      attemptId: latestAttempt.attemptId,
+      quizId: quizId ?? '',
+      isCorrect: latestAttempt.isCorrect,
+      attemptNumber: latestAttempt.attemptNumber,
+      options: optionsWithSelection,
+    } as any;
+  }
 
   return {
     /** 퀴즈 데이터 */
     quiz: quizQuery.data,
     /** 퀴즈 로딩 상태 */
-    isLoadingQuiz: quizQuery.isLoading,
+    isLoadingQuiz: quizQuery.isLoading || (hasAttempted && attemptsQuery.isLoading),
     /** 퀴즈 조회 에러 */
     quizError: quizQuery.error,
     /** 퀴즈 시도 제출 함수 (void 반환) */
     submitAttempt: attemptMutation.submit,
     /** 퀴즈 시도 제출 함수 (Promise 반환) */
     submitAttemptAsync: attemptMutation.submitAsync,
-    /** 시도 제출 결과 */
-    attemptResult: attemptMutation.data,
+    /** 시도 제출 결과 (마지막 시도 또는 새로 제출한 결과) */
+    attemptResult: lastAttemptResult,
     /** 시도 제출 중 상태 */
     isSubmitting: attemptMutation.isSubmitting,
     /** 시도 제출 성공 여부 */

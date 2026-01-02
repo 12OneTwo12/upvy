@@ -55,7 +55,7 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
   // 퀴즈 상태
   const [addQuiz, setAddQuiz] = useState(false);
   const [quizQuestion, setQuizQuestion] = useState('');
-  const [quizOptions, setQuizOptions] = useState(['', '', '', '']);
+  const [quizOptions, setQuizOptions] = useState(['', '']);
   const [allowMultipleAnswers, setAllowMultipleAnswers] = useState(false);
   const [correctOptionIndices, setCorrectOptionIndices] = useState<number[]>([]);
 
@@ -111,6 +111,33 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
+  // 퀴즈 옵션 추가 (최대 4개)
+  const handleAddQuizOption = () => {
+    if (quizOptions.length >= 4) {
+      Alert.alert(t('common:label.notice'), t('quiz:upload.validation.maxOptions'));
+      return;
+    }
+    setQuizOptions([...quizOptions, '']);
+  };
+
+  // 퀴즈 옵션 삭제 (최소 2개)
+  const handleRemoveQuizOption = (index: number) => {
+    if (quizOptions.length <= 2) {
+      Alert.alert(t('common:label.notice'), t('quiz:upload.validation.minOptionsRequired'));
+      return;
+    }
+
+    // 옵션 삭제
+    const newOptions = quizOptions.filter((_, i) => i !== index);
+    setQuizOptions(newOptions);
+
+    // 정답 인덱스 조정
+    const newCorrectIndices = correctOptionIndices
+      .filter(i => i !== index) // 삭제된 옵션이 정답이었으면 제거
+      .map(i => i > index ? i - 1 : i); // 삭제된 옵션 뒤의 인덱스들은 -1
+    setCorrectOptionIndices(newCorrectIndices);
   };
 
   const handlePublish = async () => {
@@ -524,8 +551,36 @@ export default function ContentMetadataScreen({ navigation, route }: Props) {
                       maxLength={200}
                       accessibilityLabel={t('quiz:upload.optionPlaceholder', { number: index + 1 })}
                     />
+                    {quizOptions.length > 2 && (
+                      <TouchableOpacity
+                        onPress={() => handleRemoveQuizOption(index)}
+                        style={styles.optionRemoveButton}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={24}
+                          color={dynamicTheme.colors.error}
+                        />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ))}
+
+                {/* 옵션 추가 버튼 */}
+                {quizOptions.length < 4 && (
+                  <TouchableOpacity
+                    style={styles.addOptionButton}
+                    onPress={handleAddQuizOption}
+                  >
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={20}
+                      color={dynamicTheme.colors.primary[500]}
+                    />
+                    <Text style={styles.addOptionText}>{t('quiz:upload.addOption')}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* 복수 정답 허용 */}
@@ -827,5 +882,25 @@ const useStyles = createStyleSheet((theme) => ({
     backgroundColor: theme.colors.background.primary,
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
+  },
+  optionRemoveButton: {
+    padding: theme.spacing[1],
+  },
+  addOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+    paddingVertical: theme.spacing[3],
+    paddingHorizontal: theme.spacing[4],
+    marginTop: theme.spacing[2],
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
+    borderRadius: theme.borderRadius.base,
+    borderStyle: 'dashed',
+  },
+  addOptionText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.primary[500],
   },
 }));

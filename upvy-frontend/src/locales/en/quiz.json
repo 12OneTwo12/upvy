@@ -13,7 +13,8 @@
     "submitError": "Failed to submit quiz. Please try again."
   },
   "actionButton": {
-    "label": "View Quiz"
+    "label": "View Quiz",
+    "labelShort": "Quiz"
   },
   "toggleButton": {
     "label": "Quiz"
@@ -26,11 +27,14 @@
     "options": "Options (Check correct answers)",
     "optionPlaceholder": "Option {{number}}",
     "allowMultipleAnswers": "Allow multiple answers",
+    "addOption": "Add Option",
     "validation": {
       "questionRequired": "Please enter a quiz question.",
       "minOptions": "Please enter at least 2 options.",
       "minCorrectAnswers": "Please select at least 1 correct answer.",
-      "singleAnswerOnly": "Only 1 correct answer allowed in single answer mode."
+      "singleAnswerOnly": "Only 1 correct answer allowed in single answer mode.",
+      "minOptionsRequired": "At least 2 options are required.",
+      "maxOptions": "You can add up to 4 options."
     }
   }
 }

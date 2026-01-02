@@ -16,14 +16,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/stores/authStore';
-import { useQuizStore } from '@/stores/quizStore';
 import { ReportModal } from '@/components/report/ReportModal';
 import { ActionSheet, ActionSheetOption } from '@/components/common/ActionSheet';
 import { BlockConfirmModal } from '@/components/block/BlockConfirmModal';
 import { DeleteConfirmModal, ContentEditModal } from '@/components/content';
-import { QuizActionButton, QuizToggleButton } from '@/components/quiz';
+import { getQuiz } from '@/api/quiz.api';
 import type { CreatorInfo, InteractionInfo, Category } from '@/types/feed.types';
-import type { QuizMetadataResponse } from '@/types/quiz.types';
+import type { QuizMetadataResponse, QuizResponse } from '@/types/quiz.types';
 import type { BlockType } from '@/types/block.types';
 import type { RootStackParamList } from '@/types/navigation.types';
 
@@ -48,7 +47,6 @@ interface FeedOverlayProps {
   onShare?: () => void;
   onFollow?: () => void;
   onCreatorPress?: () => void;
-  onQuizPress?: () => void; // 퀴즈 보기 버튼 클릭 시 호출
   onBlockSuccess?: () => void; // 차단 성공 시 호출
   onDeleteSuccess?: () => void; // 삭제 성공 시 호출
   onEditSuccess?: () => void; // 수정 성공 시 호출
@@ -113,7 +111,6 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   onShare,
   onFollow,
   onCreatorPress,
-  onQuizPress,
   onBlockSuccess,
   onDeleteSuccess,
   onEditSuccess,
@@ -126,8 +123,6 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const queryClient = useQueryClient();
   const navigation = useNavigation<NavigationProp>();
 
-  // Quiz store
-  const { isQuizAutoDisplayEnabled, toggleQuizAutoDisplay } = useQuizStore();
   const currentUser = useAuthStore((state) => state.user);
   const isLoading = isLoadingState(creator);
   const isOwnPost = !isLoading && currentUser && currentUser.id === creator.userId;
@@ -138,6 +133,8 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [blockType, setBlockType] = useState<BlockType>('content');
+  const [fullQuizData, setFullQuizData] = useState<QuizResponse | null>(null);
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
 
   // 확장/축소 애니메이션 값 (0 = 축소, 1 = 확장)
   const expandAnim = useRef(new Animated.Value(0)).current;
@@ -207,6 +204,35 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
   // 설명이 길면 더보기 표시 (60자 이상)
   const shouldShowMore = fullText.length > 60;
 
+  // 수정 모달 열기 핸들러 (퀴즈 데이터 로드 포함)
+  const handleOpenEditModal = useCallback(async () => {
+    // 퀴즈 메타데이터가 있으면 전체 퀴즈 데이터 먼저 가져오기
+    if (quiz?.quizId) {
+      setIsLoadingQuiz(true);
+      try {
+        // 캐시를 완전히 제거하고 fresh한 데이터 가져오기
+        await queryClient.removeQueries({ queryKey: ['content', contentId] });
+        await queryClient.removeQueries({ queryKey: ['quiz', contentId] });
+        await queryClient.refetchQueries({ queryKey: ['content', contentId] });
+        await queryClient.refetchQueries({ queryKey: ['quiz', contentId] });
+
+        // 그 다음 퀴즈 전체 데이터 가져오기
+        const quizData = await getQuiz(contentId);
+        setFullQuizData(quizData);
+      } catch (error) {
+        console.error('Failed to fetch quiz data:', error);
+        setFullQuizData(null);
+      } finally {
+        setIsLoadingQuiz(false);
+      }
+    } else {
+      setFullQuizData(null);
+    }
+
+    // 퀴즈 데이터 로드 완료 후에 모달 열기
+    setShowEditModal(true);
+  }, [quiz, contentId, queryClient]);
+
   // 액션 시트 옵션 - 내 콘텐츠 vs 타인 콘텐츠 분기
   const actionSheetOptions: ActionSheetOption[] = useMemo(() => {
     if (isOwnPost) {
@@ -215,7 +241,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         {
           label: t('menu.edit'),
           icon: 'create-outline',
-          onPress: () => setShowEditModal(true),
+          onPress: handleOpenEditModal,
         },
         {
           label: t('menu.delete'),
@@ -252,7 +278,7 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         destructive: true,
       },
     ];
-  }, [t, isOwnPost]);
+  }, [t, isOwnPost, handleOpenEditModal]);
 
   /**
    * 태그 클릭 - Search 탭으로 네비게이션
@@ -302,25 +328,6 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
           }
         ]}
       >
-        {/* 오른쪽 상단: 퀴즈 버튼들 */}
-        {/* QuizToggleButton: 항상 표시 (전역 설정) */}
-        {/* QuizActionButton: 퀴즈가 있을 때만 표시 */}
-        <View style={styles.quizButtonsContainer}>
-          {quiz && onQuizPress && (
-            <>
-              <QuizActionButton
-                hasAttempted={quiz.hasAttempted}
-                onPress={onQuizPress}
-              />
-              <View style={{ width: 8 }} />
-            </>
-          )}
-          <QuizToggleButton
-            isEnabled={isQuizAutoDisplayEnabled}
-            onToggle={toggleQuizAutoDisplay}
-          />
-        </View>
-
         <View style={styles.content}>
           {/* 좌측: 크리에이터 정보 + 콘텐츠 정보 */}
           <View style={styles.leftSection}>
@@ -553,18 +560,35 @@ export const FeedOverlay: React.FC<FeedOverlayProps> = ({
         {/* 수정 모달 */}
         <ContentEditModal
           visible={showEditModal}
-          onClose={() => setShowEditModal(false)}
+          onClose={() => {
+            setShowEditModal(false);
+            // 모달 닫을 때 퀴즈 데이터 리셋 (다음에 다시 로드하도록)
+            setFullQuizData(null);
+          }}
           contentId={contentId}
           initialTitle={title}
           initialDescription={description}
           initialCategory={category}
           initialTags={tags}
           initialLanguage={language}
-          onSuccess={() => {
-            // 피드/콘텐츠 쿼리 무효화
-            queryClient.invalidateQueries({ queryKey: ['feed'] });
-            queryClient.invalidateQueries({ queryKey: ['myContents'] });
-            queryClient.invalidateQueries({ queryKey: ['content', contentId] });
+          initialQuiz={fullQuizData}
+          onSuccess={async () => {
+            // 퀴즈 데이터 리셋 (수정된 데이터로 다시 로드하도록)
+            setFullQuizData(null);
+
+            // 캐시를 완전히 제거하고 fresh하게 다시 fetch
+            await queryClient.removeQueries({ queryKey: ['content', contentId] });
+            await queryClient.removeQueries({ queryKey: ['quiz', contentId] });
+            await queryClient.removeQueries({ queryKey: ['feed'] });
+            await queryClient.removeQueries({ queryKey: ['myContents'] });
+
+            // 제거 후 즉시 refetch하여 최신 데이터로 채우기
+            await queryClient.refetchQueries({ queryKey: ['content', contentId] });
+            await queryClient.refetchQueries({ queryKey: ['quiz', contentId] });
+            await queryClient.refetchQueries({ queryKey: ['feed'] });
+            await queryClient.refetchQueries({ queryKey: ['myContents'] });
+
+            // 부모 컴포넌트에 알림 (화면 이동 등)
             onEditSuccess?.();
           }}
         />
@@ -590,14 +614,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 12,
     // paddingBottom은 동적으로 설정됨
-  },
-  quizButtonsContainer: {
-    position: 'absolute',
-    top: 60,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 10,
   },
   content: {
     flexDirection: 'row',
