@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upvy-tempo-prod
+  namespace: monitoring
+  labels:
+    app: upvy-tempo-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upvy-tempo-prod
+  template:
+    metadata:
+      labels:
+        app: upvy-tempo-prod
+    spec:
+      nodeSelector:
+        node-pool: monitoring
+      containers:
+        - name: upvy-tempo
+          image: grafana/tempo:2.6.1
+          args:
+            - "-config.file=/etc/tempo/config.yaml"
+          ports:
+            - containerPort: 3200   # tempo query
+            - containerPort: 4317   # OTLP gRPC ingest
+          volumeMounts:
+            - name: upvy-tempo-config
+              mountPath: /etc/tempo
+            - name: upvy-tempo-data
+              mountPath: /tempo-data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: 300m
+              memory: 768Mi
+      securityContext:
+        fsGroup: 65534  # tempo default user
+      volumes:
+        - name: upvy-tempo-config
+          configMap:
+            name: upvy-tempo-config
+        - name: upvy-tempo-data
+          persistentVolumeClaim:
+            claimName: upvy-tempo-pvc

@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: upvy-tempo-config
+  namespace: monitoring
+data:
+  config.yaml: |-
+    server:
+      http_listen_port: 3200
+      grpc_listen_port: 9095
+    
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: "0.0.0.0:4317"
+            http:
+              endpoint: "0.0.0.0:4318"
+    
+    ingester:
+      lifecycler:
+        ring:
+          replication_factor: 3
+      max_block_bytes: 104857600
+      max_block_duration: 10m
+      complete_block_timeout: 15m
+    
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /tempo-data/blocks
+        wal:
+          path: /tempo-data/wal
+    
+    metrics_generator:
+      ring:
+        kvstore:
+          store: inmemory
+      registry:
+        external_labels:
+          source: tempo
+          cluster: kubernetes-cluster
+      storage:
+        path: /tempo-data/generator/wal
+        remote_write:
+          - url: http://upvy-prometheus-prod-svc:9090/prometheus/api/v1/write
+            send_exemplars: true
+      traces_storage:
+        path: /tempo-data/generator/traces
+      processor:
+        service_graphs:
+          dimensions:
+            - service.namespace
+            - service.name
+        span_metrics:
+          dimensions:
+            - service.name
+            - span.name
+            - span.kind
+            - status.code
+            - http.method
+            - http.status_code
+    
+    compactor:
+      compaction:
+        block_retention: 48h
+
+    overrides:
+      defaults:
+        metrics_generator:
+          processors: [service-graphs, span-metrics]
