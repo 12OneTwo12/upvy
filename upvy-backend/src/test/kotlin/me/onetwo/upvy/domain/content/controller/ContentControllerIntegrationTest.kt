@@ -7,6 +7,7 @@ import me.onetwo.upvy.domain.analytics.repository.ContentInteractionRepository
 import me.onetwo.upvy.domain.content.dto.ContentCreateRequest
 import me.onetwo.upvy.domain.content.dto.ContentUpdateRequest
 import me.onetwo.upvy.domain.content.dto.ContentUploadUrlRequest
+import me.onetwo.upvy.domain.content.exception.ContentException
 import me.onetwo.upvy.domain.content.model.Category
 import me.onetwo.upvy.domain.content.model.Content
 import me.onetwo.upvy.domain.content.model.ContentInteraction
@@ -27,6 +28,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
@@ -378,7 +380,7 @@ class ContentControllerIntegrationTest : AbstractIntegrationTest() {
                 .expectStatus().isNoContent
 
             // Then: 소프트 삭제 확인 (findById는 삭제된 콘텐츠에 대해 예외를 발생시킴)
-            org.junit.jupiter.api.assertThrows<me.onetwo.upvy.domain.content.exception.ContentException.ContentNotFoundException> {
+            assertThrows<ContentException.ContentNotFoundException> {
                 contentRepository.findById(content.id!!).block()
             }
         }

@@ -3,7 +3,6 @@ import me.onetwo.upvy.infrastructure.config.AbstractIntegrationTest
 
 import java.util.UUID
 
-import me.onetwo.upvy.domain.user.exception.UserProfileNotFoundException
 import me.onetwo.upvy.domain.user.model.User
 import me.onetwo.upvy.domain.user.model.UserProfile
 import me.onetwo.upvy.domain.user.model.UserRole
@@ -12,7 +11,6 @@ import me.onetwo.upvy.jooq.generated.tables.references.USER_PROFILES
 import me.onetwo.upvy.jooq.generated.tables.references.USERS
 import org.jooq.DSLContext
 import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -101,12 +99,10 @@ class UserProfileRepositoryTest : AbstractIntegrationTest() {
     @DisplayName("사용자 ID로 프로필 조회 - 존재하지 않는 경우")
     fun findByUserId_NonExistingProfile_ReturnsNull() {
         // When
-        val result = userProfileRepository.findByUserId(UUID.randomUUID())
+        val foundProfile = userProfileRepository.findByUserId(UUID.randomUUID()).block()
 
         // Then
-        StepVerifier.create(result)
-            .expectError(UserProfileNotFoundException::class.java)
-            .verify()
+        assertNull(foundProfile)
     }
 
     @Test
@@ -128,12 +124,10 @@ class UserProfileRepositoryTest : AbstractIntegrationTest() {
     @DisplayName("닉네임으로 프로필 조회 - 존재하지 않는 경우")
     fun findByNickname_NonExistingProfile_ReturnsNull() {
         // When
-        val result = userProfileRepository.findByNickname("nonexistent-nickname")
+        val foundProfile = userProfileRepository.findByNickname("nonexistent-nickname").block()
 
         // Then
-        StepVerifier.create(result)
-            .expectError(UserProfileNotFoundException::class.java)
-            .verify()
+        assertNull(foundProfile)
     }
 
     @Test

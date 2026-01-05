@@ -38,9 +38,7 @@ class UserProfileRepository(
             dsl.selectFrom(USER_PROFILES)
                 .where(USER_PROFILES.USER_ID.eq(userId.toString()))
                 .and(USER_PROFILES.DELETED_AT.isNull)  // Soft delete 필터링
-        )
-            .map { record -> mapToUserProfile(record) }
-            .switchIfEmpty(Mono.error(UserProfileNotFoundException("User profile not found for userId: $userId")))
+        ).map { record -> mapToUserProfile(record) }
     }
 
     fun findByNickname(nickname: String): Mono<UserProfile> {
@@ -48,9 +46,7 @@ class UserProfileRepository(
             dsl.selectFrom(USER_PROFILES)
                 .where(USER_PROFILES.NICKNAME.eq(nickname))
                 .and(USER_PROFILES.DELETED_AT.isNull)  // Soft delete 필터링
-        )
-            .map { record -> mapToUserProfile(record) }
-            .switchIfEmpty(Mono.error(UserProfileNotFoundException("User profile not found for nickname: $nickname")))
+        ).map { record -> mapToUserProfile(record) }
     }
 
     fun update(profile: UserProfile): Mono<UserProfile> {
