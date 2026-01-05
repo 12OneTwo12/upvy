@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: upvy-monitoring-ingress
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: monitoring.upvy.org
+      http:
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: upvy-grafana-prod-svc
+                port:
+                  number: 3000
+
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: upvy-prometheus-prod-svc
+                port:
+                  number: 9090
+
+          - path: /loki
+            pathType: Prefix
+            backend:
+              service:
+                name: upvy-loki-prod-svc
+                port:
+                  number: 3100
