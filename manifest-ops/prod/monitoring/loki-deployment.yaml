@@ -20,7 +20,7 @@ spec:
           image: busybox
           command: ["sh", "-c", "rm -rf /loki/index/wal/*"]
           volumeMounts:
-            - name: loki-data
+            - name: upvy-loki-data
               mountPath: /loki
       containers:
         - name: upvy-loki-prod

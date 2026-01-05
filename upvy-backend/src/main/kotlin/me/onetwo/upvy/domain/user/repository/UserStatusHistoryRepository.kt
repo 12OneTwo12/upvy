@@ -1,6 +1,5 @@
 package me.onetwo.upvy.domain.user.repository
 
-import me.onetwo.upvy.domain.user.exception.UserStatusHistoryNotFoundException
 import me.onetwo.upvy.domain.user.model.UserStatus
 import me.onetwo.upvy.domain.user.model.UserStatusHistory
 import me.onetwo.upvy.jooq.generated.tables.references.USER_STATUS_HISTORY
@@ -112,6 +111,6 @@ class UserStatusHistoryRepository(
                 changedAt = record.getValue(USER_STATUS_HISTORY.CHANGED_AT)!!,
                 changedBy = record.getValue(USER_STATUS_HISTORY.CHANGED_BY)
             )
-        }.switchIfEmpty(Mono.error(UserStatusHistoryNotFoundException("User status history not found for userId: $userId")))
+        }
     }
 }

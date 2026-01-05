@@ -98,9 +98,7 @@ class UserRepository(
             )
                 .from(USERS)
                 .where(USERS.EMAIL.eq(email))
-        )
-            .map { record -> mapToUser(record) }
-            .switchIfEmpty(Mono.error(UserNotFoundException("User not found with email (including deleted): $email")))
+        ).map { record -> mapToUser(record) }
     }
 
     /**
@@ -126,9 +124,7 @@ class UserRepository(
                 .where(USERS.ID.eq(id.toString()))
                 .and(USERS.STATUS.ne(UserStatus.DELETED.name))
                 .and(USERS.DELETED_AT.isNull)
-        )
-            .map { record -> mapToUser(record) }
-            .switchIfEmpty(Mono.error(UserNotFoundException("User not found with id: $id")))
+        ).map { record -> mapToUser(record) }
     }
 
     /**
@@ -152,9 +148,7 @@ class UserRepository(
             )
                 .from(USERS)
                 .where(USERS.ID.eq(id.toString()))
-        )
-            .map { record -> mapToUser(record) }
-            .switchIfEmpty(Mono.error(UserNotFoundException("User not found with id (including deleted): $id")))
+        ).map { record -> mapToUser(record) }
     }
 
     /**
