@@ -28,10 +28,19 @@
                     <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#rejectModal">
                         <i class="bi bi-x-circle"></i> Reject
                     </button>
-                    <form th:action="@{/backoffice/pending/{id}/approve(id=${content.id})}" method="post" class="d-inline">
-                        <button type="submit" class="btn btn-success">
-                            <i class="bi bi-check-circle"></i> Approve
-                        </button>
+                    <form th:action="@{/backoffice/pending/{id}/approve(id=${content.id})}" method="post" class="d-inline" id="approveForm">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="createQuizCheckbox" checked>
+                                <input type="hidden" name="createQuiz" id="createQuizHidden" value="true">
+                                <label class="form-check-label" for="createQuizCheckbox">
+                                    퀴즈 생성
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle"></i> Approve
+                            </button>
+                        </div>
                     </form>
                 </th:block>
             </div>
@@ -258,6 +267,19 @@
             function setReason(text) {
                 document.getElementById('reason').value = text;
             }
+
+            // 퀴즈 생성 체크박스 상태에 따라 hidden input 값 업데이트
+            document.addEventListener('DOMContentLoaded', function() {
+                const checkbox = document.getElementById('createQuizCheckbox');
+                const hiddenInput = document.getElementById('createQuizHidden');
+
+                if (checkbox && hiddenInput) {
+                    checkbox.addEventListener('change', function() {
+                        hiddenInput.value = this.checked ? 'true' : 'false';
+                        console.log('Quiz creation checkbox changed:', this.checked, 'Hidden value:', hiddenInput.value);
+                    });
+                }
+            });
         </script>
     </th:block>
 </body>

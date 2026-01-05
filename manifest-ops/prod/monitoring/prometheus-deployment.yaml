@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upvy-prometheus-prod
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upvy-prometheus-prod
+  template:
+    metadata:
+      labels:
+        app: upvy-prometheus-prod
+    spec:
+      nodeSelector:
+        node-pool: monitoring
+      serviceAccountName: upvy-prometheus
+      containers:
+        - name: upvy-prometheus-prod
+          image: prom/prometheus:latest
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.retention.time=180d"
+            - "--storage.tsdb.retention.size=4GB"
+            - "--web.external-url=/prometheus/"
+            - "--enable-feature=exemplar-storage"
+            - "--enable-feature=otlp-write-receiver"
+            - "--web.enable-remote-write-receiver"
+            - "--query.max-samples=50000000"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: upvy-prometheus-config
+              mountPath: /etc/prometheus
+            - name: upvy-prometheus-data
+              mountPath: /prometheus
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 300m
+              memory: 400Mi
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+      volumes:
+        - name: upvy-prometheus-config
+          configMap:
+            name: upvy-prometheus-config
+        - name: upvy-prometheus-data
+          persistentVolumeClaim:
+            claimName: upvy-prometheus-pvc
+      securityContext:
+        fsGroup: 65534

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upvy-grafana-prod
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upvy-grafana-prod
+  template:
+    metadata:
+      labels:
+        app: upvy-grafana-prod
+    spec:
+      nodeSelector:
+        node-pool: monitoring
+      containers:
+        - name: upvy-grafana-prod
+          image: grafana/grafana:12.0.0
+          env:
+            - name: GF_SERVER_ROOT_URL
+              value: /grafana/
+            - name: GF_SERVER_SERVE_FROM_SUB_PATH
+              value: "true"
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: upvy-grafana-data
+              mountPath: /var/lib/grafana
+            - name: upvy-grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 300m
+              memory: 400Mi
+      volumes:
+        - name: upvy-grafana-data
+          persistentVolumeClaim:
+            claimName: upvy-grafana-pvc
+        - name: upvy-grafana-datasources
+          configMap:
+            name: upvy-grafana-datasources
+      securityContext:
+        fsGroup: 472

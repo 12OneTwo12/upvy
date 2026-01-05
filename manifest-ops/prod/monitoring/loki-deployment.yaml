@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upvy-loki-prod
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upvy-loki-prod
+  template:
+    metadata:
+      labels:
+        app: upvy-loki-prod
+    spec:
+      nodeSelector:
+        node-pool: monitoring
+      initContainers:
+        - name: clean-wal
+          image: busybox
+          command: ["sh", "-c", "rm -rf /loki/index/wal/*"]
+          volumeMounts:
+            - name: loki-data
+              mountPath: /loki
+      containers:
+        - name: upvy-loki-prod
+          image: grafana/loki:3.0.0
+          args:
+            - -config.file=/etc/loki/loki-config.yaml
+          ports:
+            - containerPort: 3100
+              name: http
+            - containerPort: 9095
+              name: grpc
+          volumeMounts:
+            - name: upvy-loki-config
+              mountPath: /etc/loki
+            - name: upvy-loki-data
+              mountPath: /loki
+          resources:
+            requests:
+              cpu: 300m
+              memory: 400Mi
+            limits:
+              cpu: 800m
+              memory: 1.4Gi
+      securityContext:
+        fsGroup: 10001
+      volumes:
+        - name: upvy-loki-config
+          configMap:
+            name: upvy-loki-config
+        - name: upvy-loki-data
+          persistentVolumeClaim:
+            claimName: upvy-loki-pvc

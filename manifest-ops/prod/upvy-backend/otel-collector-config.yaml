@@ -108,7 +108,7 @@ data:
     
     exporters:
       otlp/tempo:
-        endpoint: "http://tempo-prod-svc.monitoring.svc.cluster.local:4317"
+        endpoint: "http://upvy-tempo-prod-svc.monitoring.svc.cluster.local:4317"
         tls:
           insecure: true
         retry_on_failure:
@@ -117,7 +117,7 @@ data:
           max_interval: 30s
           max_elapsed_time: 300s
       prometheusremotewrite:
-        endpoint: "http://prometheus-prod-svc.monitoring.svc.cluster.local:9090/prometheus/api/v1/write"
+        endpoint: "http://upvy-prometheus-prod-svc.monitoring.svc.cluster.local:9090/prometheus/api/v1/write"
         tls:
           insecure: true
         resource_to_telemetry_conversion:
@@ -132,7 +132,7 @@ data:
           max_interval: 30s
           max_elapsed_time: 300s
       otlphttp/loki:
-        endpoint: "http://loki-prod-svc.monitoring.svc.cluster.local:3100/otlp"
+        endpoint: "http://upvy-loki-prod-svc.monitoring.svc.cluster.local:3100/otlp"
         headers:
           "X-Scope-OrgID": "default"
         tls:
