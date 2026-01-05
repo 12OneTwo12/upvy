@@ -86,7 +86,8 @@
                 pageGroupSize=10,
                 currentGroup=${currentPage / pageGroupSize},
                 startPage=${currentGroup * pageGroupSize},
-                endPage=${#numbers.min(startPage + pageGroupSize - 1, contents.totalPages - 1)}">
+                maxEndPage=${startPage + pageGroupSize - 1},
+                endPage=${maxEndPage < contents.totalPages ? maxEndPage : contents.totalPages - 1}">
             <ul class="pagination justify-content-center">
                 <!-- First Page -->
                 <li class="page-item" th:classappend="${contents.first} ? 'disabled'">
