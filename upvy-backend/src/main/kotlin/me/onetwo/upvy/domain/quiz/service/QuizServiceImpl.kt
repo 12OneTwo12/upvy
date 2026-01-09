@@ -120,8 +120,8 @@ class QuizServiceImpl(
     override fun getQuizByContentId(contentId: UUID, userId: UUID?): Mono<QuizResponse> {
         logger.debug("Getting quiz for contentId=$contentId, userId=$userId")
 
+        // 퀴즈가 없으면 Mono.empty() 반환 (Controller에서 404 처리)
         return quizRepository.findByContentId(contentId)
-            .switchIfEmpty(Mono.error(QuizException.QuizNotFoundForContentException(contentId.toString())))
             .flatMap { quiz ->
                 val quizId = quiz.id!!
 

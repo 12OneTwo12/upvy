@@ -242,15 +242,14 @@ class QuizServiceImplTest : BaseReactiveTest {
         }
 
         @Test
-        @DisplayName("퀴즈가 존재하지 않으면, QuizNotFoundForContentException을 발생시킨다")
-        fun getQuizByContentId_WhenQuizNotFound_ThrowsQuizNotFoundForContentException() {
+        @DisplayName("퀴즈가 존재하지 않으면, Mono.empty()를 반환한다")
+        fun getQuizByContentId_WhenQuizNotFound_ReturnsEmpty() {
             // Given: 퀴즈가 존재하지 않음
             every { quizRepository.findByContentId(contentId) } returns Mono.empty()
 
-            // When & Then: 예외 발생
+            // When & Then: Mono.empty() 반환 (퀴즈가 없는 것은 정상 케이스, Controller에서 200 OK + null 반환)
             StepVerifier.create(quizService.getQuizByContentId(contentId, userId))
-                .expectError(QuizException.QuizNotFoundForContentException::class.java)
-                .verify()
+                .verifyComplete()
         }
 
         @Test

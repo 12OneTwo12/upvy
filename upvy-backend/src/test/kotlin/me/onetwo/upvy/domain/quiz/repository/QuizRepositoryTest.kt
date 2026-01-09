@@ -188,8 +188,8 @@ class QuizRepositoryTest : AbstractIntegrationTest() {
         }
 
         @Test
-        @DisplayName("콘텐츠에 퀴즈가 없으면, 예외가 발생한다")
-        fun findByContentId_WhenQuizNotExists_ThrowsException() {
+        @DisplayName("콘텐츠에 퀴즈가 없으면, Mono.empty()를 반환한다")
+        fun findByContentId_WhenQuizNotExists_ReturnsEmpty() {
             // Given: 퀴즈가 없는 새로운 콘텐츠
             val newContent = contentRepository.save(
                 Content(
@@ -203,11 +203,10 @@ class QuizRepositoryTest : AbstractIntegrationTest() {
                 )
             ).block()!!
 
-            // When & Then: 예외 발생
+            // When & Then: Mono.empty() 반환 (퀴즈가 없는 것은 정상 케이스)
             val result = quizRepository.findByContentId(newContent.id!!)
             StepVerifier.create(result)
-                .expectError(QuizException.QuizNotFoundException::class.java)
-                .verify()
+                .verifyComplete()
         }
     }
 
