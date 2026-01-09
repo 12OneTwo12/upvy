@@ -68,7 +68,7 @@ class QuizController(
     fun getQuiz(
         principal: Mono<Principal>,
         @PathVariable contentId: UUID
-    ): Mono<ResponseEntity<QuizResponse>> {
+    ): Mono<ResponseEntity<QuizResponse?>> {
         return principal
             .toUserId()
             .flatMap { userId ->
@@ -77,7 +77,8 @@ class QuizController(
             .switchIfEmpty(
                 Mono.defer { quizService.getQuizByContentId(contentId, null) }
             )
-            .map { response -> ResponseEntity.ok(response) }
+            .map { response -> ResponseEntity.ok<QuizResponse?>(response) }
+            .defaultIfEmpty(ResponseEntity.ok(null))
     }
 
     /**

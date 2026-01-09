@@ -70,9 +70,7 @@ class UserRepository(
                 .where(USERS.EMAIL.eq(email))
                 .and(USERS.STATUS.ne(UserStatus.DELETED.name))
                 .and(USERS.DELETED_AT.isNull)
-        )
-            .map { record -> mapToUser(record) }
-            .switchIfEmpty(Mono.error(UserNotFoundException("User not found with email: $email")))
+        ).map { record -> mapToUser(record) }
     }
 
     /**

@@ -112,7 +112,9 @@ class QuizRepositoryImpl(
                 updatedBy = record.getValue(QUIZZES.UPDATED_BY),
                 deletedAt = record.getValue(QUIZZES.DELETED_AT)
             )
-        }.switchIfEmpty(Mono.error(QuizNotFoundException(contentId.toString())))
+        }
+        // 퀴즈가 없는 것은 정상 케이스 (모든 콘텐츠에 퀴즈가 있는 게 아님)
+        // 예외 대신 Mono.empty() 반환하여 Controller에서 404 처리
     }
 
     override fun update(quiz: Quiz): Mono<Quiz> {
