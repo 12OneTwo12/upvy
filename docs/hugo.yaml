@@ -55,12 +55,16 @@ menu:
       name: Terms of Service
       pageRef: /terms
       weight: 4
+    - identifier: account-deletion
+      name: Delete Account
+      pageRef: /account-deletion
+      weight: 5
     - identifier: developer
       name: Developer
       pageRef: /developer
-      weight: 5
-    - name: GitHub
       weight: 6
+    - name: GitHub
+      weight: 7
       url: "https://github.com/12OneTwo12/upvy"
       params:
         icon: github
