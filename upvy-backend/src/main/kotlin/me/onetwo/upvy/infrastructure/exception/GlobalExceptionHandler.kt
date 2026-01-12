@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.bind.support.WebExchangeBindException
 import org.springframework.web.server.ServerWebExchange
+import org.springframework.web.server.ServerWebInputException
 import reactor.core.publisher.Mono
 
 /**
@@ -95,6 +96,34 @@ class GlobalExceptionHandler {
             message = message.ifEmpty { "입력값이 유효하지 않습니다." },
             path = exchange.request.path.value(),
             code = "VALIDATION_ERROR"
+        )
+
+        return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse))
+    }
+
+    /**
+     * ServerWebInputException 예외 처리
+     *
+     * PathVariable, RequestParam 등의 타입 변환 실패 시 발생합니다.
+     * 예: UUID PathVariable에 "loading" 같은 잘못된 문자열이 전달된 경우
+     *
+     * @param ex ServerWebInputException
+     * @param exchange ServerWebExchange
+     * @return 400 Bad Request 응답
+     */
+    @ExceptionHandler(ServerWebInputException::class)
+    fun handleServerWebInputException(
+        ex: ServerWebInputException,
+        exchange: ServerWebExchange
+    ): Mono<ResponseEntity<ErrorResponse>> {
+        logger.warn("Invalid input: {}", ex.reason)
+
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.BAD_REQUEST.value(),
+            error = "Bad Request",
+            message = "잘못된 요청 형식입니다.",
+            path = exchange.request.path.value(),
+            code = "INVALID_INPUT"
         )
 
         return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse))
