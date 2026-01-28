@@ -1,45 +1,32 @@
 /**
  * 크리에이터 스튜디오 - 업로드 메인 화면
  *
- * 인스타그램 스타일의 미디어 선택 화면
- * - 상단: 선택된 미디어 큰 미리보기
- * - 하단: 작은 그리드로 미디어 목록
- * - 카메라 버튼이 그리드 첫 번째 위치
+ * 단순 버튼 스타일 UI (Google Play 정책 준수)
+ * - 카메라로 촬영
+ * - 갤러리에서 선택 (시스템 Photo Picker 사용)
+ *
+ * Note: READ_MEDIA_IMAGES/VIDEO 권한 대신 Photo Picker API 사용
+ * Google Play 정책: https://support.google.com/googleplay/android-developer/answer/14115180
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
-  Image,
-  StyleSheet,
   Alert,
-  Dimensions,
   ActivityIndicator,
-  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
 import { createStyleSheet } from '@/utils/styles';
-import { cleanIOSVideoUri } from '@/utils/videoUtils';
 import type { UploadStackParamList, MediaAsset } from '@/types/navigation.types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type Props = NativeStackScreenProps<UploadStackParamList, 'UploadMain'>;
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
-const GRID_COLUMNS = 4;
-const GRID_IMAGE_SIZE = SCREEN_WIDTH / GRID_COLUMNS;
-const PREVIEW_HEIGHT = SCREEN_WIDTH; // 정사각형 미리보기
-const PAGE_SIZE = 50; // 한 번에 로드할 미디어 개수
 
 const useStyles = createStyleSheet((theme) => ({
   container: {
@@ -64,153 +51,85 @@ const useStyles = createStyleSheet((theme) => ({
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text.primary,
   },
-  nextButtonText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.primary[500],
-    textAlign: 'right',
-  },
-  disabledText: {
-    color: theme.colors.text.tertiary,
-  },
-  controlsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  content: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
+    paddingHorizontal: theme.spacing[6],
   },
-  typeSelector: {
+  buttonContainer: {
+    width: '100%',
+    gap: theme.spacing[4],
+  },
+  actionButton: {
     flexDirection: 'row',
-    gap: theme.spacing[2],
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing[3],
+    backgroundColor: theme.colors.background.secondary,
+    paddingVertical: theme.spacing[5],
+    paddingHorizontal: theme.spacing[6],
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
   },
-  typeTab: {
-    paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[1],
+  actionButtonPrimary: {
+    backgroundColor: theme.colors.primary[500],
+    borderColor: theme.colors.primary[500],
   },
-  typeTabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.primary[500],
-  },
-  typeTabText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.tertiary,
-  },
-  typeTabTextActive: {
-    color: theme.colors.text.primary,
+  actionButtonText: {
+    fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.text.primary,
   },
-  selectionCount: {
+  actionButtonTextPrimary: {
+    color: theme.colors.text.inverse,
+  },
+  actionButtonSubtext: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
-    fontWeight: theme.typography.fontWeight.medium,
+    marginTop: theme.spacing[1],
   },
-  previewContainer: {
-    width: SCREEN_WIDTH,
-    height: PREVIEW_HEIGHT,
-    backgroundColor: theme.colors.gray[900],
-    position: 'relative',
+  actionButtonSubtextPrimary: {
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  previewImage: {
-    width: SCREEN_WIDTH,
-    height: PREVIEW_HEIGHT,
+  buttonContent: {
+    alignItems: 'center',
   },
-  previewIndicator: {
-    position: 'absolute',
-    bottom: theme.spacing[3],
-    left: 0,
-    right: 0,
+  divider: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: theme.spacing[1],
+    alignItems: 'center',
+    marginVertical: theme.spacing[4],
   },
-  indicatorDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    // 흰 배경에서도 보이도록 그림자 추가
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-    elevation: 2,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border.light,
   },
-  indicatorDotActive: {
-    backgroundColor: '#fff',
+  dividerText: {
+    marginHorizontal: theme.spacing[3],
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.tertiary,
+  },
+  helpSection: {
+    position: 'absolute',
+    bottom: theme.spacing[8],
+    left: theme.spacing[6],
+    right: theme.spacing[6],
+    padding: theme.spacing[4],
+    backgroundColor: theme.colors.gray[50],
+    borderRadius: theme.borderRadius.base,
+  },
+  helpText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  gridContainer: {
-    paddingBottom: theme.spacing[20],
-  },
-  gridItem: {
-    width: GRID_IMAGE_SIZE,
-    height: GRID_IMAGE_SIZE,
-    padding: 1,
-    position: 'relative',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-  },
-  cameraButton: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: theme.colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraButtonText: {
-    marginTop: theme.spacing[1],
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.text.secondary,
-  },
-  durationBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-  },
-  durationText: {
-    color: theme.colors.text.inverse,
-    fontSize: 10,
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-  selectedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  selectedBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: theme.colors.primary[500],
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  selectedText: {
-    color: theme.colors.text.inverse,
-    fontSize: 12,
-    fontWeight: theme.typography.fontWeight.bold,
-  },
-  loadingMore: {
-    paddingVertical: theme.spacing[4],
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 }));
 
@@ -218,198 +137,12 @@ export default function UploadMainScreen({ navigation }: Props) {
   const styles = useStyles();
   const dynamicTheme = useTheme();
   const { t } = useTranslation(['upload', 'common']);
-  const [hasPermission, setHasPermission] = useState<boolean>(false);
-  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
-  const [selectedAssets, setSelectedAssets] = useState<MediaAsset[]>([]);
-  const [contentType, setContentType] = useState<'photo' | 'video'>('video');
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasNextPage, setHasNextPage] = useState(true);
-  const [endCursor, setEndCursor] = useState<string | undefined>(undefined);
-  const isInitialFocus = useRef(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    requestPermissions();
-  }, []);
-
-  useEffect(() => {
-    if (hasPermission) {
-      loadMediaAssets();
-    }
-  }, [hasPermission, contentType]);
-
-  // 화면 포커스 시 미디어 라이브러리 자동 새로고침
-  // 첫 마운트 시에는 실행하지 않아 useEffect와의 중복 호출 방지
-  useFocusEffect(
-    useCallback(() => {
-      if (isInitialFocus.current) {
-        isInitialFocus.current = false;
-        return;
-      }
-
-      if (hasPermission) {
-        loadMediaAssets();
-      }
-    }, [hasPermission, contentType])
-  );
-
-  const requestPermissions = async () => {
+  const handleCameraCapture = async (mediaType: 'photo' | 'video') => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      setHasPermission(status === 'granted');
-
-      if (status !== 'granted') {
-        Alert.alert(
-          t('upload:main.permissionRequired'),
-          t('upload:main.galleryPermissionMessage')
-        );
-      }
-    } catch (error) {
-      console.error('Permission request failed:', error);
-    }
-  };
-
-  const loadMediaAssets = async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setEndCursor(undefined);
-        setHasNextPage(true);
-      }
       setIsLoading(true);
 
-      const { assets, hasNextPage: hasNext, endCursor: cursor } = await MediaLibrary.getAssetsAsync({
-        first: PAGE_SIZE,
-        mediaType: contentType === 'photo' ? 'photo' : 'video',
-        sortBy: [[MediaLibrary.SortBy.creationTime, false]],
-      });
-
-      const formattedAssets: MediaAsset[] = assets.map((asset: any) => ({
-        id: asset.id,
-        uri: asset.uri,
-        mediaType: asset.mediaType === 'video' ? 'video' : 'photo',
-        duration: asset.duration || 0,
-        width: asset.width,
-        height: asset.height,
-        filename: asset.filename,
-      }));
-
-      setMediaAssets(formattedAssets);
-      setHasNextPage(hasNext);
-      setEndCursor(cursor);
-
-      // 첫 번째 아이템 자동 선택
-      if (formattedAssets.length > 0 && selectedAssets.length === 0) {
-        setSelectedAssets([formattedAssets[0]]);
-      }
-    } catch (error) {
-      console.error('Failed to load media assets:', error);
-      Alert.alert(t('common:label.error', 'Error'), t('upload:main.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 더 많은 미디어 로드 (무한 스크롤)
-  const loadMoreAssets = async () => {
-    if (!hasNextPage || isLoadingMore || !endCursor) return;
-
-    try {
-      setIsLoadingMore(true);
-
-      const { assets, hasNextPage: hasNext, endCursor: cursor } = await MediaLibrary.getAssetsAsync({
-        first: PAGE_SIZE,
-        after: endCursor,
-        mediaType: contentType === 'photo' ? 'photo' : 'video',
-        sortBy: [[MediaLibrary.SortBy.creationTime, false]],
-      });
-
-      const formattedAssets: MediaAsset[] = assets.map((asset: any) => ({
-        id: asset.id,
-        uri: asset.uri,
-        mediaType: asset.mediaType === 'video' ? 'video' : 'photo',
-        duration: asset.duration || 0,
-        width: asset.width,
-        height: asset.height,
-        filename: asset.filename,
-      }));
-
-      setMediaAssets((prev) => [...prev, ...formattedAssets]);
-      setHasNextPage(hasNext);
-      setEndCursor(cursor);
-    } catch (error) {
-      console.error('Failed to load more assets:', error);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
-  const handleAssetSelect = (asset: MediaAsset) => {
-    if (contentType === 'video') {
-      // 비디오는 단일 선택 - 원본 asset 그대로 전달
-      // VideoEditScreen에서 MediaLibrary.getAssetInfoAsync로 localUri를 가져옴
-      setSelectedAssets([asset]);
-      setCurrentPreviewIndex(0);
-    } else {
-      // 사진은 다중 선택
-      const index = selectedAssets.findIndex((a) => a.id === asset.id);
-      if (index !== -1) {
-        // 이미 선택된 경우 - 선택 해제
-        const newSelected = selectedAssets.filter((a) => a.id !== asset.id);
-        setSelectedAssets(newSelected);
-        if (currentPreviewIndex >= newSelected.length) {
-          setCurrentPreviewIndex(Math.max(0, newSelected.length - 1));
-        }
-      } else {
-        // 새로 선택
-        if (selectedAssets.length >= 10) {
-          Alert.alert(t('common:label.notice', 'Notice'), t('upload:main.maxPhotosMessage'));
-          return;
-        }
-        setSelectedAssets([...selectedAssets, asset]);
-      }
-    }
-  };
-
-  const handleNext = () => {
-    if (selectedAssets.length === 0) {
-      Alert.alert(t('common:label.notice', 'Notice'), t('upload:main.selectMediaMessage'));
-      return;
-    }
-
-    if (contentType === 'video') {
-      const asset = selectedAssets[0];
-
-      // 비디오 길이 체크 (최대 3분 = 180초)
-      if (asset.duration > 180) {
-        Alert.alert(
-          t('upload:main.videoLengthExceeded'),
-          t('upload:main.videoLengthMessage')
-        );
-      }
-
-      // handleAssetSelect에서 이미 file:// URI를 확보했으므로 바로 이동
-      navigation.navigate('VideoEdit', {
-        asset: asset,
-        type: 'video',
-      });
-    } else {
-      navigation.navigate('PhotoEdit', {
-        assets: selectedAssets,
-        type: 'photo',
-      });
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadMediaAssets(true);
-    setRefreshing(false);
-  };
-
-  const handleCameraCapture = async () => {
-    try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
       if (status !== 'granted') {
@@ -418,12 +151,10 @@ export default function UploadMainScreen({ navigation }: Props) {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: contentType === 'photo'
-          ? 'images' as any
-          : 'videos' as any,
+        mediaTypes: mediaType === 'photo' ? 'images' as any : 'videos' as any,
         allowsEditing: false,
         quality: 1,
-        videoMaxDuration: 60,
+        videoMaxDuration: 180,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -438,7 +169,7 @@ export default function UploadMainScreen({ navigation }: Props) {
           filename: `capture_${Date.now()}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
         };
 
-        if (contentType === 'video') {
+        if (mediaType === 'video') {
           navigation.navigate('VideoEdit', {
             asset: mediaAsset,
             type: 'video',
@@ -453,7 +184,6 @@ export default function UploadMainScreen({ navigation }: Props) {
     } catch (error: any) {
       console.error('Camera capture failed:', error);
 
-      // 시뮬레이터에서 카메라 사용 불가 에러는 무시
       if (error?.code === 'ERR_CAMERA_UNAVAILABLE_ON_SIMULATOR') {
         Alert.alert(
           t('upload:main.simulatorLimitation'),
@@ -462,44 +192,92 @@ export default function UploadMainScreen({ navigation }: Props) {
       } else {
         Alert.alert(t('common:label.error', 'Error'), t('upload:main.cameraError'));
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const renderGridItem = ({ item, index }: { item: MediaAsset; index: number }) => {
-    const isSelected = selectedAssets.find((a) => a.id === item.id);
-    const selectionOrder = selectedAssets.findIndex((a) => a.id === item.id) + 1;
+  const handleGallerySelect = async (mediaType: 'photo' | 'video') => {
+    try {
+      setIsLoading(true);
 
-    return (
-      <TouchableOpacity
-        style={styles.gridItem}
-        onPress={() => handleAssetSelect(item)}
-        activeOpacity={0.8}
-      >
-        <Image source={{ uri: item.uri }} style={styles.gridImage} />
+      // Photo Picker API 사용 - READ_MEDIA_* 권한 불필요
+      // Android 13+에서 시스템 Photo Picker가 자동으로 사용됨
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: mediaType === 'photo' ? 'images' as any : 'videos' as any,
+        allowsMultipleSelection: mediaType === 'photo',
+        selectionLimit: mediaType === 'photo' ? 10 : 1,
+        quality: 1,
+        videoMaxDuration: 180,
+      });
 
-        {/* 비디오 길이 표시 */}
-        {item.mediaType === 'video' && (
-          <View style={styles.durationBadge}>
-            <Text style={styles.durationText}>
-              {Math.floor(item.duration / 60)}:{String(Math.floor(item.duration % 60)).padStart(2, '0')}
-            </Text>
-          </View>
-        )}
+      if (!result.canceled && result.assets.length > 0) {
+        if (mediaType === 'video') {
+          const asset = result.assets[0];
 
-        {/* 선택 표시 */}
-        {isSelected && (
-          <>
-            <View style={styles.selectedOverlay} />
-            <View style={styles.selectedBadge}>
-              <Text style={styles.selectedText}>
-                {contentType === 'photo' ? selectionOrder : '✓'}
-              </Text>
-            </View>
-          </>
-        )}
-      </TouchableOpacity>
-    );
+          // 비디오 길이 체크 (최대 3분 = 180초)
+          if (asset.duration && asset.duration > 180) {
+            Alert.alert(
+              t('upload:main.videoLengthExceeded'),
+              t('upload:main.videoLengthMessage')
+            );
+          }
+
+          const mediaAsset: MediaAsset = {
+            id: Date.now().toString(),
+            uri: asset.uri,
+            mediaType: 'video',
+            duration: asset.duration || 0,
+            width: asset.width || 1080,
+            height: asset.height || 1920,
+            filename: asset.fileName || `video_${Date.now()}.mp4`,
+          };
+
+          navigation.navigate('VideoEdit', {
+            asset: mediaAsset,
+            type: 'video',
+          });
+        } else {
+          const mediaAssets: MediaAsset[] = result.assets.map((asset, index) => ({
+            id: `${Date.now()}_${index}`,
+            uri: asset.uri,
+            mediaType: 'photo' as const,
+            duration: 0,
+            width: asset.width || 1080,
+            height: asset.height || 1080,
+            filename: asset.fileName || `photo_${Date.now()}_${index}.jpg`,
+          }));
+
+          navigation.navigate('PhotoEdit', {
+            assets: mediaAssets,
+            type: 'photo',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Gallery select failed:', error);
+      Alert.alert(t('common:label.error', 'Error'), t('upload:main.loadError'));
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+            <Ionicons name="close" size={28} color={dynamicTheme.colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('upload:main.title')}</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={dynamicTheme.colors.primary[500]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -508,144 +286,79 @@ export default function UploadMainScreen({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
           <Ionicons name="close" size={28} color={dynamicTheme.colors.text.primary} />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>{t('upload:main.title')}</Text>
+        <View style={styles.headerButton} />
+      </View>
 
-        <TouchableOpacity
-          onPress={handleNext}
-          disabled={selectedAssets.length === 0}
-          style={styles.headerButton}
-        >
-          <Text
-            style={[
-              styles.nextButtonText,
-              selectedAssets.length === 0 && styles.disabledText,
-            ]}
+      {/* 메인 콘텐츠 */}
+      <View style={styles.content}>
+        <View style={styles.buttonContainer}>
+          {/* 비디오 업로드 */}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionButtonPrimary]}
+            onPress={() => handleGallerySelect('video')}
+            activeOpacity={0.8}
           >
-            {t('common:button.next')}
+            <Ionicons name="videocam" size={32} color="#fff" />
+            <View style={styles.buttonContent}>
+              <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                {t('upload:main.selectVideo')}
+              </Text>
+              <Text style={[styles.actionButtonSubtext, styles.actionButtonSubtextPrimary]}>
+                {t('upload:main.maxDuration')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* 사진 업로드 */}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleGallerySelect('photo')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="images" size={32} color={dynamicTheme.colors.text.primary} />
+            <View style={styles.buttonContent}>
+              <Text style={styles.actionButtonText}>
+                {t('upload:main.selectPhotos')}
+              </Text>
+              <Text style={styles.actionButtonSubtext}>
+                {t('upload:main.maxPhotos')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* 구분선 */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>{t('upload:main.or')}</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* 카메라로 촬영 */}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleCameraCapture('video')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="camera" size={32} color={dynamicTheme.colors.text.primary} />
+            <View style={styles.buttonContent}>
+              <Text style={styles.actionButtonText}>
+                {t('upload:main.camera')}
+              </Text>
+              <Text style={styles.actionButtonSubtext}>
+                {t('upload:main.recordNew')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* 도움말 */}
+        <View style={styles.helpSection}>
+          <Text style={styles.helpText}>
+            {t('upload:main.helpText')}
           </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 미디어 타입 & 다중 선택 토글 */}
-      <View style={styles.controlsContainer}>
-        <View style={styles.typeSelector}>
-          <TouchableOpacity
-            style={[styles.typeTab, contentType === 'photo' && styles.typeTabActive]}
-            onPress={() => {
-              setContentType('photo');
-              setSelectedAssets([]);
-            }}
-          >
-            <Text style={[styles.typeTabText, contentType === 'photo' && styles.typeTabTextActive]}>
-              {t('upload:main.photo')}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.typeTab, contentType === 'video' && styles.typeTabActive]}
-            onPress={() => {
-              setContentType('video');
-              setSelectedAssets([]);
-            }}
-          >
-            <Text style={[styles.typeTabText, contentType === 'video' && styles.typeTabTextActive]}>
-              {t('upload:main.video')}
-            </Text>
-          </TouchableOpacity>
         </View>
-
-        {contentType === 'photo' && selectedAssets.length > 0 && (
-          <Text style={styles.selectionCount}>{t('upload:main.selectionCount', { count: selectedAssets.length })}</Text>
-        )}
       </View>
-
-      {/* 갤러리 그리드 (미리보기 포함 - 스크롤 시 같이 올라감) */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={dynamicTheme.colors.primary[500]} />
-        </View>
-      ) : (
-        <FlatList
-          data={mediaAssets}
-          renderItem={renderGridItem}
-          keyExtractor={(item) => item.id}
-          numColumns={GRID_COLUMNS}
-          contentContainerStyle={styles.gridContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={dynamicTheme.colors.primary[500]}
-              colors={[dynamicTheme.colors.primary[500]]}
-            />
-          }
-          onEndReached={loadMoreAssets}
-          onEndReachedThreshold={0.5}
-          ListHeaderComponent={
-            <>
-              {/* 선택된 미디어 큰 미리보기 - 스와이프 가능 */}
-              {selectedAssets.length > 0 && (
-                <View style={styles.previewContainer}>
-                  <FlatList
-                    data={selectedAssets}
-                    renderItem={({ item }) => (
-                      <Image
-                        source={{ uri: item.uri }}
-                        style={styles.previewImage}
-                        resizeMode="cover"
-                      />
-                    )}
-                    keyExtractor={(item) => `preview-${item.id}`}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onViewableItemsChanged={({ viewableItems }) => {
-                      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-                        setCurrentPreviewIndex(viewableItems[0].index);
-                      }
-                    }}
-                    viewabilityConfig={{
-                      itemVisiblePercentThreshold: 50,
-                    }}
-                  />
-
-                  {/* 여러 개 선택 시 인디케이터 */}
-                  {selectedAssets.length > 1 && (
-                    <View style={styles.previewIndicator}>
-                      {selectedAssets.map((_, index) => (
-                        <View
-                          key={index}
-                          style={[
-                            styles.indicatorDot,
-                            index === currentPreviewIndex && styles.indicatorDotActive,
-                          ]}
-                        />
-                      ))}
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* 카메라 버튼 */}
-              <TouchableOpacity style={styles.gridItem} onPress={handleCameraCapture}>
-                <View style={styles.cameraButton}>
-                  <Ionicons name="camera" size={32} color={dynamicTheme.colors.text.secondary} />
-                  <Text style={styles.cameraButtonText}>{t('upload:main.camera')}</Text>
-                </View>
-              </TouchableOpacity>
-            </>
-          }
-          ListFooterComponent={
-            isLoadingMore ? (
-              <View style={styles.loadingMore}>
-                <ActivityIndicator size="small" color={dynamicTheme.colors.primary[500]} />
-              </View>
-            ) : null
-          }
-        />
-      )}
     </SafeAreaView>
   );
 }

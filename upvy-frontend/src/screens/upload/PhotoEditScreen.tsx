@@ -21,7 +21,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/theme';
@@ -160,9 +159,8 @@ export default function PhotoEditScreen({ navigation, route }: Props) {
       for (let i = 0; i < assets.length; i++) {
         const asset = assets[i];
 
-        // 1. MediaLibrary로 실제 파일 URI 얻기 (ph:// -> file://)
-        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
-        let fileUri = assetInfo.localUri || assetInfo.uri;
+        // ImagePicker(Photo Picker API)는 이미 file:// URI를 반환함
+        let fileUri = asset.uri;
         const originalFileName = asset.filename;
         const extension = originalFileName.split('.').pop()?.toLowerCase();
 

@@ -3,6 +3,13 @@
   "main": {
     "title": "新規投稿",
     "selectMedia": "写真または動画を選択",
+    "selectVideo": "動画を選択",
+    "selectPhotos": "写真を選択",
+    "maxDuration": "最大3分",
+    "maxPhotos": "最大10枚",
+    "or": "または",
+    "recordNew": "新しく撮影",
+    "helpText": "動画は最大3分、写真は最大10枚までアップロードできます",
     "camera": "カメラ",
     "gallery": "ギャラリー",
     "video": "動画",
