@@ -57,6 +57,14 @@ module.exports = {
       googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      // Google Play 정책: Photo Picker API 사용으로 READ_MEDIA_* 권한 불필요
+      blockedPermissions: [
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.READ_MEDIA_VIDEO',
+        'android.permission.READ_MEDIA_AUDIO',
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+      ],
       intentFilters: [
         {
           action: 'VIEW',
