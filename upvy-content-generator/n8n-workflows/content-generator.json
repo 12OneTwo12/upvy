@@ -401,8 +401,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"instances\": [{\n    \"prompt\": \"Educational illustration for short-form video: {{ $json.script.sections[0].visualCue }}. Style: modern, minimalist, flat design, vibrant colors. Vertical format 9:16. No text overlay.\"\n  }],\n  \"parameters\": {\n    \"sampleCount\": 1,\n    \"aspectRatio\": \"9:16\",\n    \"safetyFilterLevel\": \"block_medium_and_above\",\n    \"personGeneration\": \"dont_allow\"\n  }\n}",
-        "options": {}
+        "jsonBody": "={\n  \"instances\": [{\n    \"prompt\": \"Abstract educational concept illustration about {{ $json.selectedTopic.title }}. Style: modern minimalist flat design, vibrant gradient colors, geometric shapes, icons and symbols. Vertical 9:16 format. NO people, NO human figures, NO faces, NO children. Only abstract graphics and icons.\"\n  }],\n  \"parameters\": {\n    \"sampleCount\": 1,\n    \"aspectRatio\": \"9:16\",\n    \"safetyFilterLevel\": \"block_only_high\",\n    \"personGeneration\": \"dont_allow\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
       },
       "id": "visual-gen",
       "name": "4a. Visual Gen (Imagen 3)",
@@ -442,7 +448,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const prevData = $input.first().json;\nconst visualResponse = $('4a. Visual Gen (Imagen 3)').first().json;\nconst imageBase64 = visualResponse.predictions?.[0]?.bytesBase64Encoded;\n\nif (!imageBase64) throw new Error('이미지 생성 실패: base64 데이터 없음');\n\nreturn {\n  json: { ...prevData },\n  binary: {\n    image: {\n      data: imageBase64,\n      mimeType: 'image/png',\n      fileName: 'visual.png'\n    }\n  }\n};"
+        "jsCode": "const prevData = $input.first().json;\nconst visualResponse = $('4a. Visual Gen (Imagen 3)').first().json;\n\n// fullResponse 형식 처리\nconst body = visualResponse.body || visualResponse;\nconst imageBase64 = body.predictions?.[0]?.bytesBase64Encoded;\n\nif (!imageBase64) {\n  throw new Error('이미지 생성 실패: ' + JSON.stringify(body));\n}\n\nreturn {\n  json: { ...prevData },\n  binary: {\n    image: {\n      data: imageBase64,\n      mimeType: 'image/png',\n      fileName: 'visual.png'\n    }\n  }\n};"
       },
       "id": "convert-visual",
       "name": "Convert Visual to Binary",
