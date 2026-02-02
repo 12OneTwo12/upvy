@@ -401,7 +401,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"instances\": [{\n    \"prompt\": \"Abstract educational concept illustration about {{ $json.selectedTopic.title }}. Style: modern minimalist flat design, vibrant gradient colors, geometric shapes, icons and symbols. Vertical 9:16 format. NO people, NO human figures, NO faces, NO children. Only abstract graphics and icons.\"\n  }],\n  \"parameters\": {\n    \"sampleCount\": 1,\n    \"aspectRatio\": \"9:16\",\n    \"safetyFilterLevel\": \"block_only_high\",\n    \"personGeneration\": \"dont_allow\"\n  }\n}",
+        "jsonBody": "={\n  \"instances\": [{\n    \"prompt\": \"Abstract educational illustration about {{ $json.category.toLowerCase() }} concepts. Style: modern minimalist flat design, vibrant gradient colors, geometric shapes, abstract icons and symbols representing education and learning. Vertical 9:16 format for mobile. Clean white or light gradient background. NO people, NO human figures, NO faces, NO text, NO words. Only colorful geometric shapes and abstract icons.\"\n  }],\n  \"parameters\": {\n    \"sampleCount\": 1,\n    \"aspectRatio\": \"9:16\",\n    \"safetyFilterLevel\": \"block_only_high\",\n    \"personGeneration\": \"dont_allow\"\n  }\n}",
         "options": {
           "response": {
             "response": {
@@ -429,16 +429,20 @@
             {
               "name": "Authorization",
               "value": "=Bearer {{ $('Merge Token').first().json.gcpAccessToken }}"
+            },
+            {
+              "name": "x-goog-user-project",
+              "value": "={{ $env.GCP_PROJECT_ID }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'en' ? 'en-US' : ($json.language === 'ja' ? 'ja-JP' : 'ko-KR') }}\",\n    \"name\": \"{{ $json.language === 'en' ? 'en-US-Wavenet-D' : ($json.language === 'ja' ? 'ja-JP-Wavenet-A' : 'ko-KR-Wavenet-A') }}\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"speakingRate\": 1.1\n  }\n}",
+        "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'en' ? 'en-US' : ($json.language === 'ja' ? 'ja-JP' : 'ko-KR') }}\",\n    \"name\": \"{{ $json.language === 'en' ? 'Aoede' : ($json.language === 'ja' ? 'Zephyr' : 'Kore') }}\",\n    \"modelName\": \"gemini-2.5-flash-tts\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"sampleRateHertz\": 24000\n  }\n}",
         "options": {}
       },
       "id": "tts-gen",
-      "name": "4b. TTS (Google Cloud)",
+      "name": "4b. TTS (Gemini TTS)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -461,7 +465,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\nconst prevContext = $('Parse Script + Quiz').first().json;\nconst audioBase64 = item.json.audioContent;\n\nif (!audioBase64) throw new Error('TTS 응답에 audioContent가 없습니다');\n\nreturn {\n  json: { ...prevContext },\n  binary: {\n    data: {\n      data: audioBase64,\n      mimeType: 'audio/mp3',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
+        "jsCode": "const item = $input.first();\nconst prevContext = $('Parse Script + Quiz').first().json;\nconst audioBase64 = item.json.audioContent;\n\nif (!audioBase64) throw new Error('TTS 응답에 audioContent가 없습니다: ' + JSON.stringify(item.json).substring(0, 500));\n\nreturn {\n  json: { ...prevContext },\n  binary: {\n    data: {\n      data: audioBase64,\n      mimeType: 'audio/mp3',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
       },
       "id": "prepare-audio",
       "name": "Prepare Audio Binary",
