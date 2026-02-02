@@ -8,14 +8,21 @@
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-220, 200]
+      "position": [
+        -220,
+        -200
+      ]
     },
     {
       "parameters": {
         "mode": "manual",
         "fields": {
           "values": [
-            { "name": "language", "type": "stringValue", "stringValue": "en" }
+            {
+              "name": "language",
+              "type": "stringValue",
+              "stringValue": "en"
+            }
           ]
         },
         "options": {}
@@ -24,17 +31,30 @@
       "name": "Set Manual Language",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [0, 200]
+      "position": [
+        0,
+        -200
+      ]
     },
     {
       "parameters": {
         "rule": {
           "interval": [
-            { "triggerAtHour": 6 },
-            { "triggerAtHour": 9 },
-            { "triggerAtHour": 12 },
-            { "triggerAtHour": 15 },
-            { "triggerAtHour": 18 }
+            {
+              "triggerAtHour": 6
+            },
+            {
+              "triggerAtHour": 9
+            },
+            {
+              "triggerAtHour": 12
+            },
+            {
+              "triggerAtHour": 15
+            },
+            {
+              "triggerAtHour": 18
+            }
           ]
         }
       },
@@ -42,15 +62,24 @@
       "name": "Schedule EN (5/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
         "rule": {
           "interval": [
-            { "triggerAtHour": 7 },
-            { "triggerAtHour": 13 },
-            { "triggerAtHour": 19 }
+            {
+              "triggerAtHour": 7
+            },
+            {
+              "triggerAtHour": 13
+            },
+            {
+              "triggerAtHour": 19
+            }
           ]
         }
       },
@@ -58,15 +87,24 @@
       "name": "Schedule JA (3/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 200]
+      "position": [
+        0,
+        200
+      ]
     },
     {
       "parameters": {
         "rule": {
           "interval": [
-            { "triggerAtHour": 8 },
-            { "triggerAtHour": 14 },
-            { "triggerAtHour": 20 }
+            {
+              "triggerAtHour": 8
+            },
+            {
+              "triggerAtHour": 14
+            },
+            {
+              "triggerAtHour": 20
+            }
           ]
         }
       },
@@ -74,14 +112,21 @@
       "name": "Schedule KO (3/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 400]
+      "position": [
+        0,
+        400
+      ]
     },
     {
       "parameters": {
         "mode": "manual",
         "fields": {
           "values": [
-            { "name": "language", "type": "stringValue", "stringValue": "en" }
+            {
+              "name": "language",
+              "type": "stringValue",
+              "stringValue": "en"
+            }
           ]
         },
         "options": {}
@@ -90,14 +135,21 @@
       "name": "Set Language EN",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
         "mode": "manual",
         "fields": {
           "values": [
-            { "name": "language", "type": "stringValue", "stringValue": "ja" }
+            {
+              "name": "language",
+              "type": "stringValue",
+              "stringValue": "ja"
+            }
           ]
         },
         "options": {}
@@ -106,14 +158,21 @@
       "name": "Set Language JA",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [220, 200]
+      "position": [
+        220,
+        200
+      ]
     },
     {
       "parameters": {
         "mode": "manual",
         "fields": {
           "values": [
-            { "name": "language", "type": "stringValue", "stringValue": "ko" }
+            {
+              "name": "language",
+              "type": "stringValue",
+              "stringValue": "ko"
+            }
           ]
         },
         "options": {}
@@ -122,7 +181,10 @@
       "name": "Set Language KO",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [220, 400]
+      "position": [
+        220,
+        400
+      ]
     },
     {
       "parameters": {
@@ -152,14 +214,81 @@
       "name": "Set Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [440, 200]
+      "position": [
+        440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\n// Service Account JSON 읽기\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\n// JWT Header\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\n// JWT Claim\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\n// Sign with RSA-SHA256\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { ...$input.first().json, gcpJwt: jwt } };"
+      },
+      "id": "gcp-jwt",
+      "name": "Generate GCP JWT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://oauth2.googleapis.com/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "urn:ietf:params:oauth:grant-type:jwt-bearer"
+            },
+            {
+              "name": "assertion",
+              "value": "={{ $json.gcpJwt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gcp-token",
+      "name": "Get GCP Access Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tokenResponse = $input.first().json;\nconst prevData = $('Generate GCP JWT').first().json;\nreturn { json: { ...prevData, gcpAccessToken: tokenResponse.access_token } };"
+      },
+      "id": "merge-token",
+      "name": "Merge Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        200
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.gcpAccessToken }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 교육 콘텐츠 기획자입니다.\\n\\n[검색 기반 분석 요청]\\n1. \\\"{{ $json.category }}\\\" 분야에서 최근 인기 있는 교육 주제 검색\\n2. 숏폼 영상(30-60초)으로 만들기 좋은 주제 3개 제안\\n3. 각 주제의 바이럴 가능성과 교육적 가치 평가\\n\\n난이도: {{ $json.difficulty }}\\n언어: {{ $json.language }}\\n\\n[출력 형식 - JSON만 출력]\\n{\\n  \\\"topics\\\": [\\n    {\\n      \\\"title\\\": \\\"주제 제목\\\",\\n      \\\"hook\\\": \\\"시청자 관심 끄는 첫 문장\\\",\\n      \\\"keyPoints\\\": [\\\"핵심1\\\", \\\"핵심2\\\", \\\"핵심3\\\"],\\n      \\\"viralScore\\\": 85,\\n      \\\"educationalScore\\\": 90\\n    }\\n  ]\\n}\"\n    }]\n  }],\n  \"tools\": [{\n    \"googleSearch\": {}\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 2048\n  }\n}",
@@ -169,12 +298,10 @@
       "name": "1. Topic Select (Gemini + Grounding)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [660, 200],
-      "credentials": {
-        "googleApi": {
-          "name": "Google API"
-        }
-      }
+      "position": [
+        1320,
+        200
+      ]
     },
     {
       "parameters": {
@@ -184,14 +311,26 @@
       "name": "Parse Topic",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 200]
+      "position": [
+        1540,
+        200
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Merge Token').first().json.gcpAccessToken }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 교육용 숏폼 콘텐츠 전문 작가입니다.\\n30-60초 분량의 세로형(9:16) 영상 스크립트와 퀴즈를 작성합니다.\\n\\n=== 스크립트 규칙 ===\\n1. Hook (0-5초): 시청자 관심 끄는 질문/충격적 사실\\n2. Core (5-50초): 핵심 내용 전달 (3개 이하 포인트)\\n3. CTA (50-60초): 행동 유도\\n\\n형식 규칙:\\n- 한 문장은 15단어 이내\\n- 전문용어는 즉시 설명\\n- 친근한 말투\\n\\n=== 퀴즈 규칙 ===\\n1. 스크립트의 핵심 개념 확인 문제 1개\\n2. 4개 선택지 (정답 1개 + 오답 3개)\\n\\n[주제 정보]\\n제목: {{ $json.selectedTopic.title }}\\nHook: {{ $json.selectedTopic.hook }}\\n핵심: {{ $json.selectedTopic.keyPoints.join(', ') }}\\n난이도: {{ $json.difficulty }}\\n언어: {{ $json.language }}\\n\\n[출력 형식 - JSON만 출력]\\n{\\n  \\\"script\\\": {\\n    \\\"title\\\": \\\"영상 제목\\\",\\n    \\\"description\\\": \\\"영상 설명 (200자)\\\",\\n    \\\"totalDuration\\\": 60,\\n    \\\"sections\\\": [\\n      {\\n        \\\"type\\\": \\\"HOOK\\\",\\n        \\\"startTime\\\": 0,\\n        \\\"endTime\\\": 5,\\n        \\\"narration\\\": \\\"나레이션 텍스트\\\",\\n        \\\"visualCue\\\": \\\"비주얼 설명\\\"\\n      }\\n    ],\\n    \\\"tags\\\": [\\\"태그1\\\", \\\"태그2\\\"]\\n  },\\n  \\\"quiz\\\": {\\n    \\\"question\\\": \\\"퀴즈 질문\\\",\\n    \\\"options\\\": [\\n      {\\\"text\\\": \\\"선택지1\\\", \\\"isCorrect\\\": true},\\n      {\\\"text\\\": \\\"선택지2\\\", \\\"isCorrect\\\": false},\\n      {\\\"text\\\": \\\"선택지3\\\", \\\"isCorrect\\\": false},\\n      {\\\"text\\\": \\\"선택지4\\\", \\\"isCorrect\\\": false}\\n    ]\\n  },\\n  \\\"qualityCheck\\\": {\\n    \\\"verdict\\\": \\\"PASS\\\",\\n    \\\"reason\\\": \\\"품질 검토 이유\\\"\\n  }\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 4096\n  }\n}",
@@ -201,12 +340,10 @@
       "name": "2. Script + Quiz Gen (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1100, 200],
-      "credentials": {
-        "googleApi": {
-          "name": "Google API"
-        }
-      }
+      "position": [
+        1760,
+        200
+      ]
     },
     {
       "parameters": {
@@ -216,7 +353,10 @@
       "name": "Parse Script + Quiz",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1320, 200]
+      "position": [
+        1980,
+        200
+      ]
     },
     {
       "parameters": {
@@ -245,14 +385,26 @@
       "name": "3. Quality Gate",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1540, 200]
+      "position": [
+        2200,
+        200
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/imagen-3.0-generate-002:predict",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Merge Token').first().json.gcpAccessToken }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"instances\": [{\n    \"prompt\": \"Educational illustration for short-form video: {{ $json.script.sections[0].visualCue }}. Style: modern, minimalist, flat design, vibrant colors. Vertical format 9:16. No text overlay.\"\n  }],\n  \"parameters\": {\n    \"sampleCount\": 1,\n    \"aspectRatio\": \"9:16\",\n    \"safetyFilterLevel\": \"block_medium_and_above\",\n    \"personGeneration\": \"dont_allow\"\n  }\n}",
@@ -262,19 +414,26 @@
       "name": "4a. Visual Gen (Imagen 3)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1760, 100],
-      "credentials": {
-        "googleApi": {
-          "name": "Google API"
-        }
-      }
+      "position": [
+        2420,
+        100
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Merge Token').first().json.gcpAccessToken }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'en' ? 'en-US' : ($json.language === 'ja' ? 'ja-JP' : 'ko-KR') }}\",\n    \"name\": \"{{ $json.language === 'en' ? 'en-US-Wavenet-D' : ($json.language === 'ja' ? 'ja-JP-Wavenet-A' : 'ko-KR-Wavenet-A') }}\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"speakingRate\": 1.1\n  }\n}",
@@ -284,12 +443,10 @@
       "name": "4b. TTS (Google Cloud)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1760, 300],
-      "credentials": {
-        "googleApi": {
-          "name": "Google API"
-        }
-      }
+      "position": [
+        2420,
+        300
+      ]
     },
     {
       "parameters": {
@@ -299,7 +456,10 @@
       "name": "Convert Visual to Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 100]
+      "position": [
+        2640,
+        100
+      ]
     },
     {
       "parameters": {
@@ -309,7 +469,10 @@
       "name": "Prepare Audio Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [
+        2640,
+        300
+      ]
     },
     {
       "parameters": {
@@ -321,7 +484,10 @@
       "name": "Merge Visual + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [2200, 200]
+      "position": [
+        2860,
+        200
+      ]
     },
     {
       "parameters": {
@@ -331,7 +497,10 @@
       "name": "Combine Binaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2420, 200]
+      "position": [
+        3080,
+        200
+      ]
     },
     {
       "parameters": {
@@ -370,7 +539,10 @@
       "name": "5. Compose (FFmpeg)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2640, 200]
+      "position": [
+        3300,
+        200
+      ]
     },
     {
       "parameters": {
@@ -380,7 +552,10 @@
       "name": "Unzip Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2860, 200]
+      "position": [
+        3520,
+        200
+      ]
     },
     {
       "parameters": {
@@ -393,7 +568,10 @@
       "name": "S3 Upload Video",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3080, 100]
+      "position": [
+        3740,
+        100
+      ]
     },
     {
       "parameters": {
@@ -406,7 +584,10 @@
       "name": "S3 Upload Thumbnail",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3080, 300]
+      "position": [
+        3740,
+        300
+      ]
     },
     {
       "parameters": {
@@ -418,7 +599,10 @@
       "name": "Merge S3 Results",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [3300, 200]
+      "position": [
+        3960,
+        200
+      ]
     },
     {
       "parameters": {
@@ -428,7 +612,10 @@
       "name": "Set S3 URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3520, 200]
+      "position": [
+        4180,
+        200
+      ]
     },
     {
       "parameters": {
@@ -445,7 +632,10 @@
       "name": "6a. Upvy Publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3740, 0]
+      "position": [
+        4400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -461,7 +651,10 @@
       "name": "6b. YouTube Shorts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3740, 200]
+      "position": [
+        4400,
+        200
+      ]
     },
     {
       "parameters": {
@@ -478,7 +671,10 @@
       "name": "6c. Instagram Reels",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3740, 400]
+      "position": [
+        4400,
+        400
+      ]
     },
     {
       "parameters": {
@@ -492,10 +688,12 @@
       "name": "Telegram - Success",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [3960, 200],
+      "position": [
+        4620,
+        200
+      ],
       "credentials": {
         "telegramApi": {
-          "id": "telegram-api",
           "name": "Telegram API"
         }
       }
@@ -512,10 +710,12 @@
       "name": "Telegram - Quality Fail",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [1760, 500],
+      "position": [
+        2420,
+        500
+      ],
       "credentials": {
         "telegramApi": {
-          "id": "telegram-api",
           "name": "Telegram API"
         }
       }
@@ -523,102 +723,361 @@
   ],
   "connections": {
     "Manual Trigger": {
-      "main": [[{ "node": "Set Manual Language", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Manual Language",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Manual Language": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Schedule EN (5/day)": {
-      "main": [[{ "node": "Set Language EN", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Language EN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Schedule JA (3/day)": {
-      "main": [[{ "node": "Set Language JA", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Language JA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Schedule KO (3/day)": {
-      "main": [[{ "node": "Set Language KO", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Language KO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Language EN": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Language JA": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Language KO": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Config": {
-      "main": [[{ "node": "1. Topic Select (Gemini + Grounding)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate GCP JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate GCP JWT": {
+      "main": [
+        [
+          {
+            "node": "Get GCP Access Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get GCP Access Token": {
+      "main": [
+        [
+          {
+            "node": "Merge Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Token": {
+      "main": [
+        [
+          {
+            "node": "1. Topic Select (Gemini + Grounding)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "1. Topic Select (Gemini + Grounding)": {
-      "main": [[{ "node": "Parse Topic", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Topic": {
-      "main": [[{ "node": "2. Script + Quiz Gen (Gemini)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "2. Script + Quiz Gen (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "2. Script + Quiz Gen (Gemini)": {
-      "main": [[{ "node": "Parse Script + Quiz", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Script + Quiz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Script + Quiz": {
-      "main": [[{ "node": "3. Quality Gate", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "3. Quality Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "3. Quality Gate": {
       "main": [
         [
-          { "node": "4a. Visual Gen (Imagen 3)", "type": "main", "index": 0 },
-          { "node": "4b. TTS (Google Cloud)", "type": "main", "index": 0 }
+          {
+            "node": "4a. Visual Gen (Imagen 3)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "4b. TTS (Google Cloud)",
+            "type": "main",
+            "index": 0
+          }
         ],
-        [{ "node": "Telegram - Quality Fail", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Telegram - Quality Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "4a. Visual Gen (Imagen 3)": {
-      "main": [[{ "node": "Convert Visual to Binary", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Convert Visual to Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "4b. TTS (Google Cloud)": {
-      "main": [[{ "node": "Prepare Audio Binary", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Prepare Audio Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Convert Visual to Binary": {
-      "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Visual + Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare Audio Binary": {
-      "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 1 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Visual + Audio",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     },
     "Merge Visual + Audio": {
-      "main": [[{ "node": "Combine Binaries", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Combine Binaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Combine Binaries": {
-      "main": [[{ "node": "5. Compose (FFmpeg)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "5. Compose (FFmpeg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "5. Compose (FFmpeg)": {
-      "main": [[{ "node": "Unzip Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Unzip Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Unzip Response": {
       "main": [
         [
-          { "node": "S3 Upload Video", "type": "main", "index": 0 },
-          { "node": "S3 Upload Thumbnail", "type": "main", "index": 0 }
+          {
+            "node": "S3 Upload Video",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "S3 Upload Thumbnail",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "S3 Upload Video": {
-      "main": [[{ "node": "Merge S3 Results", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Merge S3 Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "S3 Upload Thumbnail": {
-      "main": [[{ "node": "Merge S3 Results", "type": "main", "index": 1 }]]
+      "main": [
+        [
+          {
+            "node": "Merge S3 Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     },
     "Merge S3 Results": {
-      "main": [[{ "node": "Set S3 URLs", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Set S3 URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set S3 URLs": {
       "main": [
         [
-          { "node": "6a. Upvy Publish", "type": "main", "index": 0 },
-          { "node": "6b. YouTube Shorts", "type": "main", "index": 0 },
-          { "node": "6c. Instagram Reels", "type": "main", "index": 0 }
+          {
+            "node": "6a. Upvy Publish",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "6b. YouTube Shorts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "6c. Instagram Reels",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "6a. Upvy Publish": {
-      "main": [[{ "node": "Telegram - Success", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Telegram - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -629,6 +1088,10 @@
     "timezone": "Asia/Seoul"
   },
   "staticData": null,
-  "tags": [{ "name": "ai-content" }],
+  "tags": [
+    {
+      "name": "ai-content"
+    }
+  ],
   "triggerCount": 4
 }

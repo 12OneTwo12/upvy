@@ -2,7 +2,7 @@
 # =============================================================================
 # n8n 초기화 스크립트
 # =============================================================================
-# Credential 자동 생성 + 워크플로우 자동 import
+# Credential 자동 생성 + 워크플로우 자동 import + Credential 자동 연결
 #
 # 주의: n8n은 첫 실행시 Owner 계정 설정이 필수입니다 (보안 요구사항)
 #       설정 후 볼륨이 유지되면 다시 설정할 필요 없습니다
@@ -13,205 +13,265 @@ MARKER_FILE="/home/node/.n8n/.workflow-imported"
 CRED_MARKER_FILE="/home/node/.n8n/.credentials-created"
 GCP_KEY_FILE="/credentials/gcp-key.json"
 
-# n8n API 호출을 위한 설정
-N8N_URL="http://localhost:5678"
-AUTH_USER="${N8N_BASIC_AUTH_USER:-admin}"
-AUTH_PASS="${N8N_BASIC_AUTH_PASSWORD}"
-
 # =============================================================================
-# Credential 생성 함수 (Node.js 사용 - JSON escape 안전)
+# 통합 초기화 함수 (Node.js)
 # =============================================================================
-create_credentials() {
-    echo "[init] Creating credentials via n8n API..."
-
+run_init() {
     node << 'NODEJS_SCRIPT'
 const http = require('http');
 const fs = require('fs');
-const path = require('path');
 
-const N8N_URL = 'http://localhost:5678';
-const AUTH = Buffer.from(`${process.env.N8N_BASIC_AUTH_USER || 'admin'}:${process.env.N8N_BASIC_AUTH_PASSWORD}`).toString('base64');
-
-// 세션 쿠키 저장
 let sessionCookie = '';
+const createdCredentials = {}; // name -> id 매핑
 
-// n8n 로그인 (세션 쿠키 획득)
-async function login() {
-    return new Promise((resolve) => {
-        const payload = JSON.stringify({
-            emailOrLdapLoginId: process.env.N8N_OWNER_EMAIL || 'admin@upvy.io',
-            password: process.env.N8N_BASIC_AUTH_PASSWORD
-        });
-
-        const options = {
-            hostname: 'localhost',
-            port: 5678,
-            path: '/rest/login',
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(payload)
-            }
-        };
-
-        const req = http.request(options, (res) => {
-            let body = '';
-            res.on('data', chunk => body += chunk);
-            res.on('end', () => {
-                if (res.statusCode === 200) {
-                    // 쿠키 추출
-                    const cookies = res.headers['set-cookie'];
-                    if (cookies) {
-                        sessionCookie = cookies.map(c => c.split(';')[0]).join('; ');
-                    }
-                    console.log('[init] ✓ Logged in to n8n');
-                    resolve(true);
-                } else {
-                    console.log(`[init] ✗ Login failed: ${res.statusCode} - ${body}`);
-                    resolve(false);
-                }
-            });
-        });
-
-        req.on('error', (e) => {
-            console.log(`[init] ✗ Login error: ${e.message}`);
-            resolve(false);
-        });
-
-        req.write(payload);
-        req.end();
-    });
-}
-
-// Credential 생성 API 호출
-async function createCredential(name, type, data) {
+// =============================================================================
+// HTTP 요청 헬퍼
+// =============================================================================
+function httpRequest(method, path, body = null) {
     return new Promise((resolve, reject) => {
-        const payload = JSON.stringify({ name, type, data });
-
         const options = {
             hostname: 'localhost',
             port: 5678,
-            path: '/rest/credentials',
-            method: 'POST',
+            path,
+            method,
             headers: {
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(payload),
                 'Cookie': sessionCookie
             }
         };
 
+        if (body) {
+            const payload = JSON.stringify(body);
+            options.headers['Content-Length'] = Buffer.byteLength(payload);
+        }
+
         const req = http.request(options, (res) => {
-            let body = '';
-            res.on('data', chunk => body += chunk);
+            let data = '';
+            res.on('data', chunk => data += chunk);
             res.on('end', () => {
-                if (res.statusCode === 200 || res.statusCode === 201) {
-                    console.log(`[init] ✓ Credential '${name}' created`);
-                    resolve(true);
-                } else if (res.statusCode === 409 || body.includes('already exists')) {
-                    console.log(`[init] ✓ Credential '${name}' already exists`);
-                    resolve(true);
-                } else {
-                    console.log(`[init] ✗ Failed to create '${name}': ${res.statusCode} - ${body}`);
-                    resolve(false);
+                // 쿠키 저장
+                if (res.headers['set-cookie']) {
+                    sessionCookie = res.headers['set-cookie'].map(c => c.split(';')[0]).join('; ');
                 }
+                resolve({ status: res.statusCode, data, headers: res.headers });
             });
         });
 
-        req.on('error', (e) => {
-            console.log(`[init] ✗ Error creating '${name}': ${e.message}`);
-            resolve(false);
-        });
-
-        req.write(payload);
+        req.on('error', reject);
+        if (body) req.write(JSON.stringify(body));
         req.end();
     });
 }
 
-async function main() {
-    const credentials = [];
+// =============================================================================
+// 로그인
+// =============================================================================
+async function login() {
+    console.log('[init] Logging in to n8n...');
+    const res = await httpRequest('POST', '/rest/login', {
+        emailOrLdapLoginId: process.env.N8N_OWNER_EMAIL || 'admin@upvy.io',
+        password: process.env.N8N_BASIC_AUTH_PASSWORD
+    });
 
-    // 1. Google API Credential (from gcp-key.json)
+    if (res.status === 200) {
+        console.log('[init] ✓ Logged in');
+        return true;
+    }
+    console.log(`[init] ✗ Login failed: ${res.status} - ${res.data}`);
+    return false;
+}
+
+// =============================================================================
+// Credential 생성 (ID 반환)
+// =============================================================================
+async function createCredential(name, type, data) {
+    const res = await httpRequest('POST', '/rest/credentials', { name, type, data });
+
+    if (res.status === 200 || res.status === 201) {
+        try {
+            const result = JSON.parse(res.data);
+            const id = result.data?.id || result.id;
+            console.log(`[init] ✓ Credential '${name}' created (id: ${id})`);
+            return id;
+        } catch (e) {
+            console.log(`[init] ✓ Credential '${name}' created (id parse failed)`);
+            return null;
+        }
+    } else if (res.status === 409 || res.data.includes('already exists')) {
+        // 이미 존재하면 ID 조회
+        const listRes = await httpRequest('GET', '/rest/credentials');
+        if (listRes.status === 200) {
+            try {
+                const creds = JSON.parse(listRes.data).data || [];
+                const existing = creds.find(c => c.name === name);
+                if (existing) {
+                    console.log(`[init] ✓ Credential '${name}' already exists (id: ${existing.id})`);
+                    return existing.id;
+                }
+            } catch (e) {}
+        }
+        console.log(`[init] ✓ Credential '${name}' already exists`);
+        return null;
+    }
+
+    console.log(`[init] ✗ Failed to create '${name}': ${res.status}`);
+    return null;
+}
+
+// =============================================================================
+// 워크플로우 조회
+// =============================================================================
+async function getWorkflowByName(name) {
+    const res = await httpRequest('GET', '/rest/workflows');
+    if (res.status === 200) {
+        try {
+            const workflows = JSON.parse(res.data).data || [];
+            return workflows.find(w => w.name === name);
+        } catch (e) {}
+    }
+    return null;
+}
+
+// =============================================================================
+// 워크플로우 상세 조회
+// =============================================================================
+async function getWorkflowById(id) {
+    const res = await httpRequest('GET', `/rest/workflows/${id}`);
+    if (res.status === 200) {
+        try {
+            return JSON.parse(res.data).data || JSON.parse(res.data);
+        } catch (e) {}
+    }
+    return null;
+}
+
+// =============================================================================
+// 워크플로우 업데이트 (Credential 연결)
+// =============================================================================
+async function updateWorkflowCredentials(workflowId, credentialMapping) {
+    const workflow = await getWorkflowById(workflowId);
+    if (!workflow) {
+        console.log('[init] ✗ Failed to get workflow for update');
+        return false;
+    }
+
+    let updated = false;
+    for (const node of workflow.nodes) {
+        // Telegram 노드 처리
+        if (node.type === 'n8n-nodes-base.telegram' && credentialMapping.telegramApi) {
+            node.credentials = {
+                telegramApi: {
+                    id: credentialMapping.telegramApi,
+                    name: 'Telegram API'
+                }
+            };
+            updated = true;
+            console.log(`[init] ✓ Linked Telegram credential to node '${node.name}'`);
+        }
+
+        // AWS S3 노드 처리
+        if (node.type === 'n8n-nodes-base.awsS3' && credentialMapping.aws) {
+            node.credentials = {
+                aws: {
+                    id: credentialMapping.aws,
+                    name: 'AWS'
+                }
+            };
+            updated = true;
+            console.log(`[init] ✓ Linked AWS credential to node '${node.name}'`);
+        }
+    }
+
+    if (!updated) {
+        console.log('[init] No credentials to link');
+        return true;
+    }
+
+    // 워크플로우 업데이트
+    const res = await httpRequest('PATCH', `/rest/workflows/${workflowId}`, {
+        nodes: workflow.nodes,
+        connections: workflow.connections,
+        settings: workflow.settings
+    });
+
+    if (res.status === 200) {
+        console.log('[init] ✓ Workflow credentials updated');
+        return true;
+    }
+
+    console.log(`[init] ✗ Failed to update workflow: ${res.status} - ${res.data}`);
+    return false;
+}
+
+// =============================================================================
+// 메인
+// =============================================================================
+async function main() {
+    // 1. 로그인
+    if (!await login()) {
+        console.log('[init] ✗ Cannot proceed without login (Owner setup required)');
+        console.log('[init] → Please complete Owner setup in n8n UI first, then restart');
+        process.exit(1);
+    }
+
+    // 2. Credential 생성
+    console.log('[init] Creating credentials...');
+    const credentialMapping = {};
+
+    // Telegram
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+        const id = await createCredential('Telegram API', 'telegramApi', {
+            accessToken: process.env.TELEGRAM_BOT_TOKEN
+        });
+        if (id) credentialMapping.telegramApi = id;
+    }
+
+    // AWS
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+        const id = await createCredential('AWS', 'aws', {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            region: process.env.AWS_REGION || 'ap-northeast-2'
+        });
+        if (id) credentialMapping.aws = id;
+    }
+
+    // GCP (참고용 - JWT 방식 사용으로 실제로는 사용 안 함)
     const gcpKeyPath = '/credentials/gcp-key.json';
     if (fs.existsSync(gcpKeyPath)) {
         try {
             const gcpKey = JSON.parse(fs.readFileSync(gcpKeyPath, 'utf8'));
-            credentials.push({
-                name: 'Google API',
-                type: 'googleApi',
-                data: {
-                    email: gcpKey.client_email,
-                    privateKey: gcpKey.private_key
-                }
+            await createCredential('Google API', 'googleApi', {
+                email: gcpKey.client_email,
+                privateKey: gcpKey.private_key,
+                scope: 'https://www.googleapis.com/auth/cloud-platform'
             });
-            console.log('[init] Found GCP key file');
         } catch (e) {
             console.log('[init] Warning: Failed to parse GCP key file:', e.message);
         }
     }
 
-    // 2. AWS Credential (from environment variables)
-    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-        credentials.push({
-            name: 'AWS',
-            type: 'aws',
-            data: {
-                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-                region: process.env.AWS_REGION || 'ap-northeast-2'
-            }
-        });
-        console.log('[init] Found AWS credentials in env');
-    }
-
-    // 3. Telegram Credential (from environment variables)
-    if (process.env.TELEGRAM_BOT_TOKEN) {
-        credentials.push({
-            name: 'Telegram API',
-            type: 'telegramApi',
-            data: {
-                accessToken: process.env.TELEGRAM_BOT_TOKEN
-            }
-        });
-        console.log('[init] Found Telegram token in env');
-    }
-
-    // 4. Instagram/Facebook Credential (from environment variables)
+    // Instagram
     if (process.env.INSTAGRAM_ACCESS_TOKEN) {
-        credentials.push({
-            name: 'Facebook Graph API',
-            type: 'facebookGraphApi',
-            data: {
-                accessToken: process.env.INSTAGRAM_ACCESS_TOKEN
-            }
+        await createCredential('Facebook Graph API', 'facebookGraphApi', {
+            accessToken: process.env.INSTAGRAM_ACCESS_TOKEN
         });
-        console.log('[init] Found Instagram token in env');
     }
 
-    if (credentials.length === 0) {
-        console.log('[init] No credentials to create');
-        return;
+    // 3. 워크플로우 확인 및 credential 연결
+    const workflow = await getWorkflowByName('Upvy AI Content Generator');
+    if (workflow) {
+        console.log(`[init] Found workflow (id: ${workflow.id}), linking credentials...`);
+        await updateWorkflowCredentials(workflow.id, credentialMapping);
+    } else {
+        console.log('[init] Workflow not found, will be imported by CLI');
     }
 
-    // 먼저 로그인
-    const loggedIn = await login();
-    if (!loggedIn) {
-        console.log('[init] ✗ Cannot create credentials without login (Owner setup may be required)');
-        console.log('[init] → Please complete Owner setup in n8n UI first, then restart');
-        process.exit(1);
-    }
-
-    console.log(`[init] Creating ${credentials.length} credential(s)...`);
-
-    for (const cred of credentials) {
-        await createCredential(cred.name, cred.type, cred.data);
-    }
-
-    console.log('[init] ✓ Credentials setup completed');
-    process.exit(0);
+    console.log('[init] ✓ Initialization completed');
 }
 
 main().catch(e => {
-    console.error('[init] ✗ Credential setup failed:', e.message);
+    console.error('[init] ✗ Init failed:', e.message);
     process.exit(1);
 });
 NODEJS_SCRIPT
@@ -235,52 +295,24 @@ init_background() {
             sleep 5
         done
 
-        # Credential 생성 (성공할 때까지 재시도 가능)
-        if [ ! -f "$CRED_MARKER_FILE" ]; then
-            if create_credentials; then
-                touch "$CRED_MARKER_FILE"
+        # 워크플로우 먼저 import (CLI로)
+        if [ -f "$WORKFLOW_FILE" ] && [ ! -f "$MARKER_FILE" ]; then
+            echo "[init] Importing workflow from $WORKFLOW_FILE..."
+            if /usr/local/bin/n8n import:workflow --input="$WORKFLOW_FILE" 2>&1; then
+                touch "$MARKER_FILE"
+                echo "[init] ✓ Workflow imported"
+            else
+                echo "[init] Warning: Failed to import workflow"
             fi
-            # 실패해도 marker 파일 생성 안 함 → 재시작 시 재시도
-        else
-            echo "[init] Credentials already configured"
         fi
 
-        # 워크플로우 import (API로 중복 체크)
-        if [ -f "$WORKFLOW_FILE" ]; then
-            # 이미 같은 이름의 workflow가 있는지 API로 확인
-            WORKFLOW_EXISTS=$(node -e "
-                const http = require('http');
-                const options = {
-                    hostname: 'localhost',
-                    port: 5678,
-                    path: '/rest/workflows',
-                    headers: { 'Cookie': '$(cat /tmp/n8n-cookie 2>/dev/null || echo "")' }
-                };
-                http.get(options, res => {
-                    let data = '';
-                    res.on('data', chunk => data += chunk);
-                    res.on('end', () => {
-                        try {
-                            const workflows = JSON.parse(data).data || [];
-                            const exists = workflows.some(w => w.name === 'Upvy AI Content Generator');
-                            console.log(exists ? 'yes' : 'no');
-                        } catch(e) { console.log('no'); }
-                    });
-                }).on('error', () => console.log('no'));
-            " 2>/dev/null)
-
-            if [ "$WORKFLOW_EXISTS" = "yes" ]; then
-                echo "[init] Workflow 'Upvy AI Content Generator' already exists, skipping import"
-                touch "$MARKER_FILE"
-            else
-                echo "[init] Importing workflow from $WORKFLOW_FILE..."
-                if /usr/local/bin/n8n import:workflow --input="$WORKFLOW_FILE" 2>&1; then
-                    touch "$MARKER_FILE"
-                    echo "[init] Workflow imported successfully!"
-                else
-                    echo "[init] Warning: Failed to import workflow (may need owner setup first)"
-                fi
+        # Credential 생성 및 워크플로우 연결
+        if [ ! -f "$CRED_MARKER_FILE" ]; then
+            if run_init; then
+                touch "$CRED_MARKER_FILE"
             fi
+        else
+            echo "[init] Credentials already configured"
         fi
     ) &
 }
