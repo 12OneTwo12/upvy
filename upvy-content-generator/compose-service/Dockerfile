@@ -14,7 +14,6 @@ WORKDIR /app
 
 # Gradle 캐싱을 위해 의존성 파일만 먼저 복사
 COPY build.gradle.kts settings.gradle.kts ./
-COPY gradle ./gradle
 
 # 의존성 다운로드 (캐싱)
 RUN gradle dependencies --no-daemon || true
@@ -26,15 +25,16 @@ RUN gradle bootJar --no-daemon -x test
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime
 # -----------------------------------------------------------------------------
-FROM eclipse-temurin:17-jre-alpine
+# ARM64 (Apple Silicon) 호환을 위해 Debian 기반 이미지 사용
+FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
 # FFmpeg 설치 (영상 합성 핵심)
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/lib/apt/lists/*
 
 # 임시 디렉토리 생성
 RUN mkdir -p /tmp/compose && chmod 777 /tmp/compose
@@ -43,8 +43,9 @@ RUN mkdir -p /tmp/compose && chmod 777 /tmp/compose
 COPY --from=builder /app/build/libs/*.jar app.jar
 
 # 비루트 사용자로 실행 (보안)
-RUN addgroup -g 1000 appgroup && \
-    adduser -u 1000 -G appgroup -D appuser && \
+# GID/UID 1000이 이미 존재할 수 있으므로 다른 ID 사용
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup appuser && \
     chown -R appuser:appgroup /app /tmp/compose
 
 USER appuser
