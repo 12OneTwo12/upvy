@@ -1,0 +1,135 @@
+version: "3.8"
+
+# =============================================================================
+# Upvy AI Content Generator
+# =============================================================================
+# n8n 기반 교육용 숏폼 콘텐츠 자동 생성 파이프라인
+#
+# 구성요소:
+# - n8n: 워크플로우 오케스트레이터 (모든 API 직접 호출)
+# - compose-service: FFmpeg 영상 합성 서비스
+#
+# 사용법:
+#   docker-compose up -d
+#   n8n UI: http://localhost:5678
+#   Compose API: http://localhost:8084
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # n8n - 워크플로우 오케스트레이터
+  # ===========================================================================
+  # 모든 AI API (Vertex AI, TTS, SNS)를 HTTP Request 노드로 직접 호출
+  # 5단계 파이프라인: TOPIC → SCRIPT+QUIZ → VISUAL+AUDIO → COMPOSE → PUBLISH
+  # ===========================================================================
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: upvy-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # 기본 설정
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
+      - GENERIC_TIMEZONE=Asia/Seoul
+
+      # 인증 설정
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:?N8N_PASSWORD is required}
+
+      # 실행 설정
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+      - EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168  # 7일 보관
+
+      # 로깅
+      - N8N_LOG_LEVEL=${N8N_LOG_LEVEL:-info}
+      - N8N_LOG_OUTPUT=console
+
+      # GCP 인증 (Vertex AI, TTS, GCS)
+      - GOOGLE_APPLICATION_CREDENTIALS=/credentials/gcp-key.json
+
+    volumes:
+      # n8n 데이터 영속화 (워크플로우, 크레덴셜 등)
+      - n8n_data:/home/node/.n8n
+      # GCP 서비스 계정 키
+      - ./credentials:/credentials:ro
+    networks:
+      - upvy-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ===========================================================================
+  # Compose Service - FFmpeg 영상 합성
+  # ===========================================================================
+  # n8n에서 바이너리 실행 불가 → 유일하게 별도 서비스 필요
+  # 비주얼 클립 + 오디오 + 자막 → 최종 숏폼 영상 합성
+  # ===========================================================================
+  compose-service:
+    build:
+      context: ./compose-service
+      dockerfile: Dockerfile
+    container_name: upvy-compose
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      # Spring 설정
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - SERVER_PORT=8084
+
+      # GCP 설정
+      - GOOGLE_APPLICATION_CREDENTIALS=/credentials/gcp-key.json
+      - GCS_BUCKET=${GCS_BUCKET:-upvy-ai-content}
+      - GCS_PROJECT_ID=${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}
+
+      # FFmpeg 설정
+      - FFMPEG_PATH=/usr/bin/ffmpeg
+      - FFPROBE_PATH=/usr/bin/ffprobe
+      - TEMP_DIR=/tmp/compose
+
+      # 로깅
+      - LOGGING_LEVEL_ROOT=${COMPOSE_LOG_LEVEL:-INFO}
+    volumes:
+      # GCP 서비스 계정 키
+      - ./credentials:/credentials:ro
+      # 임시 파일 (영상 합성 작업용)
+      - compose_temp:/tmp/compose
+    networks:
+      - upvy-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - n8n
+
+# =============================================================================
+# 네트워크
+# =============================================================================
+networks:
+  upvy-network:
+    driver: bridge
+
+# =============================================================================
+# 볼륨
+# =============================================================================
+volumes:
+  # n8n 데이터 (워크플로우, 실행 이력, 크레덴셜)
+  n8n_data:
+    driver: local
+  # Compose Service 임시 파일
+  compose_temp:
+    driver: local

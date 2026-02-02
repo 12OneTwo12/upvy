@@ -1,0 +1,106 @@
+# =============================================================================
+# Upvy Compose Service - Application Configuration
+# =============================================================================
+
+server:
+  port: ${SERVER_PORT:8084}
+  shutdown: graceful
+
+spring:
+  application:
+    name: compose-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+# =============================================================================
+# GCP 설정
+# =============================================================================
+gcp:
+  project-id: ${GCS_PROJECT_ID:}
+  storage:
+    bucket: ${GCS_BUCKET:upvy-ai-content}
+    # 생성된 파일 저장 경로
+    output-prefix: generated/
+
+# =============================================================================
+# FFmpeg 설정
+# =============================================================================
+ffmpeg:
+  path: ${FFMPEG_PATH:/usr/bin/ffmpeg}
+  ffprobe-path: ${FFPROBE_PATH:/usr/bin/ffprobe}
+  # 임시 파일 디렉토리
+  temp-dir: ${TEMP_DIR:/tmp/compose}
+  # 출력 설정
+  output:
+    # 숏폼 최적화: 1080x1920 (9:16), 30fps, H.264
+    width: 1080
+    height: 1920
+    fps: 30
+    video-bitrate: 4M
+    audio-bitrate: 128k
+    codec: libx264
+    preset: medium
+    # 최대 영상 길이 (초)
+    max-duration: 90
+
+# =============================================================================
+# 자막 설정
+# =============================================================================
+subtitle:
+  # 기본 폰트 (컨테이너에 설치 필요)
+  font-family: "Pretendard"
+  font-size: 48
+  # 위치 (화면 하단 20%)
+  margin-bottom: 100
+  # 스타일
+  primary-color: "&HFFFFFF"  # 흰색
+  outline-color: "&H000000"  # 검정 외곽선
+  outline-width: 2
+
+# =============================================================================
+# 브랜드 설정
+# =============================================================================
+brand:
+  # 워터마크
+  watermark:
+    enabled: true
+    image-path: classpath:watermark/upvy-logo.png
+    position: top-right
+    opacity: 0.7
+    margin: 20
+
+# =============================================================================
+# Actuator (Health Check)
+# =============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# =============================================================================
+# 로깅
+# =============================================================================
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    me.onetwo.upvy: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# =============================================================================
+# 로컬 개발 프로필
+# =============================================================================
+spring:
+  config:
+    activate:
+      on-profile: local
+
+logging:
+  level:
+    root: DEBUG
+    me.onetwo.upvy: DEBUG
