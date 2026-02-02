@@ -277,7 +277,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
+        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.5-flash-lite:generateContent",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -289,7 +289,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 교육 콘텐츠 기획자입니다.\\n\\n[검색 기반 분석 요청]\\n1. \\\"{{ $json.category }}\\\" 분야에서 최근 인기 있는 교육 주제 검색\\n2. 숏폼 영상(30-60초)으로 만들기 좋은 주제 3개 제안\\n3. 각 주제의 바이럴 가능성과 교육적 가치 평가\\n\\n난이도: {{ $json.difficulty }}\\n언어: {{ $json.language }}\\n\\n[출력 형식 - JSON만 출력]\\n{\\n  \\\"topics\\\": [\\n    {\\n      \\\"title\\\": \\\"주제 제목\\\",\\n      \\\"hook\\\": \\\"시청자 관심 끄는 첫 문장\\\",\\n      \\\"keyPoints\\\": [\\\"핵심1\\\", \\\"핵심2\\\", \\\"핵심3\\\"],\\n      \\\"viralScore\\\": 85,\\n      \\\"educationalScore\\\": 90\\n    }\\n  ]\\n}\"\n    }]\n  }],\n  \"tools\": [{\n    \"googleSearch\": {}\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 2048\n  }\n}",
+        "jsonBody": "={\n  \"contents\": [{\"role\": \"user\",\n    \"parts\": [{\n      \"text\": \"당신은 교육 콘텐츠 기획자입니다.\\n\\n[검색 기반 분석 요청]\\n1. \\\"{{ $json.category }}\\\" 분야에서 최근 인기 있는 교육 주제 검색\\n2. 숏폼 영상(30-60초)으로 만들기 좋은 주제 3개 제안\\n3. 각 주제의 바이럴 가능성과 교육적 가치 평가\\n\\n난이도: {{ $json.difficulty }}\\n언어: {{ $json.language }}\\n\\n[출력 형식 - JSON만 출력]\\n{\\n  \\\"topics\\\": [\\n    {\\n      \\\"title\\\": \\\"주제 제목\\\",\\n      \\\"hook\\\": \\\"시청자 관심 끄는 첫 문장\\\",\\n      \\\"keyPoints\\\": [\\\"핵심1\\\", \\\"핵심2\\\", \\\"핵심3\\\"],\\n      \\\"viralScore\\\": 85,\\n      \\\"educationalScore\\\": 90\\n    }\\n  ]\\n}\"\n    }]\n  }],\n  \"tools\": [{\n    \"googleSearch\": {}\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 2048\n  }\n}",
         "options": {}
       },
       "id": "topic-select",
@@ -317,7 +317,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
+        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.5-flash-lite:generateContent",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -329,7 +329,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 교육용 숏폼 콘텐츠 전문 작가입니다.\\n30-60초 분량의 세로형(9:16) 영상 스크립트와 퀴즈를 작성합니다.\\n\\n=== 스크립트 규칙 ===\\n1. Hook (0-5초): 시청자 관심 끄는 질문/충격적 사실\\n2. Core (5-50초): 핵심 내용 전달 (3개 이하 포인트)\\n3. CTA (50-60초): 행동 유도\\n\\n형식 규칙:\\n- 한 문장은 15단어 이내\\n- 전문용어는 즉시 설명\\n- 친근한 말투\\n\\n=== 퀴즈 규칙 ===\\n1. 스크립트의 핵심 개념 확인 문제 1개\\n2. 4개 선택지 (정답 1개 + 오답 3개)\\n\\n[주제 정보]\\n제목: {{ $json.selectedTopic.title }}\\nHook: {{ $json.selectedTopic.hook }}\\n핵심: {{ $json.selectedTopic.keyPoints.join(', ') }}\\n난이도: {{ $json.difficulty }}\\n언어: {{ $json.language }}\\n\\n[출력 형식 - JSON만 출력]\\n{\\n  \\\"script\\\": {\\n    \\\"title\\\": \\\"영상 제목\\\",\\n    \\\"description\\\": \\\"영상 설명 (200자)\\\",\\n    \\\"totalDuration\\\": 60,\\n    \\\"sections\\\": [\\n      {\\n        \\\"type\\\": \\\"HOOK\\\",\\n        \\\"startTime\\\": 0,\\n        \\\"endTime\\\": 5,\\n        \\\"narration\\\": \\\"나레이션 텍스트\\\",\\n        \\\"visualCue\\\": \\\"비주얼 설명\\\"\\n      }\\n    ],\\n    \\\"tags\\\": [\\\"태그1\\\", \\\"태그2\\\"]\\n  },\\n  \\\"quiz\\\": {\\n    \\\"question\\\": \\\"퀴즈 질문\\\",\\n    \\\"options\\\": [\\n      {\\\"text\\\": \\\"선택지1\\\", \\\"isCorrect\\\": true},\\n      {\\\"text\\\": \\\"선택지2\\\", \\\"isCorrect\\\": false},\\n      {\\\"text\\\": \\\"선택지3\\\", \\\"isCorrect\\\": false},\\n      {\\\"text\\\": \\\"선택지4\\\", \\\"isCorrect\\\": false}\\n    ]\\n  },\\n  \\\"qualityCheck\\\": {\\n    \\\"verdict\\\": \\\"PASS\\\",\\n    \\\"reason\\\": \\\"품질 검토 이유\\\"\\n  }\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 4096\n  }\n}",
+        "jsonBody": "={\n  \"contents\": [{\"role\": \"user\",\n    \"parts\": [{\n      \"text\": \"당신은 교육용 숏폼 콘텐츠 전문 작가입니다.\\n30-60초 분량의 세로형(9:16) 영상 스크립트와 퀴즈를 작성합니다.\\n\\n=== 스크립트 규칙 ===\\n1. Hook (0-5초): 시청자 관심 끄는 질문/충격적 사실\\n2. Core (5-50초): 핵심 내용 전달 (3개 이하 포인트)\\n3. CTA (50-60초): 행동 유도\\n\\n형식 규칙:\\n- 한 문장은 15단어 이내\\n- 전문용어는 즉시 설명\\n- 친근한 말투\\n\\n=== 퀴즈 규칙 ===\\n1. 스크립트의 핵심 개념 확인 문제 1개\\n2. 4개 선택지 (정답 1개 + 오답 3개)\\n\\n[주제 정보]\\n제목: {{ $json.selectedTopic.title }}\\nHook: {{ $json.selectedTopic.hook }}\\n핵심: {{ $json.selectedTopic.keyPoints.join(', ') }}\\n난이도: {{ $json.difficulty }}\\n언어: {{ $json.language }}\\n\\n[출력 형식 - JSON만 출력]\\n{\\n  \\\"script\\\": {\\n    \\\"title\\\": \\\"영상 제목\\\",\\n    \\\"description\\\": \\\"영상 설명 (200자)\\\",\\n    \\\"totalDuration\\\": 60,\\n    \\\"sections\\\": [\\n      {\\n        \\\"type\\\": \\\"HOOK\\\",\\n        \\\"startTime\\\": 0,\\n        \\\"endTime\\\": 5,\\n        \\\"narration\\\": \\\"나레이션 텍스트\\\",\\n        \\\"visualCue\\\": \\\"비주얼 설명\\\"\\n      }\\n    ],\\n    \\\"tags\\\": [\\\"태그1\\\", \\\"태그2\\\"]\\n  },\\n  \\\"quiz\\\": {\\n    \\\"question\\\": \\\"퀴즈 질문\\\",\\n    \\\"options\\\": [\\n      {\\\"text\\\": \\\"선택지1\\\", \\\"isCorrect\\\": true},\\n      {\\\"text\\\": \\\"선택지2\\\", \\\"isCorrect\\\": false},\\n      {\\\"text\\\": \\\"선택지3\\\", \\\"isCorrect\\\": false},\\n      {\\\"text\\\": \\\"선택지4\\\", \\\"isCorrect\\\": false}\\n    ]\\n  },\\n  \\\"qualityCheck\\\": {\\n    \\\"verdict\\\": \\\"PASS\\\",\\n    \\\"reason\\\": \\\"품질 검토 이유\\\"\\n  }\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 4096\n  }\n}",
         "options": {}
       },
       "id": "script-quiz-gen",
