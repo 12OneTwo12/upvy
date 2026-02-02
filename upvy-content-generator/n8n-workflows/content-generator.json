@@ -622,9 +622,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "{{ $env.UPVY_API_URL }}/api/v1/contents",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "={{ $env.UPVY_API_URL }}/api/v1/contents",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"title\": \"{{ $json.script.title }}\",\n  \"description\": \"{{ $json.script.description }}\",\n  \"category\": \"{{ $json.category }}\",\n  \"tags\": {{ JSON.stringify($json.script.tags) }},\n  \"language\": \"{{ $json.language }}\",\n  \"videoUrl\": \"{{ $json.videoUrl }}\",\n  \"thumbnailUrl\": \"{{ $json.thumbnailUrl }}\",\n  \"duration\": {{ $json.totalDuration || 60 }},\n  \"width\": 1080,\n  \"height\": 1920,\n  \"quiz\": {{ JSON.stringify($json.quiz) }}\n}",
@@ -643,7 +641,6 @@
       "parameters": {
         "method": "POST",
         "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
-        "authentication": "oAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"snippet\": {\n    \"title\": \"{{ $json.script.title }}\",\n    \"description\": \"{{ $json.script.description }}\\n\\n#Shorts #교육 #{{ $json.category }}\",\n    \"tags\": {{ JSON.stringify([...$json.script.tags, 'Shorts', '교육']) }},\n    \"categoryId\": \"27\",\n    \"defaultLanguage\": \"{{ $json.language }}\"\n  },\n  \"status\": {\n    \"privacyStatus\": \"public\",\n    \"selfDeclaredMadeForKids\": false\n  }\n}",
@@ -661,9 +658,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://graph.facebook.com/v18.0/{{ $env.INSTAGRAM_USER_ID }}/media",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpQueryAuth",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.INSTAGRAM_USER_ID }}/media",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"media_type\": \"REELS\",\n  \"video_url\": \"{{ $json.videoUrl }}\",\n  \"caption\": \"{{ $json.script.title }}\\n\\n{{ $json.script.description }}\\n\\n#{{ $json.script.tags.join(' #') }}\"\n}",
@@ -909,7 +904,7 @@
             "index": 0
           },
           {
-            "node": "4b. TTS (Google Cloud)",
+            "node": "4b. TTS (Gemini TTS)",
             "type": "main",
             "index": 0
           }
@@ -934,7 +929,7 @@
         ]
       ]
     },
-    "4b. TTS (Google Cloud)": {
+    "4b. TTS (Gemini TTS)": {
       "main": [
         [
           {
