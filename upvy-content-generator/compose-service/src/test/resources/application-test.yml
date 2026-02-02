@@ -6,12 +6,10 @@ spring:
   config:
     activate:
       on-profile: test
-
-gcp:
-  project-id: test-project
-  storage:
-    bucket: test-bucket
-    output-prefix: test/
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
 
 ffmpeg:
   path: /usr/bin/ffmpeg

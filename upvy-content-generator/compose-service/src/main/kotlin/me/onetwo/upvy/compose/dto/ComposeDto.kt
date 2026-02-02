@@ -3,79 +3,6 @@ package me.onetwo.upvy.compose.dto
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
-import jakarta.validation.constraints.Positive
-
-/**
- * 영상 합성 요청 DTO
- *
- * n8n에서 COMPOSE 단계에 호출하는 API 요청 형식
- */
-data class ComposeRequest(
-    /**
-     * 비주얼 클립 목록 (순서대로 연결)
-     */
-    @field:NotEmpty(message = "clips는 비어있을 수 없습니다")
-    @field:Valid
-    val clips: List<ClipInfo>,
-
-    /**
-     * 오디오 정보 (나레이션)
-     */
-    @field:Valid
-    val audio: AudioInfo,
-
-    /**
-     * 자막 목록
-     */
-    @field:Valid
-    val subtitles: List<SubtitleInfo> = emptyList(),
-
-    /**
-     * 메타데이터 (제목, 워터마크 등)
-     */
-    @field:Valid
-    val metadata: ComposeMetadata,
-
-    /**
-     * 출력 설정
-     */
-    @field:Valid
-    val output: OutputConfig
-)
-
-/**
- * 클립 정보
- */
-data class ClipInfo(
-    /**
-     * GCS URI (gs://bucket/path/to/clip.mp4)
-     */
-    @field:NotBlank(message = "gcsUri는 필수입니다")
-    val gcsUri: String,
-
-    /**
-     * 클립 시작 시간 (초)
-     */
-    @field:Positive
-    val startTime: Double = 0.0,
-
-    /**
-     * 클립 길이 (초)
-     */
-    @field:Positive
-    val duration: Double
-)
-
-/**
- * 오디오 정보
- */
-data class AudioInfo(
-    /**
-     * GCS URI (gs://bucket/path/to/audio.mp3)
-     */
-    @field:NotBlank(message = "gcsUri는 필수입니다")
-    val gcsUri: String
-)
 
 /**
  * 자막 정보
@@ -99,7 +26,7 @@ data class SubtitleInfo(
 )
 
 /**
- * 합성 메타데이터
+ * 합성 메타데이터 (JSON 파트로 전달)
  */
 data class ComposeMetadata(
     /**
@@ -115,38 +42,25 @@ data class ComposeMetadata(
     /**
      * 콘텐츠 언어 (ko, en, ja)
      */
-    val language: String = "ko"
-)
+    val language: String = "ko",
 
-/**
- * 출력 설정
- */
-data class OutputConfig(
     /**
-     * 출력 GCS URI 접두사 (gs://bucket/output/)
+     * 자막 목록
      */
-    @field:NotBlank(message = "gcsUri는 필수입니다")
-    val gcsUri: String
+    @field:Valid
+    val subtitles: List<SubtitleInfo> = emptyList()
 )
 
 /**
  * 영상 합성 응답 DTO
+ *
+ * 바이너리 응답과 함께 헤더로 전달되는 메타데이터
  */
 data class ComposeResponse(
     /**
      * 합성 작업 ID
      */
     val composeId: String,
-
-    /**
-     * 최종 영상 GCS URI
-     */
-    val videoGcsUri: String,
-
-    /**
-     * 썸네일 GCS URI
-     */
-    val thumbnailGcsUri: String,
 
     /**
      * 영상 길이 (초)

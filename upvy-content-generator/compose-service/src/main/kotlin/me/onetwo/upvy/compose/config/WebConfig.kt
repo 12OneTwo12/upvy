@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.multipart.MaxUploadSizeExceededException
 import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
@@ -69,17 +70,17 @@ class GlobalExceptionHandler {
     }
 
     /**
-     * GCS 에러
+     * 파일 업로드 크기 초과
      */
-    @ExceptionHandler(GcsException::class)
-    fun handleGcsException(e: GcsException): ResponseEntity<ErrorResponse> {
-        logger.error(e) { "GCS 에러: ${e.message}" }
+    @ExceptionHandler(MaxUploadSizeExceededException::class)
+    fun handleMaxUploadSizeExceeded(e: MaxUploadSizeExceededException): ResponseEntity<ErrorResponse> {
+        logger.warn { "파일 크기 초과: ${e.message}" }
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(
             ErrorResponse(
-                status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                error = "Storage Error",
-                message = e.message ?: "파일 저장소 오류가 발생했습니다",
+                status = HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                error = "File Too Large",
+                message = "업로드 파일 크기가 제한을 초과했습니다",
                 timestamp = Instant.now().toString()
             )
         )
@@ -117,8 +118,3 @@ data class ErrorResponse(
  * FFmpeg 예외
  */
 class FFmpegException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
-
-/**
- * GCS 예외
- */
-class GcsException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)

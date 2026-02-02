@@ -27,11 +27,6 @@ dependencies {
     // Kotlin
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
-
-    // GCP (Google Cloud Storage)
-    implementation("com.google.cloud:google-cloud-storage:2.36.1")
 
     // 로깅
     implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")

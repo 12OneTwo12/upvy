@@ -1,6 +1,9 @@
 # =============================================================================
 # Upvy Compose Service - Application Configuration
 # =============================================================================
+# 순수 FFmpeg 영상 합성 서비스
+# 스토리지 의존성 없이 Multipart 파일 → 합성 → Binary 반환
+# =============================================================================
 
 server:
   port: ${SERVER_PORT:8084}
@@ -11,16 +14,14 @@ spring:
     name: compose-service
   lifecycle:
     timeout-per-shutdown-phase: 30s
-
-# =============================================================================
-# GCP 설정
-# =============================================================================
-gcp:
-  project-id: ${GCS_PROJECT_ID:}
-  storage:
-    bucket: ${GCS_BUCKET:upvy-ai-content}
-    # 생성된 파일 저장 경로
-    output-prefix: generated/
+  servlet:
+    multipart:
+      # 최대 파일 크기 (클립 1개당)
+      max-file-size: 200MB
+      # 최대 요청 크기 (전체)
+      max-request-size: 500MB
+      # 임시 파일 경로
+      location: ${TEMP_DIR:/tmp/compose}
 
 # =============================================================================
 # FFmpeg 설정

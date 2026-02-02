@@ -6,8 +6,12 @@ version: "3.8"
 # n8n 기반 교육용 숏폼 콘텐츠 자동 생성 파이프라인
 #
 # 구성요소:
-# - n8n: 워크플로우 오케스트레이터 (모든 API 직접 호출)
-# - compose-service: FFmpeg 영상 합성 서비스
+# - n8n: 워크플로우 오케스트레이터 (Vertex AI, TTS, S3 직접 호출)
+# - compose-service: FFmpeg 영상 합성 서비스 (순수 처리만)
+#
+# 아키텍처:
+# n8n이 모든 외부 API/스토리지를 직접 처리
+# compose-service는 Binary 파일 수신 → FFmpeg 합성 → Binary 반환만 담당
 #
 # 사용법:
 #   docker-compose up -d
@@ -19,7 +23,8 @@ services:
   # ===========================================================================
   # n8n - 워크플로우 오케스트레이터
   # ===========================================================================
-  # 모든 AI API (Vertex AI, TTS, SNS)를 HTTP Request 노드로 직접 호출
+  # 모든 AI API (Vertex AI, TTS)를 HTTP Request 노드로 직접 호출
+  # AWS S3 노드로 스토리지 처리
   # 5단계 파이프라인: TOPIC → SCRIPT+QUIZ → VISUAL+AUDIO → COMPOSE → PUBLISH
   # ===========================================================================
   n8n:
@@ -52,13 +57,13 @@ services:
       - N8N_LOG_LEVEL=${N8N_LOG_LEVEL:-info}
       - N8N_LOG_OUTPUT=console
 
-      # GCP 인증 (Vertex AI, TTS, GCS)
+      # GCP 인증 (Vertex AI, TTS)
       - GOOGLE_APPLICATION_CREDENTIALS=/credentials/gcp-key.json
 
     volumes:
       # n8n 데이터 영속화 (워크플로우, 크레덴셜 등)
       - n8n_data:/home/node/.n8n
-      # GCP 서비스 계정 키
+      # GCP 서비스 계정 키 (Vertex AI, TTS용)
       - ./credentials:/credentials:ro
     networks:
       - upvy-network
@@ -72,8 +77,10 @@ services:
   # ===========================================================================
   # Compose Service - FFmpeg 영상 합성
   # ===========================================================================
-  # n8n에서 바이너리 실행 불가 → 유일하게 별도 서비스 필요
-  # 비주얼 클립 + 오디오 + 자막 → 최종 숏폼 영상 합성
+  # 순수 FFmpeg 처리 서비스 (스토리지 의존성 없음)
+  # 입력: Multipart (clips + audio + metadata JSON)
+  # 출력: 합성된 영상 Binary
+  # n8n이 S3 노드로 업로드 처리
   # ===========================================================================
   compose-service:
     build:
@@ -88,11 +95,6 @@ services:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
       - SERVER_PORT=8084
 
-      # GCP 설정
-      - GOOGLE_APPLICATION_CREDENTIALS=/credentials/gcp-key.json
-      - GCS_BUCKET=${GCS_BUCKET:-upvy-ai-content}
-      - GCS_PROJECT_ID=${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}
-
       # FFmpeg 설정
       - FFMPEG_PATH=/usr/bin/ffmpeg
       - FFPROBE_PATH=/usr/bin/ffprobe
@@ -101,8 +103,6 @@ services:
       # 로깅
       - LOGGING_LEVEL_ROOT=${COMPOSE_LOG_LEVEL:-INFO}
     volumes:
-      # GCP 서비스 계정 키
-      - ./credentials:/credentials:ro
       # 임시 파일 (영상 합성 작업용)
       - compose_temp:/tmp/compose
     networks:

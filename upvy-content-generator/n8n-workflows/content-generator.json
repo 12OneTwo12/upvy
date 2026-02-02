@@ -5,21 +5,11 @@
       "parameters": {
         "rule": {
           "interval": [
-            {
-              "triggerAtHour": 6
-            },
-            {
-              "triggerAtHour": 9
-            },
-            {
-              "triggerAtHour": 12
-            },
-            {
-              "triggerAtHour": 15
-            },
-            {
-              "triggerAtHour": 18
-            }
+            { "triggerAtHour": 6 },
+            { "triggerAtHour": 9 },
+            { "triggerAtHour": 12 },
+            { "triggerAtHour": 15 },
+            { "triggerAtHour": 18 }
           ]
         }
       },
@@ -28,21 +18,15 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [0, 0],
-      "notes": "영어 콘텐츠: 5개/일 (6,9,12,15,18시)"
+      "notes": "영어 콘텐츠: 5개/일 (6,9,12,15,18시 KST)"
     },
     {
       "parameters": {
         "rule": {
           "interval": [
-            {
-              "triggerAtHour": 7
-            },
-            {
-              "triggerAtHour": 13
-            },
-            {
-              "triggerAtHour": 19
-            }
+            { "triggerAtHour": 7 },
+            { "triggerAtHour": 13 },
+            { "triggerAtHour": 19 }
           ]
         }
       },
@@ -51,21 +35,15 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [0, 200],
-      "notes": "일본어 콘텐츠: 3개/일 (7,13,19시)"
+      "notes": "일본어 콘텐츠: 3개/일 (7,13,19시 KST)"
     },
     {
       "parameters": {
         "rule": {
           "interval": [
-            {
-              "triggerAtHour": 8
-            },
-            {
-              "triggerAtHour": 14
-            },
-            {
-              "triggerAtHour": 20
-            }
+            { "triggerAtHour": 8 },
+            { "triggerAtHour": 14 },
+            { "triggerAtHour": 20 }
           ]
         }
       },
@@ -74,14 +52,12 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [0, 400],
-      "notes": "한국어 콘텐츠: 3개/일 (8,14,20시)"
+      "notes": "한국어 콘텐츠: 3개/일 (8,14,20시 KST)"
     },
     {
       "parameters": {
         "mode": "combine",
-        "mergeByFields": {
-          "values": []
-        },
+        "mergeByFields": { "values": [] },
         "options": {}
       },
       "id": "merge-triggers",
@@ -223,7 +199,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1760, 100],
-      "notes": "Imagen 3로 9:16 이미지 생성"
+      "notes": "Imagen 3로 9:16 이미지 생성 (base64 응답)"
     },
     {
       "parameters": {
@@ -241,55 +217,131 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1760, 300],
-      "notes": "Google Cloud TTS로 나레이션 생성 (병렬)"
+      "notes": "Google Cloud TTS로 나레이션 생성 (base64 응답)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 이미지 생성 응답에서 base64 추출\nconst visualResponse = $('4a. Visual Gen (Imagen 3)').first().json;\nconst imageBase64 = visualResponse.predictions?.[0]?.bytesBase64Encoded;\n\nif (!imageBase64) {\n  throw new Error('이미지 생성 실패: base64 데이터 없음');\n}\n\n// base64를 binary로 변환 (n8n 형식)\nconst imageBinary = Buffer.from(imageBase64, 'base64');\n\nreturn {\n  json: {\n    ...$input.first().json\n  },\n  binary: {\n    image: {\n      data: imageBase64,\n      mimeType: 'image/png',\n      fileName: 'visual.png'\n    }\n  }\n};"
+      },
+      "id": "convert-visual",
+      "name": "Convert Visual to Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 100],
+      "notes": "Imagen 3 base64 응답을 binary로 변환"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TTS 응답에서 base64 추출\nconst audioResponse = $('4b. Audio Gen (TTS)').first().json;\nconst audioBase64 = audioResponse.audioContent;\n\nif (!audioBase64) {\n  throw new Error('오디오 생성 실패: base64 데이터 없음');\n}\n\nreturn {\n  json: {\n    ...$input.first().json\n  },\n  binary: {\n    audio: {\n      data: audioBase64,\n      mimeType: 'audio/mpeg',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
+      },
+      "id": "convert-audio",
+      "name": "Convert Audio to Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 300],
+      "notes": "TTS base64 응답을 binary로 변환"
     },
     {
       "parameters": {
         "mode": "combine",
-        "mergeByFields": {
-          "values": []
-        },
+        "mergeByFields": { "values": [] },
         "options": {}
       },
       "id": "merge-visual-audio",
       "name": "Merge Visual + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [1980, 200]
+      "position": [2200, 200]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://compose-service:8084/api/v1/compose",
+        "url": "http://compose-service:8084/api/v1/compose-with-thumbnail",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"clips\": [{\n    \"gcsUri\": \"{{ $json.visualGcsUri }}\",\n    \"startTime\": 0,\n    \"duration\": {{ $json.script.sections.reduce((sum, s) => sum + (s.endTime - s.startTime), 0) }}\n  }],\n  \"audio\": {\n    \"gcsUri\": \"{{ $json.audioGcsUri }}\"\n  },\n  \"subtitles\": {{ JSON.stringify($json.script.sections.map(s => ({ start: s.startTime, end: s.endTime, text: s.narration }))) }},\n  \"metadata\": {\n    \"title\": \"{{ $json.script.title }}\",\n    \"watermark\": true,\n    \"language\": \"{{ $json.language }}\"\n  },\n  \"output\": {\n    \"gcsUri\": \"gs://{{ $env.GCS_BUCKET }}/generated/{{ $json.jobId }}/\"\n  }\n}",
-        "options": {}
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "clips",
+              "inputDataFieldName": "image"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "audio",
+              "inputDataFieldName": "audio"
+            },
+            {
+              "parameterType": "formData",
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ title: $json.script.title, watermark: true, language: $json.language, subtitles: $json.script.sections.map(s => ({ start: s.startTime, end: s.endTime, text: s.narration })) }) }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
       },
       "id": "compose",
       "name": "5. Compose (FFmpeg)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2200, 200],
-      "notes": "FFmpeg로 영상 합성 (compose-service)"
+      "position": [2420, 200],
+      "notes": "compose-service에 multipart 전송, ZIP 응답 (video + thumbnail)"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "{{ $env.UPVY_API_URL }}/api/v1/contents/upload-url",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"contentType\": \"VIDEO\",\n  \"fileName\": \"{{ $json.jobId }}.mp4\",\n  \"fileSize\": {{ $json.fileSize }}\n}",
-        "options": {}
+        "operation": "upload",
+        "bucketName": "={{ $env.S3_BUCKET }}",
+        "fileName": "=generated/{{ $json.jobId }}/final.mp4",
+        "binaryPropertyName": "data"
       },
-      "id": "upvy-upload-url",
-      "name": "6a. Upvy - Get Upload URL",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2420, 0],
-      "notes": "Upvy 업로드 URL 요청"
+      "id": "s3-upload-video",
+      "name": "S3 Upload Video",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [2640, 100],
+      "credentials": {
+        "aws": {
+          "id": "aws-credentials",
+          "name": "AWS Credentials"
+        }
+      },
+      "notes": "n8n AWS S3 노드로 최종 영상 업로드"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{ $env.S3_BUCKET }}",
+        "fileName": "=generated/{{ $json.jobId }}/thumbnail.jpg",
+        "binaryPropertyName": "thumbnail"
+      },
+      "id": "s3-upload-thumbnail",
+      "name": "S3 Upload Thumbnail",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [2640, 300],
+      "credentials": {
+        "aws": {
+          "id": "aws-credentials",
+          "name": "AWS Credentials"
+        }
+      },
+      "notes": "n8n AWS S3 노드로 썸네일 업로드"
+    },
+    {
+      "parameters": {
+        "jsCode": "// S3 업로드 결과 처리\nconst videoUpload = $('S3 Upload Video').first().json;\nconst thumbnailUpload = $('S3 Upload Thumbnail').first().json;\n\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\n// 퍼블릭 URL 생성\nconst videoUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/generated/${$json.jobId}/final.mp4`;\nconst thumbnailUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/generated/${$json.jobId}/thumbnail.jpg`;\n\nreturn {\n  json: {\n    ...$json,\n    videoUrl,\n    thumbnailUrl,\n    s3Key: `generated/${$json.jobId}/final.mp4`,\n    thumbnailS3Key: `generated/${$json.jobId}/thumbnail.jpg`\n  }\n};"
+      },
+      "id": "set-s3-urls",
+      "name": "Set S3 URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, 200]
     },
     {
       "parameters": {
@@ -299,14 +351,14 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contentId\": \"{{ $json.contentId }}\",\n  \"title\": \"{{ $json.script.title }}\",\n  \"description\": \"{{ $json.script.description }}\",\n  \"category\": \"{{ $json.category }}\",\n  \"tags\": {{ JSON.stringify($json.script.tags) }},\n  \"language\": \"{{ $json.language }}\",\n  \"thumbnailUrl\": \"{{ $json.thumbnailGcsUri }}\",\n  \"duration\": {{ $json.duration }},\n  \"width\": 1080,\n  \"height\": 1920,\n  \"quiz\": {{ JSON.stringify($json.quiz) }}\n}",
+        "jsonBody": "={\n  \"title\": \"{{ $json.script.title }}\",\n  \"description\": \"{{ $json.script.description }}\",\n  \"category\": \"{{ $json.category }}\",\n  \"tags\": {{ JSON.stringify($json.script.tags) }},\n  \"language\": \"{{ $json.language }}\",\n  \"videoUrl\": \"{{ $json.videoUrl }}\",\n  \"thumbnailUrl\": \"{{ $json.thumbnailUrl }}\",\n  \"duration\": {{ $json.duration || 60 }},\n  \"width\": 1080,\n  \"height\": 1920,\n  \"quiz\": {{ JSON.stringify($json.quiz) }}\n}",
         "options": {}
       },
       "id": "upvy-publish",
-      "name": "6b. Upvy - Publish",
+      "name": "6a. Upvy Publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2640, 0],
+      "position": [3080, 0],
       "notes": "Upvy에 콘텐츠+퀴즈 게시"
     },
     {
@@ -320,10 +372,10 @@
         "options": {}
       },
       "id": "youtube-publish",
-      "name": "6c. YouTube Shorts",
+      "name": "6b. YouTube Shorts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2420, 200],
+      "position": [3080, 200],
       "notes": "YouTube Shorts 업로드"
     },
     {
@@ -334,241 +386,120 @@
         "genericAuthType": "httpQueryAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"media_type\": \"REELS\",\n  \"video_url\": \"{{ $json.publicVideoUrl }}\",\n  \"caption\": \"{{ $json.script.title }}\\n\\n{{ $json.script.description }}\\n\\n#{{ $json.script.tags.join(' #') }}\"\n}",
+        "jsonBody": "={\n  \"media_type\": \"REELS\",\n  \"video_url\": \"{{ $json.videoUrl }}\",\n  \"caption\": \"{{ $json.script.title }}\\n\\n{{ $json.script.description }}\\n\\n#{{ $json.script.tags.join(' #') }}\"\n}",
         "options": {}
       },
       "id": "instagram-publish",
-      "name": "6d. Instagram Reels",
+      "name": "6c. Instagram Reels",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2420, 400],
+      "position": [3080, 400],
       "notes": "Instagram Reels 업로드"
     },
     {
       "parameters": {
         "channel": "#ai-content-alerts",
-        "text": "=:white_check_mark: *AI 콘텐츠 생성 완료*\n\n*제목:* {{ $json.script.title }}\n*언어:* {{ $json.language }}\n*카테고리:* {{ $json.category }}\n\n*게시 결과:*\n- Upvy: {{ $json.upvyUrl || 'N/A' }}\n- YouTube: {{ $json.youtubeUrl || 'N/A' }}\n- Instagram: {{ $json.instagramUrl || 'N/A' }}",
+        "text": "=:white_check_mark: *AI 콘텐츠 생성 완료*\n\n*Job ID:* {{ $json.jobId }}\n*제목:* {{ $json.script.title }}\n*언어:* {{ $json.language }}\n*카테고리:* {{ $json.category }}\n\n*S3:*\n- Video: {{ $json.videoUrl }}\n- Thumbnail: {{ $json.thumbnailUrl }}\n\n*게시 결과:*\n- Upvy: 완료\n- YouTube: 완료\n- Instagram: 완료",
         "otherOptions": {}
       },
       "id": "slack-success",
       "name": "Slack - Success",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [2860, 200],
+      "position": [3300, 200],
       "notes": "성공 알림"
     },
     {
       "parameters": {
         "channel": "#ai-content-alerts",
-        "text": "=:x: *AI 콘텐츠 생성 실패*\n\n*Job ID:* {{ $json.jobId }}\n*단계:* {{ $json.failedStep }}\n*에러:* {{ $json.errorMessage }}\n\n*품질 검토:*\n{{ $json.qualityCheck?.reason || 'N/A' }}",
+        "text": "=:x: *AI 콘텐츠 생성 스킵*\n\n*Job ID:* {{ $json.jobId }}\n*사유:* 품질 검사 실패\n\n*품질 검토:*\n{{ $json.qualityCheck?.reason || 'N/A' }}",
         "otherOptions": {}
       },
       "id": "slack-failure",
-      "name": "Slack - Failure",
+      "name": "Slack - Quality Fail",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [1760, 400],
-      "notes": "실패/스킵 알림"
+      "notes": "품질 검사 실패 알림"
     }
   ],
   "connections": {
     "Schedule EN (5/day)": {
-      "main": [
-        [
-          {
-            "node": "Merge Triggers",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Merge Triggers", "type": "main", "index": 0 }]]
     },
     "Schedule JA (3/day)": {
-      "main": [
-        [
-          {
-            "node": "Merge Triggers",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
+      "main": [[{ "node": "Merge Triggers", "type": "main", "index": 1 }]]
     },
     "Schedule KO (3/day)": {
-      "main": [
-        [
-          {
-            "node": "Merge Triggers",
-            "type": "main",
-            "index": 2
-          }
-        ]
-      ]
+      "main": [[{ "node": "Merge Triggers", "type": "main", "index": 2 }]]
     },
     "Merge Triggers": {
-      "main": [
-        [
-          {
-            "node": "Set Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
     },
     "Set Config": {
-      "main": [
-        [
-          {
-            "node": "1. Topic Select (Gemini + Grounding)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "1. Topic Select (Gemini + Grounding)", "type": "main", "index": 0 }]]
     },
     "1. Topic Select (Gemini + Grounding)": {
-      "main": [
-        [
-          {
-            "node": "Parse Topic",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Parse Topic", "type": "main", "index": 0 }]]
     },
     "Parse Topic": {
-      "main": [
-        [
-          {
-            "node": "2. Script + Quiz Gen (Gemini)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "2. Script + Quiz Gen (Gemini)", "type": "main", "index": 0 }]]
     },
     "2. Script + Quiz Gen (Gemini)": {
-      "main": [
-        [
-          {
-            "node": "Parse Script + Quiz",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Parse Script + Quiz", "type": "main", "index": 0 }]]
     },
     "Parse Script + Quiz": {
-      "main": [
-        [
-          {
-            "node": "3. Quality Gate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "3. Quality Gate", "type": "main", "index": 0 }]]
     },
     "3. Quality Gate": {
       "main": [
         [
-          {
-            "node": "4a. Visual Gen (Imagen 3)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "4b. Audio Gen (TTS)",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "4a. Visual Gen (Imagen 3)", "type": "main", "index": 0 },
+          { "node": "4b. Audio Gen (TTS)", "type": "main", "index": 0 }
         ],
-        [
-          {
-            "node": "Slack - Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Slack - Quality Fail", "type": "main", "index": 0 }]
       ]
     },
     "4a. Visual Gen (Imagen 3)": {
-      "main": [
-        [
-          {
-            "node": "Merge Visual + Audio",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Convert Visual to Binary", "type": "main", "index": 0 }]]
     },
     "4b. Audio Gen (TTS)": {
-      "main": [
-        [
-          {
-            "node": "Merge Visual + Audio",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
+      "main": [[{ "node": "Convert Audio to Binary", "type": "main", "index": 0 }]]
+    },
+    "Convert Visual to Binary": {
+      "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 0 }]]
+    },
+    "Convert Audio to Binary": {
+      "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 1 }]]
     },
     "Merge Visual + Audio": {
-      "main": [
-        [
-          {
-            "node": "5. Compose (FFmpeg)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "5. Compose (FFmpeg)", "type": "main", "index": 0 }]]
     },
     "5. Compose (FFmpeg)": {
       "main": [
         [
-          {
-            "node": "6a. Upvy - Get Upload URL",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "6c. YouTube Shorts",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "6d. Instagram Reels",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "S3 Upload Video", "type": "main", "index": 0 },
+          { "node": "S3 Upload Thumbnail", "type": "main", "index": 0 }
         ]
       ]
     },
-    "6a. Upvy - Get Upload URL": {
+    "S3 Upload Video": {
+      "main": [[{ "node": "Set S3 URLs", "type": "main", "index": 0 }]]
+    },
+    "S3 Upload Thumbnail": {
+      "main": [[{ "node": "Set S3 URLs", "type": "main", "index": 1 }]]
+    },
+    "Set S3 URLs": {
       "main": [
         [
-          {
-            "node": "6b. Upvy - Publish",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "6a. Upvy Publish", "type": "main", "index": 0 },
+          { "node": "6b. YouTube Shorts", "type": "main", "index": 0 },
+          { "node": "6c. Instagram Reels", "type": "main", "index": 0 }
         ]
       ]
     },
-    "6b. Upvy - Publish": {
-      "main": [
-        [
-          {
-            "node": "Slack - Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "6a. Upvy Publish": {
+      "main": [[{ "node": "Slack - Success", "type": "main", "index": 0 }]]
     }
   },
   "settings": {
@@ -588,5 +519,5 @@
   ],
   "triggerCount": 3,
   "updatedAt": "2024-01-01T00:00:00.000Z",
-  "versionId": "1"
+  "versionId": "2"
 }

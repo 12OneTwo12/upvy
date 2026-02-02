@@ -1,7 +1,6 @@
 package me.onetwo.upvy.compose.service
 
 import me.onetwo.upvy.compose.config.FFmpegException
-import me.onetwo.upvy.compose.dto.ClipInfo
 import me.onetwo.upvy.compose.dto.ComposeMetadata
 import me.onetwo.upvy.compose.dto.SubtitleInfo
 import mu.KotlinLogging
@@ -15,9 +14,18 @@ import java.util.concurrent.TimeUnit
 private val logger = KotlinLogging.logger {}
 
 /**
- * FFmpeg 합성 결과
+ * FFmpeg 합성 결과 (영상만)
  */
-data class ComposeResult(
+data class FFmpegComposeResult(
+    val videoFile: File,
+    val duration: Double,
+    val fileSize: Long
+)
+
+/**
+ * FFmpeg 합성 결과 (영상 + 썸네일)
+ */
+data class FFmpegComposeWithThumbnailResult(
     val videoFile: File,
     val thumbnailFile: File,
     val duration: Double,
@@ -32,9 +40,8 @@ data class ComposeResult(
  * FFmpeg 파이프라인:
  * 1. 클립 연결 (concat demuxer)
  * 2. 오디오 트랙 합성 (amix)
- * 3. 자막 오버레이 (ASS filter)
- * 4. 브랜드 워터마크 (overlay)
- * 5. 출력 인코딩 (H.264, 1080x1920, 30fps)
+ * 3. 자막 오버레이 (subtitles filter)
+ * 4. 출력 인코딩 (H.264, 1080x1920, 30fps)
  */
 @Service
 class FFmpegService(
@@ -84,11 +91,10 @@ class FFmpegService(
     }
 
     /**
-     * 영상 합성 실행
+     * 영상 합성 실행 (영상만)
      *
      * @param composeId 합성 작업 ID
      * @param clips 클립 파일 목록
-     * @param clipInfos 클립 정보 목록
      * @param audioFile 오디오 파일
      * @param srtFile SRT 자막 파일 (nullable)
      * @param metadata 메타데이터
@@ -97,11 +103,58 @@ class FFmpegService(
     fun compose(
         composeId: String,
         clips: List<File>,
-        clipInfos: List<ClipInfo>,
         audioFile: File,
         srtFile: File?,
         metadata: ComposeMetadata
-    ): ComposeResult {
+    ): FFmpegComposeResult {
+        val workDir = Path.of(tempDir, composeId)
+        Files.createDirectories(workDir)
+
+        val outputVideo = workDir.resolve("final.mp4").toFile()
+
+        // 1. 클립 목록 파일 생성 (concat demuxer용)
+        val concatFile = createConcatFile(workDir, clips)
+
+        // 2. FFmpeg 명령어 구성
+        val command = buildFFmpegCommand(
+            concatFile = concatFile,
+            audioFile = audioFile,
+            srtFile = srtFile,
+            outputFile = outputVideo,
+            metadata = metadata
+        )
+
+        // 3. FFmpeg 실행
+        logger.info { "FFmpeg 실행: ${command.joinToString(" ")}" }
+        executeFFmpeg(command)
+
+        // 4. 결과 반환
+        val duration = getVideoDuration(outputVideo)
+
+        return FFmpegComposeResult(
+            videoFile = outputVideo,
+            duration = duration,
+            fileSize = outputVideo.length()
+        )
+    }
+
+    /**
+     * 영상 합성 실행 (영상 + 썸네일)
+     *
+     * @param composeId 합성 작업 ID
+     * @param clips 클립 파일 목록
+     * @param audioFile 오디오 파일
+     * @param srtFile SRT 자막 파일 (nullable)
+     * @param metadata 메타데이터
+     * @return 합성 결과
+     */
+    fun composeWithThumbnail(
+        composeId: String,
+        clips: List<File>,
+        audioFile: File,
+        srtFile: File?,
+        metadata: ComposeMetadata
+    ): FFmpegComposeWithThumbnailResult {
         val workDir = Path.of(tempDir, composeId)
         Files.createDirectories(workDir)
 
@@ -130,7 +183,7 @@ class FFmpegService(
         // 5. 결과 반환
         val duration = getVideoDuration(outputVideo)
 
-        return ComposeResult(
+        return FFmpegComposeWithThumbnailResult(
             videoFile = outputVideo,
             thumbnailFile = outputThumbnail,
             duration = duration,
