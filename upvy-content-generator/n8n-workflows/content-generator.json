@@ -7,14 +7,14 @@
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-220, 200],
-      "notes": "수동 실행용 - 테스트 또는 즉시 콘텐츠 생성시 사용"
+      "position": [-220, 200]
     },
     {
       "parameters": {
-        "values": {
-          "string": [
-            { "name": "language", "value": "={{ $parameter.language || 'en' }}" }
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "language", "type": "stringValue", "stringValue": "en" }
           ]
         },
         "options": {}
@@ -23,8 +23,7 @@
       "name": "Set Manual Language",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [0, 200],
-      "notes": "수동 실행시 언어 선택 (기본: en)"
+      "position": [0, 200]
     },
     {
       "parameters": {
@@ -78,9 +77,10 @@
     },
     {
       "parameters": {
-        "values": {
-          "string": [
-            { "name": "language", "value": "en" }
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "language", "type": "stringValue", "stringValue": "en" }
           ]
         },
         "options": {}
@@ -93,9 +93,10 @@
     },
     {
       "parameters": {
-        "values": {
-          "string": [
-            { "name": "language", "value": "ja" }
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "language", "type": "stringValue", "stringValue": "ja" }
           ]
         },
         "options": {}
@@ -108,9 +109,10 @@
     },
     {
       "parameters": {
-        "values": {
-          "string": [
-            { "name": "language", "value": "ko" }
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "language", "type": "stringValue", "stringValue": "ko" }
           ]
         },
         "options": {}
@@ -123,19 +125,23 @@
     },
     {
       "parameters": {
-        "values": {
-          "string": [
+        "mode": "manual",
+        "fields": {
+          "values": [
             {
               "name": "category",
-              "value": "={{ ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'BUSINESS', 'PSYCHOLOGY', 'HEALTH'][Math.floor(Math.random() * 6)] }}"
+              "type": "stringValue",
+              "stringValue": "={{ ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'BUSINESS', 'PSYCHOLOGY', 'HEALTH'][Math.floor(Math.random() * 6)] }}"
             },
             {
               "name": "difficulty",
-              "value": "={{ ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'][Math.floor(Math.random() * 3)] }}"
+              "type": "stringValue",
+              "stringValue": "={{ ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'][Math.floor(Math.random() * 3)] }}"
             },
             {
               "name": "jobId",
-              "value": "={{ $now.format('yyyyMMddHHmmss') }}-{{ Math.random().toString(36).substring(2, 8) }}"
+              "type": "stringValue",
+              "stringValue": "={{ $now.format('yyyyMMddHHmmss') }}-{{ Math.random().toString(36).substring(2, 8) }}"
             }
           ]
         },
@@ -162,8 +168,7 @@
       "name": "1. Topic Select (Gemini + Grounding)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [660, 200],
-      "notes": "HTTP Request 사용 이유: Google Search Grounding(tools.googleSearch) 기능이 전용 노드에서 미지원"
+      "position": [660, 200]
     },
     {
       "parameters": {
@@ -190,8 +195,7 @@
       "name": "2. Script + Quiz Gen (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1100, 200],
-      "notes": "HTTP Request 사용 이유: 구조화된 JSON 출력 + 복잡한 프롬프트 제어 필요"
+      "position": [1100, 200]
     },
     {
       "parameters": {
@@ -247,138 +251,24 @@
       "name": "4a. Visual Gen (Imagen 3)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1760, 100],
-      "notes": "HTTP Request 사용 이유: Imagen 3 전용 노드 없음, aspectRatio/safetyFilter 등 커스텀 파라미터 필요"
+      "position": [1760, 100]
     },
     {
       "parameters": {
-        "rules": {
-          "rules": [
-            {
-              "outputKey": "en",
-              "conditions": {
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.language }}",
-                    "rightValue": "en",
-                    "operator": { "type": "string", "operation": "equals" }
-                  }
-                ]
-              }
-            },
-            {
-              "outputKey": "ja",
-              "conditions": {
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.language }}",
-                    "rightValue": "ja",
-                    "operator": { "type": "string", "operation": "equals" }
-                  }
-                ]
-              }
-            },
-            {
-              "outputKey": "ko",
-              "conditions": {
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.language }}",
-                    "rightValue": "ko",
-                    "operator": { "type": "string", "operation": "equals" }
-                  }
-                ]
-              }
-            }
-          ]
-        },
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'en' ? 'en-US' : ($json.language === 'ja' ? 'ja-JP' : 'ko-KR') }}\",\n    \"name\": \"{{ $json.language === 'en' ? 'en-US-Wavenet-D' : ($json.language === 'ja' ? 'ja-JP-Wavenet-A' : 'ko-KR-Wavenet-A') }}\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"speakingRate\": 1.1\n  }\n}",
         "options": {}
       },
-      "id": "tts-lang-switch",
-      "name": "TTS Language Switch",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [1760, 300],
-      "notes": "언어별로 TTS 노드 분기 (전용 노드가 동적 voice 선택 미지원)"
-    },
-    {
-      "parameters": {
-        "text": "={{ $json.script.sections.map(s => s.narration).join(' ') }}",
-        "options": {
-          "languageCode": "en-US",
-          "voice": "en-US-Wavenet-D",
-          "audioEncoding": "MP3",
-          "speakingRate": 1.1
-        }
-      },
-      "id": "tts-en",
-      "name": "4b-1. TTS English",
-      "type": "n8n-nodes-base.googleCloudTextToSpeech",
-      "typeVersion": 1,
-      "position": [1980, 200],
-      "credentials": {
-        "googleApi": {
-          "id": "google-credentials",
-          "name": "Google Cloud (Service Account)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "text": "={{ $json.script.sections.map(s => s.narration).join(' ') }}",
-        "options": {
-          "languageCode": "ja-JP",
-          "voice": "ja-JP-Wavenet-A",
-          "audioEncoding": "MP3",
-          "speakingRate": 1.1
-        }
-      },
-      "id": "tts-ja",
-      "name": "4b-2. TTS Japanese",
-      "type": "n8n-nodes-base.googleCloudTextToSpeech",
-      "typeVersion": 1,
-      "position": [1980, 350],
-      "credentials": {
-        "googleApi": {
-          "id": "google-credentials",
-          "name": "Google Cloud (Service Account)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "text": "={{ $json.script.sections.map(s => s.narration).join(' ') }}",
-        "options": {
-          "languageCode": "ko-KR",
-          "voice": "ko-KR-Wavenet-A",
-          "audioEncoding": "MP3",
-          "speakingRate": 1.1
-        }
-      },
-      "id": "tts-ko",
-      "name": "4b-3. TTS Korean",
-      "type": "n8n-nodes-base.googleCloudTextToSpeech",
-      "typeVersion": 1,
-      "position": [1980, 500],
-      "credentials": {
-        "googleApi": {
-          "id": "google-credentials",
-          "name": "Google Cloud (Service Account)"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "combinationMode": "multiplex",
-        "options": {}
-      },
-      "id": "merge-tts",
-      "name": "Merge TTS Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
-      "position": [2200, 350],
-      "notes": "3개 언어 TTS 결과를 하나로 병합"
+      "id": "tts-gen",
+      "name": "4b. TTS (Google Cloud)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 300]
     },
     {
       "parameters": {
@@ -392,14 +282,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// TTS 전용 노드는 binary로 직접 출력하므로 컨텍스트만 복원\nconst item = $input.first();\nconst prevContext = $('Parse Script + Quiz').first().json;\n\nreturn {\n  json: { ...prevContext },\n  binary: item.binary\n};"
+        "jsCode": "const item = $input.first();\nconst prevContext = $('Parse Script + Quiz').first().json;\nconst audioBase64 = item.json.audioContent;\n\nif (!audioBase64) throw new Error('TTS 응답에 audioContent가 없습니다');\n\nreturn {\n  json: { ...prevContext },\n  binary: {\n    data: {\n      data: audioBase64,\n      mimeType: 'audio/mp3',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
       },
       "id": "prepare-audio",
       "name": "Prepare Audio Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2420, 350],
-      "notes": "TTS 전용 노드 출력(binary)에 컨텍스트 복원"
+      "position": [1980, 300]
     },
     {
       "parameters": {
@@ -411,7 +300,7 @@
       "name": "Merge Visual + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [2640, 200]
+      "position": [2200, 200]
     },
     {
       "parameters": {
@@ -421,7 +310,7 @@
       "name": "Combine Binaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2860, 200]
+      "position": [2420, 200]
     },
     {
       "parameters": {
@@ -460,7 +349,7 @@
       "name": "5. Compose (FFmpeg)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3080, 200]
+      "position": [2640, 200]
     },
     {
       "parameters": {
@@ -470,7 +359,7 @@
       "name": "Unzip Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3300, 200]
+      "position": [2860, 200]
     },
     {
       "parameters": {
@@ -483,13 +372,7 @@
       "name": "S3 Upload Video",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3520, 100],
-      "credentials": {
-        "aws": {
-          "id": "aws-credentials",
-          "name": "AWS Credentials"
-        }
-      }
+      "position": [3080, 100]
     },
     {
       "parameters": {
@@ -502,13 +385,7 @@
       "name": "S3 Upload Thumbnail",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3520, 300],
-      "credentials": {
-        "aws": {
-          "id": "aws-credentials",
-          "name": "AWS Credentials"
-        }
-      }
+      "position": [3080, 300]
     },
     {
       "parameters": {
@@ -520,7 +397,7 @@
       "name": "Merge S3 Results",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [3740, 200]
+      "position": [3300, 200]
     },
     {
       "parameters": {
@@ -530,7 +407,7 @@
       "name": "Set S3 URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3960, 200]
+      "position": [3520, 200]
     },
     {
       "parameters": {
@@ -547,7 +424,7 @@
       "name": "6a. Upvy Publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4180, 0]
+      "position": [3740, 0]
     },
     {
       "parameters": {
@@ -563,7 +440,7 @@
       "name": "6b. YouTube Shorts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4180, 200]
+      "position": [3740, 200]
     },
     {
       "parameters": {
@@ -580,7 +457,7 @@
       "name": "6c. Instagram Reels",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4180, 400]
+      "position": [3740, 400]
     },
     {
       "parameters": {
@@ -592,7 +469,7 @@
       "name": "Slack - Success",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [4400, 200]
+      "position": [3960, 200]
     },
     {
       "parameters": {
@@ -651,7 +528,7 @@
       "main": [
         [
           { "node": "4a. Visual Gen (Imagen 3)", "type": "main", "index": 0 },
-          { "node": "TTS Language Switch", "type": "main", "index": 0 }
+          { "node": "4b. TTS (Google Cloud)", "type": "main", "index": 0 }
         ],
         [{ "node": "Slack - Quality Fail", "type": "main", "index": 0 }]
       ]
@@ -659,23 +536,7 @@
     "4a. Visual Gen (Imagen 3)": {
       "main": [[{ "node": "Convert Visual to Binary", "type": "main", "index": 0 }]]
     },
-    "TTS Language Switch": {
-      "main": [
-        [{ "node": "4b-1. TTS English", "type": "main", "index": 0 }],
-        [{ "node": "4b-2. TTS Japanese", "type": "main", "index": 0 }],
-        [{ "node": "4b-3. TTS Korean", "type": "main", "index": 0 }]
-      ]
-    },
-    "4b-1. TTS English": {
-      "main": [[{ "node": "Merge TTS Results", "type": "main", "index": 0 }]]
-    },
-    "4b-2. TTS Japanese": {
-      "main": [[{ "node": "Merge TTS Results", "type": "main", "index": 0 }]]
-    },
-    "4b-3. TTS Korean": {
-      "main": [[{ "node": "Merge TTS Results", "type": "main", "index": 0 }]]
-    },
-    "Merge TTS Results": {
+    "4b. TTS (Google Cloud)": {
       "main": [[{ "node": "Prepare Audio Binary", "type": "main", "index": 0 }]]
     },
     "Convert Visual to Binary": {
@@ -732,6 +593,5 @@
   },
   "staticData": null,
   "tags": [{ "name": "ai-content" }],
-  "triggerCount": 4,
-  "versionId": "5"
+  "triggerCount": 4
 }
