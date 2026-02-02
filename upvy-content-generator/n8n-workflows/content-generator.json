@@ -2,6 +2,31 @@
   "name": "Upvy AI Content Generator",
   "nodes": [
     {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-220, 200],
+      "notes": "수동 실행용 - 테스트 또는 즉시 콘텐츠 생성시 사용"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            { "name": "language", "value": "={{ $parameter.language || 'en' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-manual-lang",
+      "name": "Set Manual Language",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [0, 200],
+      "notes": "수동 실행시 언어 선택 (기본: en)"
+    },
+    {
       "parameters": {
         "rule": {
           "interval": [
@@ -17,8 +42,7 @@
       "name": "Schedule EN (5/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0],
-      "notes": "영어 콘텐츠: 5개/일 (6,9,12,15,18시 KST)"
+      "position": [0, 0]
     },
     {
       "parameters": {
@@ -34,8 +58,7 @@
       "name": "Schedule JA (3/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 200],
-      "notes": "일본어 콘텐츠: 3개/일 (7,13,19시 KST)"
+      "position": [0, 200]
     },
     {
       "parameters": {
@@ -51,8 +74,7 @@
       "name": "Schedule KO (3/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 400],
-      "notes": "한국어 콘텐츠: 3개/일 (8,14,20시 KST)"
+      "position": [0, 400]
     },
     {
       "parameters": {
@@ -123,8 +145,7 @@
       "name": "Set Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [440, 200],
-      "notes": "카테고리 랜덤 선택, jobId 생성 (language는 이전 노드에서 설정됨)"
+      "position": [440, 200]
     },
     {
       "parameters": {
@@ -142,11 +163,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [660, 200],
-      "notes": "Gemini + Google Search Grounding으로 트렌드 기반 주제 선정"
+      "notes": "HTTP Request 사용 이유: Google Search Grounding(tools.googleSearch) 기능이 전용 노드에서 미지원"
     },
     {
       "parameters": {
-        "jsCode": "// Gemini 응답에서 주제 파싱\nconst response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n\n// JSON 추출 (마크다운 코드블록 제거)\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  \n  // 가장 높은 점수의 주제 선택\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  if (!bestTopic) {\n    throw new Error('주제를 찾을 수 없습니다');\n  }\n  \n  return {\n    json: {\n      ...$input.first().json,\n      selectedTopic: bestTopic,\n      allTopics: topics\n    }\n  };\n} catch (e) {\n  throw new Error(`주제 파싱 실패: ${e.message}`);\n}"
+        "jsCode": "const response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  if (!bestTopic) throw new Error('주제를 찾을 수 없습니다');\n  \n  return { json: { ...$input.first().json, selectedTopic: bestTopic, allTopics: topics } };\n} catch (e) {\n  throw new Error(`주제 파싱 실패: ${e.message}`);\n}"
       },
       "id": "parse-topic",
       "name": "Parse Topic",
@@ -170,11 +191,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1100, 200],
-      "notes": "스크립트 + 퀴즈 + 품질검토를 1회 LLM 호출로 생성"
+      "notes": "HTTP Request 사용 이유: 구조화된 JSON 출력 + 복잡한 프롬프트 제어 필요"
     },
     {
       "parameters": {
-        "jsCode": "// Gemini 응답에서 스크립트+퀴즈 파싱\nconst response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n\n// JSON 추출\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  \n  if (!parsed.script || !parsed.quiz || !parsed.qualityCheck) {\n    throw new Error('필수 필드 누락');\n  }\n  \n  return {\n    json: {\n      ...$input.first().json,\n      script: parsed.script,\n      quiz: parsed.quiz,\n      qualityCheck: parsed.qualityCheck,\n      totalDuration: parsed.script.totalDuration || 60\n    }\n  };\n} catch (e) {\n  throw new Error(`스크립트 파싱 실패: ${e.message}`);\n}"
+        "jsCode": "const response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  if (!parsed.script || !parsed.quiz || !parsed.qualityCheck) throw new Error('필수 필드 누락');\n  \n  return {\n    json: {\n      ...$input.first().json,\n      script: parsed.script,\n      quiz: parsed.quiz,\n      qualityCheck: parsed.qualityCheck,\n      totalDuration: parsed.script.totalDuration || 60\n    }\n  };\n} catch (e) {\n  throw new Error(`스크립트 파싱 실패: ${e.message}`);\n}"
       },
       "id": "parse-script",
       "name": "Parse Script + Quiz",
@@ -209,8 +230,7 @@
       "name": "3. Quality Gate",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1540, 200],
-      "notes": "PASS → 비주얼/오디오 생성, FAIL → 스킵"
+      "position": [1540, 200]
     },
     {
       "parameters": {
@@ -228,47 +248,158 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1760, 100],
-      "notes": "Imagen 3로 9:16 이미지 생성 (base64 응답)"
+      "notes": "HTTP Request 사용 이유: Imagen 3 전용 노드 없음, aspectRatio/safetyFilter 등 커스텀 파라미터 필요"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'ko' ? 'ko-KR' : $json.language === 'ja' ? 'ja-JP' : 'en-US' }}\",\n    \"name\": \"{{ $json.language === 'ko' ? 'ko-KR-Wavenet-A' : $json.language === 'ja' ? 'ja-JP-Wavenet-A' : 'en-US-Wavenet-D' }}\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"speakingRate\": 1.1\n  }\n}",
+        "rules": {
+          "rules": [
+            {
+              "outputKey": "en",
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.language }}",
+                    "rightValue": "en",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "ja",
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.language }}",
+                    "rightValue": "ja",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "ko",
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.language }}",
+                    "rightValue": "ko",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "audio-gen",
-      "name": "4b. Audio Gen (TTS)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "tts-lang-switch",
+      "name": "TTS Language Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
       "position": [1760, 300],
-      "notes": "Google Cloud TTS로 나레이션 생성 (base64 응답)"
+      "notes": "언어별로 TTS 노드 분기 (전용 노드가 동적 voice 선택 미지원)"
     },
     {
       "parameters": {
-        "jsCode": "// 이미지 + 이전 컨텍스트를 binary로 변환\nconst prevData = $input.first().json;\nconst visualResponse = $('4a. Visual Gen (Imagen 3)').first().json;\nconst imageBase64 = visualResponse.predictions?.[0]?.bytesBase64Encoded;\n\nif (!imageBase64) {\n  throw new Error('이미지 생성 실패: base64 데이터 없음');\n}\n\nreturn {\n  json: {\n    ...prevData\n  },\n  binary: {\n    image: {\n      data: imageBase64,\n      mimeType: 'image/png',\n      fileName: 'visual.png'\n    }\n  }\n};"
+        "text": "={{ $json.script.sections.map(s => s.narration).join(' ') }}",
+        "options": {
+          "languageCode": "en-US",
+          "voice": "en-US-Wavenet-D",
+          "audioEncoding": "MP3",
+          "speakingRate": 1.1
+        }
+      },
+      "id": "tts-en",
+      "name": "4b-1. TTS English",
+      "type": "n8n-nodes-base.googleCloudTextToSpeech",
+      "typeVersion": 1,
+      "position": [1980, 200],
+      "credentials": {
+        "googleApi": {
+          "id": "google-credentials",
+          "name": "Google Cloud (Service Account)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.script.sections.map(s => s.narration).join(' ') }}",
+        "options": {
+          "languageCode": "ja-JP",
+          "voice": "ja-JP-Wavenet-A",
+          "audioEncoding": "MP3",
+          "speakingRate": 1.1
+        }
+      },
+      "id": "tts-ja",
+      "name": "4b-2. TTS Japanese",
+      "type": "n8n-nodes-base.googleCloudTextToSpeech",
+      "typeVersion": 1,
+      "position": [1980, 350],
+      "credentials": {
+        "googleApi": {
+          "id": "google-credentials",
+          "name": "Google Cloud (Service Account)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.script.sections.map(s => s.narration).join(' ') }}",
+        "options": {
+          "languageCode": "ko-KR",
+          "voice": "ko-KR-Wavenet-A",
+          "audioEncoding": "MP3",
+          "speakingRate": 1.1
+        }
+      },
+      "id": "tts-ko",
+      "name": "4b-3. TTS Korean",
+      "type": "n8n-nodes-base.googleCloudTextToSpeech",
+      "typeVersion": 1,
+      "position": [1980, 500],
+      "credentials": {
+        "googleApi": {
+          "id": "google-credentials",
+          "name": "Google Cloud (Service Account)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "id": "merge-tts",
+      "name": "Merge TTS Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2200, 350],
+      "notes": "3개 언어 TTS 결과를 하나로 병합"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevData = $input.first().json;\nconst visualResponse = $('4a. Visual Gen (Imagen 3)').first().json;\nconst imageBase64 = visualResponse.predictions?.[0]?.bytesBase64Encoded;\n\nif (!imageBase64) throw new Error('이미지 생성 실패: base64 데이터 없음');\n\nreturn {\n  json: { ...prevData },\n  binary: {\n    image: {\n      data: imageBase64,\n      mimeType: 'image/png',\n      fileName: 'visual.png'\n    }\n  }\n};"
       },
       "id": "convert-visual",
       "name": "Convert Visual to Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 100],
-      "notes": "Imagen 3 base64 응답을 binary로 변환"
+      "position": [1980, 100]
     },
     {
       "parameters": {
-        "jsCode": "// 오디오 + 이전 컨텍스트를 binary로 변환\nconst prevData = $input.first().json;\nconst audioResponse = $('4b. Audio Gen (TTS)').first().json;\nconst audioBase64 = audioResponse.audioContent;\n\nif (!audioBase64) {\n  throw new Error('오디오 생성 실패: base64 데이터 없음');\n}\n\nreturn {\n  json: {\n    ...prevData\n  },\n  binary: {\n    audio: {\n      data: audioBase64,\n      mimeType: 'audio/mpeg',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
+        "jsCode": "// TTS 전용 노드는 binary로 직접 출력하므로 컨텍스트만 복원\nconst item = $input.first();\nconst prevContext = $('Parse Script + Quiz').first().json;\n\nreturn {\n  json: { ...prevContext },\n  binary: item.binary\n};"
       },
-      "id": "convert-audio",
-      "name": "Convert Audio to Binary",
+      "id": "prepare-audio",
+      "name": "Prepare Audio Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300],
-      "notes": "TTS base64 응답을 binary로 변환"
+      "position": [2420, 350],
+      "notes": "TTS 전용 노드 출력(binary)에 컨텍스트 복원"
     },
     {
       "parameters": {
@@ -280,19 +411,17 @@
       "name": "Merge Visual + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [2200, 200],
-      "notes": "이미지와 오디오 binary를 하나의 item으로 병합"
+      "position": [2640, 200]
     },
     {
       "parameters": {
-        "jsCode": "// Merge 결과에서 binary 합치기\nconst items = $input.all();\n\n// 첫 번째 item의 json (컨텍스트)\nconst jsonData = items[0]?.json || {};\n\n// binary 합치기\nlet combinedBinary = {};\nfor (const item of items) {\n  if (item.binary) {\n    combinedBinary = { ...combinedBinary, ...item.binary };\n  }\n}\n\nreturn {\n  json: jsonData,\n  binary: combinedBinary\n};"
+        "jsCode": "const items = $input.all();\nconst jsonData = items[0]?.json || {};\n\nlet combinedBinary = {};\nfor (const item of items) {\n  if (item.binary) {\n    combinedBinary = { ...combinedBinary, ...item.binary };\n  }\n}\n\nreturn { json: jsonData, binary: combinedBinary };"
       },
       "id": "combine-binaries",
       "name": "Combine Binaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2420, 200],
-      "notes": "image와 audio binary를 하나의 item으로 결합"
+      "position": [2860, 200]
     },
     {
       "parameters": {
@@ -310,7 +439,7 @@
             {
               "parameterType": "formBinaryData",
               "name": "audio",
-              "inputDataFieldName": "audio"
+              "inputDataFieldName": "data"
             },
             {
               "parameterType": "formData",
@@ -331,19 +460,17 @@
       "name": "5. Compose (FFmpeg)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2640, 200],
-      "notes": "compose-service에 multipart 전송, ZIP 응답 (video + thumbnail)"
+      "position": [3080, 200]
     },
     {
       "parameters": {
-        "jsCode": "// ZIP 응답에서 video와 thumbnail 추출\nconst JSZip = require('jszip');\n\nconst item = $input.first();\nconst zipBinary = item.binary?.data;\n\nif (!zipBinary) {\n  throw new Error('ZIP 응답이 없습니다');\n}\n\n// ZIP 파일 파싱\nconst zipBuffer = Buffer.from(zipBinary.data, 'base64');\nconst zip = await JSZip.loadAsync(zipBuffer);\n\n// video.mp4 추출\nconst videoFile = zip.file('video.mp4');\nif (!videoFile) {\n  throw new Error('ZIP에 video.mp4가 없습니다');\n}\nconst videoBase64 = await videoFile.async('base64');\n\n// thumbnail.jpg 추출\nconst thumbnailFile = zip.file('thumbnail.jpg');\nif (!thumbnailFile) {\n  throw new Error('ZIP에 thumbnail.jpg가 없습니다');\n}\nconst thumbnailBase64 = await thumbnailFile.async('base64');\n\n// 이전 컨텍스트 복원 (compose 요청 전 데이터)\nconst prevContext = $('Combine Binaries').first().json;\n\nreturn {\n  json: {\n    ...prevContext,\n    composedAt: new Date().toISOString()\n  },\n  binary: {\n    video: {\n      data: videoBase64,\n      mimeType: 'video/mp4',\n      fileName: 'final.mp4'\n    },\n    thumbnail: {\n      data: thumbnailBase64,\n      mimeType: 'image/jpeg',\n      fileName: 'thumbnail.jpg'\n    }\n  }\n};"
+        "jsCode": "const JSZip = require('jszip');\n\nconst item = $input.first();\nconst zipBinary = item.binary?.data;\n\nif (!zipBinary) throw new Error('ZIP 응답이 없습니다');\n\nconst zipBuffer = Buffer.from(zipBinary.data, 'base64');\nconst zip = await JSZip.loadAsync(zipBuffer);\n\nconst videoFile = zip.file('video.mp4');\nif (!videoFile) throw new Error('ZIP에 video.mp4가 없습니다');\nconst videoBase64 = await videoFile.async('base64');\n\nconst thumbnailFile = zip.file('thumbnail.jpg');\nif (!thumbnailFile) throw new Error('ZIP에 thumbnail.jpg가 없습니다');\nconst thumbnailBase64 = await thumbnailFile.async('base64');\n\nconst prevContext = $('Combine Binaries').first().json;\n\nreturn {\n  json: { ...prevContext, composedAt: new Date().toISOString() },\n  binary: {\n    video: { data: videoBase64, mimeType: 'video/mp4', fileName: 'final.mp4' },\n    thumbnail: { data: thumbnailBase64, mimeType: 'image/jpeg', fileName: 'thumbnail.jpg' }\n  }\n};"
       },
       "id": "unzip-response",
       "name": "Unzip Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2860, 200],
-      "notes": "ZIP 응답에서 video.mp4와 thumbnail.jpg 추출"
+      "position": [3300, 200]
     },
     {
       "parameters": {
@@ -356,14 +483,13 @@
       "name": "S3 Upload Video",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3080, 100],
+      "position": [3520, 100],
       "credentials": {
         "aws": {
           "id": "aws-credentials",
           "name": "AWS Credentials"
         }
-      },
-      "notes": "n8n AWS S3 노드로 최종 영상 업로드"
+      }
     },
     {
       "parameters": {
@@ -376,14 +502,13 @@
       "name": "S3 Upload Thumbnail",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3080, 300],
+      "position": [3520, 300],
       "credentials": {
         "aws": {
           "id": "aws-credentials",
           "name": "AWS Credentials"
         }
-      },
-      "notes": "n8n AWS S3 노드로 썸네일 업로드"
+      }
     },
     {
       "parameters": {
@@ -395,17 +520,17 @@
       "name": "Merge S3 Results",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [3300, 200]
+      "position": [3740, 200]
     },
     {
       "parameters": {
-        "jsCode": "// S3 업로드 결과 처리\nconst items = $input.all();\nconst prevContext = $('Unzip Response').first().json;\n\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\n// 퍼블릭 URL 생성\nconst videoUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/generated/${prevContext.jobId}/final.mp4`;\nconst thumbnailUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/generated/${prevContext.jobId}/thumbnail.jpg`;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl,\n    thumbnailUrl,\n    s3Key: `generated/${prevContext.jobId}/final.mp4`,\n    thumbnailS3Key: `generated/${prevContext.jobId}/thumbnail.jpg`\n  }\n};"
+        "jsCode": "const items = $input.all();\nconst prevContext = $('Unzip Response').first().json;\n\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nconst videoUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/generated/${prevContext.jobId}/final.mp4`;\nconst thumbnailUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/generated/${prevContext.jobId}/thumbnail.jpg`;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl,\n    thumbnailUrl,\n    s3Key: `generated/${prevContext.jobId}/final.mp4`,\n    thumbnailS3Key: `generated/${prevContext.jobId}/thumbnail.jpg`\n  }\n};"
       },
       "id": "set-s3-urls",
       "name": "Set S3 URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3520, 200]
+      "position": [3960, 200]
     },
     {
       "parameters": {
@@ -422,8 +547,7 @@
       "name": "6a. Upvy Publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3740, 0],
-      "notes": "Upvy에 콘텐츠+퀴즈 게시"
+      "position": [4180, 0]
     },
     {
       "parameters": {
@@ -439,8 +563,7 @@
       "name": "6b. YouTube Shorts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3740, 200],
-      "notes": "YouTube Shorts 업로드"
+      "position": [4180, 200]
     },
     {
       "parameters": {
@@ -457,8 +580,7 @@
       "name": "6c. Instagram Reels",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3740, 400],
-      "notes": "Instagram Reels 업로드"
+      "position": [4180, 400]
     },
     {
       "parameters": {
@@ -470,8 +592,7 @@
       "name": "Slack - Success",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [3960, 200],
-      "notes": "성공 알림"
+      "position": [4400, 200]
     },
     {
       "parameters": {
@@ -483,11 +604,16 @@
       "name": "Slack - Quality Fail",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [1760, 400],
-      "notes": "품질 검사 실패 알림"
+      "position": [1760, 500]
     }
   ],
   "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Set Manual Language", "type": "main", "index": 0 }]]
+    },
+    "Set Manual Language": {
+      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+    },
     "Schedule EN (5/day)": {
       "main": [[{ "node": "Set Language EN", "type": "main", "index": 0 }]]
     },
@@ -525,7 +651,7 @@
       "main": [
         [
           { "node": "4a. Visual Gen (Imagen 3)", "type": "main", "index": 0 },
-          { "node": "4b. Audio Gen (TTS)", "type": "main", "index": 0 }
+          { "node": "TTS Language Switch", "type": "main", "index": 0 }
         ],
         [{ "node": "Slack - Quality Fail", "type": "main", "index": 0 }]
       ]
@@ -533,13 +659,29 @@
     "4a. Visual Gen (Imagen 3)": {
       "main": [[{ "node": "Convert Visual to Binary", "type": "main", "index": 0 }]]
     },
-    "4b. Audio Gen (TTS)": {
-      "main": [[{ "node": "Convert Audio to Binary", "type": "main", "index": 0 }]]
+    "TTS Language Switch": {
+      "main": [
+        [{ "node": "4b-1. TTS English", "type": "main", "index": 0 }],
+        [{ "node": "4b-2. TTS Japanese", "type": "main", "index": 0 }],
+        [{ "node": "4b-3. TTS Korean", "type": "main", "index": 0 }]
+      ]
+    },
+    "4b-1. TTS English": {
+      "main": [[{ "node": "Merge TTS Results", "type": "main", "index": 0 }]]
+    },
+    "4b-2. TTS Japanese": {
+      "main": [[{ "node": "Merge TTS Results", "type": "main", "index": 0 }]]
+    },
+    "4b-3. TTS Korean": {
+      "main": [[{ "node": "Merge TTS Results", "type": "main", "index": 0 }]]
+    },
+    "Merge TTS Results": {
+      "main": [[{ "node": "Prepare Audio Binary", "type": "main", "index": 0 }]]
     },
     "Convert Visual to Binary": {
       "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 0 }]]
     },
-    "Convert Audio to Binary": {
+    "Prepare Audio Binary": {
       "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 1 }]]
     },
     "Merge Visual + Audio": {
@@ -590,6 +732,6 @@
   },
   "staticData": null,
   "tags": [{ "name": "ai-content" }],
-  "triggerCount": 3,
-  "versionId": "3"
+  "triggerCount": 4,
+  "versionId": "5"
 }
