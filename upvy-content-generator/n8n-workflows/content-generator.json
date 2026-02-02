@@ -1,4 +1,5 @@
 {
+  "id": "upvy-ai-content-generator",
   "name": "Upvy AI Content Generator",
   "nodes": [
     {
@@ -156,7 +157,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
+        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleApi",
         "sendBody": true,
@@ -168,7 +169,12 @@
       "name": "1. Topic Select (Gemini + Grounding)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [660, 200]
+      "position": [660, 200],
+      "credentials": {
+        "googleApi": {
+          "name": "Google API"
+        }
+      }
     },
     {
       "parameters": {
@@ -183,7 +189,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
+        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleApi",
         "sendBody": true,
@@ -195,7 +201,12 @@
       "name": "2. Script + Quiz Gen (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1100, 200]
+      "position": [1100, 200],
+      "credentials": {
+        "googleApi": {
+          "name": "Google API"
+        }
+      }
     },
     {
       "parameters": {
@@ -239,7 +250,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/imagen-3.0-generate-002:predict",
+        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/imagen-3.0-generate-002:predict",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleApi",
         "sendBody": true,
@@ -251,7 +262,12 @@
       "name": "4a. Visual Gen (Imagen 3)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1760, 100]
+      "position": [1760, 100],
+      "credentials": {
+        "googleApi": {
+          "name": "Google API"
+        }
+      }
     },
     {
       "parameters": {
@@ -268,7 +284,12 @@
       "name": "4b. TTS (Google Cloud)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1760, 300]
+      "position": [1760, 300],
+      "credentials": {
+        "googleApi": {
+          "name": "Google API"
+        }
+      }
     },
     {
       "parameters": {
@@ -461,27 +482,43 @@
     },
     {
       "parameters": {
-        "channel": "#ai-content-alerts",
-        "text": "=:white_check_mark: *AI 콘텐츠 생성 완료*\n\n*Job ID:* {{ $json.jobId }}\n*제목:* {{ $json.script.title }}\n*언어:* {{ $json.language }}\n*카테고리:* {{ $json.category }}\n\n*S3:*\n- Video: {{ $json.videoUrl }}\n- Thumbnail: {{ $json.thumbnailUrl }}",
-        "otherOptions": {}
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=✅ *AI 콘텐츠 생성 완료*\n\n*Job ID:* {{ $json.jobId }}\n*제목:* {{ $json.script.title }}\n*언어:* {{ $json.language }}\n*카테고리:* {{ $json.category }}\n\n*S3:*\n• Video: {{ $json.videoUrl }}\n• Thumbnail: {{ $json.thumbnailUrl }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
       },
-      "id": "slack-success",
-      "name": "Slack - Success",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [3960, 200]
+      "id": "telegram-success",
+      "name": "Telegram - Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3960, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
     },
     {
       "parameters": {
-        "channel": "#ai-content-alerts",
-        "text": "=:x: *AI 콘텐츠 생성 스킵*\n\n*Job ID:* {{ $json.jobId }}\n*사유:* 품질 검사 실패\n\n*품질 검토:*\n{{ $json.qualityCheck?.reason || 'N/A' }}",
-        "otherOptions": {}
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=❌ *AI 콘텐츠 생성 스킵*\n\n*Job ID:* {{ $json.jobId }}\n*사유:* 품질 검사 실패\n\n*품질 검토:*\n{{ $json.qualityCheck?.reason || 'N/A' }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
       },
-      "id": "slack-failure",
-      "name": "Slack - Quality Fail",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
-      "position": [1760, 500]
+      "id": "telegram-failure",
+      "name": "Telegram - Quality Fail",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1760, 500],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-api",
+          "name": "Telegram API"
+        }
+      }
     }
   ],
   "connections": {
@@ -530,7 +567,7 @@
           { "node": "4a. Visual Gen (Imagen 3)", "type": "main", "index": 0 },
           { "node": "4b. TTS (Google Cloud)", "type": "main", "index": 0 }
         ],
-        [{ "node": "Slack - Quality Fail", "type": "main", "index": 0 }]
+        [{ "node": "Telegram - Quality Fail", "type": "main", "index": 0 }]
       ]
     },
     "4a. Visual Gen (Imagen 3)": {
@@ -581,7 +618,7 @@
       ]
     },
     "6a. Upvy Publish": {
-      "main": [[{ "node": "Slack - Success", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Telegram - Success", "type": "main", "index": 0 }]]
     }
   },
   "settings": {

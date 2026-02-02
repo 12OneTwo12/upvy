@@ -77,3 +77,4 @@ Thumbs.db
 coverage/
 *.coverage
 .nyc_output/
+credentials/*.json

@@ -131,5 +131,6 @@ upvy-content-generator/.env.local
 upvy-content-generator/.env.*.local
 upvy-content-generator/credentials/*
 !upvy-content-generator/credentials/.gitkeep
+!upvy-content-generator/credentials/*.example
 upvy-content-generator/compose-service/build/
 upvy-content-generator/compose-service/.gradle/

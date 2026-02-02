@@ -40,10 +40,19 @@ services:
       - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
       - GENERIC_TIMEZONE=Asia/Seoul
 
+      # 워크플로우에서 환경변수 접근 허용
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+
       # 인증 설정
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:?N8N_PASSWORD is required}
+
+      # Owner 계정 자동 생성 (첫 실행시)
+      - N8N_OWNER_EMAIL=${N8N_OWNER_EMAIL:-admin@upvy.io}
+      - N8N_OWNER_PASSWORD=${N8N_PASSWORD:?N8N_PASSWORD is required}
+      - N8N_OWNER_FIRSTNAME=${N8N_OWNER_FIRSTNAME:-Upvy}
+      - N8N_OWNER_LASTNAME=${N8N_OWNER_LASTNAME:-Admin}
 
       # 실행 설정
       - EXECUTIONS_DATA_SAVE_ON_ERROR=all
@@ -61,15 +70,22 @@ services:
       - GCP_PROJECT_ID=${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}
       - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-asia-northeast3}
 
-      # AWS 설정 (S3)
+      # AWS 설정 (S3) - credential은 .env에서 로드
       - S3_BUCKET=${S3_BUCKET:-upvy-ai-content}
       - AWS_REGION=${AWS_REGION:-ap-northeast-2}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
 
       # Upvy API
       - UPVY_API_URL=${UPVY_API_URL:-https://api.upvy.org}
 
       # Instagram
       - INSTAGRAM_USER_ID=${INSTAGRAM_USER_ID:-}
+      - INSTAGRAM_ACCESS_TOKEN=${INSTAGRAM_ACCESS_TOKEN:-}
+
+      # Telegram 알림
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
 
     volumes:
       # n8n 데이터 영속화 (워크플로우, 크레덴셜 등)
