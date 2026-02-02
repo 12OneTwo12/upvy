@@ -3,7 +3,7 @@ package me.onetwo.upvy.compose.service
 import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.BlobInfo
 import com.google.cloud.storage.Storage
-import com.google.cloud.storage.StorageOptions
+import me.onetwo.upvy.compose.config.GcsException
 import mu.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -20,17 +20,10 @@ private val logger = KotlinLogging.logger {}
  */
 @Service
 class GcsService(
-    @Value("\${gcp.project-id}")
-    private val projectId: String,
+    private val storage: Storage,
     @Value("\${ffmpeg.temp-dir}")
     private val tempDir: String
 ) {
-    private val storage: Storage by lazy {
-        StorageOptions.newBuilder()
-            .setProjectId(projectId)
-            .build()
-            .service
-    }
 
     /**
      * GCS에서 파일 다운로드
@@ -39,21 +32,27 @@ class GcsService(
      * @return 다운로드된 로컬 파일
      */
     fun download(gcsUri: String): File {
-        val (bucket, objectName) = parseGcsUri(gcsUri)
-        logger.debug { "GCS 다운로드: bucket=$bucket, object=$objectName" }
+        try {
+            val (bucket, objectName) = parseGcsUri(gcsUri)
+            logger.debug { "GCS 다운로드: bucket=$bucket, object=$objectName" }
 
-        val blob = storage.get(BlobId.of(bucket, objectName))
-            ?: throw IllegalArgumentException("GCS 객체를 찾을 수 없습니다: $gcsUri")
+            val blob = storage.get(BlobId.of(bucket, objectName))
+                ?: throw GcsException("GCS 객체를 찾을 수 없습니다: $gcsUri")
 
-        // 임시 디렉토리에 파일 저장
-        val fileName = objectName.substringAfterLast("/")
-        val localPath = Path.of(tempDir, fileName)
-        Files.createDirectories(localPath.parent)
+            // 임시 디렉토리에 파일 저장
+            val fileName = objectName.substringAfterLast("/")
+            val localPath = Path.of(tempDir, fileName)
+            Files.createDirectories(localPath.parent)
 
-        blob.downloadTo(localPath)
-        logger.debug { "다운로드 완료: $localPath (${blob.size} bytes)" }
+            blob.downloadTo(localPath)
+            logger.debug { "다운로드 완료: $localPath (${blob.size} bytes)" }
 
-        return localPath.toFile()
+            return localPath.toFile()
+        } catch (e: GcsException) {
+            throw e
+        } catch (e: Exception) {
+            throw GcsException("GCS 다운로드 실패: $gcsUri", e)
+        }
     }
 
     /**
@@ -64,18 +63,33 @@ class GcsService(
      * @return 업로드된 GCS URI
      */
     fun upload(localFile: File, gcsUri: String): String {
+        try {
+            val (bucket, objectName) = parseGcsUri(gcsUri)
+            logger.debug { "GCS 업로드: $localFile -> bucket=$bucket, object=$objectName" }
+
+            val blobId = BlobId.of(bucket, objectName)
+            val blobInfo = BlobInfo.newBuilder(blobId)
+                .setContentType(detectContentType(localFile.name))
+                .build()
+
+            storage.createFrom(blobInfo, localFile.toPath())
+            logger.debug { "업로드 완료: $gcsUri (${localFile.length()} bytes)" }
+
+            return gcsUri
+        } catch (e: Exception) {
+            throw GcsException("GCS 업로드 실패: $gcsUri", e)
+        }
+    }
+
+    /**
+     * GCS Public URL 생성
+     *
+     * @param gcsUri GCS URI
+     * @return Public URL
+     */
+    fun getPublicUrl(gcsUri: String): String {
         val (bucket, objectName) = parseGcsUri(gcsUri)
-        logger.debug { "GCS 업로드: $localFile -> bucket=$bucket, object=$objectName" }
-
-        val blobId = BlobId.of(bucket, objectName)
-        val blobInfo = BlobInfo.newBuilder(blobId)
-            .setContentType(detectContentType(localFile.name))
-            .build()
-
-        storage.createFrom(blobInfo, localFile.toPath())
-        logger.debug { "업로드 완료: $gcsUri (${localFile.length()} bytes)" }
-
-        return gcsUri
+        return "https://storage.googleapis.com/$bucket/$objectName"
     }
 
     /**

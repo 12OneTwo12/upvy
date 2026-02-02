@@ -1,0 +1,30 @@
+# =============================================================================
+# Test Configuration
+# =============================================================================
+
+spring:
+  config:
+    activate:
+      on-profile: test
+
+gcp:
+  project-id: test-project
+  storage:
+    bucket: test-bucket
+    output-prefix: test/
+
+ffmpeg:
+  path: /usr/bin/ffmpeg
+  ffprobe-path: /usr/bin/ffprobe
+  temp-dir: /tmp/compose-test
+  output:
+    width: 1080
+    height: 1920
+    fps: 30
+    video-bitrate: 4M
+    audio-bitrate: 128k
+
+logging:
+  level:
+    root: WARN
+    me.onetwo.upvy: DEBUG

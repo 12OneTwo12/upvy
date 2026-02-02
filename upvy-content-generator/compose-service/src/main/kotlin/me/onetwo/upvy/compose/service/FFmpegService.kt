@@ -1,5 +1,6 @@
 package me.onetwo.upvy.compose.service
 
+import me.onetwo.upvy.compose.config.FFmpegException
 import me.onetwo.upvy.compose.dto.ClipInfo
 import me.onetwo.upvy.compose.dto.ComposeMetadata
 import me.onetwo.upvy.compose.dto.SubtitleInfo
@@ -226,11 +227,16 @@ class FFmpegService(
             .start()
 
         val output = process.inputStream.bufferedReader().readText()
-        val exitCode = process.waitFor(5, TimeUnit.MINUTES)
+        val completed = process.waitFor(5, TimeUnit.MINUTES)
 
-        if (!exitCode || process.exitValue() != 0) {
+        if (!completed) {
+            process.destroyForcibly()
+            throw FFmpegException("FFmpeg 타임아웃 (5분 초과)")
+        }
+
+        if (process.exitValue() != 0) {
             logger.error { "FFmpeg 실패: $output" }
-            throw RuntimeException("FFmpeg 실행 실패: exitCode=${process.exitValue()}")
+            throw FFmpegException("FFmpeg 실행 실패: exitCode=${process.exitValue()}, output=$output")
         }
 
         logger.debug { "FFmpeg 완료" }

@@ -1,0 +1,592 @@
+{
+  "name": "Upvy AI Content Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            },
+            {
+              "triggerAtHour": 9
+            },
+            {
+              "triggerAtHour": 12
+            },
+            {
+              "triggerAtHour": 15
+            },
+            {
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "id": "trigger-en",
+      "name": "Schedule EN (5/day)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "notes": "영어 콘텐츠: 5개/일 (6,9,12,15,18시)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            },
+            {
+              "triggerAtHour": 13
+            },
+            {
+              "triggerAtHour": 19
+            }
+          ]
+        }
+      },
+      "id": "trigger-ja",
+      "name": "Schedule JA (3/day)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 200],
+      "notes": "일본어 콘텐츠: 3개/일 (7,13,19시)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            },
+            {
+              "triggerAtHour": 14
+            },
+            {
+              "triggerAtHour": 20
+            }
+          ]
+        }
+      },
+      "id": "trigger-ko",
+      "name": "Schedule KO (3/day)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 400],
+      "notes": "한국어 콘텐츠: 3개/일 (8,14,20시)"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "options": {}
+      },
+      "id": "merge-triggers",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [220, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'en' }}"
+            },
+            {
+              "name": "category",
+              "value": "={{ ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'BUSINESS', 'PSYCHOLOGY', 'HEALTH'][Math.floor(Math.random() * 6)] }}"
+            },
+            {
+              "name": "difficulty",
+              "value": "={{ ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'][Math.floor(Math.random() * 3)] }}"
+            },
+            {
+              "name": "jobId",
+              "value": "={{ $now.format('yyyyMMddHHmmss') }}-{{ Math.random().toString(36).substring(2, 8) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [440, 200],
+      "notes": "카테고리 랜덤 선택, jobId 생성"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 교육 콘텐츠 기획자입니다.\\n\\n[검색 기반 분석 요청]\\n1. \\\"{{ $json.category }}\\\" 분야에서 최근 인기 있는 교육 주제 검색\\n2. 숏폼 영상(30-60초)으로 만들기 좋은 주제 3개 제안\\n3. 각 주제의 바이럴 가능성과 교육적 가치 평가\\n\\n난이도: {{ $json.difficulty }}\\n언어: {{ $json.language }}\\n\\n[출력 형식 - JSON만 출력]\\n{\\n  \\\"topics\\\": [\\n    {\\n      \\\"title\\\": \\\"주제 제목\\\",\\n      \\\"hook\\\": \\\"시청자 관심 끄는 첫 문장\\\",\\n      \\\"keyPoints\\\": [\\\"핵심1\\\", \\\"핵심2\\\", \\\"핵심3\\\"],\\n      \\\"viralScore\\\": 85,\\n      \\\"educationalScore\\\": 90\\n    }\\n  ]\\n}\"\n    }]\n  }],\n  \"tools\": [{\n    \"googleSearch\": {}\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 2048\n  }\n}",
+        "options": {}
+      },
+      "id": "topic-select",
+      "name": "1. Topic Select (Gemini + Grounding)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 200],
+      "notes": "Gemini + Google Search Grounding으로 트렌드 기반 주제 선정"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini 응답에서 주제 파싱\nconst response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n\n// JSON 추출 (마크다운 코드블록 제거)\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  \n  // 가장 높은 점수의 주제 선택\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  return {\n    json: {\n      ...$input.first().json,\n      selectedTopic: bestTopic,\n      allTopics: topics\n    }\n  };\n} catch (e) {\n  throw new Error(`주제 파싱 실패: ${e.message}`);\n}"
+      },
+      "id": "parse-topic",
+      "name": "Parse Topic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.0-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"당신은 교육용 숏폼 콘텐츠 전문 작가입니다.\\n30-60초 분량의 세로형(9:16) 영상 스크립트와 퀴즈를 작성합니다.\\n\\n=== 스크립트 규칙 ===\\n1. Hook (0-5초): 시청자 관심 끄는 질문/충격적 사실\\n2. Core (5-50초): 핵심 내용 전달 (3개 이하 포인트)\\n3. CTA (50-60초): 행동 유도\\n\\n형식 규칙:\\n- 한 문장은 15단어 이내\\n- 전문용어는 즉시 설명\\n- 친근한 말투\\n\\n=== 퀴즈 규칙 ===\\n1. 스크립트의 핵심 개념 확인 문제 1개\\n2. 4개 선택지 (정답 1개 + 오답 3개)\\n\\n[주제 정보]\\n제목: {{ $json.selectedTopic.title }}\\nHook: {{ $json.selectedTopic.hook }}\\n핵심: {{ $json.selectedTopic.keyPoints.join(', ') }}\\n난이도: {{ $json.difficulty }}\\n언어: {{ $json.language }}\\n\\n[출력 형식 - JSON만 출력]\\n{\\n  \\\"script\\\": {\\n    \\\"title\\\": \\\"영상 제목\\\",\\n    \\\"description\\\": \\\"영상 설명 (200자)\\\",\\n    \\\"sections\\\": [\\n      {\\n        \\\"type\\\": \\\"HOOK\\\",\\n        \\\"startTime\\\": 0,\\n        \\\"endTime\\\": 5,\\n        \\\"narration\\\": \\\"나레이션 텍스트\\\",\\n        \\\"visualCue\\\": \\\"비주얼 설명\\\"\\n      }\\n    ],\\n    \\\"tags\\\": [\\\"태그1\\\", \\\"태그2\\\"]\\n  },\\n  \\\"quiz\\\": {\\n    \\\"question\\\": \\\"퀴즈 질문\\\",\\n    \\\"options\\\": [\\n      {\\\"text\\\": \\\"선택지1\\\", \\\"isCorrect\\\": true},\\n      {\\\"text\\\": \\\"선택지2\\\", \\\"isCorrect\\\": false}\\n    ]\\n  },\\n  \\\"qualityCheck\\\": {\\n    \\\"verdict\\\": \\\"PASS\\\",\\n    \\\"reason\\\": \\\"품질 검토 이유\\\"\\n  }\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 4096\n  }\n}",
+        "options": {}
+      },
+      "id": "script-quiz-gen",
+      "name": "2. Script + Quiz Gen (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 200],
+      "notes": "스크립트 + 퀴즈 + 품질검토를 1회 LLM 호출로 생성"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini 응답에서 스크립트+퀴즈 파싱\nconst response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n\n// JSON 추출\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  \n  return {\n    json: {\n      ...$input.first().json,\n      script: parsed.script,\n      quiz: parsed.quiz,\n      qualityCheck: parsed.qualityCheck\n    }\n  };\n} catch (e) {\n  throw new Error(`스크립트 파싱 실패: ${e.message}`);\n}"
+      },
+      "id": "parse-script",
+      "name": "Parse Script + Quiz",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "quality-check",
+              "leftValue": "={{ $json.qualityCheck.verdict }}",
+              "rightValue": "PASS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "quality-gate",
+      "name": "3. Quality Gate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 200],
+      "notes": "PASS → 비주얼/오디오 생성, FAIL → 스킵"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/imagen-3.0-generate-002:predict",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"instances\": [{\n    \"prompt\": \"Educational illustration for short-form video: {{ $json.script.sections[0].visualCue }}. Style: modern, minimalist, flat design, vibrant colors. Vertical format 9:16. No text overlay.\"\n  }],\n  \"parameters\": {\n    \"sampleCount\": 1,\n    \"aspectRatio\": \"9:16\",\n    \"safetyFilterLevel\": \"block_medium_and_above\",\n    \"personGeneration\": \"dont_allow\"\n  }\n}",
+        "options": {}
+      },
+      "id": "visual-gen",
+      "name": "4a. Visual Gen (Imagen 3)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 100],
+      "notes": "Imagen 3로 9:16 이미지 생성"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'ko' ? 'ko-KR' : $json.language === 'ja' ? 'ja-JP' : 'en-US' }}\",\n    \"name\": \"{{ $json.language === 'ko' ? 'ko-KR-Wavenet-A' : $json.language === 'ja' ? 'ja-JP-Wavenet-A' : 'en-US-Wavenet-D' }}\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"speakingRate\": 1.1\n  }\n}",
+        "options": {}
+      },
+      "id": "audio-gen",
+      "name": "4b. Audio Gen (TTS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 300],
+      "notes": "Google Cloud TTS로 나레이션 생성 (병렬)"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "options": {}
+      },
+      "id": "merge-visual-audio",
+      "name": "Merge Visual + Audio",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1980, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://compose-service:8084/api/v1/compose",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"clips\": [{\n    \"gcsUri\": \"{{ $json.visualGcsUri }}\",\n    \"startTime\": 0,\n    \"duration\": {{ $json.script.sections.reduce((sum, s) => sum + (s.endTime - s.startTime), 0) }}\n  }],\n  \"audio\": {\n    \"gcsUri\": \"{{ $json.audioGcsUri }}\"\n  },\n  \"subtitles\": {{ JSON.stringify($json.script.sections.map(s => ({ start: s.startTime, end: s.endTime, text: s.narration }))) }},\n  \"metadata\": {\n    \"title\": \"{{ $json.script.title }}\",\n    \"watermark\": true,\n    \"language\": \"{{ $json.language }}\"\n  },\n  \"output\": {\n    \"gcsUri\": \"gs://{{ $env.GCS_BUCKET }}/generated/{{ $json.jobId }}/\"\n  }\n}",
+        "options": {}
+      },
+      "id": "compose",
+      "name": "5. Compose (FFmpeg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 200],
+      "notes": "FFmpeg로 영상 합성 (compose-service)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $env.UPVY_API_URL }}/api/v1/contents/upload-url",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contentType\": \"VIDEO\",\n  \"fileName\": \"{{ $json.jobId }}.mp4\",\n  \"fileSize\": {{ $json.fileSize }}\n}",
+        "options": {}
+      },
+      "id": "upvy-upload-url",
+      "name": "6a. Upvy - Get Upload URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, 0],
+      "notes": "Upvy 업로드 URL 요청"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $env.UPVY_API_URL }}/api/v1/contents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contentId\": \"{{ $json.contentId }}\",\n  \"title\": \"{{ $json.script.title }}\",\n  \"description\": \"{{ $json.script.description }}\",\n  \"category\": \"{{ $json.category }}\",\n  \"tags\": {{ JSON.stringify($json.script.tags) }},\n  \"language\": \"{{ $json.language }}\",\n  \"thumbnailUrl\": \"{{ $json.thumbnailGcsUri }}\",\n  \"duration\": {{ $json.duration }},\n  \"width\": 1080,\n  \"height\": 1920,\n  \"quiz\": {{ JSON.stringify($json.quiz) }}\n}",
+        "options": {}
+      },
+      "id": "upvy-publish",
+      "name": "6b. Upvy - Publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2640, 0],
+      "notes": "Upvy에 콘텐츠+퀴즈 게시"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+        "authentication": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"snippet\": {\n    \"title\": \"{{ $json.script.title }}\",\n    \"description\": \"{{ $json.script.description }}\\n\\n#Shorts #교육 #{{ $json.category }}\",\n    \"tags\": {{ JSON.stringify([...$json.script.tags, 'Shorts', '교육']) }},\n    \"categoryId\": \"27\",\n    \"defaultLanguage\": \"{{ $json.language }}\"\n  },\n  \"status\": {\n    \"privacyStatus\": \"public\",\n    \"selfDeclaredMadeForKids\": false\n  }\n}",
+        "options": {}
+      },
+      "id": "youtube-publish",
+      "name": "6c. YouTube Shorts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, 200],
+      "notes": "YouTube Shorts 업로드"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.INSTAGRAM_USER_ID }}/media",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"media_type\": \"REELS\",\n  \"video_url\": \"{{ $json.publicVideoUrl }}\",\n  \"caption\": \"{{ $json.script.title }}\\n\\n{{ $json.script.description }}\\n\\n#{{ $json.script.tags.join(' #') }}\"\n}",
+        "options": {}
+      },
+      "id": "instagram-publish",
+      "name": "6d. Instagram Reels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, 400],
+      "notes": "Instagram Reels 업로드"
+    },
+    {
+      "parameters": {
+        "channel": "#ai-content-alerts",
+        "text": "=:white_check_mark: *AI 콘텐츠 생성 완료*\n\n*제목:* {{ $json.script.title }}\n*언어:* {{ $json.language }}\n*카테고리:* {{ $json.category }}\n\n*게시 결과:*\n- Upvy: {{ $json.upvyUrl || 'N/A' }}\n- YouTube: {{ $json.youtubeUrl || 'N/A' }}\n- Instagram: {{ $json.instagramUrl || 'N/A' }}",
+        "otherOptions": {}
+      },
+      "id": "slack-success",
+      "name": "Slack - Success",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2860, 200],
+      "notes": "성공 알림"
+    },
+    {
+      "parameters": {
+        "channel": "#ai-content-alerts",
+        "text": "=:x: *AI 콘텐츠 생성 실패*\n\n*Job ID:* {{ $json.jobId }}\n*단계:* {{ $json.failedStep }}\n*에러:* {{ $json.errorMessage }}\n\n*품질 검토:*\n{{ $json.qualityCheck?.reason || 'N/A' }}",
+        "otherOptions": {}
+      },
+      "id": "slack-failure",
+      "name": "Slack - Failure",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1760, 400],
+      "notes": "실패/스킵 알림"
+    }
+  ],
+  "connections": {
+    "Schedule EN (5/day)": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule JA (3/day)": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Schedule KO (3/day)": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Config": {
+      "main": [
+        [
+          {
+            "node": "1. Topic Select (Gemini + Grounding)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Topic Select (Gemini + Grounding)": {
+      "main": [
+        [
+          {
+            "node": "Parse Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Topic": {
+      "main": [
+        [
+          {
+            "node": "2. Script + Quiz Gen (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Script + Quiz Gen (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Parse Script + Quiz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Script + Quiz": {
+      "main": [
+        [
+          {
+            "node": "3. Quality Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Quality Gate": {
+      "main": [
+        [
+          {
+            "node": "4a. Visual Gen (Imagen 3)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "4b. Audio Gen (TTS)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack - Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4a. Visual Gen (Imagen 3)": {
+      "main": [
+        [
+          {
+            "node": "Merge Visual + Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4b. Audio Gen (TTS)": {
+      "main": [
+        [
+          {
+            "node": "Merge Visual + Audio",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Visual + Audio": {
+      "main": [
+        [
+          {
+            "node": "5. Compose (FFmpeg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Compose (FFmpeg)": {
+      "main": [
+        [
+          {
+            "node": "6a. Upvy - Get Upload URL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "6c. YouTube Shorts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "6d. Instagram Reels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6a. Upvy - Get Upload URL": {
+      "main": [
+        [
+          {
+            "node": "6b. Upvy - Publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6b. Upvy - Publish": {
+      "main": [
+        [
+          {
+            "node": "Slack - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "timezone": "Asia/Seoul"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ai-content",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 3,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
