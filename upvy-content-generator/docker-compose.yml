@@ -56,8 +56,20 @@ services:
       - N8N_LOG_LEVEL=${N8N_LOG_LEVEL:-info}
       - N8N_LOG_OUTPUT=console
 
-      # GCP 인증 (Vertex AI, TTS)
+      # GCP 설정 (Vertex AI, TTS)
       - GOOGLE_APPLICATION_CREDENTIALS=/credentials/gcp-key.json
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}
+      - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-asia-northeast3}
+
+      # AWS 설정 (S3)
+      - S3_BUCKET=${S3_BUCKET:-upvy-ai-content}
+      - AWS_REGION=${AWS_REGION:-ap-northeast-2}
+
+      # Upvy API
+      - UPVY_API_URL=${UPVY_API_URL:-https://api.upvy.org}
+
+      # Instagram
+      - INSTAGRAM_USER_ID=${INSTAGRAM_USER_ID:-}
 
     volumes:
       # n8n 데이터 영속화 (워크플로우, 크레덴셜 등)
