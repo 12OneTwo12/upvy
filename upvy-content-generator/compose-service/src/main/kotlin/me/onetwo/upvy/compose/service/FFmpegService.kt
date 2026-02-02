@@ -35,11 +35,13 @@ data class FFmpegComposeWithThumbnailResult(
 /**
  * FFmpeg 영상 합성 서비스
  *
- * 비주얼 클립 + 오디오 + 자막 → 최종 숏폼 영상
+ * 비주얼(이미지 또는 비디오) + 오디오 + 자막 → 최종 숏폼 영상
  *
  * FFmpeg 파이프라인:
- * 1. 클립 연결 (concat demuxer)
- * 2. 오디오 트랙 합성 (amix)
+ * 1. 입력 처리:
+ *    - 이미지: -loop 1로 오디오 길이만큼 반복
+ *    - 비디오: concat demuxer로 연결
+ * 2. 오디오 트랙 합성
  * 3. 자막 오버레이 (subtitles filter)
  * 4. 출력 인코딩 (H.264, 1080x1920, 30fps)
  */
@@ -62,6 +64,40 @@ class FFmpegService(
     @Value("\${ffmpeg.output.audio-bitrate}")
     private val audioBitrate: String
 ) {
+    companion object {
+        private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp", "gif", "bmp")
+    }
+
+    /**
+     * 파일이 이미지인지 확인
+     */
+    private fun isImageFile(file: File): Boolean {
+        val extension = file.extension.lowercase()
+        return extension in IMAGE_EXTENSIONS
+    }
+
+    /**
+     * 오디오 파일 길이 조회
+     */
+    private fun getAudioDuration(audioFile: File): Double {
+        val command = listOf(
+            ffprobePath,
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            audioFile.absolutePath
+        )
+
+        val process = ProcessBuilder(command)
+            .redirectErrorStream(true)
+            .start()
+
+        val output = process.inputStream.bufferedReader().readText().trim()
+        process.waitFor(30, TimeUnit.SECONDS)
+
+        return output.toDoubleOrNull() ?: 60.0  // 기본값 60초
+    }
+
     /**
      * SRT 자막 파일 생성
      *
@@ -94,7 +130,7 @@ class FFmpegService(
      * 영상 합성 실행 (영상만)
      *
      * @param composeId 합성 작업 ID
-     * @param clips 클립 파일 목록
+     * @param clips 클립 파일 목록 (이미지 또는 비디오)
      * @param audioFile 오디오 파일
      * @param srtFile SRT 자막 파일 (nullable)
      * @param metadata 메타데이터
@@ -112,23 +148,37 @@ class FFmpegService(
 
         val outputVideo = workDir.resolve("final.mp4").toFile()
 
-        // 1. 클립 목록 파일 생성 (concat demuxer용)
-        val concatFile = createConcatFile(workDir, clips)
+        // 입력 타입 감지: 단일 이미지 vs 비디오 클립들
+        val isSingleImage = clips.size == 1 && isImageFile(clips.first())
 
-        // 2. FFmpeg 명령어 구성
-        val command = buildFFmpegCommand(
-            concatFile = concatFile,
-            audioFile = audioFile,
-            srtFile = srtFile,
-            outputFile = outputVideo,
-            metadata = metadata
-        )
+        // FFmpeg 명령어 구성
+        val command = if (isSingleImage) {
+            val audioDuration = getAudioDuration(audioFile)
+            logger.info { "이미지 입력 감지: ${clips.first().name}, 오디오 길이: ${audioDuration}초" }
+            buildImageToVideoCommand(
+                imageFile = clips.first(),
+                audioFile = audioFile,
+                audioDuration = audioDuration,
+                srtFile = srtFile,
+                outputFile = outputVideo,
+                metadata = metadata
+            )
+        } else {
+            val concatFile = createConcatFile(workDir, clips)
+            buildFFmpegCommand(
+                concatFile = concatFile,
+                audioFile = audioFile,
+                srtFile = srtFile,
+                outputFile = outputVideo,
+                metadata = metadata
+            )
+        }
 
-        // 3. FFmpeg 실행
+        // FFmpeg 실행
         logger.info { "FFmpeg 실행: ${command.joinToString(" ")}" }
         executeFFmpeg(command)
 
-        // 4. 결과 반환
+        // 결과 반환
         val duration = getVideoDuration(outputVideo)
 
         return FFmpegComposeResult(
@@ -142,7 +192,7 @@ class FFmpegService(
      * 영상 합성 실행 (영상 + 썸네일)
      *
      * @param composeId 합성 작업 ID
-     * @param clips 클립 파일 목록
+     * @param clips 클립 파일 목록 (이미지 또는 비디오)
      * @param audioFile 오디오 파일
      * @param srtFile SRT 자막 파일 (nullable)
      * @param metadata 메타데이터
@@ -161,26 +211,45 @@ class FFmpegService(
         val outputVideo = workDir.resolve("final.mp4").toFile()
         val outputThumbnail = workDir.resolve("thumbnail.jpg").toFile()
 
-        // 1. 클립 목록 파일 생성 (concat demuxer용)
-        val concatFile = createConcatFile(workDir, clips)
+        // 입력 타입 감지: 단일 이미지 vs 비디오 클립들
+        val isSingleImage = clips.size == 1 && isImageFile(clips.first())
 
-        // 2. FFmpeg 명령어 구성
-        val command = buildFFmpegCommand(
-            concatFile = concatFile,
-            audioFile = audioFile,
-            srtFile = srtFile,
-            outputFile = outputVideo,
-            metadata = metadata
-        )
+        // FFmpeg 명령어 구성
+        val command = if (isSingleImage) {
+            val audioDuration = getAudioDuration(audioFile)
+            logger.info { "이미지 입력 감지: ${clips.first().name}, 오디오 길이: ${audioDuration}초" }
+            buildImageToVideoCommand(
+                imageFile = clips.first(),
+                audioFile = audioFile,
+                audioDuration = audioDuration,
+                srtFile = srtFile,
+                outputFile = outputVideo,
+                metadata = metadata
+            )
+        } else {
+            val concatFile = createConcatFile(workDir, clips)
+            buildFFmpegCommand(
+                concatFile = concatFile,
+                audioFile = audioFile,
+                srtFile = srtFile,
+                outputFile = outputVideo,
+                metadata = metadata
+            )
+        }
 
-        // 3. FFmpeg 실행
+        // FFmpeg 실행
         logger.info { "FFmpeg 실행: ${command.joinToString(" ")}" }
         executeFFmpeg(command)
 
-        // 4. 썸네일 생성 (3초 지점에서 프레임 추출)
-        generateThumbnail(outputVideo, outputThumbnail)
+        // 썸네일 생성 (3초 지점에서 프레임 추출, 또는 이미지 입력시 원본 사용)
+        if (isSingleImage) {
+            // 이미지 입력인 경우 원본 이미지를 썸네일로 리사이즈
+            generateThumbnailFromImage(clips.first(), outputThumbnail)
+        } else {
+            generateThumbnail(outputVideo, outputThumbnail)
+        }
 
-        // 5. 결과 반환
+        // 결과 반환
         val duration = getVideoDuration(outputVideo)
 
         return FFmpegComposeWithThumbnailResult(
@@ -272,6 +341,70 @@ class FFmpegService(
     }
 
     /**
+     * 이미지 → 비디오 변환 FFmpeg 명령어 구성
+     *
+     * 단일 이미지를 오디오 길이만큼 반복하여 비디오 생성
+     */
+    private fun buildImageToVideoCommand(
+        imageFile: File,
+        audioFile: File,
+        audioDuration: Double,
+        srtFile: File?,
+        outputFile: File,
+        metadata: ComposeMetadata
+    ): List<String> {
+        val command = mutableListOf(
+            ffmpegPath,
+            "-y",  // 덮어쓰기
+            // 입력: 이미지 (무한 루프)
+            "-loop", "1",
+            "-i", imageFile.absolutePath,
+            // 입력: 오디오
+            "-i", audioFile.absolutePath,
+            // 오디오 길이로 영상 길이 제한
+            "-t", audioDuration.toString()
+        )
+
+        // 필터 체인 구성
+        val filters = mutableListOf<String>()
+
+        // 비디오 스케일 (9:16)
+        filters.add("[0:v]scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=decrease,pad=${outputWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2[scaled]")
+
+        // 자막 오버레이 (있는 경우)
+        if (srtFile != null) {
+            val subtitleFilter = "subtitles=${srtFile.absolutePath}:force_style='FontSize=48,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,MarginV=100'"
+            filters.add("[scaled]$subtitleFilter[subtitled]")
+            command.addAll(listOf("-filter_complex", filters.joinToString(";")))
+            command.addAll(listOf("-map", "[subtitled]"))
+        } else {
+            command.addAll(listOf("-filter_complex", filters.joinToString(";")))
+            command.addAll(listOf("-map", "[scaled]"))
+        }
+
+        // 오디오 매핑
+        command.addAll(listOf("-map", "1:a"))
+
+        // 출력 설정
+        command.addAll(
+            listOf(
+                "-c:v", "libx264",
+                "-preset", "medium",
+                "-b:v", videoBitrate,
+                "-c:a", "aac",
+                "-b:a", audioBitrate,
+                "-r", outputFps.toString(),
+                "-pix_fmt", "yuv420p",  // 호환성을 위한 픽셀 포맷
+                "-movflags", "+faststart",  // 스트리밍 최적화
+                "-shortest",  // 오디오 끝나면 영상도 종료
+                outputFile.absolutePath
+            )
+        )
+
+        return command
+    }
+
+    /**
      * FFmpeg 명령어 실행
      */
     private fun executeFFmpeg(command: List<String>) {
@@ -311,6 +444,23 @@ class FFmpegService(
 
         executeFFmpeg(command)
         logger.debug { "썸네일 생성 완료: $thumbnailFile" }
+    }
+
+    /**
+     * 이미지에서 썸네일 생성 (리사이즈)
+     */
+    private fun generateThumbnailFromImage(imageFile: File, thumbnailFile: File) {
+        val command = listOf(
+            ffmpegPath,
+            "-y",
+            "-i", imageFile.absolutePath,
+            "-vf", "scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=decrease,pad=${outputWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2",
+            "-q:v", "2",
+            thumbnailFile.absolutePath
+        )
+
+        executeFFmpeg(command)
+        logger.debug { "이미지에서 썸네일 생성 완료: $thumbnailFile" }
     }
 
     /**
