@@ -43,6 +43,9 @@ services:
       # 워크플로우에서 환경변수 접근 허용
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 
+      # Code 노드에서 Node.js 내장 모듈 허용 (JWT 생성용)
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto,fs
+
       # 인증 설정
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
