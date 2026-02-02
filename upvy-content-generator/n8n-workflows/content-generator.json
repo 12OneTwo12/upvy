@@ -303,7 +303,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  if (!bestTopic) throw new Error('주제를 찾을 수 없습니다');\n  \n  return { json: { ...$input.first().json, selectedTopic: bestTopic, allTopics: topics } };\n} catch (e) {\n  throw new Error(`주제 파싱 실패: ${e.message}`);\n}"
+        "jsCode": "const response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n\n// JSON 추출: 여러 방법 시도\nlet jsonStr = text;\n\n// 1. markdown 코드블록 제거\njsonStr = jsonStr.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\n\n// 2. JSON 객체 찾기 (첫 번째 { 부터 마지막 } 까지)\nconst firstBrace = jsonStr.indexOf('{');\nconst lastBrace = jsonStr.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n  jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);\n}\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  if (!bestTopic) throw new Error('주제를 찾을 수 없습니다');\n  \n  return { json: { ...$input.first().json, selectedTopic: bestTopic, allTopics: topics } };\n} catch (e) {\n  throw new Error(`주제 파싱 실패: ${e.message}\\n원본: ${text.substring(0, 200)}...`);\n}"
       },
       "id": "parse-topic",
       "name": "Parse Topic",
@@ -343,7 +343,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  if (!parsed.script || !parsed.quiz || !parsed.qualityCheck) throw new Error('필수 필드 누락');\n  \n  return {\n    json: {\n      ...$input.first().json,\n      script: parsed.script,\n      quiz: parsed.quiz,\n      qualityCheck: parsed.qualityCheck,\n      totalDuration: parsed.script.totalDuration || 60\n    }\n  };\n} catch (e) {\n  throw new Error(`스크립트 파싱 실패: ${e.message}`);\n}"
+        "jsCode": "const response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n\n// JSON 추출: 여러 방법 시도\nlet jsonStr = text;\n\n// 1. markdown 코드블록 제거\njsonStr = jsonStr.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\n\n// 2. JSON 객체 찾기 (첫 번째 { 부터 마지막 } 까지)\nconst firstBrace = jsonStr.indexOf('{');\nconst lastBrace = jsonStr.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n  jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);\n}\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  if (!parsed.script || !parsed.quiz || !parsed.qualityCheck) throw new Error('필수 필드 누락');\n  \n  return {\n    json: {\n      ...$input.first().json,\n      script: parsed.script,\n      quiz: parsed.quiz,\n      qualityCheck: parsed.qualityCheck,\n      totalDuration: parsed.script.totalDuration || 60\n    }\n  };\n} catch (e) {\n  throw new Error(`스크립트 파싱 실패: ${e.message}\\n원본: ${text.substring(0, 200)}...`);\n}"
       },
       "id": "parse-script",
       "name": "Parse Script + Quiz",
