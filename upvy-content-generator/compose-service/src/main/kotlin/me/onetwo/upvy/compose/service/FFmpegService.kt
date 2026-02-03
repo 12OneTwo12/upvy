@@ -148,17 +148,33 @@ class FFmpegService(
 
         val outputVideo = workDir.resolve("final.mp4").toFile()
 
-        // 입력 타입 감지: 단일 이미지 vs 비디오 클립들
-        val isSingleImage = clips.size == 1 && isImageFile(clips.first())
+        // 입력 타입 감지: 이미지들 vs 비디오 클립들
+        val allImages = clips.all { isImageFile(it) }
+        val isSingleImage = clips.size == 1 && allImages
+        val isMultipleImages = clips.size > 1 && allImages
 
         // FFmpeg 명령어 구성
         val command = if (isSingleImage) {
             val audioDuration = getAudioDuration(audioFile)
-            logger.info { "이미지 입력 감지: ${clips.first().name}, 오디오 길이: ${audioDuration}초" }
+            logger.info { "단일 이미지 입력 감지: ${clips.first().name}, 오디오 길이: ${audioDuration}초" }
             buildImageToVideoCommand(
                 imageFile = clips.first(),
                 audioFile = audioFile,
                 audioDuration = audioDuration,
+                srtFile = srtFile,
+                outputFile = outputVideo,
+                metadata = metadata
+            )
+        } else if (isMultipleImages) {
+            // 여러 이미지 → 각각을 클립으로 변환 후 연결
+            val audioDuration = getAudioDuration(audioFile)
+            val clipDurations = metadata.clipDurations ?: distributeEqualDurations(clips.size, audioDuration)
+            logger.info { "다중 이미지 입력 감지: ${clips.size}개, 각 클립 길이: $clipDurations" }
+            buildMultiImageToVideoCommand(
+                workDir = workDir,
+                imageFiles = clips,
+                audioFile = audioFile,
+                clipDurations = clipDurations,
                 srtFile = srtFile,
                 outputFile = outputVideo,
                 metadata = metadata
