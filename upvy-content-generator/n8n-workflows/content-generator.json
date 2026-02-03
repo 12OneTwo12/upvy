@@ -435,6 +435,38 @@
       "position": [2820, 400]
     },
     {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.outputType }}", "rightValue": "ai_video", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Veo"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [{ "leftValue": "={{ $json.outputType }}", "rightValue": "images_only", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Images"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "audio-router",
+      "name": "Audio Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [2920, 400]
+    },
+    {
       "parameters": { "mode": "append" },
       "id": "merge-visual-audio",
       "name": "Merge Visual + Audio",
@@ -731,7 +763,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\nif (!videoBinary) throw new Error('No video binary');\n\nconst prevContext = $('Combine Veo').first().json;\n\nreturn {\n  json: { ...prevContext, composedAt: new Date().toISOString() },\n  binary: { video: { ...videoBinary, fileName: 'final.mp4' } }\n};"
+        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\nif (!videoBinary) throw new Error('No video binary');\n\nconst prevContext = $('Combine Veo').first().json;\nconst firstImage = $('4c-4. Combine Images').first().json;\n\nconst result = {\n  json: { ...prevContext, composedAt: new Date().toISOString() },\n  binary: { video: { ...videoBinary, fileName: 'final.mp4' } }\n};\n\nif (firstImage?.imageBase64) {\n  result.binary.thumbnail = {\n    data: firstImage.imageBase64,\n    mimeType: 'image/png',\n    fileName: 'thumbnail.png'\n  };\n}\n\nreturn result;"
       },
       "id": "process-veo",
       "name": "Process Veo Video",
@@ -750,18 +782,40 @@
       "name": "S3 Veo Upload",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3920, 0],
+      "position": [3920, -50],
       "credentials": { "aws": { "name": "AWS" } }
     },
     {
       "parameters": {
-        "jsCode": "const prevContext = $('Process Veo Video').first().json;\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`,\n    thumbnailUrl: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`\n  }\n};"
+        "operation": "upload",
+        "bucketName": "={{ $env.S3_BUCKET }}",
+        "fileName": "=edited-videos/generated/{{ $json.jobId }}/thumbnail.png",
+        "binaryPropertyName": "thumbnail"
+      },
+      "id": "s3-veo-thumb",
+      "name": "S3 Veo Upload Thumbnail",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [3920, 50],
+      "credentials": { "aws": { "name": "AWS" } }
+    },
+    {
+      "parameters": { "mode": "append" },
+      "id": "merge-s3-veo",
+      "name": "Merge S3 Veo",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [4140, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevContext = $('Process Veo Video').first().json;\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`,\n    thumbnailUrl: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/thumbnail.png`\n  }\n};"
       },
       "id": "set-veo-urls",
       "name": "Set Veo URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4140, 0]
+      "position": [4360, 0]
     }
   ],
   "connections": {
@@ -804,9 +858,11 @@
     "4a-5. Aggregate Images": { "main": [[{ "node": "Convert to Binary", "type": "main", "index": 0 }]] },
     "Convert to Binary": { "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 0 }]] },
     "4b. TTS": { "main": [[{ "node": "Prepare Audio", "type": "main", "index": 0 }]] },
-    "Prepare Audio": {
+    "Prepare Audio": { "main": [[{ "node": "Audio Router", "type": "main", "index": 0 }]] },
+    "Audio Router": {
       "main": [
-        [{ "node": "Merge Visual + Audio", "type": "main", "index": 1 }, { "node": "Merge Veo + Audio", "type": "main", "index": 1 }]
+        [{ "node": "Merge Veo + Audio", "type": "main", "index": 1 }],
+        [{ "node": "Merge Visual + Audio", "type": "main", "index": 1 }]
       ]
     },
     "Merge Visual + Audio": { "main": [[{ "node": "Combine Binaries", "type": "main", "index": 0 }]] },
@@ -835,8 +891,14 @@
     "Merge Veo + Audio": { "main": [[{ "node": "Combine Veo", "type": "main", "index": 0 }]] },
     "Combine Veo": { "main": [[{ "node": "5b. Compose Veo", "type": "main", "index": 0 }]] },
     "5b. Compose Veo": { "main": [[{ "node": "Process Veo Video", "type": "main", "index": 0 }]] },
-    "Process Veo Video": { "main": [[{ "node": "S3 Veo Upload", "type": "main", "index": 0 }]] },
-    "S3 Veo Upload": { "main": [[{ "node": "Set Veo URLs", "type": "main", "index": 0 }]] },
+    "Process Veo Video": {
+      "main": [
+        [{ "node": "S3 Veo Upload", "type": "main", "index": 0 }, { "node": "S3 Veo Upload Thumbnail", "type": "main", "index": 0 }]
+      ]
+    },
+    "S3 Veo Upload": { "main": [[{ "node": "Merge S3 Veo", "type": "main", "index": 0 }]] },
+    "S3 Veo Upload Thumbnail": { "main": [[{ "node": "Merge S3 Veo", "type": "main", "index": 1 }]] },
+    "Merge S3 Veo": { "main": [[{ "node": "Set Veo URLs", "type": "main", "index": 0 }]] },
     "Set Veo URLs": { "main": [[{ "node": "6. Upvy Publish", "type": "main", "index": 0 }]] }
   },
   "settings": {
