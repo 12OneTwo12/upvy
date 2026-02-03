@@ -48,7 +48,14 @@ data class ComposeMetadata(
      * 자막 목록
      */
     @field:Valid
-    val subtitles: List<SubtitleInfo> = emptyList()
+    val subtitles: List<SubtitleInfo> = emptyList(),
+
+    /**
+     * 각 클립의 재생 시간 (초)
+     * 이미지 입력 시 해당 이미지를 몇 초간 표시할지 지정
+     * 미지정 시 오디오 길이를 균등 분배
+     */
+    val clipDurations: List<Double>? = null
 )
 
 /**

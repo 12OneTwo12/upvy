@@ -211,17 +211,33 @@ class FFmpegService(
         val outputVideo = workDir.resolve("final.mp4").toFile()
         val outputThumbnail = workDir.resolve("thumbnail.jpg").toFile()
 
-        // 입력 타입 감지: 단일 이미지 vs 비디오 클립들
-        val isSingleImage = clips.size == 1 && isImageFile(clips.first())
+        // 입력 타입 감지: 이미지들 vs 비디오 클립들
+        val allImages = clips.all { isImageFile(it) }
+        val isSingleImage = clips.size == 1 && allImages
+        val isMultipleImages = clips.size > 1 && allImages
 
         // FFmpeg 명령어 구성
         val command = if (isSingleImage) {
             val audioDuration = getAudioDuration(audioFile)
-            logger.info { "이미지 입력 감지: ${clips.first().name}, 오디오 길이: ${audioDuration}초" }
+            logger.info { "단일 이미지 입력 감지: ${clips.first().name}, 오디오 길이: ${audioDuration}초" }
             buildImageToVideoCommand(
                 imageFile = clips.first(),
                 audioFile = audioFile,
                 audioDuration = audioDuration,
+                srtFile = srtFile,
+                outputFile = outputVideo,
+                metadata = metadata
+            )
+        } else if (isMultipleImages) {
+            // 여러 이미지 → 각각을 클립으로 변환 후 연결
+            val audioDuration = getAudioDuration(audioFile)
+            val clipDurations = metadata.clipDurations ?: distributeEqualDurations(clips.size, audioDuration)
+            logger.info { "다중 이미지 입력 감지: ${clips.size}개, 각 클립 길이: $clipDurations" }
+            buildMultiImageToVideoCommand(
+                workDir = workDir,
+                imageFiles = clips,
+                audioFile = audioFile,
+                clipDurations = clipDurations,
                 srtFile = srtFile,
                 outputFile = outputVideo,
                 metadata = metadata
@@ -242,8 +258,8 @@ class FFmpegService(
         executeFFmpeg(command)
 
         // 썸네일 생성 (3초 지점에서 프레임 추출, 또는 이미지 입력시 원본 사용)
-        if (isSingleImage) {
-            // 이미지 입력인 경우 원본 이미지를 썸네일로 리사이즈
+        if (isSingleImage || isMultipleImages) {
+            // 이미지 입력인 경우 첫 번째 이미지를 썸네일로 리사이즈
             generateThumbnailFromImage(clips.first(), outputThumbnail)
         } else {
             generateThumbnail(outputVideo, outputThumbnail)
@@ -397,6 +413,100 @@ class FFmpegService(
                 "-pix_fmt", "yuv420p",  // 호환성을 위한 픽셀 포맷
                 "-movflags", "+faststart",  // 스트리밍 최적화
                 "-shortest",  // 오디오 끝나면 영상도 종료
+                outputFile.absolutePath
+            )
+        )
+
+        return command
+    }
+
+    /**
+     * 총 시간을 클립 개수로 균등 분배
+     */
+    private fun distributeEqualDurations(clipCount: Int, totalDuration: Double): List<Double> {
+        val durationPerClip = totalDuration / clipCount
+        return List(clipCount) { durationPerClip }
+    }
+
+    /**
+     * 여러 이미지 → 비디오 변환 FFmpeg 명령어 구성
+     *
+     * 각 이미지를 지정된 시간만큼 표시하고 연결하여 비디오 생성
+     */
+    private fun buildMultiImageToVideoCommand(
+        workDir: Path,
+        imageFiles: List<File>,
+        audioFile: File,
+        clipDurations: List<Double>,
+        srtFile: File?,
+        outputFile: File,
+        metadata: ComposeMetadata
+    ): List<String> {
+        val command = mutableListOf(
+            ffmpegPath,
+            "-y"  // 덮어쓰기
+        )
+
+        // 각 이미지를 입력으로 추가
+        imageFiles.forEach { imageFile ->
+            command.addAll(listOf("-loop", "1", "-i", imageFile.absolutePath))
+        }
+
+        // 오디오 입력 추가
+        command.addAll(listOf("-i", audioFile.absolutePath))
+
+        // 필터 체인 구성
+        val filterParts = mutableListOf<String>()
+        val scaledStreams = mutableListOf<String>()
+
+        // 각 이미지를 스케일링하고 지정된 시간만큼 트림
+        imageFiles.forEachIndexed { index, _ ->
+            val duration = clipDurations.getOrElse(index) { clipDurations.last() }
+            // 스케일 + 패드 + 트림 + fps 설정
+            filterParts.add(
+                "[$index:v]scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=decrease," +
+                "pad=${outputWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2," +
+                "setsar=1,fps=${outputFps},trim=duration=$duration,setpts=PTS-STARTPTS[v$index]"
+            )
+            scaledStreams.add("[v$index]")
+        }
+
+        // 모든 비디오 스트림 연결
+        val concatInput = scaledStreams.joinToString("")
+        filterParts.add("${concatInput}concat=n=${imageFiles.size}:v=1:a=0[concatenated]")
+
+        // 자막 오버레이 (있는 경우)
+        val finalVideoStream = if (srtFile != null) {
+            val escapedPath = srtFile.absolutePath.replace(":", "\\:").replace("'", "\\'")
+            filterParts.add(
+                "[concatenated]subtitles='$escapedPath':force_style='FontSize=48,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,MarginV=100'[final]"
+            )
+            "[final]"
+        } else {
+            "[concatenated]"
+        }
+
+        command.addAll(listOf("-filter_complex", filterParts.joinToString(";")))
+        command.addAll(listOf("-map", finalVideoStream))
+
+        // 오디오 매핑 (마지막 입력이 오디오)
+        command.addAll(listOf("-map", "${imageFiles.size}:a"))
+
+        // 총 비디오 길이 계산
+        val totalDuration = clipDurations.sum()
+
+        // 출력 설정
+        command.addAll(
+            listOf(
+                "-c:v", "libx264",
+                "-preset", "medium",
+                "-b:v", videoBitrate,
+                "-c:a", "aac",
+                "-b:a", audioBitrate,
+                "-t", totalDuration.toString(),  // 비디오 길이 제한
+                "-pix_fmt", "yuv420p",  // 호환성을 위한 픽셀 포맷
+                "-movflags", "+faststart",  // 스트리밍 최적화
+                "-shortest",  // 오디오/비디오 중 짧은 것에 맞춤
                 outputFile.absolutePath
             )
         )
