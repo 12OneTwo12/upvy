@@ -64,6 +64,29 @@ function httpRequest(method, path, body = null) {
 }
 
 // =============================================================================
+// Owner 계정 설정 (첫 실행 시)
+// =============================================================================
+async function setupOwner() {
+    console.log('[init] Checking owner setup...');
+    const res = await httpRequest('POST', '/rest/owner/setup', {
+        email: process.env.N8N_OWNER_EMAIL || 'admin@upvy.io',
+        password: process.env.N8N_BASIC_AUTH_PASSWORD,
+        firstName: process.env.N8N_OWNER_FIRSTNAME || 'Admin',
+        lastName: process.env.N8N_OWNER_LASTNAME || 'User'
+    });
+
+    if (res.status === 200 || res.status === 201) {
+        console.log('[init] ✓ Owner account created');
+        return true;
+    } else if (res.status === 400 && res.data.includes('already')) {
+        console.log('[init] ✓ Owner already exists');
+        return true;
+    }
+    console.log(`[init] Owner setup response: ${res.status} - ${res.data}`);
+    return true; // 계속 진행
+}
+
+// =============================================================================
 // 로그인
 // =============================================================================
 async function login() {
@@ -207,10 +230,12 @@ async function updateWorkflowCredentials(workflowId, credentialMapping) {
 // 메인
 // =============================================================================
 async function main() {
-    // 1. 로그인
+    // 1. Owner 계정 설정 (첫 실행 시)
+    await setupOwner();
+
+    // 2. 로그인
     if (!await login()) {
-        console.log('[init] ✗ Cannot proceed without login (Owner setup required)');
-        console.log('[init] → Please complete Owner setup in n8n UI first, then restart');
+        console.log('[init] ✗ Cannot proceed without login');
         process.exit(1);
     }
 

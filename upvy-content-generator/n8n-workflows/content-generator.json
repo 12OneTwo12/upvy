@@ -478,27 +478,37 @@
       "parameters": {
         "operation": "upload",
         "bucketName": "={{ $env.S3_BUCKET }}",
-        "fileName": "=generated/{{ $json.jobId }}/final.mp4",
+        "fileName": "=edited-videos/generated/{{ $json.jobId }}/final.mp4",
         "binaryPropertyName": "video"
       },
       "id": "s3-upload-video",
       "name": "S3 Upload Video",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [4620, 100]
+      "position": [4620, 100],
+      "credentials": {
+        "aws": {
+          "name": "AWS"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "upload",
         "bucketName": "={{ $env.S3_BUCKET }}",
-        "fileName": "=generated/{{ $json.jobId }}/thumbnail.jpg",
+        "fileName": "=edited-videos/generated/{{ $json.jobId }}/thumbnail.jpg",
         "binaryPropertyName": "thumbnail"
       },
       "id": "s3-upload-thumbnail",
       "name": "S3 Upload Thumbnail",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [4620, 300]
+      "position": [4620, 300],
+      "credentials": {
+        "aws": {
+          "name": "AWS"
+        }
+      }
     },
     {
       "parameters": {
@@ -512,7 +522,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst prevContext = $('Process Video Response').first().json;\n\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nconst videoUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/generated/${prevContext.jobId}/final.mp4`;\nconst thumbnailUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/generated/${prevContext.jobId}/thumbnail.jpg`;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl,\n    thumbnailUrl,\n    s3Key: `generated/${prevContext.jobId}/final.mp4`,\n    thumbnailS3Key: `generated/${prevContext.jobId}/thumbnail.jpg`\n  }\n};"
+        "jsCode": "const items = $input.all();\nconst prevContext = $('Process Video Response').first().json;\n\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nconst videoUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`;\nconst thumbnailUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/thumbnail.jpg`;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl,\n    thumbnailUrl,\n    s3Key: `generated/${prevContext.jobId}/final.mp4`,\n    thumbnailS3Key: `generated/${prevContext.jobId}/thumbnail.jpg`\n  }\n};"
       },
       "id": "set-s3-urls",
       "name": "Set S3 URLs",
