@@ -343,7 +343,7 @@ class FFmpegService(
         // 자막 오버레이 (있는 경우)
         if (srtFile != null) {
             // 자막 스타일 적용
-            val subtitleFilter = "subtitles=${srtFile.absolutePath}:force_style='FontSize=48,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,MarginV=100'"
+            val subtitleFilter = "subtitles=${srtFile.absolutePath}:force_style='FontName=Noto Sans CJK KR,FontSize=22,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,BackColour=&H80000000,Bold=1,Alignment=2,MarginV=180,MarginL=60,MarginR=60'"
             filters.add("[scaled]$subtitleFilter[subtitled]")
             command.addAll(listOf("-filter_complex", filters.joinToString(";")))
             command.addAll(listOf("-map", "[subtitled]"))
@@ -405,7 +405,7 @@ class FFmpegService(
 
         // 자막 오버레이 (있는 경우)
         if (srtFile != null) {
-            val subtitleFilter = "subtitles=${srtFile.absolutePath}:force_style='FontSize=48,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,MarginV=100'"
+            val subtitleFilter = "subtitles=${srtFile.absolutePath}:force_style='FontName=Noto Sans CJK KR,FontSize=22,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,BackColour=&H80000000,Bold=1,Alignment=2,MarginV=180,MarginL=60,MarginR=60'"
             filters.add("[scaled]$subtitleFilter[subtitled]")
             command.addAll(listOf("-filter_complex", filters.joinToString(";")))
             command.addAll(listOf("-map", "[subtitled]"))
@@ -495,7 +495,7 @@ class FFmpegService(
         val finalVideoStream = if (srtFile != null) {
             val escapedPath = srtFile.absolutePath.replace(":", "\\:").replace("'", "\\'")
             filterParts.add(
-                "[concatenated]subtitles='$escapedPath':force_style='FontSize=48,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,MarginV=100'[final]"
+                "[concatenated]subtitles='$escapedPath':force_style='FontName=Noto Sans CJK KR,FontSize=22,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,BackColour=&H80000000,Bold=1,Alignment=2,MarginV=180,MarginL=60,MarginR=60'[final]"
             )
             "[final]"
         } else {

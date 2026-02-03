@@ -30,10 +30,13 @@ FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
-# FFmpeg 설치 (영상 합성 핵심)
+# FFmpeg 및 폰트 설치 (영상 합성 + 자막 렌더링)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
+    fonts-noto-cjk \
+    fontconfig \
+    && fc-cache -fv \
     && rm -rf /var/lib/apt/lists/*
 
 # 임시 디렉토리 생성
