@@ -3,27 +3,92 @@
   "name": "Upvy AI Content Generator",
   "nodes": [
     {
-      "parameters": {},
-      "id": "manual-trigger",
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [-220, -200]
+      "parameters": {
+        "formTitle": "AI Content Generator",
+        "formDescription": "Generate educational short-form video content",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Language",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  { "option": "English", "value": "en" },
+                  { "option": "Korean", "value": "ko" },
+                  { "option": "Japanese", "value": "ja" }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Category",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  { "option": "🎲 Random", "value": "" },
+                  { "option": "💻 Programming", "value": "PROGRAMMING" },
+                  { "option": "🔬 Science", "value": "SCIENCE" },
+                  { "option": "🌍 Language", "value": "LANGUAGE" },
+                  { "option": "📜 History", "value": "HISTORY" },
+                  { "option": "📐 Mathematics", "value": "MATHEMATICS" },
+                  { "option": "🎨 Art", "value": "ART" },
+                  { "option": "🚀 Startup", "value": "STARTUP" },
+                  { "option": "📢 Marketing", "value": "MARKETING" },
+                  { "option": "🎯 Design", "value": "DESIGN" },
+                  { "option": "⏰ Productivity", "value": "PRODUCTIVITY" },
+                  { "option": "🧠 Psychology", "value": "PSYCHOLOGY" },
+                  { "option": "💰 Finance", "value": "FINANCE" },
+                  { "option": "❤️ Health", "value": "HEALTH" },
+                  { "option": "🔥 Motivation", "value": "MOTIVATION" },
+                  { "option": "👶 Parenting", "value": "PARENTING" },
+                  { "option": "🍳 Cooking", "value": "COOKING" },
+                  { "option": "✈️ Travel", "value": "TRAVEL" },
+                  { "option": "🎮 Hobby", "value": "HOBBY" },
+                  { "option": "📈 Trend", "value": "TREND" }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Difficulty",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  { "option": "🎲 Random", "value": "" },
+                  { "option": "Beginner", "value": "BEGINNER" },
+                  { "option": "Intermediate", "value": "INTERMEDIATE" },
+                  { "option": "Advanced", "value": "ADVANCED" }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "form-trigger",
+      "name": "Manual Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [-220, -200],
+      "webhookId": "upvy-manual-gen"
     },
     {
       "parameters": {
         "mode": "manual",
         "fields": {
           "values": [
-            { "name": "language", "type": "stringValue", "stringValue": "en" }
+            { "name": "language", "type": "stringValue", "stringValue": "={{ $json.Language }}" },
+            { "name": "category", "type": "stringValue", "stringValue": "={{ $json.Category }}" },
+            { "name": "difficulty", "type": "stringValue", "stringValue": "={{ $json.Difficulty }}" }
           ]
         },
         "options": {
           "include": "all"
         }
       },
-      "id": "set-manual-lang",
-      "name": "Set Manual Language",
+      "id": "set-form-config",
+      "name": "Set Form Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [0, -200]
@@ -140,7 +205,7 @@
             {
               "name": "category",
               "type": "stringValue",
-              "stringValue": "={{ ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'BUSINESS', 'PSYCHOLOGY', 'HEALTH'][Math.floor(Math.random() * 6)] }}"
+              "stringValue": "={{ $json.category || ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'HISTORY', 'MATHEMATICS', 'ART', 'STARTUP', 'MARKETING', 'DESIGN', 'PRODUCTIVITY', 'PSYCHOLOGY', 'FINANCE', 'HEALTH', 'MOTIVATION', 'PARENTING', 'COOKING', 'TRAVEL', 'HOBBY', 'TREND'][Math.floor(Math.random() * 19)] }}"
             },
             {
               "name": "difficulty",
@@ -166,7 +231,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst inputData = $input.first()?.json || {};\n\n// Generate defaults if not provided\nconst categories = ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'BUSINESS', 'PSYCHOLOGY', 'HEALTH'];\nconst difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];\n\nconst language = inputData.language || 'en';\nconst category = inputData.category || categories[Math.floor(Math.random() * categories.length)];\nconst difficulty = inputData.difficulty || difficulties[Math.floor(Math.random() * difficulties.length)];\nconst jobId = inputData.jobId || `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { language, category, difficulty, jobId, gcpJwt: jwt } };"
+        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst inputData = $input.first()?.json || {};\n\n// All 19 categories from Upvy backend (excluding OTHER, FUN)\nconst categories = ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'HISTORY', 'MATHEMATICS', 'ART', 'STARTUP', 'MARKETING', 'DESIGN', 'PRODUCTIVITY', 'PSYCHOLOGY', 'FINANCE', 'HEALTH', 'MOTIVATION', 'PARENTING', 'COOKING', 'TRAVEL', 'HOBBY', 'TREND'];\nconst difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];\n\nconst language = inputData.language || 'en';\nconst category = inputData.category || categories[Math.floor(Math.random() * categories.length)];\nconst difficulty = inputData.difficulty || difficulties[Math.floor(Math.random() * difficulties.length)];\nconst jobId = inputData.jobId || `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { language, category, difficulty, jobId, gcpJwt: jwt } };"
       },
       "id": "gcp-jwt",
       "name": "Generate GCP JWT",
@@ -625,7 +690,10 @@
     }
   ],
   "connections": {
-    "Manual Trigger": {
+    "Manual Form": {
+      "main": [[{ "node": "Set Form Config", "type": "main", "index": 0 }]]
+    },
+    "Set Form Config": {
       "main": [[{ "node": "Generate GCP JWT", "type": "main", "index": 0 }]]
     },
     "Schedule EN (5/day)": {
