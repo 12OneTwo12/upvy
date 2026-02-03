@@ -543,10 +543,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\n\nconst items = sections.map((section, index) => {\n  const visualCue = section.visualCue || `Educational scene about ${prevContext.category}`;\n  const prompt = `Smooth cinematic motion of: ${visualCue}. Professional educational video style. Subtle camera movement, professional lighting. NO text overlays, NO watermarks. High quality, 9:16 vertical format.`;\n  \n  return {\n    json: {\n      sectionIndex: index,\n      sectionType: section.type,\n      startTime: section.startTime,\n      endTime: section.endTime,\n      duration: section.endTime - section.startTime,\n      videoPrompt: prompt,\n      _context: prevContext\n    }\n  };\n});\n\nreturn items;"
+        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\n\nconst items = sections.map((section, index) => {\n  const visualCue = section.visualCue || `Educational image about ${prevContext.category}`;\n  const imagePrompt = `Professional educational photograph: ${visualCue}. High-quality, photorealistic style. Clean composition, professional lighting. Vertical 9:16 format. NO cartoon, NO illustration, NO text, NO watermarks.`;\n  const motionPrompt = `Smooth cinematic motion, subtle camera movement, professional lighting. NO text overlays.`;\n  \n  return {\n    json: {\n      sectionIndex: index,\n      sectionType: section.type,\n      startTime: section.startTime,\n      endTime: section.endTime,\n      duration: section.endTime - section.startTime,\n      imagePrompt: imagePrompt,\n      motionPrompt: motionPrompt,\n      _context: prevContext\n    }\n  };\n});\n\nreturn items;"
       },
       "id": "prepare-veo",
-      "name": "4c. Prepare Veo",
+      "name": "4c-1. Prepare Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1720, -100]
@@ -554,47 +554,86 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning?key={{ $env.GEMINI_API_KEY }}",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={{ $env.GEMINI_API_KEY }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ instances: [{ prompt: $json.videoPrompt }], parameters: { aspectRatio: '9:16', durationSeconds: 5, sampleCount: 1 } }) }}",
-        "options": { "batching": { "batch": { "batchSize": 1, "batchInterval": 10000 } } }
+        "jsonBody": "={{ JSON.stringify({ instances: [{ prompt: $json.imagePrompt }], parameters: { sampleCount: 1, aspectRatio: '9:16', safetyFilterLevel: 'block_only_high', personGeneration: 'allow_adult' } }) }}",
+        "options": {
+          "batching": { "batch": { "batchSize": 1, "batchInterval": 5000 } },
+          "retry": { "maxTries": 5, "waitBetweenTries": 5000 }
+        }
       },
-      "id": "veo-request",
-      "name": "4c-2. Request Veo",
+      "id": "veo-imagen",
+      "name": "4c-2. Generate Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1940, -100]
+      "position": [1940, -200]
     },
     {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst operationName = item.name;\nconst apiKey = $env.GEMINI_API_KEY;\n\nconst maxAttempts = 120;\nconst pollInterval = 3000;\n\nfor (let attempt = 0; attempt < maxAttempts; attempt++) {\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`,\n    json: true\n  });\n\n  if (response.done) {\n    const videos = response.response?.generateVideoResponse?.generatedSamples || [];\n    if (videos.length === 0) throw new Error('No videos generated');\n    \n    const videoUri = videos[0].video?.uri;\n    return { json: { ...item, videoUri } };\n  }\n  \n  if (response.error) throw new Error(`Veo failed: ${JSON.stringify(response.error)}`);\n  await new Promise(r => setTimeout(r, pollInterval));\n}\n\nthrow new Error('Veo timeout');"
-      },
-      "id": "veo-poll",
-      "name": "4c-3. Poll Veo",
-      "type": "n8n-nodes-base.code",
+      "parameters": {},
+      "id": "veo-clone",
+      "name": "4c-2b. Clone Data",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1940, 0]
+    },
+    {
+      "parameters": { "mode": "append" },
+      "id": "veo-merge",
+      "name": "4c-3. Merge",
+      "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
       "position": [2160, -100]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const videoUri = item.json.videoUri;\n  if (!videoUri) throw new Error('No video URI');\n  \n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: videoUri,\n    encoding: 'arraybuffer',\n    returnFullResponse: true\n  });\n  \n  results.push({\n    json: {\n      sectionIndex: item.json.sectionIndex || 0,\n      sectionType: item.json.sectionType || 'UNKNOWN',\n      duration: item.json.duration || 5,\n      videoBase64: Buffer.from(response.body).toString('base64'),\n      _context: item.json._context\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "const allItems = $input.all();\nconst httpResponses = allItems.filter(item => item.json.predictions !== undefined);\nconst originalDataItems = allItems.filter(item => item.json.imagePrompt && !item.json.predictions);\n\nif (originalDataItems.length !== 5) throw new Error(`Expected 5 original items, got ${originalDataItems.length}`);\n\noriginalDataItems.sort((a, b) => a.json.sectionIndex - b.json.sectionIndex);\n\nconst results = [];\nfor (let i = 0; i < 5; i++) {\n  const original = originalDataItems[i];\n  const httpItem = httpResponses[i];\n  const imageBase64 = httpItem?.json?.predictions?.[0]?.bytesBase64Encoded;\n  \n  if (!imageBase64) throw new Error(`Image gen failed for ${original.json.sectionType}`);\n  \n  results.push({\n    json: {\n      sectionIndex: original.json.sectionIndex,\n      sectionType: original.json.sectionType,\n      startTime: original.json.startTime,\n      endTime: original.json.endTime,\n      duration: original.json.duration,\n      imageBase64: imageBase64,\n      motionPrompt: original.json.motionPrompt,\n      _context: original.json._context\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "veo-download",
-      "name": "4c-4. Download Veo",
+      "id": "veo-combine",
+      "name": "4c-4. Combine Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [2380, -100]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst generatedVideos = items.map(item => ({\n  sectionIndex: item.json.sectionIndex,\n  sectionType: item.json.sectionType,\n  duration: item.json.duration,\n  videoBase64: item.json.videoBase64\n}));\n\ngeneratedVideos.sort((a, b) => a.sectionIndex - b.sectionIndex);\nconst context = items[0]?.json?._context || {};\n\nreturn { json: { ...context, generatedVideos, outputType: 'ai_video' } };"
+        "jsCode": "const items = $input.all();\nconst apiKey = $env.GEMINI_API_KEY;\nconst results = [];\n\nfor (const item of items) {\n  const { sectionIndex, sectionType, startTime, endTime, duration, imageBase64, motionPrompt, _context } = item.json;\n  \n  // Rate limiting: wait between requests\n  if (results.length > 0) {\n    await new Promise(r => setTimeout(r, 10000));\n  }\n  \n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning?key=${apiKey}`,\n    body: {\n      instances: [{\n        image: { bytesBase64Encoded: imageBase64 },\n        prompt: motionPrompt\n      }],\n      parameters: { aspectRatio: '9:16', durationSeconds: 5, sampleCount: 1 }\n    },\n    json: true\n  });\n  \n  results.push({\n    json: {\n      sectionIndex,\n      sectionType,\n      startTime,\n      endTime,\n      duration,\n      operationName: response.name,\n      _context\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "veo-aggregate",
-      "name": "4c-5. Aggregate Veo",
+      "id": "veo-request",
+      "name": "4c-5. Request Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [2600, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst apiKey = $env.GEMINI_API_KEY;\nconst maxAttempts = 120;\nconst pollInterval = 5000;\nconst results = [];\n\nfor (const item of items) {\n  const operationName = item.json.operationName;\n  if (!operationName) throw new Error('No operation name');\n  \n  let videoUri = null;\n  for (let attempt = 0; attempt < maxAttempts; attempt++) {\n    const response = await this.helpers.httpRequest({\n      method: 'GET',\n      url: `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`,\n      json: true\n    });\n\n    if (response.done) {\n      const videos = response.response?.generateVideoResponse?.generatedSamples || \n                     response.response?.videos || \n                     response.videos || [];\n      \n      if (videos.length === 0) {\n        throw new Error(`No videos for section ${item.json.sectionIndex}. Response: ${JSON.stringify(response).substring(0, 500)}`);\n      }\n      \n      videoUri = videos[0].video?.uri || videos[0].uri || videos[0].gcsUri;\n      if (!videoUri) throw new Error(`No URI in video: ${JSON.stringify(videos[0])}`);\n      break;\n    }\n    \n    if (response.error) throw new Error(`Veo failed: ${JSON.stringify(response.error)}`);\n    await new Promise(r => setTimeout(r, pollInterval));\n  }\n  \n  if (!videoUri) throw new Error(`Veo timeout for section ${item.json.sectionIndex}`);\n  \n  results.push({ json: { ...item.json, videoUri } });\n}\n\nreturn results;"
+      },
+      "id": "veo-poll",
+      "name": "4c-6. Poll Veo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2820, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst apiKey = $env.GEMINI_API_KEY;\nconst results = [];\n\nfor (const item of items) {\n  let videoUri = item.json.videoUri;\n  if (!videoUri) throw new Error('No video URI');\n  \n  // API 키 추가\n  const separator = videoUri.includes('?') ? '&' : '?';\n  videoUri = `${videoUri}${separator}key=${apiKey}`;\n  \n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: videoUri,\n    encoding: 'arraybuffer',\n    returnFullResponse: true\n  });\n  \n  results.push({\n    json: {\n      sectionIndex: item.json.sectionIndex || 0,\n      sectionType: item.json.sectionType || 'UNKNOWN',\n      duration: item.json.duration || 5,\n      videoBase64: Buffer.from(response.body).toString('base64'),\n      _context: item.json._context\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "veo-download",
+      "name": "4c-7. Download Veo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3040, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst generatedVideos = items.map(item => ({\n  sectionIndex: item.json.sectionIndex,\n  sectionType: item.json.sectionType,\n  duration: item.json.duration,\n  videoBase64: item.json.videoBase64\n}));\n\ngeneratedVideos.sort((a, b) => a.sectionIndex - b.sectionIndex);\nconst context = items[0]?.json?._context || {};\n\nreturn { json: { ...context, generatedVideos, outputType: 'ai_video' } };"
+      },
+      "id": "veo-aggregate",
+      "name": "4c-8. Aggregate Veo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3260, -100]
     },
     {
       "parameters": {
@@ -604,7 +643,7 @@
       "name": "Convert Veo Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2820, -100]
+      "position": [3480, -100]
     },
     {
       "parameters": { "mode": "append" },
@@ -709,7 +748,7 @@
     },
     "Output Type Switch": {
       "main": [
-        [{ "node": "4c. Prepare Veo", "type": "main", "index": 0 }],
+        [{ "node": "4c-1. Prepare Images", "type": "main", "index": 0 }],
         [{ "node": "4a. Prepare Images", "type": "main", "index": 0 }],
         [{ "node": "4a. Prepare Images", "type": "main", "index": 0 }]
       ]
@@ -744,11 +783,15 @@
     "Merge S3": { "main": [[{ "node": "Set S3 URLs", "type": "main", "index": 0 }]] },
     "Set S3 URLs": { "main": [[{ "node": "6. Upvy Publish", "type": "main", "index": 0 }]] },
     "6. Upvy Publish": { "main": [[{ "node": "Telegram Success", "type": "main", "index": 0 }]] },
-    "4c. Prepare Veo": { "main": [[{ "node": "4c-2. Request Veo", "type": "main", "index": 0 }]] },
-    "4c-2. Request Veo": { "main": [[{ "node": "4c-3. Poll Veo", "type": "main", "index": 0 }]] },
-    "4c-3. Poll Veo": { "main": [[{ "node": "4c-4. Download Veo", "type": "main", "index": 0 }]] },
-    "4c-4. Download Veo": { "main": [[{ "node": "4c-5. Aggregate Veo", "type": "main", "index": 0 }]] },
-    "4c-5. Aggregate Veo": { "main": [[{ "node": "Convert Veo Binary", "type": "main", "index": 0 }]] },
+    "4c-1. Prepare Images": { "main": [[{ "node": "4c-2. Generate Image", "type": "main", "index": 0 }, { "node": "4c-2b. Clone Data", "type": "main", "index": 0 }]] },
+    "4c-2. Generate Image": { "main": [[{ "node": "4c-3. Merge", "type": "main", "index": 0 }]] },
+    "4c-2b. Clone Data": { "main": [[{ "node": "4c-3. Merge", "type": "main", "index": 1 }]] },
+    "4c-3. Merge": { "main": [[{ "node": "4c-4. Combine Images", "type": "main", "index": 0 }]] },
+    "4c-4. Combine Images": { "main": [[{ "node": "4c-5. Request Veo", "type": "main", "index": 0 }]] },
+    "4c-5. Request Veo": { "main": [[{ "node": "4c-6. Poll Veo", "type": "main", "index": 0 }]] },
+    "4c-6. Poll Veo": { "main": [[{ "node": "4c-7. Download Veo", "type": "main", "index": 0 }]] },
+    "4c-7. Download Veo": { "main": [[{ "node": "4c-8. Aggregate Veo", "type": "main", "index": 0 }]] },
+    "4c-8. Aggregate Veo": { "main": [[{ "node": "Convert Veo Binary", "type": "main", "index": 0 }]] },
     "Convert Veo Binary": { "main": [[{ "node": "Merge Veo + Audio", "type": "main", "index": 0 }]] },
     "Merge Veo + Audio": { "main": [[{ "node": "Combine Veo", "type": "main", "index": 0 }]] },
     "Combine Veo": { "main": [[{ "node": "5b. Compose Veo", "type": "main", "index": 0 }]] },
