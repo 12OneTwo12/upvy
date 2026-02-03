@@ -4,11 +4,11 @@
 # n8n 기반 교육용 숏폼 콘텐츠 자동 생성 파이프라인
 #
 # 구성요소:
-# - n8n: 워크플로우 오케스트레이터 (Vertex AI, TTS, S3 직접 호출)
+# - n8n: 워크플로우 오케스트레이터 (Gemini API, S3 직접 호출)
 # - compose-service: FFmpeg 영상 합성 서비스 (순수 처리만)
 #
 # 아키텍처:
-# n8n이 모든 외부 API/스토리지를 직접 처리
+# n8n이 모든 외부 API/스토리지를 직접 처리 (Gemini API Key 인증)
 # compose-service는 Binary 파일 수신 → FFmpeg 합성 → Binary 반환만 담당
 #
 # 사용법:
@@ -21,7 +21,7 @@ services:
   # ===========================================================================
   # n8n - 워크플로우 오케스트레이터
   # ===========================================================================
-  # 모든 AI API (Vertex AI, TTS)를 HTTP Request 노드로 직접 호출
+  # Gemini API 네이티브 노드 + HTTP Request로 AI 서비스 호출
   # AWS S3 노드로 스토리지 처리
   # 5단계 파이프라인: TOPIC → SCRIPT+QUIZ → VISUAL+AUDIO → COMPOSE → PUBLISH
   # ===========================================================================
@@ -68,12 +68,8 @@ services:
       - N8N_LOG_LEVEL=${N8N_LOG_LEVEL:-info}
       - N8N_LOG_OUTPUT=console
 
-      # GCP 설정 (Vertex AI, TTS)
-      - GOOGLE_APPLICATION_CREDENTIALS=/credentials/gcp-key.json
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}
-      - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-asia-northeast3}
-      # Veo 비디오 생성용 GCS 버킷 (Veo는 GCS 출력 필수)
-      - GCS_BUCKET=${GCS_BUCKET:-}
+      # Gemini API Key (Topic Select, Script Gen, Imagen, TTS, Veo)
+      - GEMINI_API_KEY=${GEMINI_API_KEY:?GEMINI_API_KEY is required}
 
       # AWS 설정 (S3) - credential은 .env에서 로드
       - S3_BUCKET=${S3_BUCKET:-upvy-ai-content}
@@ -95,8 +91,6 @@ services:
     volumes:
       # n8n 데이터 영속화 (워크플로우, 크레덴셜 등)
       - n8n_data:/home/node/.n8n
-      # GCP 서비스 계정 키 (Vertex AI, TTS용)
-      - ./credentials:/credentials:ro
       # 초기화 스크립트
       - ./n8n-init.sh:/init/n8n-init.sh:ro
       # 워크플로우 파일 (자동 import용)

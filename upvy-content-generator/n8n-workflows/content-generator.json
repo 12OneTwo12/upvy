@@ -81,18 +81,8 @@
       "name": "Manual Form",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
-      "position": [-220, -200],
+      "position": [-200, 200],
       "webhookId": "upvy-manual-gen"
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first().json;\n\n// Debug: log all keys to find correct field names\nconst keys = Object.keys(input);\nconsole.log('Form input keys:', keys);\nconsole.log('Form input:', JSON.stringify(input));\n\n// Try multiple possible key formats (n8n Form Trigger can vary)\nconst language = input.Language || input.language || input['Language'] || 'en';\nconst category = input.Category || input.category || input['Category'] || '';\nconst difficulty = input.Difficulty || input.difficulty || input['Difficulty'] || '';\nconst outputType = input['Output Type'] || input.outputType || input['output_type'] || 'images_only';\n\nconsole.log('Extracted - language:', language, 'category:', category, 'difficulty:', difficulty, 'outputType:', outputType);\n\nreturn {\n  json: {\n    language,\n    category,\n    difficulty,\n    outputType\n  }\n};"
-      },
-      "id": "set-form-config",
-      "name": "Set Form Config",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [0, -200]
     },
     {
       "parameters": {
@@ -110,7 +100,7 @@
       "name": "Schedule EN (5/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [-200, 400]
     },
     {
       "parameters": {
@@ -122,11 +112,11 @@
           ]
         }
       },
-      "id": "trigger-ja",
-      "name": "Schedule JA (3/day)",
+      "id": "trigger-ko",
+      "name": "Schedule KO (3/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 200]
+      "position": [-200, 600]
     },
     {
       "parameters": {
@@ -138,218 +128,124 @@
           ]
         }
       },
-      "id": "trigger-ko",
-      "name": "Schedule KO (3/day)",
+      "id": "trigger-ja",
+      "name": "Schedule JA (3/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 400]
+      "position": [-200, 800]
     },
     {
       "parameters": {
-        "mode": "manual",
-        "fields": {
-          "values": [
-            { "name": "language", "type": "stringValue", "stringValue": "en" }
-          ]
-        },
-        "options": {
-          "include": "all"
-        }
-      },
-      "id": "set-lang-en",
-      "name": "Set Language EN",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [220, 0]
-    },
-    {
-      "parameters": {
-        "mode": "manual",
-        "fields": {
-          "values": [
-            { "name": "language", "type": "stringValue", "stringValue": "ja" }
-          ]
-        },
-        "options": {
-          "include": "all"
-        }
-      },
-      "id": "set-lang-ja",
-      "name": "Set Language JA",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [220, 200]
-    },
-    {
-      "parameters": {
-        "mode": "manual",
-        "fields": {
-          "values": [
-            { "name": "language", "type": "stringValue", "stringValue": "ko" }
-          ]
-        },
-        "options": {
-          "include": "all"
-        }
-      },
-      "id": "set-lang-ko",
-      "name": "Set Language KO",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [220, 400]
-    },
-    {
-      "parameters": {
-        "mode": "manual",
-        "fields": {
-          "values": [
-            {
-              "name": "category",
-              "type": "stringValue",
-              "stringValue": "={{ $json.category || ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'HISTORY', 'MATHEMATICS', 'ART', 'STARTUP', 'MARKETING', 'DESIGN', 'PRODUCTIVITY', 'PSYCHOLOGY', 'FINANCE', 'HEALTH', 'MOTIVATION', 'PARENTING', 'COOKING', 'TRAVEL', 'HOBBY', 'TREND'][Math.floor(Math.random() * 19)] }}"
-            },
-            {
-              "name": "difficulty",
-              "type": "stringValue",
-              "stringValue": "={{ ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'][Math.floor(Math.random() * 3)] }}"
-            },
-            {
-              "name": "jobId",
-              "type": "stringValue",
-              "stringValue": "={{ $now.format('yyyyMMddHHmmss') }}-{{ Math.random().toString(36).substring(2, 8) }}"
-            },
-            {
-              "name": "outputType",
-              "type": "stringValue",
-              "stringValue": "images_only"
-            }
-          ]
-        },
-        "options": {
-          "include": "all"
-        }
+        "jsCode": "const input = $input.first().json;\nconst crypto = require('crypto');\n\n// All 19 categories\nconst categories = ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'HISTORY', 'MATHEMATICS', 'ART', 'STARTUP', 'MARKETING', 'DESIGN', 'PRODUCTIVITY', 'PSYCHOLOGY', 'FINANCE', 'HEALTH', 'MOTIVATION', 'PARENTING', 'COOKING', 'TRAVEL', 'HOBBY', 'TREND'];\nconst difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];\n\n// Extract from form or use defaults\nconst language = input.Language || input.language || 'en';\nconst categoryInput = input.Category || input.category || '';\nconst difficultyInput = input.Difficulty || input.difficulty || '';\nconst outputType = input['Output Type'] || input.outputType || 'images_only';\n\n// Randomize if empty\nconst category = (categoryInput && categoryInput.trim() !== '') \n  ? categoryInput \n  : categories[Math.floor(Math.random() * categories.length)];\nconst difficulty = (difficultyInput && difficultyInput.trim() !== '') \n  ? difficultyInput \n  : difficulties[Math.floor(Math.random() * difficulties.length)];\n\nconst jobId = `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;\n\nreturn {\n  json: {\n    language,\n    category,\n    difficulty,\n    outputType,\n    jobId\n  }\n};"
       },
       "id": "set-config",
       "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "language", "stringValue": "en" }
+          ]
+        },
+        "options": { "include": "all" }
+      },
+      "id": "set-lang-en",
+      "name": "Set EN",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [440, 200]
+      "position": [100, 400]
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst inputData = $input.first()?.json || {};\n\n// All 19 categories from Upvy backend (excluding OTHER, FUN)\nconst categories = ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'HISTORY', 'MATHEMATICS', 'ART', 'STARTUP', 'MARKETING', 'DESIGN', 'PRODUCTIVITY', 'PSYCHOLOGY', 'FINANCE', 'HEALTH', 'MOTIVATION', 'PARENTING', 'COOKING', 'TRAVEL', 'HOBBY', 'TREND'];\nconst difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];\n\nconst language = inputData.language || 'en';\n// Use provided category/difficulty, only randomize if explicitly empty or missing\nconst category = (inputData.category && inputData.category.trim() !== '') ? inputData.category : categories[Math.floor(Math.random() * categories.length)];\nconst difficulty = (inputData.difficulty && inputData.difficulty.trim() !== '') ? inputData.difficulty : difficulties[Math.floor(Math.random() * difficulties.length)];\nconst outputType = inputData.outputType || 'images_only';\n\nconsole.log('GCP JWT - Input category:', inputData.category, '-> Final category:', category, 'outputType:', outputType);\nconst jobId = inputData.jobId || `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { language, category, difficulty, jobId, outputType, gcpJwt: jwt } };"
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "language", "stringValue": "ko" }
+          ]
+        },
+        "options": { "include": "all" }
       },
-      "id": "gcp-jwt",
-      "name": "Generate GCP JWT",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [660, 200]
+      "id": "set-lang-ko",
+      "name": "Set KO",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [100, 600]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "language", "stringValue": "ja" }
+          ]
+        },
+        "options": { "include": "all" }
+      },
+      "id": "set-lang-ja",
+      "name": "Set JA",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [100, 800]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://oauth2.googleapis.com/token",
-        "sendBody": true,
-        "contentType": "form-urlencoded",
-        "bodyParameters": {
-          "parameters": [
-            { "name": "grant_type", "value": "urn:ietf:params:oauth:grant-type:jwt-bearer" },
-            { "name": "assertion", "value": "={{ $json.gcpJwt }}" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "gcp-token",
-      "name": "Get GCP Access Token",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [880, 200]
-    },
-    {
-      "parameters": {
-        "jsCode": "const tokenResponse = $input.first().json;\nconst prevData = $('Generate GCP JWT').first().json;\n\nreturn { json: {\n  ...prevData,\n  gcpAccessToken: tokenResponse.access_token\n} };"
-      },
-      "id": "merge-token",
-      "name": "Merge Token",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1100, 200]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.5-flash-lite:generateContent",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $json.gcpAccessToken }}" }
-          ]
-        },
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [{\"role\": \"user\",\n    \"parts\": [{\n      \"text\": \"You are an educational content planner.\\n\\n[Task]\\n1. Search for trending educational topics in the \\\"{{ $json.category }}\\\" field\\n2. Suggest 3 topics suitable for short-form videos (30-60 seconds)\\n3. Evaluate viral potential and educational value for each\\n\\nDifficulty: {{ $json.difficulty }}\\n\\n**IMPORTANT: Generate ALL content (titles, hooks, key points) in {{ $json.language === 'ko' ? 'Korean' : ($json.language === 'ja' ? 'Japanese' : 'English') }} language.**\\n\\n[Output format - JSON only]\\n{\\n  \\\"topics\\\": [\\n    {\\n      \\\"title\\\": \\\"Topic title in target language\\\",\\n      \\\"hook\\\": \\\"Attention-grabbing first sentence in target language\\\",\\n      \\\"keyPoints\\\": [\\\"Point 1\\\", \\\"Point 2\\\", \\\"Point 3\\\"],\\n      \\\"viralScore\\\": 85,\\n      \\\"educationalScore\\\": 90\\n    }\\n  ]\\n}\"\n    }]\n  }],\n  \"tools\": [{ \"googleSearch\": {} }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 2048\n  }\n}",
-        "options": {
-          "retry": {
-            "maxTries": 3,
-            "waitBetweenTries": 2000
-          }
-        }
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: `You are an educational content planner.\n\n[Task]\n1. Search for trending educational topics in the \"${$json.category}\" field\n2. Suggest 3 topics suitable for short-form videos (30-60 seconds)\n3. Evaluate viral potential and educational value for each\n\nDifficulty: ${$json.difficulty}\n\n**IMPORTANT: Generate ALL content (titles, hooks, key points) in ${$json.language === 'ko' ? 'Korean' : ($json.language === 'ja' ? 'Japanese' : 'English')} language.**\n\n[Output format - JSON only]\n{\n  \"topics\": [\n    {\n      \"title\": \"Topic title in target language\",\n      \"hook\": \"Attention-grabbing first sentence in target language\",\n      \"keyPoints\": [\"Point 1\", \"Point 2\", \"Point 3\"],\n      \"viralScore\": 85,\n      \"educationalScore\": 90\n    }\n  ]\n}` }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 2048 } }) }}",
+        "options": {}
       },
       "id": "topic-select",
-      "name": "1. Topic Select (Gemini + Grounding)",
+      "name": "1. Topic Select",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1320, 200]
+      "position": [400, 200]
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst prevContext = $('Merge Token').first().json;\n\n// Gemini may return multiple parts (thinking + response), so concatenate all\nconst parts = response.candidates?.[0]?.content?.parts || [];\nconst fullText = parts.map(p => p.text || '').join('\\n');\n\nif (!fullText || fullText.trim() === '') {\n  const finishReason = response.candidates?.[0]?.finishReason;\n  throw new Error(`Gemini returned empty response. finishReason: ${finishReason}. Please retry.`);\n}\n\n// Extract JSON from the combined text\nlet jsonStr = fullText;\njsonStr = jsonStr.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\n\nconst firstBrace = jsonStr.indexOf('{');\nconst lastBrace = jsonStr.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n  jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);\n}\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  if (!bestTopic) throw new Error('No topics in response. Raw: ' + fullText.substring(0, 300));\n  \n  return { json: { ...prevContext, selectedTopic: bestTopic, allTopics: topics } };\n} catch (e) {\n  throw new Error(`Topic parsing failed: ${e.message}\\nRaw: ${fullText.substring(0, 500)}`);\n}"
+        "jsCode": "const response = $input.first().json;\nconst prevContext = $('Set Config').first().json;\n\n// Gemini API 응답에서 텍스트 추출\nlet text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';\nif (!text) throw new Error('No text in Gemini response');\n\n// JSON 추출\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\nconst firstBrace = jsonStr.indexOf('{');\nconst lastBrace = jsonStr.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1) {\n  jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);\n}\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  if (!bestTopic) throw new Error('No topics found');\n  \n  return { json: { ...prevContext, selectedTopic: bestTopic, allTopics: topics } };\n} catch (e) {\n  throw new Error(`Topic parsing failed: ${e.message}\\nRaw: ${text.substring(0, 500)}`);\n}"
       },
       "id": "parse-topic",
       "name": "Parse Topic",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 200]
+      "position": [620, 200]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/gemini-2.5-flash-lite:generateContent",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $('Merge Token').first().json.gcpAccessToken }}" }
-          ]
-        },
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [{\"role\": \"user\",\n    \"parts\": [{\n      \"text\": \"You are a professional educational short-form content creator for TikTok/YouTube Shorts.\\nCreate a 60-second vertical (9:16) video script with PROFESSIONAL SUBTITLES and quiz.\\n\\n=== Script Rules ===\\nCreate EXACTLY 5 sections with DIFFERENT visual scenes:\\n1. HOOK (0-5s): Attention-grabbing question or surprising fact\\n2. CORE_1 (5-20s): First key point with specific example\\n3. CORE_2 (20-35s): Second key point with demonstration\\n4. CORE_3 (35-50s): Third key point with real-world application\\n5. CTA (50-60s): Call to action and summary\\n\\n=== SUBTITLE RULES (CRITICAL - Pro-level quality) ===\\nEach section MUST include a 'subtitles' array with SHORT, TIMED text chunks:\\n- Each subtitle: 2-3 seconds duration\\n- Each subtitle: MAX 25 characters (Korean/Japanese) or 40 characters (English)\\n- MAX 2 lines per subtitle\\n- Subtitles must be CONVERSATIONAL and PUNCHY\\n- Start subtitles 0.2 seconds BEFORE the spoken word for better sync\\n- NO filler words, NO redundant phrases\\n\\nExample subtitle timing for CORE_1 (5-20s = 15 seconds):\\n- Subtitle 1: 4.8s - 7.5s (2.7s)\\n- Subtitle 2: 7.5s - 10.2s (2.7s)\\n- Subtitle 3: 10.2s - 13.0s (2.8s)\\n- Subtitle 4: 13.0s - 15.5s (2.5s)\\n- Subtitle 5: 15.5s - 18.0s (2.5s)\\n- Subtitle 6: 18.0s - 20.0s (2.0s)\\n\\n=== Visual Cue Rules ===\\nEach section MUST have a COMPLETELY DIFFERENT visualCue:\\n- A realistic, photographic scene (NOT cartoon/illustration)\\n- Professional educational style like documentary\\n- MUST be visually distinct from other sections\\n\\n=== Quiz Rules ===\\n1. One question testing the core concept\\n2. 4 options (1 correct + 3 incorrect)\\n\\n[Topic Info]\\nTitle: {{ $json.selectedTopic.title }}\\nHook: {{ $json.selectedTopic.hook }}\\nKey Points: {{ $json.selectedTopic.keyPoints.join(', ') }}\\nDifficulty: {{ $json.difficulty }}\\n\\n**CRITICAL: Write ALL content in {{ $json.language === 'ko' ? 'Korean (한국어)' : ($json.language === 'ja' ? 'Japanese (日本語)' : 'English') }}.**\\n\\n[Output format - JSON only]\\n{\\n  \\\"script\\\": {\\n    \\\"title\\\": \\\"Video title\\\",\\n    \\\"description\\\": \\\"Video description (200 chars)\\\",\\n    \\\"totalDuration\\\": 60,\\n    \\\"sections\\\": [\\n      {\\n        \\\"type\\\": \\\"HOOK\\\",\\n        \\\"startTime\\\": 0,\\n        \\\"endTime\\\": 5,\\n        \\\"narration\\\": \\\"Full narration text for TTS\\\",\\n        \\\"subtitles\\\": [\\n          {\\\"start\\\": 0, \\\"end\\\": 2.5, \\\"text\\\": \\\"First subtitle chunk\\\"},\\n          {\\\"start\\\": 2.5, \\\"end\\\": 5, \\\"text\\\": \\\"Second subtitle chunk\\\"}\\n        ],\\n        \\\"visualCue\\\": \\\"Realistic photo description\\\"\\n      },\\n      {\\n        \\\"type\\\": \\\"CORE_1\\\",\\n        \\\"startTime\\\": 5,\\n        \\\"endTime\\\": 20,\\n        \\\"narration\\\": \\\"Full narration for TTS\\\",\\n        \\\"subtitles\\\": [\\n          {\\\"start\\\": 4.8, \\\"end\\\": 7.5, \\\"text\\\": \\\"Chunk 1\\\"},\\n          {\\\"start\\\": 7.5, \\\"end\\\": 10.2, \\\"text\\\": \\\"Chunk 2\\\"},\\n          {\\\"start\\\": 10.2, \\\"end\\\": 13, \\\"text\\\": \\\"Chunk 3\\\"},\\n          {\\\"start\\\": 13, \\\"end\\\": 16, \\\"text\\\": \\\"Chunk 4\\\"},\\n          {\\\"start\\\": 16, \\\"end\\\": 18.5, \\\"text\\\": \\\"Chunk 5\\\"},\\n          {\\\"start\\\": 18.5, \\\"end\\\": 20, \\\"text\\\": \\\"Chunk 6\\\"}\\n        ],\\n        \\\"visualCue\\\": \\\"Different realistic photo\\\"\\n      },\\n      {\\n        \\\"type\\\": \\\"CORE_2\\\",\\n        \\\"startTime\\\": 20,\\n        \\\"endTime\\\": 35,\\n        \\\"narration\\\": \\\"Full narration\\\",\\n        \\\"subtitles\\\": [{\\\"start\\\": 19.8, \\\"end\\\": 22.5, \\\"text\\\": \\\"...\\\"}, ...],\\n        \\\"visualCue\\\": \\\"Another distinct photo\\\"\\n      },\\n      {\\n        \\\"type\\\": \\\"CORE_3\\\",\\n        \\\"startTime\\\": 35,\\n        \\\"endTime\\\": 50,\\n        \\\"narration\\\": \\\"Full narration\\\",\\n        \\\"subtitles\\\": [{\\\"start\\\": 34.8, \\\"end\\\": 37.5, \\\"text\\\": \\\"...\\\"}, ...],\\n        \\\"visualCue\\\": \\\"Unique visual for this section\\\"\\n      },\\n      {\\n        \\\"type\\\": \\\"CTA\\\",\\n        \\\"startTime\\\": 50,\\n        \\\"endTime\\\": 60,\\n        \\\"narration\\\": \\\"Call to action\\\",\\n        \\\"subtitles\\\": [{\\\"start\\\": 49.8, \\\"end\\\": 52.5, \\\"text\\\": \\\"...\\\"}, ...],\\n        \\\"visualCue\\\": \\\"Motivational scene\\\"\\n      }\\n    ],\\n    \\\"tags\\\": [\\\"tag1\\\", \\\"tag2\\\"]\\n  },\\n  \\\"quiz\\\": {\\n    \\\"question\\\": \\\"Quiz question\\\",\\n    \\\"options\\\": [\\n      {\\\"text\\\": \\\"Option 1\\\", \\\"isCorrect\\\": true},\\n      {\\\"text\\\": \\\"Option 2\\\", \\\"isCorrect\\\": false},\\n      {\\\"text\\\": \\\"Option 3\\\", \\\"isCorrect\\\": false},\\n      {\\\"text\\\": \\\"Option 4\\\", \\\"isCorrect\\\": false}\\n    ]\\n  },\\n  \\\"qualityCheck\\\": {\\n    \\\"verdict\\\": \\\"PASS\\\",\\n    \\\"reason\\\": \\\"Quality review reason\\\"\\n  }\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 8192\n  }\n}",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: `You are a professional educational short-form content creator for TikTok/YouTube Shorts.\nCreate a 60-second vertical (9:16) video script with PROFESSIONAL SUBTITLES and quiz.\n\n=== Script Rules ===\nCreate EXACTLY 5 sections with DIFFERENT visual scenes:\n1. HOOK (0-5s): Attention-grabbing question or surprising fact\n2. CORE_1 (5-20s): First key point with specific example\n3. CORE_2 (20-35s): Second key point with demonstration\n4. CORE_3 (35-50s): Third key point with real-world application\n5. CTA (50-60s): Call to action and summary\n\n=== SUBTITLE RULES (CRITICAL) ===\nEach section MUST include a 'subtitles' array with SHORT, TIMED text chunks:\n- Each subtitle: 2-3 seconds duration\n- Each subtitle: MAX 25 characters (Korean/Japanese) or 40 characters (English)\n- MAX 2 lines per subtitle\n\n=== Visual Cue Rules ===\nEach section MUST have a COMPLETELY DIFFERENT visualCue:\n- A realistic, photographic scene\n- Professional educational style\n\n=== Quiz Rules ===\n1. One question testing the core concept\n2. 4 options (1 correct + 3 incorrect)\n\n[Topic Info]\nTitle: ${$json.selectedTopic.title}\nHook: ${$json.selectedTopic.hook}\nKey Points: ${$json.selectedTopic.keyPoints.join(', ')}\nDifficulty: ${$json.difficulty}\n\n**CRITICAL: Write ALL content in ${$json.language === 'ko' ? 'Korean' : ($json.language === 'ja' ? 'Japanese' : 'English')}.**\n\n[Output format - JSON only]\n{\n  \"script\": {\n    \"title\": \"Video title\",\n    \"description\": \"Video description (200 chars)\",\n    \"totalDuration\": 60,\n    \"sections\": [\n      {\n        \"type\": \"HOOK\",\n        \"startTime\": 0,\n        \"endTime\": 5,\n        \"narration\": \"Full narration text for TTS\",\n        \"subtitles\": [\n          {\"start\": 0, \"end\": 2.5, \"text\": \"First subtitle chunk\"},\n          {\"start\": 2.5, \"end\": 5, \"text\": \"Second subtitle chunk\"}\n        ],\n        \"visualCue\": \"Realistic photo description\"\n      }\n    ],\n    \"tags\": [\"tag1\", \"tag2\"]\n  },\n  \"quiz\": {\n    \"question\": \"Quiz question\",\n    \"options\": [\n      {\"text\": \"Option 1\", \"isCorrect\": true},\n      {\"text\": \"Option 2\", \"isCorrect\": false},\n      {\"text\": \"Option 3\", \"isCorrect\": false},\n      {\"text\": \"Option 4\", \"isCorrect\": false}\n    ]\n  },\n  \"qualityCheck\": {\n    \"verdict\": \"PASS\",\n    \"reason\": \"Quality review reason\"\n  }\n}` }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 8192 } }) }}",
         "options": {}
       },
-      "id": "script-quiz-gen",
-      "name": "2. Script + Quiz Gen (Gemini)",
+      "id": "script-gen",
+      "name": "2. Script + Quiz Gen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1760, 200]
+      "position": [840, 200]
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst prevContext = $('Parse Topic').first().json;\n\n// Gemini may return multiple parts (thinking + response), so concatenate all\nconst parts = response.candidates?.[0]?.content?.parts || [];\nconst fullText = parts.map(p => p.text || '').join('\\n');\n\nif (!fullText || fullText.trim() === '') {\n  throw new Error('Gemini returned empty response for script generation.');\n}\n\n// Extract JSON from the combined text\nlet jsonStr = fullText;\njsonStr = jsonStr.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\n\nconst firstBrace = jsonStr.indexOf('{');\nconst lastBrace = jsonStr.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n  jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);\n}\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  if (!parsed.script || !parsed.quiz || !parsed.qualityCheck) throw new Error('Missing required fields');\n  \n  return {\n    json: {\n      ...prevContext,\n      script: parsed.script,\n      quiz: parsed.quiz,\n      qualityCheck: parsed.qualityCheck,\n      totalDuration: parsed.script.totalDuration || 60\n    }\n  };\n} catch (e) {\n  throw new Error(`Script parsing failed: ${e.message}\\nRaw: ${fullText.substring(0, 500)}...`);\n}"
+        "jsCode": "const response = $input.first().json;\nconst prevContext = $('Parse Topic').first().json;\n\n// Gemini API 응답에서 텍스트 추출\nlet text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';\nif (!text) throw new Error('No text in Gemini response');\n\n// JSON 추출\nlet jsonStr = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\nconst firstBrace = jsonStr.indexOf('{');\nconst lastBrace = jsonStr.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1) {\n  jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);\n}\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  if (!parsed.script || !parsed.quiz || !parsed.qualityCheck) throw new Error('Missing required fields');\n  \n  return {\n    json: {\n      ...prevContext,\n      script: parsed.script,\n      quiz: parsed.quiz,\n      qualityCheck: parsed.qualityCheck,\n      totalDuration: parsed.script.totalDuration || 60\n    }\n  };\n} catch (e) {\n  throw new Error(`Script parsing failed: ${e.message}\\nRaw: ${text.substring(0, 500)}`);\n}"
       },
       "id": "parse-script",
       "name": "Parse Script + Quiz",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 200]
+      "position": [1060, 200]
     },
     {
       "parameters": {
         "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "conditions": [
             {
               "id": "quality-check",
@@ -366,49 +262,69 @@
       "name": "3. Quality Gate",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2200, 200]
+      "position": [1280, 200]
     },
     {
       "parameters": {
-        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\n\n// 5개 섹션에 대한 이미지 요청 준비 (HOOK, CORE_1, CORE_2, CORE_3, CTA)\nconst items = sections.map((section, index) => {\n  const visualCue = section.visualCue || `Educational image about ${prevContext.category}`;\n  const prompt = `Professional educational photograph: ${visualCue}. ` +\n    `High-quality, photorealistic style. ` +\n    `Clean composition, professional lighting. ` +\n    `Suitable for educational video content. ` +\n    `Vertical 9:16 format. ` +\n    `NO cartoon, NO illustration, NO anime style. ` +\n    `NO text, NO watermarks. ` +\n    `Realistic and professional appearance.`;\n  \n  return {\n    json: {\n      sectionIndex: index,\n      sectionType: section.type,\n      startTime: section.startTime,\n      endTime: section.endTime,\n      duration: section.endTime - section.startTime,\n      imagePrompt: prompt,\n      // 원본 컨텍스트도 포함 (Merge용)\n      _context: prevContext\n    }\n  };\n});\n\nreturn items;"
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  { "leftValue": "={{ $json.outputType }}", "rightValue": "ai_video", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "ai_video"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  { "leftValue": "={{ $json.outputType }}", "rightValue": "images_only", "operator": { "type": "string", "operation": "equals" } }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "images_only"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "output-switch",
+      "name": "Output Type Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1500, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\n\nconst items = sections.map((section, index) => {\n  const visualCue = section.visualCue || `Educational image about ${prevContext.category}`;\n  const prompt = `Professional educational photograph: ${visualCue}. High-quality, photorealistic style. Clean composition, professional lighting. Vertical 9:16 format. NO cartoon, NO illustration, NO text, NO watermarks.`;\n  \n  return {\n    json: {\n      sectionIndex: index,\n      sectionType: section.type,\n      startTime: section.startTime,\n      endTime: section.endTime,\n      duration: section.endTime - section.startTime,\n      imagePrompt: prompt,\n      _context: prevContext\n    }\n  };\n});\n\nreturn items;"
       },
       "id": "prepare-image-requests",
-      "name": "4a-1. Prepare Image Requests",
+      "name": "4a. Prepare Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2420, 100]
+      "position": [1720, 200]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/imagen-3.0-generate-002:predict",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $('Merge Token').first().json.gcpAccessToken }}" }
-          ]
-        },
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={{ $env.GEMINI_API_KEY }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ instances: [{ prompt: $json.imagePrompt }], parameters: { sampleCount: 1, aspectRatio: '9:16', safetyFilterLevel: 'block_only_high', personGeneration: 'allow_adult' } }) }}",
         "options": {
-          "batching": {
-            "batch": {
-              "batchSize": 1,
-              "batchInterval": 10000
-            }
-          },
-          "retry": {
-            "maxTries": 5,
-            "waitBetweenTries": 10000
-          }
+          "batching": { "batch": { "batchSize": 1, "batchInterval": 5000 } },
+          "retry": { "maxTries": 5, "waitBetweenTries": 5000 }
         }
       },
-      "id": "visual-gen-http",
-      "name": "4a-2. Generate Image",
+      "id": "imagen-gen",
+      "name": "4a-2. Generate Image (Imagen)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2640, 0]
+      "position": [1940, 100]
     },
     {
       "parameters": {},
@@ -416,99 +332,88 @@
       "name": "4a-2b. Clone Data",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [2640, 200]
+      "position": [1940, 300]
     },
     {
-      "parameters": {
-        "mode": "append"
-      },
-      "id": "merge-response-original",
-      "name": "4a-3. Merge Response+Original",
+      "parameters": { "mode": "append" },
+      "id": "merge-image-data",
+      "name": "4a-3. Merge",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [2860, 100]
+      "position": [2160, 200]
     },
     {
       "parameters": {
-        "jsCode": "// 실패한 이미지만 재시도하는 로직 포함\nconst allItems = $input.all();\n\nconst httpResponses = allItems.filter(item => item.json.predictions !== undefined || (Object.keys(item.json).length === 0));\nconst originalDataItems = allItems.filter(item => \n  item.json.imagePrompt && item.json.sectionIndex !== undefined && !item.json.predictions\n);\n\nif (originalDataItems.length !== 5) {\n  throw new Error(`Expected 5 original items, got ${originalDataItems.length}`);\n}\n\noriginalDataItems.sort((a, b) => a.json.sectionIndex - b.json.sectionIndex);\n\n// GCP 토큰 가져오기\nconst gcpToken = $('Merge Token').first().json.gcpAccessToken;\nconst projectId = $env.GCP_PROJECT_ID;\nconst location = $env.VERTEX_AI_LOCATION;\nconst apiUrl = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/imagen-3.0-generate-002:predict`;\n\nconst errors = [];\n\n// 재시도 함수 (this.helpers.httpRequest 사용)\nasync function generateWithRetry(prompt, sectionType, maxRetries = 5, delay = 10000) {\n  for (let attempt = 1; attempt <= maxRetries; attempt++) {\n    try {\n      const data = await this.helpers.httpRequest({\n        method: 'POST',\n        url: apiUrl,\n        headers: {\n          'Authorization': `Bearer ${gcpToken}`,\n          'Content-Type': 'application/json'\n        },\n        body: {\n          instances: [{ prompt }],\n          parameters: { sampleCount: 1, aspectRatio: '9:16', safetyFilterLevel: 'block_only_high', personGeneration: 'allow_adult' }\n        },\n        json: true\n      });\n      if (data?.predictions?.[0]?.bytesBase64Encoded) {\n        return data.predictions[0].bytesBase64Encoded;\n      }\n      errors.push(`${sectionType} attempt ${attempt}: empty response - ${JSON.stringify(data).substring(0, 200)}`);\n    } catch (e) {\n      errors.push(`${sectionType} attempt ${attempt}: ${e.message}`);\n    }\n    if (attempt < maxRetries) {\n      await new Promise(r => setTimeout(r, delay));\n    }\n  }\n  return null;\n}\n\nconst results = [];\nfor (let i = 0; i < 5; i++) {\n  const original = originalDataItems[i];\n  const httpItem = httpResponses[i];\n  let imageBase64 = httpItem?.json?.predictions?.[0]?.bytesBase64Encoded;\n  \n  // 실패한 경우 재시도\n  if (!imageBase64) {\n    imageBase64 = await generateWithRetry.call(this, original.json.imagePrompt, original.json.sectionType);\n  }\n  \n  if (!imageBase64) {\n    throw new Error(`Image gen failed for ${original.json.sectionType}(${i}) after retries. Errors: ${errors.join(' | ')}`);\n  }\n  \n  results.push({\n    json: {\n      sectionIndex: original.json.sectionIndex,\n      sectionType: original.json.sectionType,\n      startTime: original.json.startTime,\n      endTime: original.json.endTime,\n      duration: original.json.duration,\n      imageBase64: imageBase64,\n      _context: original.json._context || {}\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "const allItems = $input.all();\nconst httpResponses = allItems.filter(item => item.json.predictions !== undefined || Object.keys(item.json).length === 0);\nconst originalDataItems = allItems.filter(item => item.json.imagePrompt && item.json.sectionIndex !== undefined && !item.json.predictions);\n\nif (originalDataItems.length !== 5) throw new Error(`Expected 5 original items, got ${originalDataItems.length}`);\n\noriginalDataItems.sort((a, b) => a.json.sectionIndex - b.json.sectionIndex);\n\nconst results = [];\nfor (let i = 0; i < 5; i++) {\n  const original = originalDataItems[i];\n  const httpItem = httpResponses[i];\n  const imageBase64 = httpItem?.json?.predictions?.[0]?.bytesBase64Encoded;\n  \n  if (!imageBase64) throw new Error(`Image gen failed for ${original.json.sectionType}`);\n  \n  results.push({\n    json: {\n      sectionIndex: original.json.sectionIndex,\n      sectionType: original.json.sectionType,\n      startTime: original.json.startTime,\n      endTime: original.json.endTime,\n      duration: original.json.duration,\n      imageBase64: imageBase64,\n      _context: original.json._context || {}\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "combine-image-data",
-      "name": "4a-4. Combine Image Data",
+      "id": "combine-images",
+      "name": "4a-4. Combine Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3080, 100]
+      "position": [2380, 200]
     },
     {
       "parameters": {
-        "jsCode": "// 모든 이미지 수집 및 정렬\nconst items = $input.all();\n\nconst generatedImages = items.map(item => {\n  const json = item.json;\n  return {\n    sectionIndex: json.sectionIndex,\n    sectionType: json.sectionType,\n    startTime: json.startTime,\n    endTime: json.endTime,\n    duration: json.duration,\n    imageBase64: json.imageBase64\n  };\n});\n\n// sectionIndex로 정렬\ngeneratedImages.sort((a, b) => a.sectionIndex - b.sectionIndex);\n\n// 첫 번째 아이템에서 원본 컨텍스트 가져오기\nconst context = items[0]?.json?._context || {};\n\nif (generatedImages.length === 0) {\n  throw new Error('No images were generated.');\n}\n\nif (generatedImages.length !== 5) {\n  throw new Error(`Expected 5 images but got ${generatedImages.length}`);\n}\n\nreturn {\n  json: {\n    ...context,\n    generatedImages: generatedImages\n  }\n};"
+        "jsCode": "const items = $input.all();\nconst generatedImages = items.map(item => ({\n  sectionIndex: item.json.sectionIndex,\n  sectionType: item.json.sectionType,\n  startTime: item.json.startTime,\n  endTime: item.json.endTime,\n  duration: item.json.duration,\n  imageBase64: item.json.imageBase64\n}));\n\ngeneratedImages.sort((a, b) => a.sectionIndex - b.sectionIndex);\nconst context = items[0]?.json?._context || {};\n\nif (generatedImages.length !== 5) throw new Error(`Expected 5 images but got ${generatedImages.length}`);\n\nreturn { json: { ...context, generatedImages } };"
       },
       "id": "aggregate-images",
       "name": "4a-5. Aggregate Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3300, 100]
+      "position": [2600, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevContext = $input.first().json;\nconst generatedImages = prevContext.generatedImages || [];\n\nconst binaries = {};\nfor (let i = 0; i < generatedImages.length; i++) {\n  binaries[`image_${i}`] = {\n    data: generatedImages[i].imageBase64,\n    mimeType: 'image/png',\n    fileName: `section_${i}.png`\n  };\n}\n\nreturn { json: prevContext, binary: binaries };"
+      },
+      "id": "convert-images",
+      "name": "Convert to Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2820, 200]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $('Merge Token').first().json.gcpAccessToken }}" },
-            { "name": "x-goog-user-project", "value": "={{ $env.GCP_PROJECT_ID }}" }
-          ]
-        },
+        "url": "=https://texttospeech.googleapis.com/v1/text:synthesize?key={{ $env.GEMINI_API_KEY }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'en' ? 'en-US' : ($json.language === 'ja' ? 'ja-JP' : 'ko-KR') }}\",\n    \"name\": \"{{ $json.language === 'en' ? 'Aoede' : ($json.language === 'ja' ? 'Zephyr' : 'Kore') }}\",\n    \"modelName\": \"gemini-2.5-flash-tts\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"sampleRateHertz\": 24000\n  }\n}",
+        "jsonBody": "={\n  \"input\": { \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\" },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'en' ? 'en-US' : ($json.language === 'ja' ? 'ja-JP' : 'ko-KR') }}\",\n    \"name\": \"{{ $json.language === 'en' ? 'en-US-Chirp3-HD-Leda' : ($json.language === 'ja' ? 'ja-JP-Chirp3-HD-Zephyr' : 'ko-KR-Chirp3-HD-Kore') }}\"\n  },\n  \"audioConfig\": { \"audioEncoding\": \"MP3\", \"sampleRateHertz\": 24000 }\n}",
         "options": {}
       },
       "id": "tts-gen",
-      "name": "4b. TTS (Gemini TTS)",
+      "name": "4b. TTS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2420, 400]
+      "position": [1500, 400]
     },
     {
       "parameters": {
-        "jsCode": "const prevContext = $('4a-5. Aggregate Images').first().json;\nconst generatedImages = prevContext.generatedImages || [];\n\n// 5개 이미지를 바이너리로 변환\nconst binaries = {};\nfor (let i = 0; i < generatedImages.length; i++) {\n  const img = generatedImages[i];\n  binaries[`image_${i}`] = {\n    data: img.imageBase64,\n    mimeType: 'image/png',\n    fileName: `section_${i}.png`\n  };\n}\n\nreturn {\n  json: prevContext,\n  binary: binaries\n};"
-      },
-      "id": "convert-visual",
-      "name": "Convert Visuals to Binary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [3520, 100]
-    },
-    {
-      "parameters": {
-        "jsCode": "const item = $input.first();\nconst prevContext = $('3. Quality Gate').first().json;\nconst audioBase64 = item.json.audioContent;\n\nif (!audioBase64) throw new Error('TTS response missing audioContent: ' + JSON.stringify(item.json).substring(0, 500));\n\nreturn {\n  json: { ...prevContext },\n  binary: {\n    audio: {\n      data: audioBase64,\n      mimeType: 'audio/mp3',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
+        "jsCode": "const item = $input.first();\nconst prevContext = $('3. Quality Gate').first().json;\nconst audioBase64 = item.json.audioContent;\n\nif (!audioBase64) throw new Error('TTS response missing audioContent');\n\nreturn {\n  json: { ...prevContext },\n  binary: {\n    audio: {\n      data: audioBase64,\n      mimeType: 'audio/mp3',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
       },
       "id": "prepare-audio",
-      "name": "Prepare Audio Binary",
+      "name": "Prepare Audio",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3520, 400]
+      "position": [2820, 400]
     },
     {
-      "parameters": {
-        "mode": "append"
-      },
+      "parameters": { "mode": "append" },
       "id": "merge-visual-audio",
       "name": "Merge Visual + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [3740, 200]
+      "position": [3040, 300]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst visualItem = items.find(i => i.binary?.image_0);\nconst audioItem = items.find(i => i.binary?.audio);\n\nconst jsonData = visualItem?.json || audioItem?.json || {};\n\nlet combinedBinary = {};\nfor (const item of items) {\n  if (item.binary) {\n    combinedBinary = { ...combinedBinary, ...item.binary };\n  }\n}\n\nreturn { json: jsonData, binary: combinedBinary };"
+        "jsCode": "const items = $input.all();\nconst visualItem = items.find(i => i.binary?.image_0);\nconst audioItem = items.find(i => i.binary?.audio);\nconst jsonData = visualItem?.json || audioItem?.json || {};\n\nlet combinedBinary = {};\nfor (const item of items) {\n  if (item.binary) combinedBinary = { ...combinedBinary, ...item.binary };\n}\n\nreturn { json: jsonData, binary: combinedBinary };"
       },
       "id": "combine-binaries",
       "name": "Combine Binaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3960, 200]
+      "position": [3260, 300]
     },
     {
       "parameters": {
@@ -531,29 +436,23 @@
             }
           ]
         },
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          }
-        }
+        "options": { "response": { "response": { "responseFormat": "file" } } }
       },
       "id": "compose",
       "name": "5. Compose (FFmpeg)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4180, 200]
+      "position": [3480, 300]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\n\nif (!videoBinary) {\n  const binaryKeys = Object.keys(item.binary || {});\n  throw new Error('No video binary. Available keys: ' + binaryKeys.join(','));\n}\n\nconst prevContext = $('Combine Binaries').first().json;\nconst mergeTokenData = $('Merge Token').first().json;\nconst jobId = prevContext.jobId || mergeTokenData.jobId;\n\nif (!jobId) throw new Error('jobId missing!');\n\nconst firstImage = prevContext.generatedImages?.[0];\n\nconst result = {\n  json: { ...prevContext, ...mergeTokenData, jobId, composedAt: new Date().toISOString() },\n  binary: {\n    video: {\n      ...videoBinary,\n      fileName: 'final.mp4'\n    }\n  }\n};\n\nif (firstImage?.imageBase64) {\n  result.binary.thumbnail = {\n    data: firstImage.imageBase64,\n    mimeType: 'image/png',\n    fileName: 'thumbnail.png'\n  };\n}\n\nreturn result;"
+        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\nif (!videoBinary) throw new Error('No video binary');\n\nconst prevContext = $('Combine Binaries').first().json;\nconst jobId = prevContext.jobId;\nconst firstImage = prevContext.generatedImages?.[0];\n\nconst result = {\n  json: { ...prevContext, composedAt: new Date().toISOString() },\n  binary: { video: { ...videoBinary, fileName: 'final.mp4' } }\n};\n\nif (firstImage?.imageBase64) {\n  result.binary.thumbnail = {\n    data: firstImage.imageBase64,\n    mimeType: 'image/png',\n    fileName: 'thumbnail.png'\n  };\n}\n\nreturn result;"
       },
       "id": "process-video",
-      "name": "Process Video Response",
+      "name": "Process Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4400, 200]
+      "position": [3700, 300]
     },
     {
       "parameters": {
@@ -562,16 +461,12 @@
         "fileName": "=edited-videos/generated/{{ $json.jobId }}/final.mp4",
         "binaryPropertyName": "video"
       },
-      "id": "s3-upload-video",
+      "id": "s3-video",
       "name": "S3 Upload Video",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [4620, 100],
-      "credentials": {
-        "aws": {
-          "name": "AWS"
-        }
-      }
+      "position": [3920, 200],
+      "credentials": { "aws": { "name": "AWS" } }
     },
     {
       "parameters": {
@@ -580,36 +475,30 @@
         "fileName": "=edited-videos/generated/{{ $json.jobId }}/thumbnail.jpg",
         "binaryPropertyName": "thumbnail"
       },
-      "id": "s3-upload-thumbnail",
+      "id": "s3-thumbnail",
       "name": "S3 Upload Thumbnail",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [4620, 300],
-      "credentials": {
-        "aws": {
-          "name": "AWS"
-        }
-      }
+      "position": [3920, 400],
+      "credentials": { "aws": { "name": "AWS" } }
     },
     {
-      "parameters": {
-        "mode": "append"
-      },
-      "id": "merge-s3-results",
-      "name": "Merge S3 Results",
+      "parameters": { "mode": "append" },
+      "id": "merge-s3",
+      "name": "Merge S3",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [4840, 200]
+      "position": [4140, 300]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst prevContext = $('Process Video Response').first().json;\n\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nconst videoUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`;\nconst thumbnailUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/thumbnail.jpg`;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl,\n    thumbnailUrl,\n    s3Key: `generated/${prevContext.jobId}/final.mp4`,\n    thumbnailS3Key: `generated/${prevContext.jobId}/thumbnail.jpg`\n  }\n};"
+        "jsCode": "const prevContext = $('Process Video').first().json;\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`,\n    thumbnailUrl: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/thumbnail.jpg`\n  }\n};"
       },
-      "id": "set-s3-urls",
+      "id": "set-urls",
       "name": "Set S3 URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [5060, 200]
+      "position": [4360, 300]
     },
     {
       "parameters": {
@@ -621,210 +510,119 @@
         "options": {}
       },
       "id": "upvy-publish",
-      "name": "6a. Upvy Publish",
+      "name": "6. Upvy Publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [5280, 100]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"snippet\": {\n    \"title\": \"{{ $json.script.title }}\",\n    \"description\": \"{{ $json.script.description }}\\n\\n#Shorts\",\n    \"tags\": {{ JSON.stringify([...$json.script.tags, 'Shorts']) }},\n    \"categoryId\": \"27\",\n    \"defaultLanguage\": \"{{ $json.language }}\"\n  },\n  \"status\": {\n    \"privacyStatus\": \"public\",\n    \"selfDeclaredMadeForKids\": false\n  }\n}",
-        "options": {}
-      },
-      "id": "youtube-publish",
-      "name": "6b. YouTube Shorts",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [5280, 300]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://graph.facebook.com/v18.0/{{ $env.INSTAGRAM_USER_ID }}/media",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"media_type\": \"REELS\",\n  \"video_url\": \"{{ $json.videoUrl }}\",\n  \"caption\": \"{{ $json.script.title }}\\n\\n{{ $json.script.description }}\\n\\n#{{ $json.script.tags.join(' #') }}\"\n}",
-        "options": {}
-      },
-      "id": "instagram-publish",
-      "name": "6c. Instagram Reels",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [5280, 500]
+      "position": [4580, 300]
     },
     {
       "parameters": {
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=✅ *AI Content Generated*\n\n*Job ID:* {{ $json.jobId }}\n*Title:* {{ $json.script.title }}\n*Language:* {{ $json.language }}\n*Category:* {{ $json.category }}\n*Sections:* {{ $json.generatedImages?.length || 0 }} images\n\n*S3:*\n• Video: {{ $json.videoUrl }}\n• Thumbnail: {{ $json.thumbnailUrl }}",
-        "additionalFields": {
-          "parse_mode": "Markdown"
-        }
+        "text": "=✅ *AI Content Generated*\n\n*Job ID:* {{ $json.jobId }}\n*Title:* {{ $json.script.title }}\n*Language:* {{ $json.language }}\n*Category:* {{ $json.category }}\n\n*Video:* {{ $json.videoUrl }}",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "telegram-success",
-      "name": "Telegram - Success",
+      "name": "Telegram Success",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [5500, 200],
-      "credentials": {
-        "telegramApi": {
-          "name": "Telegram API"
-        }
-      }
+      "position": [4800, 300],
+      "credentials": { "telegramApi": { "name": "Telegram API" } }
     },
     {
       "parameters": {
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=❌ *AI Content Skipped*\n\n*Job ID:* {{ $json.jobId }}\n*Reason:* Quality check failed\n\n*Quality Review:*\n{{ $json.qualityCheck?.reason || 'N/A' }}",
-        "additionalFields": {
-          "parse_mode": "Markdown"
-        }
+        "text": "=❌ *Quality Check Failed*\n\n*Reason:* {{ $json.qualityCheck?.reason || 'N/A' }}",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
-      "id": "telegram-failure",
-      "name": "Telegram - Quality Fail",
+      "id": "telegram-fail",
+      "name": "Telegram Fail",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [2420, 500],
-      "credentials": {
-        "telegramApi": {
-          "name": "Telegram API"
-        }
-      }
+      "position": [1500, 500],
+      "credentials": { "telegramApi": { "name": "Telegram API" } }
     },
     {
       "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict"
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.outputType }}",
-                    "rightValue": "ai_video",
-                    "operator": { "type": "string", "operation": "equals" }
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "ai_video"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict"
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.outputType }}",
-                    "rightValue": "images_only",
-                    "operator": { "type": "string", "operation": "equals" }
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "images_only"
-            }
-          ]
-        },
-        "options": {
-          "fallbackOutput": "extra"
-        }
+        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\n\nconst items = sections.map((section, index) => {\n  const visualCue = section.visualCue || `Educational scene about ${prevContext.category}`;\n  const prompt = `Smooth cinematic motion of: ${visualCue}. Professional educational video style. Subtle camera movement, professional lighting. NO text overlays, NO watermarks. High quality, 9:16 vertical format.`;\n  \n  return {\n    json: {\n      sectionIndex: index,\n      sectionType: section.type,\n      startTime: section.startTime,\n      endTime: section.endTime,\n      duration: section.endTime - section.startTime,\n      videoPrompt: prompt,\n      _context: prevContext\n    }\n  };\n});\n\nreturn items;"
       },
-      "id": "output-type-switch",
-      "name": "Output Type Switch",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.2,
-      "position": [2420, -100]
-    },
-    {
-      "parameters": {
-        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\nconst gcpToken = prevContext.gcpAccessToken;\n\n// 5개 섹션에 대한 Veo 비디오 요청 준비\nconst items = sections.map((section, index) => {\n  const visualCue = section.visualCue || `Educational scene about ${prevContext.category}`;\n  // Veo용 모션 프롬프트 (이미지 기반 동영상 생성)\n  const prompt = `Smooth cinematic motion of: ${visualCue}. ` +\n    `Professional educational video style. ` +\n    `Subtle camera movement, professional lighting. ` +\n    `NO text overlays, NO watermarks. ` +\n    `High quality, 9:16 vertical format.`;\n  \n  return {\n    json: {\n      sectionIndex: index,\n      sectionType: section.type,\n      startTime: section.startTime,\n      endTime: section.endTime,\n      duration: section.endTime - section.startTime,\n      videoPrompt: prompt,\n      gcpAccessToken: gcpToken,\n      _context: prevContext\n    }\n  };\n});\n\nreturn items;"
-      },
-      "id": "prepare-veo-requests",
-      "name": "4c-v1. Prepare Veo Requests",
+      "id": "prepare-veo",
+      "name": "4c. Prepare Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2640, -200]
+      "position": [1720, -100]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst gcpToken = item.gcpAccessToken;\nconst projectId = $env.GCP_PROJECT_ID;\n// Veo는 us-central1에서만 사용 가능\nconst location = 'us-central1';\nconst gcsBucket = $env.GCS_BUCKET || $env.GCP_PROJECT_ID + '-veo-output';\nconst jobId = item._context?.jobId || Date.now();\n\n// Veo API 호출 (Long-Running Operation)\n// 모델: veo-2.0-generate-001 (stable) 또는 veo-3.0-fast-generate-001 (faster)\nconst veoUrl = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/veo-2.0-generate-001:predictLongRunning`;\n\nconsole.log('Veo Request URL:', veoUrl);\nconsole.log('Veo Prompt:', item.videoPrompt);\nconsole.log('GCS Output:', `gs://${gcsBucket}/veo-temp/${jobId}/section_${item.sectionIndex}/`);\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: veoUrl,\n  headers: {\n    'Authorization': `Bearer ${gcpToken}`,\n    'Content-Type': 'application/json'\n  },\n  body: {\n    instances: [{\n      prompt: item.videoPrompt\n    }],\n    parameters: {\n      storageUri: `gs://${gcsBucket}/veo-temp/${jobId}/section_${item.sectionIndex}/`,\n      aspectRatio: '9:16',\n      sampleCount: 1\n    }\n  },\n  json: true\n});\n\nconsole.log('Veo Response:', JSON.stringify(response).substring(0, 1000));\n\nconst operationName = response.name;\nif (!operationName) {\n  throw new Error('Veo API did not return operation name: ' + JSON.stringify(response).substring(0, 1000));\n}\n\nreturn {\n  json: {\n    ...item,\n    operationName: operationName,\n    gcsBucket: gcsBucket,\n    jobId: jobId\n  }\n};"
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning?key={{ $env.GEMINI_API_KEY }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ instances: [{ prompt: $json.videoPrompt }], parameters: { aspectRatio: '9:16', durationSeconds: 5, sampleCount: 1 } }) }}",
+        "options": { "batching": { "batch": { "batchSize": 1, "batchInterval": 10000 } } }
       },
-      "id": "request-veo-video",
-      "name": "4c-v2. Request Veo Video",
+      "id": "veo-request",
+      "name": "4c-2. Request Veo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1940, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst operationName = item.name;\nconst apiKey = $env.GEMINI_API_KEY;\n\nconst maxAttempts = 120;\nconst pollInterval = 3000;\n\nfor (let attempt = 0; attempt < maxAttempts; attempt++) {\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`,\n    json: true\n  });\n\n  if (response.done) {\n    const videos = response.response?.generateVideoResponse?.generatedSamples || [];\n    if (videos.length === 0) throw new Error('No videos generated');\n    \n    const videoUri = videos[0].video?.uri;\n    return { json: { ...item, videoUri } };\n  }\n  \n  if (response.error) throw new Error(`Veo failed: ${JSON.stringify(response.error)}`);\n  await new Promise(r => setTimeout(r, pollInterval));\n}\n\nthrow new Error('Veo timeout');"
+      },
+      "id": "veo-poll",
+      "name": "4c-3. Poll Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2860, -200]
+      "position": [2160, -100]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst operationName = item.operationName;\nconst gcpToken = item.gcpAccessToken;\n\nconst maxAttempts = 120; // 6분 (3초 * 120) - Veo는 시간이 좀 걸림\nconst pollInterval = 3000; // 3초\n\nconsole.log('Polling operation:', operationName);\n\nfor (let attempt = 0; attempt < maxAttempts; attempt++) {\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://us-central1-aiplatform.googleapis.com/v1/${operationName}`,\n    headers: {\n      'Authorization': `Bearer ${gcpToken}`\n    },\n    json: true\n  });\n\n  console.log(`Poll attempt ${attempt + 1}:`, response.done ? 'DONE' : 'PENDING');\n\n  if (response.done) {\n    // 작업 완료\n    console.log('Veo completed response:', JSON.stringify(response).substring(0, 1000));\n    \n    // Veo 응답 구조: response.videos[].gcsUri\n    const videos = response.response?.videos || [];\n    if (videos.length === 0) {\n      throw new Error(`Veo operation completed but no videos for ${item.sectionType}: ${JSON.stringify(response).substring(0, 1000)}`);\n    }\n    \n    const videoGcsUri = videos[0].gcsUri;\n    console.log('Video GCS URI:', videoGcsUri);\n    \n    return {\n      json: {\n        sectionIndex: item.sectionIndex,\n        sectionType: item.sectionType,\n        startTime: item.startTime,\n        endTime: item.endTime,\n        duration: item.duration,\n        videoGcsUri: videoGcsUri,\n        gcsBucket: item.gcsBucket,\n        gcpAccessToken: gcpToken,\n        _context: item._context\n      }\n    };\n  }\n  \n  if (response.error) {\n    throw new Error(`Veo operation failed for ${item.sectionType}: ${JSON.stringify(response.error)}`);\n  }\n  \n  // 대기 후 재시도\n  await new Promise(r => setTimeout(r, pollInterval));\n}\n\nthrow new Error(`Veo operation timed out after 6 minutes for ${item.sectionType}`);"
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const videoUri = item.json.videoUri;\n  if (!videoUri) throw new Error('No video URI');\n  \n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: videoUri,\n    encoding: 'arraybuffer',\n    returnFullResponse: true\n  });\n  \n  results.push({\n    json: {\n      sectionIndex: item.json.sectionIndex || 0,\n      sectionType: item.json.sectionType || 'UNKNOWN',\n      duration: item.json.duration || 5,\n      videoBase64: Buffer.from(response.body).toString('base64'),\n      _context: item.json._context\n    }\n  });\n}\n\nreturn results;"
       },
-      "id": "poll-veo-operation",
-      "name": "4c-v3. Poll Veo Operation",
+      "id": "veo-download",
+      "name": "4c-4. Download Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3080, -200]
+      "position": [2380, -100]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\n// GCS에서 비디오 다운로드\nconst results = [];\nfor (const item of items) {\n  const gcsUri = item.json.videoGcsUri;\n  const gcpToken = item.json.gcpAccessToken;\n  \n  if (!gcsUri) {\n    throw new Error(`No GCS URI for section ${item.json.sectionType}`);\n  }\n  \n  console.log('Downloading from GCS:', gcsUri);\n  \n  // gs://bucket/path/file.mp4 -> bucket, path/file.mp4\n  const gcsMatch = gcsUri.match(/^gs:\\/\\/([^\\/]+)\\/(.+)$/);\n  if (!gcsMatch) {\n    throw new Error(`Invalid GCS URI: ${gcsUri}`);\n  }\n  const [, bucket, objectPath] = gcsMatch;\n  \n  // GCS JSON API로 다운로드\n  const downloadUrl = `https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;\n  \n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: downloadUrl,\n    headers: {\n      'Authorization': `Bearer ${gcpToken}`\n    },\n    encoding: 'arraybuffer',\n    returnFullResponse: true\n  });\n  \n  const videoBase64 = Buffer.from(response.body).toString('base64');\n  console.log(`Downloaded video for ${item.json.sectionType}: ${videoBase64.length} bytes (base64)`);\n  \n  results.push({\n    json: {\n      sectionIndex: item.json.sectionIndex,\n      sectionType: item.json.sectionType,\n      startTime: item.json.startTime,\n      endTime: item.json.endTime,\n      duration: item.json.duration,\n      videoBase64: videoBase64,\n      _context: item.json._context\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst generatedVideos = items.map(item => ({\n  sectionIndex: item.json.sectionIndex,\n  sectionType: item.json.sectionType,\n  duration: item.json.duration,\n  videoBase64: item.json.videoBase64\n}));\n\ngeneratedVideos.sort((a, b) => a.sectionIndex - b.sectionIndex);\nconst context = items[0]?.json?._context || {};\n\nreturn { json: { ...context, generatedVideos, outputType: 'ai_video' } };"
       },
-      "id": "download-veo-videos",
-      "name": "4c-v4. Download Videos",
+      "id": "veo-aggregate",
+      "name": "4c-5. Aggregate Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3300, -200]
+      "position": [2600, -100]
     },
     {
       "parameters": {
-        "jsCode": "// 모든 비디오 수집 및 정렬\nconst items = $input.all();\n\nconst generatedVideos = items.map(item => {\n  const json = item.json;\n  return {\n    sectionIndex: json.sectionIndex,\n    sectionType: json.sectionType,\n    startTime: json.startTime,\n    endTime: json.endTime,\n    duration: json.duration,\n    videoBase64: json.videoBase64\n  };\n});\n\n// sectionIndex로 정렬\ngeneratedVideos.sort((a, b) => a.sectionIndex - b.sectionIndex);\n\n// 첫 번째 아이템에서 원본 컨텍스트 가져오기\nconst context = items[0]?.json?._context || {};\n\nif (generatedVideos.length === 0) {\n  throw new Error('No videos were generated.');\n}\n\nif (generatedVideos.length !== 5) {\n  throw new Error(`Expected 5 videos but got ${generatedVideos.length}`);\n}\n\nreturn {\n  json: {\n    ...context,\n    generatedVideos: generatedVideos,\n    outputType: 'ai_video'\n  }\n};"
+        "jsCode": "const prevContext = $input.first().json;\nconst generatedVideos = prevContext.generatedVideos || [];\n\nconst binaries = {};\nfor (let i = 0; i < generatedVideos.length; i++) {\n  binaries[`video_${i}`] = {\n    data: generatedVideos[i].videoBase64,\n    mimeType: 'video/mp4',\n    fileName: `section_${i}.mp4`\n  };\n}\n\nreturn { json: prevContext, binary: binaries };"
       },
-      "id": "aggregate-videos",
-      "name": "4c-v5. Aggregate Videos",
+      "id": "convert-veo",
+      "name": "Convert Veo Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3520, -200]
+      "position": [2820, -100]
     },
     {
-      "parameters": {
-        "jsCode": "const prevContext = $input.first().json;\nconst generatedVideos = prevContext.generatedVideos || [];\n\n// 5개 비디오를 바이너리로 변환\nconst binaries = {};\nfor (let i = 0; i < generatedVideos.length; i++) {\n  const vid = generatedVideos[i];\n  binaries[`video_${i}`] = {\n    data: vid.videoBase64,\n    mimeType: 'video/mp4',\n    fileName: `section_${i}.mp4`\n  };\n}\n\nreturn {\n  json: prevContext,\n  binary: binaries\n};"
-      },
-      "id": "convert-videos-binary",
-      "name": "Convert Videos to Binary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [3740, -200]
-    },
-    {
-      "parameters": {
-        "mode": "append"
-      },
-      "id": "merge-video-audio",
-      "name": "Merge Video + Audio",
+      "parameters": { "mode": "append" },
+      "id": "merge-veo-audio",
+      "name": "Merge Veo + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [3960, -100]
+      "position": [3040, 0]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst videoItem = items.find(i => i.binary?.video_0);\nconst audioItem = items.find(i => i.binary?.audio);\n\nconst jsonData = videoItem?.json || audioItem?.json || {};\n\nlet combinedBinary = {};\nfor (const item of items) {\n  if (item.binary) {\n    combinedBinary = { ...combinedBinary, ...item.binary };\n  }\n}\n\nreturn { json: { ...jsonData, outputType: 'ai_video' }, binary: combinedBinary };"
+        "jsCode": "const items = $input.all();\nconst videoItem = items.find(i => i.binary?.video_0);\nconst audioItem = items.find(i => i.binary?.audio);\nconst jsonData = videoItem?.json || audioItem?.json || {};\n\nlet combinedBinary = {};\nfor (const item of items) {\n  if (item.binary) combinedBinary = { ...combinedBinary, ...item.binary };\n}\n\nreturn { json: { ...jsonData, outputType: 'ai_video' }, binary: combinedBinary };"
       },
-      "id": "combine-video-binaries",
-      "name": "Combine Video Binaries",
+      "id": "combine-veo",
+      "name": "Combine Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4180, -100]
+      "position": [3260, 0]
     },
     {
       "parameters": {
@@ -843,33 +641,27 @@
             {
               "parameterType": "formData",
               "name": "metadata",
-              "value": "={{ JSON.stringify({ title: $json.script.title, watermark: true, language: $json.language, clipDurations: $json.generatedVideos.map(v => v.duration), subtitles: $json.script.sections.flatMap(s => s.subtitles || [{ start: s.startTime, end: s.endTime, text: s.narration }]) }) }}"
+              "value": "={{ JSON.stringify({ title: $json.script.title, watermark: true, language: $json.language, clipDurations: $json.generatedVideos.map(v => v.duration), subtitles: $json.script.sections.flatMap(s => s.subtitles || []) }) }}"
             }
           ]
         },
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          }
-        }
+        "options": { "response": { "response": { "responseFormat": "file" } } }
       },
-      "id": "compose-video",
-      "name": "5b. Compose Video (FFmpeg)",
+      "id": "compose-veo",
+      "name": "5b. Compose Veo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4400, -100]
+      "position": [3480, 0]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\n\nif (!videoBinary) {\n  const binaryKeys = Object.keys(item.binary || {});\n  throw new Error('No video binary. Available keys: ' + binaryKeys.join(','));\n}\n\nconst prevContext = $('Combine Video Binaries').first().json;\nconst mergeTokenData = $('Merge Token').first().json;\nconst jobId = prevContext.jobId || mergeTokenData.jobId;\n\nif (!jobId) throw new Error('jobId missing!');\n\n// 첫 프레임을 썸네일로 (또는 첫 비디오의 첫 프레임)\nconst firstVideo = prevContext.generatedVideos?.[0];\n\nconst result = {\n  json: { ...prevContext, ...mergeTokenData, jobId, composedAt: new Date().toISOString() },\n  binary: {\n    video: {\n      ...videoBinary,\n      fileName: 'final.mp4'\n    }\n  }\n};\n\nreturn result;"
+        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\nif (!videoBinary) throw new Error('No video binary');\n\nconst prevContext = $('Combine Veo').first().json;\n\nreturn {\n  json: { ...prevContext, composedAt: new Date().toISOString() },\n  binary: { video: { ...videoBinary, fileName: 'final.mp4' } }\n};"
       },
-      "id": "process-video-response-veo",
-      "name": "Process Video Response (Veo)",
+      "id": "process-veo",
+      "name": "Process Veo Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4620, -100]
+      "position": [3700, 0]
     },
     {
       "parameters": {
@@ -878,210 +670,92 @@
         "fileName": "=edited-videos/generated/{{ $json.jobId }}/final.mp4",
         "binaryPropertyName": "video"
       },
-      "id": "s3-upload-video-veo",
-      "name": "S3 Upload Video (Veo)",
+      "id": "s3-veo",
+      "name": "S3 Veo Upload",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [4840, -100],
-      "credentials": {
-        "aws": {
-          "name": "AWS"
-        }
-      }
+      "position": [3920, 0],
+      "credentials": { "aws": { "name": "AWS" } }
     },
     {
       "parameters": {
-        "jsCode": "const prevContext = $('Process Video Response (Veo)').first().json;\n\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nconst videoUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`;\n\n// AI 비디오 모드에서는 별도 썸네일 없이 비디오 URL만 반환\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl,\n    thumbnailUrl: videoUrl,\n    s3Key: `generated/${prevContext.jobId}/final.mp4`\n  }\n};"
+        "jsCode": "const prevContext = $('Process Veo Video').first().json;\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`,\n    thumbnailUrl: `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`\n  }\n};"
       },
-      "id": "set-s3-urls-veo",
-      "name": "Set S3 URLs (Veo)",
+      "id": "set-veo-urls",
+      "name": "Set Veo URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [5060, -100]
+      "position": [4140, 0]
     }
   ],
   "connections": {
-    "Manual Form": {
-      "main": [[{ "node": "Set Form Config", "type": "main", "index": 0 }]]
-    },
-    "Set Form Config": {
-      "main": [[{ "node": "Generate GCP JWT", "type": "main", "index": 0 }]]
-    },
-    "Schedule EN (5/day)": {
-      "main": [[{ "node": "Set Language EN", "type": "main", "index": 0 }]]
-    },
-    "Schedule JA (3/day)": {
-      "main": [[{ "node": "Set Language JA", "type": "main", "index": 0 }]]
-    },
-    "Schedule KO (3/day)": {
-      "main": [[{ "node": "Set Language KO", "type": "main", "index": 0 }]]
-    },
-    "Set Language EN": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
-    },
-    "Set Language JA": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
-    },
-    "Set Language KO": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
-    },
-    "Set Config": {
-      "main": [[{ "node": "Generate GCP JWT", "type": "main", "index": 0 }]]
-    },
-    "Generate GCP JWT": {
-      "main": [[{ "node": "Get GCP Access Token", "type": "main", "index": 0 }]]
-    },
-    "Get GCP Access Token": {
-      "main": [[{ "node": "Merge Token", "type": "main", "index": 0 }]]
-    },
-    "Merge Token": {
-      "main": [[{ "node": "1. Topic Select (Gemini + Grounding)", "type": "main", "index": 0 }]]
-    },
-    "1. Topic Select (Gemini + Grounding)": {
-      "main": [[{ "node": "Parse Topic", "type": "main", "index": 0 }]]
-    },
-    "Parse Topic": {
-      "main": [[{ "node": "2. Script + Quiz Gen (Gemini)", "type": "main", "index": 0 }]]
-    },
-    "2. Script + Quiz Gen (Gemini)": {
-      "main": [[{ "node": "Parse Script + Quiz", "type": "main", "index": 0 }]]
-    },
-    "Parse Script + Quiz": {
-      "main": [[{ "node": "3. Quality Gate", "type": "main", "index": 0 }]]
-    },
+    "Manual Form": { "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]] },
+    "Schedule EN (5/day)": { "main": [[{ "node": "Set EN", "type": "main", "index": 0 }]] },
+    "Schedule KO (3/day)": { "main": [[{ "node": "Set KO", "type": "main", "index": 0 }]] },
+    "Schedule JA (3/day)": { "main": [[{ "node": "Set JA", "type": "main", "index": 0 }]] },
+    "Set EN": { "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]] },
+    "Set KO": { "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]] },
+    "Set JA": { "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]] },
+    "Set Config": { "main": [[{ "node": "1. Topic Select", "type": "main", "index": 0 }]] },
+    "1. Topic Select": { "main": [[{ "node": "Parse Topic", "type": "main", "index": 0 }]] },
+    "Parse Topic": { "main": [[{ "node": "2. Script + Quiz Gen", "type": "main", "index": 0 }]] },
+    "2. Script + Quiz Gen": { "main": [[{ "node": "Parse Script + Quiz", "type": "main", "index": 0 }]] },
+    "Parse Script + Quiz": { "main": [[{ "node": "3. Quality Gate", "type": "main", "index": 0 }]] },
     "3. Quality Gate": {
       "main": [
-        [
-          { "node": "Output Type Switch", "type": "main", "index": 0 },
-          { "node": "4b. TTS (Gemini TTS)", "type": "main", "index": 0 }
-        ],
-        [{ "node": "Telegram - Quality Fail", "type": "main", "index": 0 }]
+        [{ "node": "Output Type Switch", "type": "main", "index": 0 }, { "node": "4b. TTS", "type": "main", "index": 0 }],
+        [{ "node": "Telegram Fail", "type": "main", "index": 0 }]
       ]
     },
     "Output Type Switch": {
       "main": [
-        [{ "node": "4c-v1. Prepare Veo Requests", "type": "main", "index": 0 }],
-        [{ "node": "4a-1. Prepare Image Requests", "type": "main", "index": 0 }],
-        [{ "node": "4a-1. Prepare Image Requests", "type": "main", "index": 0 }]
+        [{ "node": "4c. Prepare Veo", "type": "main", "index": 0 }],
+        [{ "node": "4a. Prepare Images", "type": "main", "index": 0 }],
+        [{ "node": "4a. Prepare Images", "type": "main", "index": 0 }]
       ]
     },
-    "4c-v1. Prepare Veo Requests": {
-      "main": [[{ "node": "4c-v2. Request Veo Video", "type": "main", "index": 0 }]]
-    },
-    "4c-v2. Request Veo Video": {
-      "main": [[{ "node": "4c-v3. Poll Veo Operation", "type": "main", "index": 0 }]]
-    },
-    "4c-v3. Poll Veo Operation": {
-      "main": [[{ "node": "4c-v4. Download Videos", "type": "main", "index": 0 }]]
-    },
-    "4c-v4. Download Videos": {
-      "main": [[{ "node": "4c-v5. Aggregate Videos", "type": "main", "index": 0 }]]
-    },
-    "4c-v5. Aggregate Videos": {
-      "main": [[{ "node": "Convert Videos to Binary", "type": "main", "index": 0 }]]
-    },
-    "Convert Videos to Binary": {
-      "main": [[{ "node": "Merge Video + Audio", "type": "main", "index": 0 }]]
-    },
-    "Merge Video + Audio": {
-      "main": [[{ "node": "Combine Video Binaries", "type": "main", "index": 0 }]]
-    },
-    "Combine Video Binaries": {
-      "main": [[{ "node": "5b. Compose Video (FFmpeg)", "type": "main", "index": 0 }]]
-    },
-    "5b. Compose Video (FFmpeg)": {
-      "main": [[{ "node": "Process Video Response (Veo)", "type": "main", "index": 0 }]]
-    },
-    "Process Video Response (Veo)": {
-      "main": [[{ "node": "S3 Upload Video (Veo)", "type": "main", "index": 0 }]]
-    },
-    "S3 Upload Video (Veo)": {
-      "main": [[{ "node": "Set S3 URLs (Veo)", "type": "main", "index": 0 }]]
-    },
-    "Set S3 URLs (Veo)": {
+    "4a. Prepare Images": {
       "main": [
-        [
-          { "node": "6a. Upvy Publish", "type": "main", "index": 0 },
-          { "node": "6b. YouTube Shorts", "type": "main", "index": 0 },
-          { "node": "6c. Instagram Reels", "type": "main", "index": 0 }
-        ]
+        [{ "node": "4a-2. Generate Image (Imagen)", "type": "main", "index": 0 }, { "node": "4a-2b. Clone Data", "type": "main", "index": 0 }]
       ]
     },
-    "4a-1. Prepare Image Requests": {
+    "4a-2. Generate Image (Imagen)": { "main": [[{ "node": "4a-3. Merge", "type": "main", "index": 0 }]] },
+    "4a-2b. Clone Data": { "main": [[{ "node": "4a-3. Merge", "type": "main", "index": 1 }]] },
+    "4a-3. Merge": { "main": [[{ "node": "4a-4. Combine Images", "type": "main", "index": 0 }]] },
+    "4a-4. Combine Images": { "main": [[{ "node": "4a-5. Aggregate Images", "type": "main", "index": 0 }]] },
+    "4a-5. Aggregate Images": { "main": [[{ "node": "Convert to Binary", "type": "main", "index": 0 }]] },
+    "Convert to Binary": { "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 0 }]] },
+    "4b. TTS": { "main": [[{ "node": "Prepare Audio", "type": "main", "index": 0 }]] },
+    "Prepare Audio": {
       "main": [
-        [
-          { "node": "4a-2. Generate Image", "type": "main", "index": 0 },
-          { "node": "4a-2b. Clone Data", "type": "main", "index": 0 }
-        ]
+        [{ "node": "Merge Visual + Audio", "type": "main", "index": 1 }, { "node": "Merge Veo + Audio", "type": "main", "index": 1 }]
       ]
     },
-    "4a-2. Generate Image": {
-      "main": [[{ "node": "4a-3. Merge Response+Original", "type": "main", "index": 0 }]]
-    },
-    "4a-2b. Clone Data": {
-      "main": [[{ "node": "4a-3. Merge Response+Original", "type": "main", "index": 1 }]]
-    },
-    "4a-3. Merge Response+Original": {
-      "main": [[{ "node": "4a-4. Combine Image Data", "type": "main", "index": 0 }]]
-    },
-    "4a-4. Combine Image Data": {
-      "main": [[{ "node": "4a-5. Aggregate Images", "type": "main", "index": 0 }]]
-    },
-    "4a-5. Aggregate Images": {
-      "main": [[{ "node": "Convert Visuals to Binary", "type": "main", "index": 0 }]]
-    },
-    "4b. TTS (Gemini TTS)": {
-      "main": [[{ "node": "Prepare Audio Binary", "type": "main", "index": 0 }]]
-    },
-    "Convert Visuals to Binary": {
-      "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 0 }]]
-    },
-    "Prepare Audio Binary": {
+    "Merge Visual + Audio": { "main": [[{ "node": "Combine Binaries", "type": "main", "index": 0 }]] },
+    "Combine Binaries": { "main": [[{ "node": "5. Compose (FFmpeg)", "type": "main", "index": 0 }]] },
+    "5. Compose (FFmpeg)": { "main": [[{ "node": "Process Video", "type": "main", "index": 0 }]] },
+    "Process Video": {
       "main": [
-        [
-          { "node": "Merge Visual + Audio", "type": "main", "index": 1 },
-          { "node": "Merge Video + Audio", "type": "main", "index": 1 }
-        ]
+        [{ "node": "S3 Upload Video", "type": "main", "index": 0 }, { "node": "S3 Upload Thumbnail", "type": "main", "index": 0 }]
       ]
     },
-    "Merge Visual + Audio": {
-      "main": [[{ "node": "Combine Binaries", "type": "main", "index": 0 }]]
-    },
-    "Combine Binaries": {
-      "main": [[{ "node": "5. Compose (FFmpeg)", "type": "main", "index": 0 }]]
-    },
-    "5. Compose (FFmpeg)": {
-      "main": [[{ "node": "Process Video Response", "type": "main", "index": 0 }]]
-    },
-    "Process Video Response": {
-      "main": [
-        [
-          { "node": "S3 Upload Video", "type": "main", "index": 0 },
-          { "node": "S3 Upload Thumbnail", "type": "main", "index": 0 }
-        ]
-      ]
-    },
-    "S3 Upload Video": {
-      "main": [[{ "node": "Merge S3 Results", "type": "main", "index": 0 }]]
-    },
-    "S3 Upload Thumbnail": {
-      "main": [[{ "node": "Merge S3 Results", "type": "main", "index": 1 }]]
-    },
-    "Merge S3 Results": {
-      "main": [[{ "node": "Set S3 URLs", "type": "main", "index": 0 }]]
-    },
-    "Set S3 URLs": {
-      "main": [
-        [
-          { "node": "6a. Upvy Publish", "type": "main", "index": 0 },
-          { "node": "6b. YouTube Shorts", "type": "main", "index": 0 },
-          { "node": "6c. Instagram Reels", "type": "main", "index": 0 }
-        ]
-      ]
-    },
-    "6a. Upvy Publish": {
-      "main": [[{ "node": "Telegram - Success", "type": "main", "index": 0 }]]
-    }
+    "S3 Upload Video": { "main": [[{ "node": "Merge S3", "type": "main", "index": 0 }]] },
+    "S3 Upload Thumbnail": { "main": [[{ "node": "Merge S3", "type": "main", "index": 1 }]] },
+    "Merge S3": { "main": [[{ "node": "Set S3 URLs", "type": "main", "index": 0 }]] },
+    "Set S3 URLs": { "main": [[{ "node": "6. Upvy Publish", "type": "main", "index": 0 }]] },
+    "6. Upvy Publish": { "main": [[{ "node": "Telegram Success", "type": "main", "index": 0 }]] },
+    "4c. Prepare Veo": { "main": [[{ "node": "4c-2. Request Veo", "type": "main", "index": 0 }]] },
+    "4c-2. Request Veo": { "main": [[{ "node": "4c-3. Poll Veo", "type": "main", "index": 0 }]] },
+    "4c-3. Poll Veo": { "main": [[{ "node": "4c-4. Download Veo", "type": "main", "index": 0 }]] },
+    "4c-4. Download Veo": { "main": [[{ "node": "4c-5. Aggregate Veo", "type": "main", "index": 0 }]] },
+    "4c-5. Aggregate Veo": { "main": [[{ "node": "Convert Veo Binary", "type": "main", "index": 0 }]] },
+    "Convert Veo Binary": { "main": [[{ "node": "Merge Veo + Audio", "type": "main", "index": 0 }]] },
+    "Merge Veo + Audio": { "main": [[{ "node": "Combine Veo", "type": "main", "index": 0 }]] },
+    "Combine Veo": { "main": [[{ "node": "5b. Compose Veo", "type": "main", "index": 0 }]] },
+    "5b. Compose Veo": { "main": [[{ "node": "Process Veo Video", "type": "main", "index": 0 }]] },
+    "Process Veo Video": { "main": [[{ "node": "S3 Veo Upload", "type": "main", "index": 0 }]] },
+    "S3 Veo Upload": { "main": [[{ "node": "Set Veo URLs", "type": "main", "index": 0 }]] },
+    "Set Veo URLs": { "main": [[{ "node": "6. Upvy Publish", "type": "main", "index": 0 }]] }
   },
   "settings": {
     "executionOrder": "v1",
@@ -1090,7 +764,6 @@
     "saveDataErrorExecution": "all",
     "timezone": "Asia/Seoul"
   },
-  "staticData": null,
   "tags": [{ "name": "ai-content" }],
   "triggerCount": 4
 }

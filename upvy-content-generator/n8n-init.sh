@@ -11,7 +11,6 @@
 WORKFLOW_FILE="/workflows/content-generator.json"
 MARKER_FILE="/home/node/.n8n/.workflow-imported"
 CRED_MARKER_FILE="/home/node/.n8n/.credentials-created"
-GCP_KEY_FILE="/credentials/gcp-key.json"
 
 # =============================================================================
 # 통합 초기화 함수 (Node.js)
@@ -203,6 +202,7 @@ async function updateWorkflowCredentials(workflowId, credentialMapping) {
             updated = true;
             console.log(`[init] ✓ Linked AWS credential to node '${node.name}'`);
         }
+
     }
 
     if (!updated) {
@@ -259,21 +259,6 @@ async function main() {
             region: process.env.AWS_REGION || 'ap-northeast-2'
         });
         if (id) credentialMapping.aws = id;
-    }
-
-    // GCP (참고용 - JWT 방식 사용으로 실제로는 사용 안 함)
-    const gcpKeyPath = '/credentials/gcp-key.json';
-    if (fs.existsSync(gcpKeyPath)) {
-        try {
-            const gcpKey = JSON.parse(fs.readFileSync(gcpKeyPath, 'utf8'));
-            await createCredential('Google API', 'googleApi', {
-                email: gcpKey.client_email,
-                privateKey: gcpKey.private_key,
-                scope: 'https://www.googleapis.com/auth/cloud-platform'
-            });
-        } catch (e) {
-            console.log('[init] Warning: Failed to parse GCP key file:', e.message);
-        }
     }
 
     // Instagram
