@@ -74,9 +74,10 @@ class ComposeService(
         logger.info { "합성 시작: composeId=$composeId, clips=${clips.size}개" }
 
         try {
-            // 1. Multipart → 로컬 파일 저장
+            // 1. Multipart → 로컬 파일 저장 (원본 확장자 유지)
             val clipFiles = clips.mapIndexed { index, clip ->
-                saveMultipartToFile(clip, workDir, "clip_$index.mp4")
+                val extension = clip.originalFilename?.substringAfterLast('.', "mp4") ?: "mp4"
+                saveMultipartToFile(clip, workDir, "clip_$index.$extension")
             }
             val audioFile = saveMultipartToFile(audio, workDir, "audio.mp3")
 
@@ -130,9 +131,10 @@ class ComposeService(
         logger.info { "합성+썸네일 시작: composeId=$composeId, clips=${clips.size}개" }
 
         try {
-            // 1. Multipart → 로컬 파일 저장
+            // 1. Multipart → 로컬 파일 저장 (원본 확장자 유지)
             val clipFiles = clips.mapIndexed { index, clip ->
-                saveMultipartToFile(clip, workDir, "clip_$index.mp4")
+                val extension = clip.originalFilename?.substringAfterLast('.', "mp4") ?: "mp4"
+                saveMultipartToFile(clip, workDir, "clip_$index.$extension")
             }
             val audioFile = saveMultipartToFile(audio, workDir, "audio.mp3")
 

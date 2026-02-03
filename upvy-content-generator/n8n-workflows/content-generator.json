@@ -452,7 +452,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const prevData = $input.first().json;\nconst visualResponse = $('4a. Visual Gen (Imagen 3)').first().json;\n\n// fullResponse 형식 처리\nconst body = visualResponse.body || visualResponse;\nconst imageBase64 = body.predictions?.[0]?.bytesBase64Encoded;\n\nif (!imageBase64) {\n  throw new Error('이미지 생성 실패: ' + JSON.stringify(body));\n}\n\nreturn {\n  json: { ...prevData },\n  binary: {\n    image: {\n      data: imageBase64,\n      mimeType: 'image/png',\n      fileName: 'visual.png'\n    }\n  }\n};"
+        "jsCode": "const prevContext = $('Parse Script + Quiz').first().json;\nconst visualResponse = $('4a. Visual Gen (Imagen 3)').first().json;\n\n// fullResponse 형식 처리\nconst body = visualResponse.body || visualResponse;\nconst imageBase64 = body.predictions?.[0]?.bytesBase64Encoded;\n\nif (!imageBase64) {\n  throw new Error('이미지 생성 실패: ' + JSON.stringify(body));\n}\n\nreturn {\n  json: { ...prevContext },\n  binary: {\n    image: {\n      data: imageBase64,\n      mimeType: 'image/png',\n      fileName: 'visual.png'\n    }\n  }\n};"
       },
       "id": "convert-visual",
       "name": "Convert Visual to Binary",
@@ -478,14 +478,12 @@
     },
     {
       "parameters": {
-        "mode": "combine",
-        "combinationMode": "mergeByPosition",
-        "options": {}
+        "mode": "append"
       },
       "id": "merge-visual-audio",
       "name": "Merge Visual + Audio",
       "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
+      "typeVersion": 2,
       "position": [
         2860,
         200
@@ -593,14 +591,12 @@
     },
     {
       "parameters": {
-        "mode": "combine",
-        "combinationMode": "mergeByPosition",
-        "options": {}
+        "mode": "append"
       },
       "id": "merge-s3-results",
       "name": "Merge S3 Results",
       "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
+      "typeVersion": 2,
       "position": [
         3960,
         200
