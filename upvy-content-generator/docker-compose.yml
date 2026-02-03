@@ -72,6 +72,8 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/credentials/gcp-key.json
       - GCP_PROJECT_ID=${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}
       - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-asia-northeast3}
+      # Veo 비디오 생성용 GCS 버킷 (Veo는 GCS 출력 필수)
+      - GCS_BUCKET=${GCS_BUCKET:-}
 
       # AWS 설정 (S3) - credential은 .env에서 로드
       - S3_BUCKET=${S3_BUCKET:-upvy-ai-content}
