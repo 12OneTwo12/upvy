@@ -61,6 +61,17 @@
                   { "option": "Advanced", "value": "ADVANCED" }
                 ]
               }
+            },
+            {
+              "fieldLabel": "Output Type",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  { "option": "🖼️ Images Only (Recommended)", "value": "images_only" },
+                  { "option": "🎬 AI Video (Veo)", "value": "ai_video" }
+                ]
+              }
             }
           ]
         },
@@ -75,7 +86,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\n\n// Debug: log all keys to find correct field names\nconst keys = Object.keys(input);\nconsole.log('Form input keys:', keys);\nconsole.log('Form input:', JSON.stringify(input));\n\n// Try multiple possible key formats (n8n Form Trigger can vary)\nconst language = input.Language || input.language || input['Language'] || 'en';\nconst category = input.Category || input.category || input['Category'] || '';\nconst difficulty = input.Difficulty || input.difficulty || input['Difficulty'] || '';\n\nconsole.log('Extracted - language:', language, 'category:', category, 'difficulty:', difficulty);\n\nreturn {\n  json: {\n    language,\n    category,\n    difficulty\n  }\n};"
+        "jsCode": "const input = $input.first().json;\n\n// Debug: log all keys to find correct field names\nconst keys = Object.keys(input);\nconsole.log('Form input keys:', keys);\nconsole.log('Form input:', JSON.stringify(input));\n\n// Try multiple possible key formats (n8n Form Trigger can vary)\nconst language = input.Language || input.language || input['Language'] || 'en';\nconst category = input.Category || input.category || input['Category'] || '';\nconst difficulty = input.Difficulty || input.difficulty || input['Difficulty'] || '';\nconst outputType = input['Output Type'] || input.outputType || input['output_type'] || 'images_only';\n\nconsole.log('Extracted - language:', language, 'category:', category, 'difficulty:', difficulty, 'outputType:', outputType);\n\nreturn {\n  json: {\n    language,\n    category,\n    difficulty,\n    outputType\n  }\n};"
       },
       "id": "set-form-config",
       "name": "Set Form Config",
@@ -206,6 +217,11 @@
               "name": "jobId",
               "type": "stringValue",
               "stringValue": "={{ $now.format('yyyyMMddHHmmss') }}-{{ Math.random().toString(36).substring(2, 8) }}"
+            },
+            {
+              "name": "outputType",
+              "type": "stringValue",
+              "stringValue": "images_only"
             }
           ]
         },
@@ -221,7 +237,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst inputData = $input.first()?.json || {};\n\n// All 19 categories from Upvy backend (excluding OTHER, FUN)\nconst categories = ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'HISTORY', 'MATHEMATICS', 'ART', 'STARTUP', 'MARKETING', 'DESIGN', 'PRODUCTIVITY', 'PSYCHOLOGY', 'FINANCE', 'HEALTH', 'MOTIVATION', 'PARENTING', 'COOKING', 'TRAVEL', 'HOBBY', 'TREND'];\nconst difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];\n\nconst language = inputData.language || 'en';\n// Use provided category/difficulty, only randomize if explicitly empty or missing\nconst category = (inputData.category && inputData.category.trim() !== '') ? inputData.category : categories[Math.floor(Math.random() * categories.length)];\nconst difficulty = (inputData.difficulty && inputData.difficulty.trim() !== '') ? inputData.difficulty : difficulties[Math.floor(Math.random() * difficulties.length)];\n\nconsole.log('GCP JWT - Input category:', inputData.category, '-> Final category:', category);\nconst jobId = inputData.jobId || `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { language, category, difficulty, jobId, gcpJwt: jwt } };"
+        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst inputData = $input.first()?.json || {};\n\n// All 19 categories from Upvy backend (excluding OTHER, FUN)\nconst categories = ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'HISTORY', 'MATHEMATICS', 'ART', 'STARTUP', 'MARKETING', 'DESIGN', 'PRODUCTIVITY', 'PSYCHOLOGY', 'FINANCE', 'HEALTH', 'MOTIVATION', 'PARENTING', 'COOKING', 'TRAVEL', 'HOBBY', 'TREND'];\nconst difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];\n\nconst language = inputData.language || 'en';\n// Use provided category/difficulty, only randomize if explicitly empty or missing\nconst category = (inputData.category && inputData.category.trim() !== '') ? inputData.category : categories[Math.floor(Math.random() * categories.length)];\nconst difficulty = (inputData.difficulty && inputData.difficulty.trim() !== '') ? inputData.difficulty : difficulties[Math.floor(Math.random() * difficulties.length)];\nconst outputType = inputData.outputType || 'images_only';\n\nconsole.log('GCP JWT - Input category:', inputData.category, '-> Final category:', category, 'outputType:', outputType);\nconst jobId = inputData.jobId || `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { language, category, difficulty, jobId, outputType, gcpJwt: jwt } };"
       },
       "id": "gcp-jwt",
       "name": "Generate GCP JWT",
@@ -677,6 +693,211 @@
           "name": "Telegram API"
         }
       }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.outputType }}",
+                    "rightValue": "ai_video",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "ai_video"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.outputType }}",
+                    "rightValue": "images_only",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "images_only"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "output-type-switch",
+      "name": "Output Type Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [2420, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\nconst gcpToken = prevContext.gcpAccessToken;\n\n// 5개 섹션에 대한 Veo 비디오 요청 준비\nconst items = sections.map((section, index) => {\n  const visualCue = section.visualCue || `Educational scene about ${prevContext.category}`;\n  // Veo용 모션 프롬프트 (이미지 기반 동영상 생성)\n  const prompt = `Smooth cinematic motion of: ${visualCue}. ` +\n    `Professional educational video style. ` +\n    `Subtle camera movement, professional lighting. ` +\n    `NO text overlays, NO watermarks. ` +\n    `High quality, 9:16 vertical format.`;\n  \n  return {\n    json: {\n      sectionIndex: index,\n      sectionType: section.type,\n      startTime: section.startTime,\n      endTime: section.endTime,\n      duration: section.endTime - section.startTime,\n      videoPrompt: prompt,\n      gcpAccessToken: gcpToken,\n      _context: prevContext\n    }\n  };\n});\n\nreturn items;"
+      },
+      "id": "prepare-veo-requests",
+      "name": "4c-v1. Prepare Veo Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst gcpToken = item.gcpAccessToken;\nconst projectId = $env.GCP_PROJECT_ID;\nconst location = $env.VERTEX_AI_LOCATION || 'us-central1';\n\n// Veo API 호출 (Long-Running Operation)\nconst veoUrl = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/veo-2.0-generate-001:predictLongRunning`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: veoUrl,\n  headers: {\n    'Authorization': `Bearer ${gcpToken}`,\n    'Content-Type': 'application/json'\n  },\n  body: {\n    instances: [{\n      prompt: item.videoPrompt\n    }],\n    parameters: {\n      aspectRatio: '9:16',\n      durationSeconds: 5,\n      sampleCount: 1\n    }\n  },\n  json: true\n});\n\nconst operationName = response.name;\nif (!operationName) {\n  throw new Error('Veo API did not return operation name: ' + JSON.stringify(response).substring(0, 500));\n}\n\nreturn {\n  json: {\n    ...item,\n    operationName: operationName\n  }\n};"
+      },
+      "id": "request-veo-video",
+      "name": "4c-v2. Request Veo Video",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst operationName = item.operationName;\nconst gcpToken = item.gcpAccessToken;\n\nconst maxAttempts = 60; // 5분 (3초 * 60)\nconst pollInterval = 3000; // 3초\n\nfor (let attempt = 0; attempt < maxAttempts; attempt++) {\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://${$env.VERTEX_AI_LOCATION || 'us-central1'}-aiplatform.googleapis.com/v1/${operationName}`,\n    headers: {\n      'Authorization': `Bearer ${gcpToken}`\n    },\n    json: true\n  });\n\n  if (response.done) {\n    // 작업 완료\n    const videoData = response.response?.predictions?.[0];\n    if (!videoData) {\n      throw new Error(`Veo operation completed but no video data for ${item.sectionType}: ${JSON.stringify(response).substring(0, 500)}`);\n    }\n    \n    // 비디오 URL 또는 base64 데이터 반환\n    const videoUrl = videoData.videoUri || videoData.video?.uri;\n    const videoBase64 = videoData.bytesBase64Encoded || videoData.video?.bytesBase64Encoded;\n    \n    return {\n      json: {\n        sectionIndex: item.sectionIndex,\n        sectionType: item.sectionType,\n        startTime: item.startTime,\n        endTime: item.endTime,\n        duration: item.duration,\n        videoUrl: videoUrl,\n        videoBase64: videoBase64,\n        _context: item._context\n      }\n    };\n  }\n  \n  if (response.error) {\n    throw new Error(`Veo operation failed for ${item.sectionType}: ${JSON.stringify(response.error)}`);\n  }\n  \n  // 대기 후 재시도\n  await new Promise(r => setTimeout(r, pollInterval));\n}\n\nthrow new Error(`Veo operation timed out after 5 minutes for ${item.sectionType}`);"
+      },
+      "id": "poll-veo-operation",
+      "name": "4c-v3. Poll Veo Operation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3080, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// 비디오 URL이 있는 경우 다운로드\nconst results = [];\nfor (const item of items) {\n  let videoBase64 = item.json.videoBase64;\n  \n  if (!videoBase64 && item.json.videoUrl) {\n    // URL에서 다운로드\n    const response = await this.helpers.httpRequest({\n      method: 'GET',\n      url: item.json.videoUrl,\n      encoding: 'arraybuffer',\n      returnFullResponse: true\n    });\n    videoBase64 = Buffer.from(response.body).toString('base64');\n  }\n  \n  if (!videoBase64) {\n    throw new Error(`No video data for section ${item.json.sectionType}`);\n  }\n  \n  results.push({\n    json: {\n      sectionIndex: item.json.sectionIndex,\n      sectionType: item.json.sectionType,\n      startTime: item.json.startTime,\n      endTime: item.json.endTime,\n      duration: item.json.duration,\n      videoBase64: videoBase64,\n      _context: item.json._context\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "download-veo-videos",
+      "name": "4c-v4. Download Videos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3300, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 모든 비디오 수집 및 정렬\nconst items = $input.all();\n\nconst generatedVideos = items.map(item => {\n  const json = item.json;\n  return {\n    sectionIndex: json.sectionIndex,\n    sectionType: json.sectionType,\n    startTime: json.startTime,\n    endTime: json.endTime,\n    duration: json.duration,\n    videoBase64: json.videoBase64\n  };\n});\n\n// sectionIndex로 정렬\ngeneratedVideos.sort((a, b) => a.sectionIndex - b.sectionIndex);\n\n// 첫 번째 아이템에서 원본 컨텍스트 가져오기\nconst context = items[0]?.json?._context || {};\n\nif (generatedVideos.length === 0) {\n  throw new Error('No videos were generated.');\n}\n\nif (generatedVideos.length !== 5) {\n  throw new Error(`Expected 5 videos but got ${generatedVideos.length}`);\n}\n\nreturn {\n  json: {\n    ...context,\n    generatedVideos: generatedVideos,\n    outputType: 'ai_video'\n  }\n};"
+      },
+      "id": "aggregate-videos",
+      "name": "4c-v5. Aggregate Videos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3520, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevContext = $input.first().json;\nconst generatedVideos = prevContext.generatedVideos || [];\n\n// 5개 비디오를 바이너리로 변환\nconst binaries = {};\nfor (let i = 0; i < generatedVideos.length; i++) {\n  const vid = generatedVideos[i];\n  binaries[`video_${i}`] = {\n    data: vid.videoBase64,\n    mimeType: 'video/mp4',\n    fileName: `section_${i}.mp4`\n  };\n}\n\nreturn {\n  json: prevContext,\n  binary: binaries\n};"
+      },
+      "id": "convert-videos-binary",
+      "name": "Convert Videos to Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3740, -200]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "merge-video-audio",
+      "name": "Merge Video + Audio",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [3960, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst videoItem = items.find(i => i.binary?.video_0);\nconst audioItem = items.find(i => i.binary?.audio);\n\nconst jsonData = videoItem?.json || audioItem?.json || {};\n\nlet combinedBinary = {};\nfor (const item of items) {\n  if (item.binary) {\n    combinedBinary = { ...combinedBinary, ...item.binary };\n  }\n}\n\nreturn { json: { ...jsonData, outputType: 'ai_video' }, binary: combinedBinary };"
+      },
+      "id": "combine-video-binaries",
+      "name": "Combine Video Binaries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4180, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://compose-service:8084/api/v1/compose",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "parameterType": "formBinaryData", "name": "clips", "inputDataFieldName": "video_0" },
+            { "parameterType": "formBinaryData", "name": "clips", "inputDataFieldName": "video_1" },
+            { "parameterType": "formBinaryData", "name": "clips", "inputDataFieldName": "video_2" },
+            { "parameterType": "formBinaryData", "name": "clips", "inputDataFieldName": "video_3" },
+            { "parameterType": "formBinaryData", "name": "clips", "inputDataFieldName": "video_4" },
+            { "parameterType": "formBinaryData", "name": "audio", "inputDataFieldName": "audio" },
+            {
+              "parameterType": "formData",
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ title: $json.script.title, watermark: true, language: $json.language, clipDurations: $json.generatedVideos.map(v => v.duration), subtitles: $json.script.sections.flatMap(s => s.subtitles || [{ start: s.startTime, end: s.endTime, text: s.narration }]) }) }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "compose-video",
+      "name": "5b. Compose Video (FFmpeg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4400, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\n\nif (!videoBinary) {\n  const binaryKeys = Object.keys(item.binary || {});\n  throw new Error('No video binary. Available keys: ' + binaryKeys.join(','));\n}\n\nconst prevContext = $('Combine Video Binaries').first().json;\nconst mergeTokenData = $('Merge Token').first().json;\nconst jobId = prevContext.jobId || mergeTokenData.jobId;\n\nif (!jobId) throw new Error('jobId missing!');\n\n// 첫 프레임을 썸네일로 (또는 첫 비디오의 첫 프레임)\nconst firstVideo = prevContext.generatedVideos?.[0];\n\nconst result = {\n  json: { ...prevContext, ...mergeTokenData, jobId, composedAt: new Date().toISOString() },\n  binary: {\n    video: {\n      ...videoBinary,\n      fileName: 'final.mp4'\n    }\n  }\n};\n\nreturn result;"
+      },
+      "id": "process-video-response-veo",
+      "name": "Process Video Response (Veo)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4620, -100]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{ $env.S3_BUCKET }}",
+        "fileName": "=edited-videos/generated/{{ $json.jobId }}/final.mp4",
+        "binaryPropertyName": "video"
+      },
+      "id": "s3-upload-video-veo",
+      "name": "S3 Upload Video (Veo)",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [4840, -100],
+      "credentials": {
+        "aws": {
+          "name": "AWS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevContext = $('Process Video Response (Veo)').first().json;\n\nconst s3Region = $env.AWS_REGION || 'ap-northeast-2';\nconst s3Bucket = $env.S3_BUCKET;\n\nconst videoUrl = `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/edited-videos/generated/${prevContext.jobId}/final.mp4`;\n\n// AI 비디오 모드에서는 별도 썸네일 없이 비디오 URL만 반환\nreturn {\n  json: {\n    ...prevContext,\n    videoUrl,\n    thumbnailUrl: videoUrl,\n    s3Key: `generated/${prevContext.jobId}/final.mp4`\n  }\n};"
+      },
+      "id": "set-s3-urls-veo",
+      "name": "Set S3 URLs (Veo)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5060, -100]
     }
   ],
   "connections": {
@@ -731,10 +952,59 @@
     "3. Quality Gate": {
       "main": [
         [
-          { "node": "4a-1. Prepare Image Requests", "type": "main", "index": 0 },
+          { "node": "Output Type Switch", "type": "main", "index": 0 },
           { "node": "4b. TTS (Gemini TTS)", "type": "main", "index": 0 }
         ],
         [{ "node": "Telegram - Quality Fail", "type": "main", "index": 0 }]
+      ]
+    },
+    "Output Type Switch": {
+      "main": [
+        [{ "node": "4c-v1. Prepare Veo Requests", "type": "main", "index": 0 }],
+        [{ "node": "4a-1. Prepare Image Requests", "type": "main", "index": 0 }],
+        [{ "node": "4a-1. Prepare Image Requests", "type": "main", "index": 0 }]
+      ]
+    },
+    "4c-v1. Prepare Veo Requests": {
+      "main": [[{ "node": "4c-v2. Request Veo Video", "type": "main", "index": 0 }]]
+    },
+    "4c-v2. Request Veo Video": {
+      "main": [[{ "node": "4c-v3. Poll Veo Operation", "type": "main", "index": 0 }]]
+    },
+    "4c-v3. Poll Veo Operation": {
+      "main": [[{ "node": "4c-v4. Download Videos", "type": "main", "index": 0 }]]
+    },
+    "4c-v4. Download Videos": {
+      "main": [[{ "node": "4c-v5. Aggregate Videos", "type": "main", "index": 0 }]]
+    },
+    "4c-v5. Aggregate Videos": {
+      "main": [[{ "node": "Convert Videos to Binary", "type": "main", "index": 0 }]]
+    },
+    "Convert Videos to Binary": {
+      "main": [[{ "node": "Merge Video + Audio", "type": "main", "index": 0 }]]
+    },
+    "Merge Video + Audio": {
+      "main": [[{ "node": "Combine Video Binaries", "type": "main", "index": 0 }]]
+    },
+    "Combine Video Binaries": {
+      "main": [[{ "node": "5b. Compose Video (FFmpeg)", "type": "main", "index": 0 }]]
+    },
+    "5b. Compose Video (FFmpeg)": {
+      "main": [[{ "node": "Process Video Response (Veo)", "type": "main", "index": 0 }]]
+    },
+    "Process Video Response (Veo)": {
+      "main": [[{ "node": "S3 Upload Video (Veo)", "type": "main", "index": 0 }]]
+    },
+    "S3 Upload Video (Veo)": {
+      "main": [[{ "node": "Set S3 URLs (Veo)", "type": "main", "index": 0 }]]
+    },
+    "Set S3 URLs (Veo)": {
+      "main": [
+        [
+          { "node": "6a. Upvy Publish", "type": "main", "index": 0 },
+          { "node": "6b. YouTube Shorts", "type": "main", "index": 0 },
+          { "node": "6c. Instagram Reels", "type": "main", "index": 0 }
+        ]
       ]
     },
     "4a-1. Prepare Image Requests": {
@@ -767,7 +1037,12 @@
       "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 0 }]]
     },
     "Prepare Audio Binary": {
-      "main": [[{ "node": "Merge Visual + Audio", "type": "main", "index": 1 }]]
+      "main": [
+        [
+          { "node": "Merge Visual + Audio", "type": "main", "index": 1 },
+          { "node": "Merge Video + Audio", "type": "main", "index": 1 }
+        ]
+      ]
     },
     "Merge Visual + Audio": {
       "main": [[{ "node": "Combine Binaries", "type": "main", "index": 0 }]]
