@@ -207,7 +207,12 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"contents\": [{\"role\": \"user\",\n    \"parts\": [{\n      \"text\": \"You are an educational content planner.\\n\\n[Task]\\n1. Search for trending educational topics in the \\\"{{ $json.category }}\\\" field\\n2. Suggest 3 topics suitable for short-form videos (30-60 seconds)\\n3. Evaluate viral potential and educational value for each\\n\\nDifficulty: {{ $json.difficulty }}\\n\\n**IMPORTANT: Generate ALL content (titles, hooks, key points) in {{ $json.language === 'ko' ? 'Korean' : ($json.language === 'ja' ? 'Japanese' : 'English') }} language.**\\n\\n[Output format - JSON only]\\n{\\n  \\\"topics\\\": [\\n    {\\n      \\\"title\\\": \\\"Topic title in target language\\\",\\n      \\\"hook\\\": \\\"Attention-grabbing first sentence in target language\\\",\\n      \\\"keyPoints\\\": [\\\"Point 1\\\", \\\"Point 2\\\", \\\"Point 3\\\"],\\n      \\\"viralScore\\\": 85,\\n      \\\"educationalScore\\\": 90\\n    }\\n  ]\\n}\"\n    }]\n  }],\n  \"tools\": [{ \"googleSearch\": {} }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 2048\n  }\n}",
-        "options": {}
+        "options": {
+          "retry": {
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+          }
+        }
       },
       "id": "topic-select",
       "name": "1. Topic Select (Gemini + Grounding)",
@@ -217,7 +222,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n\nlet jsonStr = text;\njsonStr = jsonStr.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\n\nconst firstBrace = jsonStr.indexOf('{');\nconst lastBrace = jsonStr.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n  jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);\n}\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  if (!bestTopic) throw new Error('No topic found');\n  \n  return { json: { ...$input.first().json, selectedTopic: bestTopic, allTopics: topics } };\n} catch (e) {\n  throw new Error(`Topic parsing failed: ${e.message}\\nRaw: ${text.substring(0, 200)}...`);\n}"
+        "jsCode": "const response = $input.first().json;\nconst text = response.candidates?.[0]?.content?.parts?.[0]?.text;\n\n// Empty response check - Gemini sometimes returns empty due to rate limit or grounding issues\nif (!text || text.trim() === '') {\n  const finishReason = response.candidates?.[0]?.finishReason;\n  const candidatesCount = response.candidates?.length || 0;\n  throw new Error(`Gemini returned empty response. finishReason: ${finishReason}, candidates: ${candidatesCount}. This may be a rate limit or grounding issue. Please retry.`);\n}\n\nlet jsonStr = text;\njsonStr = jsonStr.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\n\nconst firstBrace = jsonStr.indexOf('{');\nconst lastBrace = jsonStr.lastIndexOf('}');\nif (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n  jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);\n}\n\ntry {\n  const parsed = JSON.parse(jsonStr);\n  const topics = parsed.topics || [];\n  const bestTopic = topics.sort((a, b) => \n    (b.viralScore + b.educationalScore) - (a.viralScore + a.educationalScore)\n  )[0];\n  \n  if (!bestTopic) throw new Error('No topics in response. Raw: ' + text.substring(0, 300));\n  \n  return { json: { ...$input.first().json, selectedTopic: bestTopic, allTopics: topics } };\n} catch (e) {\n  throw new Error(`Topic parsing failed: ${e.message}\\nRaw: ${text.substring(0, 300)}`);\n}"
       },
       "id": "parse-topic",
       "name": "Parse Topic",
@@ -284,13 +289,49 @@
     },
     {
       "parameters": {
-        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\nconst accessToken = $('Merge Token').first().json.gcpAccessToken;\nconst projectId = $env.GCP_PROJECT_ID;\nconst location = $env.VERTEX_AI_LOCATION;\n\nconst url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/imagen-3.0-generate-002:predict`;\n\nconst generatedImages = [];\n\nfor (let i = 0; i < sections.length; i++) {\n  const section = sections[i];\n  const visualCue = section.visualCue || `Educational image about ${prevContext.category}`;\n  \n  // Build realistic image prompt based on visualCue\n  const prompt = `Professional educational photograph: ${visualCue}. ` +\n    `High-quality, photorealistic style. ` +\n    `Clean composition, professional lighting. ` +\n    `Suitable for educational video content. ` +\n    `Vertical 9:16 format. ` +\n    `NO cartoon, NO illustration, NO anime style. ` +\n    `NO text, NO watermarks. ` +\n    `Realistic and professional appearance.`;\n  \n  const response = await fetch(url, {\n    method: 'POST',\n    headers: {\n      'Authorization': `Bearer ${accessToken}`,\n      'Content-Type': 'application/json'\n    },\n    body: JSON.stringify({\n      instances: [{ prompt }],\n      parameters: {\n        sampleCount: 1,\n        aspectRatio: '9:16',\n        safetyFilterLevel: 'block_only_high',\n        personGeneration: 'allow_adult'\n      }\n    })\n  });\n  \n  const data = await response.json();\n  const imageBase64 = data.predictions?.[0]?.bytesBase64Encoded;\n  \n  if (!imageBase64) {\n    throw new Error(`Image generation failed for section ${i}: ${JSON.stringify(data).substring(0, 300)}`);\n  }\n  \n  generatedImages.push({\n    sectionIndex: i,\n    sectionType: section.type,\n    startTime: section.startTime,\n    endTime: section.endTime,\n    duration: section.endTime - section.startTime,\n    imageBase64\n  });\n}\n\nreturn {\n  json: {\n    ...prevContext,\n    generatedImages\n  }\n};"
+        "jsCode": "const prevContext = $input.first().json;\nconst sections = prevContext.script.sections || [];\n\n// Split sections into individual items for HTTP Request node\nconst items = sections.map((section, index) => {\n  const visualCue = section.visualCue || `Educational image about ${prevContext.category}`;\n  const prompt = `Professional educational photograph: ${visualCue}. ` +\n    `High-quality, photorealistic style. ` +\n    `Clean composition, professional lighting. ` +\n    `Suitable for educational video content. ` +\n    `Vertical 9:16 format. ` +\n    `NO cartoon, NO illustration, NO anime style. ` +\n    `NO text, NO watermarks. ` +\n    `Realistic and professional appearance.`;\n  \n  return {\n    json: {\n      ...prevContext,\n      sectionIndex: index,\n      sectionType: section.type,\n      startTime: section.startTime,\n      endTime: section.endTime,\n      duration: section.endTime - section.startTime,\n      imagePrompt: prompt\n    }\n  };\n});\n\nreturn items;"
       },
-      "id": "visual-gen",
-      "name": "4a. Visual Gen (Multi-Section)",
+      "id": "prepare-image-requests",
+      "name": "4a-1. Prepare Image Requests",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [2420, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $env.VERTEX_AI_LOCATION }}-aiplatform.googleapis.com/v1/projects/{{ $env.GCP_PROJECT_ID }}/locations/{{ $env.VERTEX_AI_LOCATION }}/publishers/google/models/imagen-3.0-generate-002:predict",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $('Merge Token').first().json.gcpAccessToken }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ instances: [{ prompt: $json.imagePrompt }], parameters: { sampleCount: 1, aspectRatio: '9:16', safetyFilterLevel: 'block_only_high', personGeneration: 'allow_adult' } }) }}",
+        "options": {
+          "retry": {
+            "maxTries": 2,
+            "waitBetweenTries": 1000
+          }
+        }
+      },
+      "id": "visual-gen-http",
+      "name": "4a-2. Generate Image (HTTP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2640, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst prevContext = $('4a-1. Prepare Image Requests').first().json;\nconst requestItems = $('4a-1. Prepare Image Requests').all();\n\nconst generatedImages = [];\nconst failedSections = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const json = item.json;\n  const requestItem = requestItems[i] ? requestItems[i].json : {};\n  \n  // Try different access patterns\n  let imageBase64 = null;\n  \n  if (json.body && json.body.predictions && json.body.predictions[0]) {\n    imageBase64 = json.body.predictions[0].bytesBase64Encoded;\n  } else if (json.predictions && json.predictions[0]) {\n    imageBase64 = json.predictions[0].bytesBase64Encoded;\n  }\n  \n  if (imageBase64) {\n    generatedImages.push({\n      sectionIndex: requestItem.sectionIndex !== undefined ? requestItem.sectionIndex : i,\n      sectionType: requestItem.sectionType || 'UNKNOWN',\n      startTime: requestItem.startTime || 0,\n      endTime: requestItem.endTime || 0,\n      duration: requestItem.duration || 0,\n      imageBase64: imageBase64\n    });\n  } else {\n    failedSections.push(i);\n  }\n}\n\n// Need at least 1 image to proceed\nif (generatedImages.length === 0) {\n  throw new Error('All image generations failed. Check Imagen API quota or content filters.');\n}\n\n// If some failed, duplicate the first successful image for missing sections\nif (failedSections.length > 0 && generatedImages.length > 0) {\n  const fallbackImage = generatedImages[0].imageBase64;\n  for (const idx of failedSections) {\n    const requestItem = requestItems[idx] ? requestItems[idx].json : {};\n    generatedImages.push({\n      sectionIndex: requestItem.sectionIndex !== undefined ? requestItem.sectionIndex : idx,\n      sectionType: requestItem.sectionType || 'UNKNOWN',\n      startTime: requestItem.startTime || 0,\n      endTime: requestItem.endTime || 0,\n      duration: requestItem.duration || 0,\n      imageBase64: fallbackImage\n    });\n  }\n  // Sort by sectionIndex to maintain order\n  generatedImages.sort((a, b) => a.sectionIndex - b.sectionIndex);\n}\n\nreturn {\n  json: {\n    ...prevContext,\n    generatedImages: generatedImages,\n    _imageGenWarning: failedSections.length > 0 ? `Sections ${failedSections.join(', ')} failed, used fallback` : null\n  }\n};"
+      },
+      "id": "aggregate-images",
+      "name": "4a-3. Aggregate Images",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, 100]
     },
     {
       "parameters": {
@@ -316,23 +357,23 @@
     },
     {
       "parameters": {
-        "jsCode": "const prevContext = $('4a. Visual Gen (Multi-Section)').first().json;\nconst generatedImages = prevContext.generatedImages || [];\n\n// Create binary data for each image\nconst binaries = {};\nfor (let i = 0; i < generatedImages.length; i++) {\n  const img = generatedImages[i];\n  binaries[`image_${i}`] = {\n    data: img.imageBase64,\n    mimeType: 'image/png',\n    fileName: `section_${i}.png`\n  };\n}\n\nreturn {\n  json: prevContext,\n  binary: binaries\n};"
+        "jsCode": "const prevContext = $('4a-3. Aggregate Images').first().json;\nconst generatedImages = prevContext.generatedImages || [];\n\n// Create binary data for each image\nconst binaries = {};\nfor (let i = 0; i < generatedImages.length; i++) {\n  const img = generatedImages[i];\n  binaries[`image_${i}`] = {\n    data: img.imageBase64,\n    mimeType: 'image/png',\n    fileName: `section_${i}.png`\n  };\n}\n\nreturn {\n  json: prevContext,\n  binary: binaries\n};"
       },
       "id": "convert-visual",
       "name": "Convert Visuals to Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2640, 100]
+      "position": [3080, 100]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\nconst prevContext = $('4a. Visual Gen (Multi-Section)').first().json;\nconst audioBase64 = item.json.audioContent;\n\nif (!audioBase64) throw new Error('TTS response missing audioContent: ' + JSON.stringify(item.json).substring(0, 500));\n\nreturn {\n  json: { ...prevContext },\n  binary: {\n    audio: {\n      data: audioBase64,\n      mimeType: 'audio/mp3',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
+        "jsCode": "const item = $input.first();\nconst prevContext = $('3. Quality Gate').first().json;\nconst audioBase64 = item.json.audioContent;\n\nif (!audioBase64) throw new Error('TTS response missing audioContent: ' + JSON.stringify(item.json).substring(0, 500));\n\nreturn {\n  json: { ...prevContext },\n  binary: {\n    audio: {\n      data: audioBase64,\n      mimeType: 'audio/mp3',\n      fileName: 'narration.mp3'\n    }\n  }\n};"
       },
       "id": "prepare-audio",
       "name": "Prepare Audio Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2640, 300]
+      "position": [3080, 300]
     },
     {
       "parameters": {
@@ -342,7 +383,7 @@
       "name": "Merge Visual + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [2860, 200]
+      "position": [3300, 200]
     },
     {
       "parameters": {
@@ -352,7 +393,7 @@
       "name": "Combine Binaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3080, 200]
+      "position": [3520, 200]
     },
     {
       "parameters": {
@@ -385,7 +426,7 @@
       "name": "5. Compose (FFmpeg)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3300, 200]
+      "position": [3740, 200]
     },
     {
       "parameters": {
@@ -395,7 +436,7 @@
       "name": "Unzip Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3520, 200]
+      "position": [3960, 200]
     },
     {
       "parameters": {
@@ -408,7 +449,7 @@
       "name": "S3 Upload Video",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3740, 100]
+      "position": [4180, 100]
     },
     {
       "parameters": {
@@ -421,7 +462,7 @@
       "name": "S3 Upload Thumbnail",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3740, 300]
+      "position": [4180, 300]
     },
     {
       "parameters": {
@@ -431,7 +472,7 @@
       "name": "Merge S3 Results",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [3960, 200]
+      "position": [4400, 200]
     },
     {
       "parameters": {
@@ -441,7 +482,7 @@
       "name": "Set S3 URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4180, 200]
+      "position": [4620, 200]
     },
     {
       "parameters": {
@@ -456,7 +497,7 @@
       "name": "6a. Upvy Publish",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4400, 0]
+      "position": [4840, 0]
     },
     {
       "parameters": {
@@ -471,7 +512,7 @@
       "name": "6b. YouTube Shorts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4400, 200]
+      "position": [4840, 200]
     },
     {
       "parameters": {
@@ -486,7 +527,7 @@
       "name": "6c. Instagram Reels",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4400, 400]
+      "position": [4840, 400]
     },
     {
       "parameters": {
@@ -500,7 +541,7 @@
       "name": "Telegram - Success",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [4620, 200],
+      "position": [5060, 200],
       "credentials": {
         "telegramApi": {
           "name": "Telegram API"
@@ -579,13 +620,19 @@
     "3. Quality Gate": {
       "main": [
         [
-          { "node": "4a. Visual Gen (Multi-Section)", "type": "main", "index": 0 },
+          { "node": "4a-1. Prepare Image Requests", "type": "main", "index": 0 },
           { "node": "4b. TTS (Gemini TTS)", "type": "main", "index": 0 }
         ],
         [{ "node": "Telegram - Quality Fail", "type": "main", "index": 0 }]
       ]
     },
-    "4a. Visual Gen (Multi-Section)": {
+    "4a-1. Prepare Image Requests": {
+      "main": [[{ "node": "4a-2. Generate Image (HTTP)", "type": "main", "index": 0 }]]
+    },
+    "4a-2. Generate Image (HTTP)": {
+      "main": [[{ "node": "4a-3. Aggregate Images", "type": "main", "index": 0 }]]
+    },
+    "4a-3. Aggregate Images": {
       "main": [[{ "node": "Convert Visuals to Binary", "type": "main", "index": 0 }]]
     },
     "4b. TTS (Gemini TTS)": {
