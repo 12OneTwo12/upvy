@@ -166,7 +166,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst inputData = $input.first().json;\n\n// Validate required fields from Set Config\nif (!inputData.jobId) {\n  throw new Error('jobId missing from input! Input keys: ' + Object.keys(inputData).join(','));\n}\nif (!inputData.language) {\n  throw new Error('language missing from input!');\n}\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\n// Explicitly preserve all input fields\nreturn { json: {\n  language: inputData.language,\n  category: inputData.category,\n  difficulty: inputData.difficulty,\n  jobId: inputData.jobId,\n  gcpJwt: jwt\n} };"
+        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst inputData = $input.first()?.json || {};\n\n// Generate defaults if not provided\nconst categories = ['PROGRAMMING', 'SCIENCE', 'LANGUAGE', 'BUSINESS', 'PSYCHOLOGY', 'HEALTH'];\nconst difficulties = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];\n\nconst language = inputData.language || 'en';\nconst category = inputData.category || categories[Math.floor(Math.random() * categories.length)];\nconst difficulty = inputData.difficulty || difficulties[Math.floor(Math.random() * difficulties.length)];\nconst jobId = inputData.jobId || `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { language, category, difficulty, jobId, gcpJwt: jwt } };"
       },
       "id": "gcp-jwt",
       "name": "Generate GCP JWT",
@@ -196,7 +196,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const tokenResponse = $input.first().json;\nconst prevData = $('Generate GCP JWT').first().json;\n\n// Ensure all required fields are preserved\nconst result = {\n  language: prevData.language,\n  category: prevData.category,\n  difficulty: prevData.difficulty,\n  jobId: prevData.jobId,\n  gcpJwt: prevData.gcpJwt,\n  gcpAccessToken: tokenResponse.access_token\n};\n\n// Validate critical fields\nif (!result.jobId) {\n  throw new Error('jobId missing from Generate GCP JWT! prevData keys: ' + Object.keys(prevData).join(','));\n}\nif (!result.language) {\n  throw new Error('language missing from Generate GCP JWT!');\n}\n\nreturn { json: result };"
+        "jsCode": "const tokenResponse = $input.first().json;\nconst prevData = $('Generate GCP JWT').first().json;\n\nreturn { json: {\n  ...prevData,\n  gcpAccessToken: tokenResponse.access_token\n} };"
       },
       "id": "merge-token",
       "name": "Merge Token",
@@ -626,10 +626,7 @@
   ],
   "connections": {
     "Manual Trigger": {
-      "main": [[{ "node": "Set Manual Language", "type": "main", "index": 0 }]]
-    },
-    "Set Manual Language": {
-      "main": [[{ "node": "Set Config", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Generate GCP JWT", "type": "main", "index": 0 }]]
     },
     "Schedule EN (5/day)": {
       "main": [[{ "node": "Set Language EN", "type": "main", "index": 0 }]]
