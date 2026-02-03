@@ -374,11 +374,48 @@
     },
     {
       "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst prevContext = $input.first().json;\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { ...prevContext, gcpJwt: jwt, gcpProjectId: sa.project_id } };"
+      },
+      "id": "tts-jwt",
+      "name": "Generate TTS JWT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 400]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "=https://texttospeech.googleapis.com/v1/text:synthesize?key={{ $env.GEMINI_API_KEY }}",
+        "url": "https://oauth2.googleapis.com/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "grant_type", "value": "urn:ietf:params:oauth:grant-type:jwt-bearer" },
+            { "name": "assertion", "value": "={{ $json.gcpJwt }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tts-token",
+      "name": "Get TTS Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $json.access_token }}" },
+            { "name": "x-goog-user-project", "value": "={{ $('Generate TTS JWT').first().json.gcpProjectId }}" }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"input\": { \"text\": \"{{ $json.script.sections.map(s => s.narration).join(' ') }}\" },\n  \"voice\": {\n    \"languageCode\": \"{{ $json.language === 'en' ? 'en-US' : ($json.language === 'ja' ? 'ja-JP' : 'ko-KR') }}\",\n    \"name\": \"{{ $json.language === 'en' ? 'en-US-Chirp3-HD-Leda' : ($json.language === 'ja' ? 'ja-JP-Chirp3-HD-Zephyr' : 'ko-KR-Chirp3-HD-Kore') }}\"\n  },\n  \"audioConfig\": { \"audioEncoding\": \"MP3\", \"sampleRateHertz\": 24000 }\n}",
+        "jsonBody": "={\n  \"input\": { \"text\": \"{{ $('Generate TTS JWT').first().json.script.sections.map(s => s.narration).join(' ') }}\" },\n  \"voice\": {\n    \"languageCode\": \"{{ $('Generate TTS JWT').first().json.language === 'en' ? 'en-US' : ($('Generate TTS JWT').first().json.language === 'ja' ? 'ja-JP' : 'ko-KR') }}\",\n    \"name\": \"{{ $('Generate TTS JWT').first().json.language === 'en' ? 'en-US-Chirp3-HD-Leda' : ($('Generate TTS JWT').first().json.language === 'ja' ? 'ja-JP-Chirp3-HD-Zephyr' : 'ko-KR-Chirp3-HD-Kore') }}\"\n  },\n  \"audioConfig\": { \"audioEncoding\": \"MP3\", \"sampleRateHertz\": 24000 }\n}",
         "options": {}
       },
       "id": "tts-gen",
@@ -742,10 +779,12 @@
     "Parse Script + Quiz": { "main": [[{ "node": "3. Quality Gate", "type": "main", "index": 0 }]] },
     "3. Quality Gate": {
       "main": [
-        [{ "node": "Output Type Switch", "type": "main", "index": 0 }, { "node": "4b. TTS", "type": "main", "index": 0 }],
+        [{ "node": "Output Type Switch", "type": "main", "index": 0 }, { "node": "Generate TTS JWT", "type": "main", "index": 0 }],
         [{ "node": "Telegram Fail", "type": "main", "index": 0 }]
       ]
     },
+    "Generate TTS JWT": { "main": [[{ "node": "Get TTS Token", "type": "main", "index": 0 }]] },
+    "Get TTS Token": { "main": [[{ "node": "4b. TTS", "type": "main", "index": 0 }]] },
     "Output Type Switch": {
       "main": [
         [{ "node": "4c-1. Prepare Images", "type": "main", "index": 0 }],

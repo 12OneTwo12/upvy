@@ -68,8 +68,11 @@ services:
       - N8N_LOG_LEVEL=${N8N_LOG_LEVEL:-info}
       - N8N_LOG_OUTPUT=console
 
-      # Gemini API Key (Topic Select, Script Gen, Imagen, TTS, Veo)
+      # Gemini API Key (Topic Select, Script Gen, Imagen, Veo)
       - GEMINI_API_KEY=${GEMINI_API_KEY:?GEMINI_API_KEY is required}
+
+      # GCP 설정 (TTS는 GCP OAuth 필요)
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
 
       # AWS 설정 (S3) - credential은 .env에서 로드
       - S3_BUCKET=${S3_BUCKET:-upvy-ai-content}
@@ -95,6 +98,8 @@ services:
       - ./n8n-init.sh:/init/n8n-init.sh:ro
       # 워크플로우 파일 (자동 import용)
       - ./n8n-workflows:/workflows:ro
+      # GCP 서비스 계정 키 (TTS 인증용)
+      - ./credentials:/credentials:ro
     networks:
       - upvy-network
     healthcheck:
