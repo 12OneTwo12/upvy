@@ -311,7 +311,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={{ $env.GEMINI_API_KEY }}",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={{ $env.GEMINI_API_KEY }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ instances: [{ prompt: $json.imagePrompt }], parameters: { sampleCount: 1, aspectRatio: '9:16', safetyFilterLevel: 'block_only_high', personGeneration: 'allow_adult' } }) }}",
@@ -554,7 +554,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key={{ $env.GEMINI_API_KEY }}",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={{ $env.GEMINI_API_KEY }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ instances: [{ prompt: $json.imagePrompt }], parameters: { sampleCount: 1, aspectRatio: '9:16', safetyFilterLevel: 'block_only_high', personGeneration: 'allow_adult' } }) }}",
