@@ -478,11 +478,11 @@ class FFmpegService(
         // 각 이미지를 스케일링하고 지정된 시간만큼 트림
         imageFiles.forEachIndexed { index, _ ->
             val duration = clipDurations.getOrElse(index) { clipDurations.last() }
-            // 스케일 + 패드 + 트림 + fps 설정
+            // 스케일 + 패드 + format (yuv420p) + 트림 + fps 설정
             filterParts.add(
                 "[$index:v]scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=decrease," +
                 "pad=${outputWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2," +
-                "setsar=1,fps=${outputFps},trim=duration=$duration,setpts=PTS-STARTPTS[v$index]"
+                "format=yuv420p,setsar=1,fps=${outputFps},trim=duration=$duration,setpts=PTS-STARTPTS[v$index]"
             )
             scaledStreams.add("[v$index]")
         }

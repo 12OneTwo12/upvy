@@ -18,7 +18,9 @@
             { "name": "language", "type": "stringValue", "stringValue": "en" }
           ]
         },
-        "options": {}
+        "options": {
+          "include": "all"
+        }
       },
       "id": "set-manual-lang",
       "name": "Set Manual Language",
@@ -84,7 +86,9 @@
             { "name": "language", "type": "stringValue", "stringValue": "en" }
           ]
         },
-        "options": {}
+        "options": {
+          "include": "all"
+        }
       },
       "id": "set-lang-en",
       "name": "Set Language EN",
@@ -100,7 +104,9 @@
             { "name": "language", "type": "stringValue", "stringValue": "ja" }
           ]
         },
-        "options": {}
+        "options": {
+          "include": "all"
+        }
       },
       "id": "set-lang-ja",
       "name": "Set Language JA",
@@ -116,7 +122,9 @@
             { "name": "language", "type": "stringValue", "stringValue": "ko" }
           ]
         },
-        "options": {}
+        "options": {
+          "include": "all"
+        }
       },
       "id": "set-lang-ko",
       "name": "Set Language KO",
@@ -146,7 +154,9 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "include": "all"
+        }
       },
       "id": "set-config",
       "name": "Set Config",
@@ -156,7 +166,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\nreturn { json: { ...$input.first().json, gcpJwt: jwt } };"
+        "jsCode": "const crypto = require('crypto');\nconst fs = require('fs');\n\nconst inputData = $input.first().json;\n\n// Validate required fields from Set Config\nif (!inputData.jobId) {\n  throw new Error('jobId missing from input! Input keys: ' + Object.keys(inputData).join(','));\n}\nif (!inputData.language) {\n  throw new Error('language missing from input!');\n}\n\nconst sa = JSON.parse(fs.readFileSync('/credentials/gcp-key.json', 'utf8'));\n\nconst header = Buffer.from(JSON.stringify({\n  alg: 'RS256',\n  typ: 'JWT'\n})).toString('base64url');\n\nconst now = Math.floor(Date.now() / 1000);\nconst claim = Buffer.from(JSON.stringify({\n  iss: sa.client_email,\n  scope: 'https://www.googleapis.com/auth/cloud-platform',\n  aud: 'https://oauth2.googleapis.com/token',\n  iat: now,\n  exp: now + 3600\n})).toString('base64url');\n\nconst sign = crypto.createSign('RSA-SHA256');\nsign.update(`${header}.${claim}`);\nconst signature = sign.sign(sa.private_key, 'base64url');\n\nconst jwt = `${header}.${claim}.${signature}`;\n\n// Explicitly preserve all input fields\nreturn { json: {\n  language: inputData.language,\n  category: inputData.category,\n  difficulty: inputData.difficulty,\n  jobId: inputData.jobId,\n  gcpJwt: jwt\n} };"
       },
       "id": "gcp-jwt",
       "name": "Generate GCP JWT",
@@ -186,7 +196,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const tokenResponse = $input.first().json;\nconst prevData = $('Generate GCP JWT').first().json;\nreturn { json: { ...prevData, gcpAccessToken: tokenResponse.access_token } };"
+        "jsCode": "const tokenResponse = $input.first().json;\nconst prevData = $('Generate GCP JWT').first().json;\n\n// Ensure all required fields are preserved\nconst result = {\n  language: prevData.language,\n  category: prevData.category,\n  difficulty: prevData.difficulty,\n  jobId: prevData.jobId,\n  gcpJwt: prevData.gcpJwt,\n  gcpAccessToken: tokenResponse.access_token\n};\n\n// Validate critical fields\nif (!result.jobId) {\n  throw new Error('jobId missing from Generate GCP JWT! prevData keys: ' + Object.keys(prevData).join(','));\n}\nif (!result.language) {\n  throw new Error('language missing from Generate GCP JWT!');\n}\n\nreturn { json: result };"
       },
       "id": "merge-token",
       "name": "Merge Token",
@@ -466,7 +476,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\n\nif (!videoBinary) throw new Error('No video response from compose service');\n\nconst prevContext = $('Combine Binaries').first().json;\n\n// 첫 번째 이미지를 썸네일로 사용\nconst firstImage = prevContext.generatedImages && prevContext.generatedImages[0];\nconst thumbnailBase64 = firstImage ? firstImage.imageBase64 : null;\n\nconst result = {\n  json: { ...prevContext, composedAt: new Date().toISOString() },\n  binary: {\n    video: { \n      data: videoBinary.data, \n      mimeType: 'video/mp4', \n      fileName: 'final.mp4' \n    }\n  }\n};\n\nif (thumbnailBase64) {\n  result.binary.thumbnail = {\n    data: thumbnailBase64,\n    mimeType: 'image/png',\n    fileName: 'thumbnail.png'\n  };\n}\n\nreturn result;"
+        "jsCode": "const item = $input.first();\nconst videoBinary = item.binary?.data;\n\nif (!videoBinary) throw new Error('No video response from compose service');\n\nconst prevContext = $('Combine Binaries').first().json;\n\n// jobId가 없으면 Merge Token에서 직접 가져오기\nconst mergeTokenData = $('Merge Token').first().json;\nconst jobId = prevContext.jobId || mergeTokenData.jobId;\n\nif (!jobId) throw new Error('jobId is missing! prevContext keys: ' + Object.keys(prevContext).join(',') + ', mergeToken keys: ' + Object.keys(mergeTokenData).join(','));\n\n// 첫 번째 이미지를 썸네일로 사용\nconst firstImage = prevContext.generatedImages && prevContext.generatedImages[0];\nconst thumbnailBase64 = firstImage ? firstImage.imageBase64 : null;\n\nconst result = {\n  json: { ...prevContext, ...mergeTokenData, jobId, composedAt: new Date().toISOString() },\n  binary: {\n    video: { \n      data: videoBinary.data, \n      mimeType: 'video/mp4', \n      fileName: 'final.mp4' \n    }\n  }\n};\n\nif (thumbnailBase64) {\n  result.binary.thumbnail = {\n    data: thumbnailBase64,\n    mimeType: 'image/png',\n    fileName: 'thumbnail.png'\n  };\n}\n\nreturn result;"
       },
       "id": "process-video",
       "name": "Process Video Response",
