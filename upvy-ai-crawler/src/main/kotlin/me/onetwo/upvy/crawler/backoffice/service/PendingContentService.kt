@@ -1,6 +1,7 @@
 package me.onetwo.upvy.crawler.backoffice.service
 
 import me.onetwo.upvy.crawler.backoffice.domain.Category
+import me.onetwo.upvy.crawler.backoffice.domain.ContentSource
 import me.onetwo.upvy.crawler.backoffice.domain.PendingContent
 import me.onetwo.upvy.crawler.backoffice.domain.PendingContentStatus
 import me.onetwo.upvy.crawler.backoffice.repository.PendingContentRepository
@@ -34,6 +35,7 @@ class PendingContentService(
 
         val pendingContent = PendingContent(
             aiContentJobId = job.id!!,
+            source = ContentSource.CRAWLER,
             title = job.generatedTitle ?: job.youtubeTitle ?: "제목 없음",
             description = job.generatedDescription,
             category = Category.fromString(job.category),

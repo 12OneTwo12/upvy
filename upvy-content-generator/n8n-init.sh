@@ -203,6 +203,18 @@ async function updateWorkflowCredentials(workflowId, credentialMapping) {
             console.log(`[init] ✓ Linked AWS credential to node '${node.name}'`);
         }
 
+        // MySQL 노드 처리
+        if (node.type === 'n8n-nodes-base.mySql' && credentialMapping.mySql) {
+            node.credentials = {
+                mySql: {
+                    id: credentialMapping.mySql,
+                    name: 'Crawler MySQL'
+                }
+            };
+            updated = true;
+            console.log(`[init] ✓ Linked MySQL credential to node '${node.name}'`);
+        }
+
     }
 
     if (!updated) {
@@ -266,6 +278,18 @@ async function main() {
         await createCredential('Facebook Graph API', 'facebookGraphApi', {
             accessToken: process.env.INSTAGRAM_ACCESS_TOKEN
         });
+    }
+
+    // MySQL (AI Crawler DB)
+    if (process.env.CRAWLER_DB_HOST && process.env.CRAWLER_DB_PASSWORD) {
+        const id = await createCredential('Crawler MySQL', 'mySql', {
+            host: process.env.CRAWLER_DB_HOST,
+            port: parseInt(process.env.CRAWLER_DB_PORT || '3306'),
+            database: process.env.CRAWLER_DB_NAME || 'upvy_crawler',
+            user: process.env.CRAWLER_DB_USER || 'crawler',
+            password: process.env.CRAWLER_DB_PASSWORD
+        });
+        if (id) credentialMapping.mySql = id;
     }
 
     // 3. 워크플로우 확인 및 credential 연결

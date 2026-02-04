@@ -91,6 +91,13 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
 
+      # AI Crawler MySQL (pending_contents 저장용)
+      - CRAWLER_DB_HOST=${CRAWLER_DB_HOST:-localhost}
+      - CRAWLER_DB_PORT=${CRAWLER_DB_PORT:-3306}
+      - CRAWLER_DB_NAME=${CRAWLER_DB_NAME:-upvy_crawler}
+      - CRAWLER_DB_USER=${CRAWLER_DB_USER:-crawler}
+      - CRAWLER_DB_PASSWORD=${CRAWLER_DB_PASSWORD:-}
+
     volumes:
       # n8n 데이터 영속화 (워크플로우, 크레덴셜 등)
       - n8n_data:/home/node/.n8n

@@ -571,30 +571,48 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.UPVY_API_URL }}/api/v1/contents",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"title\": \"{{ $json.script.title }}\",\n  \"description\": \"{{ $json.script.description }}\",\n  \"category\": \"{{ $json.category }}\",\n  \"tags\": {{ JSON.stringify($json.script.tags) }},\n  \"language\": \"{{ $json.language }}\",\n  \"videoUrl\": \"{{ $json.videoUrl }}\",\n  \"thumbnailUrl\": \"{{ $json.thumbnailUrl }}\",\n  \"duration\": {{ $json.totalDuration || 60 }},\n  \"width\": 1080,\n  \"height\": 1920,\n  \"quiz\": {{ JSON.stringify($json.quiz) }}\n}",
-        "options": {}
+        "jsCode": "const input = $input.first().json;\nconst s3Bucket = $env.S3_BUCKET;\n\n// S3 URL에서 key 추출\nconst videoUrl = input.videoUrl || '';\nconst thumbnailUrl = input.thumbnailUrl || '';\nconst videoS3Key = videoUrl.includes('.amazonaws.com/') ? videoUrl.split('.amazonaws.com/')[1] : videoUrl;\nconst thumbnailS3Key = thumbnailUrl.includes('.amazonaws.com/') ? thumbnailUrl.split('.amazonaws.com/')[1] : thumbnailUrl;\n\n// pending_contents 테이블용 데이터 준비\nreturn {\n  json: {\n    source: 'N8N_GENERATOR',\n    title: input.script?.title || 'Untitled',\n    description: input.script?.description || null,\n    category: input.category || 'OTHER',\n    difficulty: input.difficulty || null,\n    tags: JSON.stringify(input.script?.tags || []),\n    quiz: JSON.stringify(input.quiz || null),\n    video_s3_key: videoS3Key,\n    thumbnail_s3_key: thumbnailS3Key,\n    duration_seconds: Math.round(input.totalDuration || 60),\n    width: 1080,\n    height: 1920,\n    quality_score: 80,\n    language: input.language || 'ko',\n    review_priority: 'NORMAL',\n    status: 'PENDING_REVIEW',\n    created_by: 'SYSTEM_N8N_GENERATOR',\n    // 원본 데이터도 전달 (Telegram 알림용)\n    _original: input\n  }\n};"
       },
-      "id": "upvy-publish",
-      "name": "6. Upvy Publish",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "prepare-insert",
+      "name": "6a. Prepare Insert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [4580, 300]
     },
     {
       "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO pending_contents (\n  source, title, description, category, difficulty,\n  tags, quiz, video_s3_key, thumbnail_s3_key,\n  duration_seconds, width, height, quality_score,\n  language, review_priority, status,\n  created_at, created_by, updated_at\n) VALUES (\n  '{{ $json.source }}',\n  '{{ $json.title.replace(/'/g, \"''\") }}',\n  {{ $json.description ? \"'\" + $json.description.replace(/'/g, \"''\") + \"'\" : 'NULL' }},\n  '{{ $json.category }}',\n  {{ $json.difficulty ? \"'\" + $json.difficulty + \"'\" : 'NULL' }},\n  '{{ $json.tags }}',\n  '{{ $json.quiz }}',\n  '{{ $json.video_s3_key }}',\n  {{ $json.thumbnail_s3_key ? \"'\" + $json.thumbnail_s3_key + \"'\" : 'NULL' }},\n  {{ $json.duration_seconds }},\n  {{ $json.width }},\n  {{ $json.height }},\n  {{ $json.quality_score }},\n  '{{ $json.language }}',\n  '{{ $json.review_priority }}',\n  '{{ $json.status }}',\n  NOW(6),\n  '{{ $json.created_by }}',\n  NOW(6)\n)",
+        "options": {}
+      },
+      "id": "mysql-insert",
+      "name": "6b. Save to Pending",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [4800, 300],
+      "credentials": { "mySql": { "name": "Crawler MySQL" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst original = $('6a. Prepare Insert').first().json._original;\n\nreturn {\n  json: {\n    ...original,\n    insertedId: input.insertId || 'unknown'\n  }\n};"
+      },
+      "id": "restore-context",
+      "name": "6c. Restore Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5020, 300]
+    },
+    {
+      "parameters": {
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=✅ *AI Content Generated*\n\n*Job ID:* {{ $json.jobId }}\n*Title:* {{ $json.script.title }}\n*Language:* {{ $json.language }}\n*Category:* {{ $json.category }}\n\n*Video:* {{ $json.videoUrl }}",
+        "text": "=✅ *AI Content Generated*\n\n*Job ID:* {{ $json.jobId }}\n*Pending ID:* {{ $json.insertedId }}\n*Title:* {{ $json.script.title }}\n*Language:* {{ $json.language }}\n*Category:* {{ $json.category }}\n\n*Video:* {{ $json.videoUrl }}\n\n📋 *Status:* Pending Review (AI Crawler Backoffice)",
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "telegram-success",
       "name": "Telegram Success",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [4800, 300],
+      "position": [5240, 300],
       "credentials": { "telegramApi": { "name": "Telegram API" } }
     },
     {
@@ -876,8 +894,10 @@
     "S3 Upload Video": { "main": [[{ "node": "Merge S3", "type": "main", "index": 0 }]] },
     "S3 Upload Thumbnail": { "main": [[{ "node": "Merge S3", "type": "main", "index": 1 }]] },
     "Merge S3": { "main": [[{ "node": "Set S3 URLs", "type": "main", "index": 0 }]] },
-    "Set S3 URLs": { "main": [[{ "node": "6. Upvy Publish", "type": "main", "index": 0 }]] },
-    "6. Upvy Publish": { "main": [[{ "node": "Telegram Success", "type": "main", "index": 0 }]] },
+    "Set S3 URLs": { "main": [[{ "node": "6a. Prepare Insert", "type": "main", "index": 0 }]] },
+    "6a. Prepare Insert": { "main": [[{ "node": "6b. Save to Pending", "type": "main", "index": 0 }]] },
+    "6b. Save to Pending": { "main": [[{ "node": "6c. Restore Context", "type": "main", "index": 0 }]] },
+    "6c. Restore Context": { "main": [[{ "node": "Telegram Success", "type": "main", "index": 0 }]] },
     "4c-1. Prepare Images": { "main": [[{ "node": "4c-2. Generate Image", "type": "main", "index": 0 }, { "node": "4c-2b. Clone Data", "type": "main", "index": 0 }]] },
     "4c-2. Generate Image": { "main": [[{ "node": "4c-3. Merge", "type": "main", "index": 0 }]] },
     "4c-2b. Clone Data": { "main": [[{ "node": "4c-3. Merge", "type": "main", "index": 1 }]] },
@@ -899,7 +919,7 @@
     "S3 Veo Upload": { "main": [[{ "node": "Merge S3 Veo", "type": "main", "index": 0 }]] },
     "S3 Veo Upload Thumbnail": { "main": [[{ "node": "Merge S3 Veo", "type": "main", "index": 1 }]] },
     "Merge S3 Veo": { "main": [[{ "node": "Set Veo URLs", "type": "main", "index": 0 }]] },
-    "Set Veo URLs": { "main": [[{ "node": "6. Upvy Publish", "type": "main", "index": 0 }]] }
+    "Set Veo URLs": { "main": [[{ "node": "6a. Prepare Insert", "type": "main", "index": 0 }]] }
   },
   "settings": {
     "executionOrder": "v1",
