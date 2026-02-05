@@ -33,11 +33,12 @@ TikTok, 인스타그램 릴스, 유튜브 숏츠처럼 재미있지만, 스크�
 
 ```
 upvy/
-├── upvy-backend/       # Kotlin + Spring WebFlux 백엔드
-├── upvy-frontend/      # React Native + Expo 프론트엔드
-├── upvy-ai-crawler/    # AI 콘텐츠 생성 파이프라인
-├── manifest-ops/       # Kubernetes 배포 매니페스트
-└── docs/               # 프로젝트 문서
+├── upvy-backend/           # Kotlin + Spring WebFlux 백엔드
+├── upvy-frontend/          # React Native + Expo 프론트엔드
+├── upvy-ai-crawler/        # YouTube 기반 콘텐츠 크롤링 + 백오피스
+├── upvy-content-generator/ # n8n 기반 AI 오리지널 콘텐츠 생성
+├── manifest-ops/           # Kubernetes 배포 매니페스트
+└── docs/                   # 프로젝트 문서
 ```
 
 ---
@@ -97,6 +98,15 @@ upvy/
 - Google Cloud STT (Chirp) 타임스탬프 기반 세그먼트 추출
 - Thymeleaf 백오피스 관리 시스템
 - 콘텐츠 승인/거절 워크플로우
+- LLM 기반 퀴즈 자동 생성 (n8n 퀴즈 폴백 지원)
+
+### AI 오리지널 콘텐츠 생성 (upvy-content-generator)
+- n8n 기반 시각적 워크플로우 오케스트레이션
+- Vertex AI Gemini (스크립트 + 퀴즈 생성)
+- Vertex AI Imagen 3 / Veo 2 (이미지 + 영상 생성)
+- Google Cloud TTS (다국어 음성 합성)
+- FFmpeg 기반 영상 합성 서비스 (자막 + 워터마크)
+- 일일 11개 콘텐츠 자동 생성 (EN 5개, JA 3개, KO 3개)
 
 ### 크리에이터 애널리틱스
 - 콘텐츠별 조회수, 좋아요, 댓글, 저장, 공유 통계
@@ -143,6 +153,17 @@ upvy/
 | 저장소 | MySQL (JPA) + AWS S3 |
 | 백오피스 | Thymeleaf + Bootstrap 5 |
 
+### AI Content Generator (upvy-content-generator)
+| 구분 | 기술 |
+|------|------|
+| 오케스트레이션 | n8n (Docker) |
+| AI (LLM) | Vertex AI Gemini 2.0 Flash |
+| AI (이미지) | Vertex AI Imagen 3 |
+| AI (영상) | Vertex AI Veo 2 |
+| AI (TTS) | Google Cloud TTS |
+| 영상 합성 | Kotlin + Spring Boot + FFmpeg |
+| 컨테이너 | Docker Compose |
+
 ### 인프라 및 DevOps
 | 구분 | 기술 |
 |------|------|
@@ -184,6 +205,15 @@ cd upvy-ai-crawler
 ./gradlew bootRun
 ```
 
+### AI Content Generator 실행
+```bash
+cd upvy-content-generator
+cp .env.example .env
+# .env 파일에 GCP 프로젝트 ID 등 설정
+docker-compose up -d
+# n8n UI: http://localhost:5678
+```
+
 ---
 
 ## AI와의 협업
@@ -217,6 +247,7 @@ AI와의 협업 효율성을 극대화하기 위해 TDD(테스트 주도 개발)
 - [백엔드 개발 가이드](docs/BACKEND_DEVELOPMENT_GUIDE.md)
 - [Git Convention](docs/GIT_CONVENTION.md)
 - [AI Crawler README](upvy-ai-crawler/README.md)
+- [AI Content Generator README](upvy-content-generator/README.md)
 
 ### API 문서
 

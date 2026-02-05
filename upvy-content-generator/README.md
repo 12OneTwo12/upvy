@@ -38,7 +38,13 @@ YouTube 크롤링이 아닌 **100% AI 오리지널** 교육용 숏폼 콘텐츠�
                              ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Compose Service (:8084)                       │
-│                    (FFmpeg 영상 합성)                             │
+│                    (FFmpeg 영상 합성 + 자막)                      │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                       S3 + MySQL                                 │
+│            (pending_contents 테이블 → 백오피스 승인)              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -48,10 +54,19 @@ YouTube 크롤링이 아닌 **100% AI 오리지널** 교육용 숏폼 콘텐츠�
 TOPIC SELECT → SCRIPT+QUIZ → VISUAL+AUDIO → COMPOSE → PUBLISH
      │              │              │            │          │
      ↓              ↓              ↓            ↓          ↓
-  Gemini +      스크립트 +      Imagen 3     FFmpeg     Upvy +
-  Grounding     퀴즈 생성       Veo 2        합성       SNS
-               품질 게이트      TTS (병렬)
+  Gemini +      스크립트 +      Imagen 3     FFmpeg     pending_contents
+  Grounding     퀴즈 생성       Veo 2        합성       → 백오피스 승인
+               품질 게이트      TTS (병렬)              → contents 발행
 ```
+
+### 백오피스 연동
+
+생성된 콘텐츠는 `pending_contents` 테이블에 저장되며, `upvy-ai-crawler` 백오피스에서 관리됩니다:
+
+- **승인 대기**: n8n에서 생성된 콘텐츠 목록 확인
+- **퀴즈 미리보기**: n8n에서 생성된 퀴즈 확인 (수정 가능)
+- **승인**: 백엔드 `contents` 테이블에 발행
+- **거절**: 사유와 함께 거절 처리
 
 ## 빠른 시작
 
@@ -107,6 +122,8 @@ upvy-content-generator/
 
 - [#207 Epic: AI Content Generator 파이프라인 구축](https://github.com/12OneTwo12/upvy/issues/207)
 - [#208 Phase 1-1: 프로젝트 구조 및 n8n 환경 구성](https://github.com/12OneTwo12/upvy/issues/208)
+- [#219 pending_contents 테이블 연동](https://github.com/12OneTwo12/upvy/issues/219)
+- [#220 n8n 워크플로우 개선 및 보안 수정](https://github.com/12OneTwo12/upvy/pull/220)
 
 ## 참고 문서
 
