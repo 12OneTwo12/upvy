@@ -254,14 +254,25 @@ class ContentPublishService(
     /**
      * 콘텐츠에 퀴즈 생성
      *
-     * LLM을 사용하여 콘텐츠 설명 기반 퀴즈를 생성하고,
-     * quizzes 및 quiz_options 테이블에 직접 INSERT합니다.
+     * n8n에서 생성된 quiz가 있으면 그것을 사용하고,
+     * 없으면 LLM을 사용하여 콘텐츠 설명 기반 퀴즈를 생성합니다.
      *
      * @param contentId 콘텐츠 ID
      * @param pendingContent 승인 대기 콘텐츠
      * @throws Exception 퀴즈 생성 또는 INSERT 실패 시
      */
     private fun createQuizForContent(contentId: String, pendingContent: PendingContent) {
+        val now = Instant.now()
+        val quizId = UUID.randomUUID().toString()
+
+        // n8n에서 생성된 quiz가 있는지 확인
+        val existingQuiz = pendingContent.quiz
+        if (!existingQuiz.isNullOrBlank()) {
+            logger.debug("n8n 생성 퀴즈 사용: contentId={}", contentId)
+            saveQuizFromN8n(contentId, quizId, existingQuiz, now)
+            return
+        }
+
         // description이 없으면 퀴즈 생성 불가
         val description = pendingContent.description
         if (description.isNullOrBlank()) {
@@ -269,12 +280,9 @@ class ContentPublishService(
             return
         }
 
-        logger.debug("퀴즈 생성 시작: contentId={}, title={}", contentId, pendingContent.title)
+        logger.debug("LLM 퀴즈 생성 시작: contentId={}, title={}", contentId, pendingContent.title)
 
-        val now = Instant.now()
-        val quizId = UUID.randomUUID().toString()
-
-        // 1. LLM으로 퀴즈 생성
+        // LLM으로 퀴즈 생성
         val contentLanguage = ContentLanguage.fromCode(pendingContent.language) ?: ContentLanguage.KO
         val quizData = runBlocking {
             llmClient.generateQuizFromDescription(
@@ -288,7 +296,7 @@ class ContentPublishService(
         logger.debug("LLM 퀴즈 생성 완료: question={}, options count={}",
             quizData.question.take(50), quizData.options.size)
 
-        // 2. quizzes 테이블 INSERT
+        // quizzes 테이블 INSERT
         val quiz = Quiz(
             id = quizId,
             contentId = contentId,
@@ -302,7 +310,7 @@ class ContentPublishService(
         quizRepository.save(quiz)
         logger.debug("quizzes INSERT 완료: quizId={}", quizId)
 
-        // 3. quiz_options 테이블 INSERT (정답 위치 랜덤화를 위해 셔플)
+        // quiz_options 테이블 INSERT (정답 위치 랜덤화를 위해 셔플)
         quizData.options.shuffled().forEachIndexed { index, option ->
             val quizOption = QuizOption(
                 id = UUID.randomUUID().toString(),
@@ -318,5 +326,61 @@ class ContentPublishService(
             quizOptionRepository.save(quizOption)
         }
         logger.debug("quiz_options INSERT 완료: count={}", quizData.options.size)
+    }
+
+    /**
+     * n8n에서 생성된 퀴즈 JSON을 파싱하여 저장
+     *
+     * n8n quiz format:
+     * {"question":"...", "options":[{"text":"...", "isCorrect":true}, ...]}
+     */
+    private fun saveQuizFromN8n(contentId: String, quizId: String, quizJson: String, now: Instant) {
+        try {
+            val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+            val quizNode = mapper.readTree(quizJson)
+
+            val question = quizNode.get("question")?.asText()
+                ?: throw IllegalArgumentException("quiz JSON에 question이 없습니다")
+            val optionsNode = quizNode.get("options")
+                ?: throw IllegalArgumentException("quiz JSON에 options가 없습니다")
+
+            // quizzes 테이블 INSERT
+            val quiz = Quiz(
+                id = quizId,
+                contentId = contentId,
+                question = question,
+                allowMultipleAnswers = false,
+                createdAt = now,
+                createdBy = systemUserId,
+                updatedAt = now,
+                updatedBy = systemUserId
+            )
+            quizRepository.save(quiz)
+            logger.debug("n8n quizzes INSERT 완료: quizId={}", quizId)
+
+            // quiz_options 테이블 INSERT
+            val options = optionsNode.toList().shuffled()  // 정답 위치 랜덤화
+            options.forEachIndexed { index, optionNode ->
+                val optionText = optionNode.get("text")?.asText() ?: return@forEachIndexed
+                val isCorrect = optionNode.get("isCorrect")?.asBoolean() ?: false
+
+                val quizOption = QuizOption(
+                    id = UUID.randomUUID().toString(),
+                    quizId = quizId,
+                    optionText = optionText,
+                    isCorrect = isCorrect,
+                    displayOrder = index + 1,
+                    createdAt = now,
+                    createdBy = systemUserId,
+                    updatedAt = now,
+                    updatedBy = systemUserId
+                )
+                quizOptionRepository.save(quizOption)
+            }
+            logger.debug("n8n quiz_options INSERT 완료: count={}", options.size)
+        } catch (e: Exception) {
+            logger.error("n8n 퀴즈 파싱 실패, LLM으로 대체 시도: {}", e.message)
+            throw e
+        }
     }
 }
