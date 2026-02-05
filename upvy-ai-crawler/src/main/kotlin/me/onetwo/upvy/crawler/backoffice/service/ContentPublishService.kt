@@ -40,6 +40,7 @@ class ContentPublishService(
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(ContentPublishService::class.java)
+        private val objectMapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
     }
 
     /**
@@ -268,9 +269,12 @@ class ContentPublishService(
         // n8n에서 생성된 quiz가 있는지 확인
         val existingQuiz = pendingContent.quiz
         if (!existingQuiz.isNullOrBlank()) {
-            logger.debug("n8n 생성 퀴즈 사용: contentId={}", contentId)
-            saveQuizFromN8n(contentId, quizId, existingQuiz, now)
-            return
+            logger.debug("n8n 생성 퀴즈 사용 시도: contentId={}", contentId)
+            if (saveQuizFromN8n(contentId, quizId, existingQuiz, now)) {
+                return  // n8n 퀴즈 저장 성공
+            }
+            // n8n 퀴즈 파싱 실패 - LLM으로 대체
+            logger.warn("n8n 퀴즈 파싱 실패, LLM으로 대체: contentId={}", contentId)
         }
 
         // description이 없으면 퀴즈 생성 불가
@@ -333,9 +337,11 @@ class ContentPublishService(
      *
      * n8n quiz format:
      * {"question":"...", "options":[{"text":"...", "isCorrect":true}, ...]}
+     *
+     * @return 저장 성공 시 true, 파싱 실패 시 false
      */
-    private fun saveQuizFromN8n(contentId: String, quizId: String, quizJson: String, now: Instant) {
-        try {
+    private fun saveQuizFromN8n(contentId: String, quizId: String, quizJson: String, now: Instant): Boolean {
+        return try {
             val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
             val quizNode = mapper.readTree(quizJson)
 
@@ -378,9 +384,10 @@ class ContentPublishService(
                 quizOptionRepository.save(quizOption)
             }
             logger.debug("n8n quiz_options INSERT 완료: count={}", options.size)
+            true
         } catch (e: Exception) {
             logger.error("n8n 퀴즈 파싱 실패, LLM으로 대체 시도: {}", e.message)
-            throw e
+            false
         }
     }
 }

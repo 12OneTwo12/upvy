@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import me.onetwo.upvy.compose.dto.ComposeMetadata
 import me.onetwo.upvy.compose.service.ComposeService
 import mu.KotlinLogging
-import org.springframework.core.io.InputStreamResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -13,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
-import java.io.FileInputStream
 
 private val logger = KotlinLogging.logger {}
 
@@ -53,7 +51,7 @@ class ComposeController(
         @RequestPart("clips") clips: List<MultipartFile>,
         @RequestPart("audio") audio: MultipartFile,
         @RequestPart("metadata") metadataJson: String
-    ): ResponseEntity<InputStreamResource> {
+    ): ResponseEntity<ByteArray> {
         logger.info { "영상 합성 요청: clips=${clips.size}개, audio=${audio.originalFilename}" }
 
         // 메타데이터 파싱
@@ -65,18 +63,18 @@ class ComposeController(
 
         logger.info { "영상 합성 완료: composeId=${result.composeId}, duration=${result.duration}s, size=${result.fileSize}" }
 
-        // 바이너리 응답
-        val videoStream = FileInputStream(result.videoFile)
-        val resource = InputStreamResource(videoStream)
+        // 바이너리를 메모리로 읽고 임시 파일 정리
+        val videoBytes = result.videoFile.readBytes()
+        composeService.cleanup(result.composeId)
 
         return ResponseEntity.ok()
             .header("X-Compose-Id", result.composeId)
             .header("X-Duration", result.duration.toString())
             .header("X-Resolution", "1080x1920")
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${result.composeId}.mp4\"")
-            .contentLength(result.fileSize)
+            .contentLength(videoBytes.size.toLong())
             .contentType(MediaType.parseMediaType("video/mp4"))
-            .body(resource)
+            .body(videoBytes)
     }
 
     /**
@@ -89,7 +87,7 @@ class ComposeController(
         @RequestPart("clips") clips: List<MultipartFile>,
         @RequestPart("audio") audio: MultipartFile,
         @RequestPart("metadata") metadataJson: String
-    ): ResponseEntity<InputStreamResource> {
+    ): ResponseEntity<ByteArray> {
         logger.info { "영상+썸네일 합성 요청: clips=${clips.size}개" }
 
         val metadata = objectMapper.readValue(metadataJson, ComposeMetadata::class.java)
@@ -97,15 +95,16 @@ class ComposeController(
 
         logger.info { "영상+썸네일 합성 완료: composeId=${result.composeId}" }
 
-        val zipStream = FileInputStream(result.zipFile)
-        val resource = InputStreamResource(zipStream)
+        // 바이너리를 메모리로 읽고 임시 파일 정리
+        val zipBytes = result.zipFile.readBytes()
+        composeService.cleanup(result.composeId)
 
         return ResponseEntity.ok()
             .header("X-Compose-Id", result.composeId)
             .header("X-Duration", result.duration.toString())
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${result.composeId}.zip\"")
-            .contentLength(result.zipFile.length())
+            .contentLength(zipBytes.size.toLong())
             .contentType(MediaType.parseMediaType("application/zip"))
-            .body(resource)
+            .body(zipBytes)
     }
 }

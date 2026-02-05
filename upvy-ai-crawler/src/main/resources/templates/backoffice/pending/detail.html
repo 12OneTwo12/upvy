@@ -128,16 +128,35 @@
                                 try {
                                     const quizJson = /*[[${content.quiz}]]*/ '{}';
                                     const quiz = JSON.parse(quizJson);
-                                    let html = '<p class="fw-bold mb-2">' + quiz.question + '</p><ul class="list-group">';
+                                    const quizPreviewDiv = document.getElementById('quizPreview');
+                                    quizPreviewDiv.innerHTML = '';
+
+                                    const questionP = document.createElement('p');
+                                    questionP.className = 'fw-bold mb-2';
+                                    questionP.textContent = quiz.question;
+                                    quizPreviewDiv.appendChild(questionP);
+
+                                    const ul = document.createElement('ul');
+                                    ul.className = 'list-group';
+
                                     quiz.options.forEach(function(opt) {
-                                        const icon = opt.isCorrect ? '<i class="bi bi-check-circle-fill text-success"></i>' : '<i class="bi bi-circle"></i>';
-                                        const cls = opt.isCorrect ? 'list-group-item-success' : '';
-                                        html += '<li class="list-group-item ' + cls + '">' + icon + ' ' + opt.text + '</li>';
+                                        const li = document.createElement('li');
+                                        li.className = 'list-group-item' + (opt.isCorrect ? ' list-group-item-success' : '');
+
+                                        const icon = document.createElement('i');
+                                        icon.className = opt.isCorrect ? 'bi bi-check-circle-fill text-success' : 'bi bi-circle';
+                                        li.appendChild(icon);
+                                        li.appendChild(document.createTextNode(' ' + opt.text));
+                                        ul.appendChild(li);
                                     });
-                                    html += '</ul>';
-                                    document.getElementById('quizPreview').innerHTML = html;
+                                    quizPreviewDiv.appendChild(ul);
                                 } catch(e) {
-                                    document.getElementById('quizPreview').innerHTML = '<p class="text-danger">퀴즈 파싱 실패</p>';
+                                    const quizPreviewDiv = document.getElementById('quizPreview');
+                                    quizPreviewDiv.innerHTML = '';
+                                    const errorP = document.createElement('p');
+                                    errorP.className = 'text-danger';
+                                    errorP.textContent = '퀴즈 파싱 실패';
+                                    quizPreviewDiv.appendChild(errorP);
                                 }
                             })();
                         </script>
