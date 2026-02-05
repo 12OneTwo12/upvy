@@ -124,3 +124,13 @@ manifest-ops/**/secret/**/*.yaml
 docs/public/
 docs/resources/
 docs/.hugo_build.lock
+
+### AI Content Generator ###
+upvy-content-generator/.env
+upvy-content-generator/.env.local
+upvy-content-generator/.env.*.local
+upvy-content-generator/credentials/*
+!upvy-content-generator/credentials/.gitkeep
+!upvy-content-generator/credentials/*.example
+upvy-content-generator/compose-service/build/
+upvy-content-generator/compose-service/.gradle/

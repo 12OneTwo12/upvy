@@ -57,6 +57,7 @@ class PendingContentController(
         model.addAttribute("categories", Category.entries)
         model.addAttribute("difficulties", Difficulty.entries)
         model.addAttribute("tags", content.getTagsList())
+        model.addAttribute("hasExistingQuiz", !content.quiz.isNullOrBlank())
 
         return "backoffice/pending/detail"
     }

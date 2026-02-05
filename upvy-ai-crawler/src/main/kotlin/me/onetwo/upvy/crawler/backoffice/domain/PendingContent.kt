@@ -18,8 +18,12 @@ class PendingContent(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    @Column(name = "ai_content_job_id", nullable = false)
-    val aiContentJobId: Long,
+    @Column(name = "ai_content_job_id", nullable = true)
+    val aiContentJobId: Long? = null,  // nullable for n8n generated content
+
+    @Column(nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    val source: ContentSource = ContentSource.CRAWLER,
 
     @Column(nullable = false, length = 200)
     var title: String,
@@ -37,6 +41,9 @@ class PendingContent(
 
     @Column(columnDefinition = "JSON")
     var tags: String? = null,  // JSON 배열로 저장
+
+    @Column(columnDefinition = "JSON")
+    var quiz: String? = null,  // Quiz JSON for n8n generated content
 
     @Column(name = "video_s3_key", nullable = false, length = 500)
     val videoS3Key: String,
@@ -202,4 +209,12 @@ enum class Category(val displayName: String) {
             return entries.find { it.name.equals(value, ignoreCase = true) } ?: OTHER
         }
     }
+}
+
+/**
+ * 콘텐츠 생성 소스
+ */
+enum class ContentSource {
+    CRAWLER,        // AI Crawler (YouTube 기반)
+    N8N_GENERATOR   // n8n Content Generator (자체 생성)
 }

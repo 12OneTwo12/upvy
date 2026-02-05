@@ -1,0 +1,177 @@
+# =============================================================================
+# Upvy AI Content Generator
+# =============================================================================
+# n8n 기반 교육용 숏폼 콘텐츠 자동 생성 파이프라인
+#
+# 구성요소:
+# - n8n: 워크플로우 오케스트레이터 (Gemini API, S3 직접 호출)
+# - compose-service: FFmpeg 영상 합성 서비스 (순수 처리만)
+#
+# 아키텍처:
+# n8n이 모든 외부 API/스토리지를 직접 처리 (Gemini API Key 인증)
+# compose-service는 Binary 파일 수신 → FFmpeg 합성 → Binary 반환만 담당
+#
+# 사용법:
+#   docker-compose up -d
+#   n8n UI: http://localhost:5678
+#   Compose API: http://localhost:8084
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # n8n - 워크플로우 오케스트레이터
+  # ===========================================================================
+  # Gemini API 네이티브 노드 + HTTP Request로 AI 서비스 호출
+  # AWS S3 노드로 스토리지 처리
+  # 5단계 파이프라인: TOPIC → SCRIPT+QUIZ → VISUAL+AUDIO → COMPOSE → PUBLISH
+  # ===========================================================================
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: upvy-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    entrypoint: ["/bin/sh", "/init/n8n-init.sh"]
+    environment:
+      # 기본 설정
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
+      - GENERIC_TIMEZONE=Asia/Seoul
+
+      # 워크플로우에서 환경변수 접근 허용
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+
+      # Code 노드에서 Node.js 내장 모듈 허용 (JWT 생성용)
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto,fs
+
+      # 인증 설정
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:?N8N_PASSWORD is required}
+
+      # Owner 계정 자동 생성 (첫 실행시)
+      - N8N_OWNER_EMAIL=${N8N_OWNER_EMAIL:-admin@upvy.io}
+      - N8N_OWNER_PASSWORD=${N8N_PASSWORD:?N8N_PASSWORD is required}
+      - N8N_OWNER_FIRSTNAME=${N8N_OWNER_FIRSTNAME:-Upvy}
+      - N8N_OWNER_LASTNAME=${N8N_OWNER_LASTNAME:-Admin}
+
+      # 실행 설정
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+      - EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168  # 7일 보관
+
+      # 로깅
+      - N8N_LOG_LEVEL=${N8N_LOG_LEVEL:-info}
+      - N8N_LOG_OUTPUT=console
+
+      # Gemini API Key (Topic Select, Script Gen, Imagen, Veo)
+      - GEMINI_API_KEY=${GEMINI_API_KEY:?GEMINI_API_KEY is required}
+
+      # GCP 설정 (TTS는 GCP OAuth 필요)
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
+
+      # AWS 설정 (S3) - credential은 .env에서 로드
+      - S3_BUCKET=${S3_BUCKET:-upvy-ai-content}
+      - AWS_REGION=${AWS_REGION:-ap-northeast-2}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+
+      # Upvy API
+      - UPVY_API_URL=${UPVY_API_URL:-https://api.upvy.org}
+
+      # Instagram
+      - INSTAGRAM_USER_ID=${INSTAGRAM_USER_ID:-}
+      - INSTAGRAM_ACCESS_TOKEN=${INSTAGRAM_ACCESS_TOKEN:-}
+
+      # Telegram 알림
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+
+      # AI Crawler MySQL (pending_contents 저장용)
+      - CRAWLER_DB_HOST=${CRAWLER_DB_HOST:-localhost}
+      - CRAWLER_DB_PORT=${CRAWLER_DB_PORT:-3306}
+      - CRAWLER_DB_NAME=${CRAWLER_DB_NAME:-upvy_crawler}
+      - CRAWLER_DB_USER=${CRAWLER_DB_USER:-crawler}
+      - CRAWLER_DB_PASSWORD=${CRAWLER_DB_PASSWORD:-}
+
+    volumes:
+      # n8n 데이터 영속화 (워크플로우, 크레덴셜 등)
+      - n8n_data:/home/node/.n8n
+      # 초기화 스크립트
+      - ./n8n-init.sh:/init/n8n-init.sh:ro
+      # 워크플로우 파일 (자동 import용)
+      - ./n8n-workflows:/workflows:ro
+      # GCP 서비스 계정 키 (TTS 인증용)
+      - ./credentials:/credentials:ro
+    networks:
+      - upvy-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ===========================================================================
+  # Compose Service - FFmpeg 영상 합성
+  # ===========================================================================
+  # 순수 FFmpeg 처리 서비스 (스토리지 의존성 없음)
+  # 입력: Multipart (clips + audio + metadata JSON)
+  # 출력: 합성된 영상 Binary
+  # n8n이 S3 노드로 업로드 처리
+  # ===========================================================================
+  compose-service:
+    build:
+      context: ./compose-service
+      dockerfile: Dockerfile
+    container_name: upvy-compose
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      # Spring 설정
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - SERVER_PORT=8084
+
+      # FFmpeg 설정
+      - FFMPEG_PATH=/usr/bin/ffmpeg
+      - FFPROBE_PATH=/usr/bin/ffprobe
+      - TEMP_DIR=/tmp/compose
+
+      # 로깅
+      - LOGGING_LEVEL_ROOT=${COMPOSE_LOG_LEVEL:-INFO}
+    volumes:
+      # 임시 파일 (영상 합성 작업용)
+      - compose_temp:/tmp/compose
+    networks:
+      - upvy-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - n8n
+
+# =============================================================================
+# 네트워크
+# =============================================================================
+networks:
+  upvy-network:
+    driver: bridge
+
+# =============================================================================
+# 볼륨
+# =============================================================================
+volumes:
+  # n8n 데이터 (워크플로우, 실행 이력, 크레덴셜)
+  n8n_data:
+    driver: local
+  # Compose Service 임시 파일
+  compose_temp:
+    driver: local
