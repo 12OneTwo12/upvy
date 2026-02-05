@@ -101,6 +101,7 @@ upvy/
 - LLM 기반 퀴즈 자동 생성 (n8n 퀴즈 폴백 지원)
 
 ### AI 오리지널 콘텐츠 생성 (upvy-content-generator)
+<img width="1540" height="270" alt="image" src="https://github.com/user-attachments/assets/d4f8b6c4-2214-41de-bc98-0db64c8d1f72" />
 - n8n 기반 시각적 워크플로우 오케스트레이션
 - Vertex AI Gemini (스크립트 + 퀴즈 생성)
 - Vertex AI Imagen 3 / Veo 2 (이미지 + 영상 생성)
