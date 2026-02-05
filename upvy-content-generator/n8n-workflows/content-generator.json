@@ -81,7 +81,7 @@
       "name": "Manual Form",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
-      "position": [-200, 200],
+      "position": [0, 0],
       "webhookId": "upvy-manual-gen"
     },
     {
@@ -100,7 +100,7 @@
       "name": "Schedule EN (5/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-200, 400]
+      "position": [0, 200]
     },
     {
       "parameters": {
@@ -116,7 +116,7 @@
       "name": "Schedule KO (3/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-200, 600]
+      "position": [0, 400]
     },
     {
       "parameters": {
@@ -132,7 +132,7 @@
       "name": "Schedule JA (3/day)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-200, 800]
+      "position": [0, 600]
     },
     {
       "parameters": {
@@ -142,7 +142,7 @@
       "name": "Set Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [100, 200]
+      "position": [440, 300]
     },
     {
       "parameters": {
@@ -158,7 +158,7 @@
       "name": "Set EN",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [100, 400]
+      "position": [220, 200]
     },
     {
       "parameters": {
@@ -174,7 +174,7 @@
       "name": "Set KO",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [100, 600]
+      "position": [220, 400]
     },
     {
       "parameters": {
@@ -190,7 +190,7 @@
       "name": "Set JA",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [100, 800]
+      "position": [220, 600]
     },
     {
       "parameters": {
@@ -205,7 +205,7 @@
       "name": "1. Topic Select",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 200]
+      "position": [660, 300]
     },
     {
       "parameters": {
@@ -215,7 +215,7 @@
       "name": "Parse Topic",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [620, 200]
+      "position": [880, 300]
     },
     {
       "parameters": {
@@ -230,7 +230,7 @@
       "name": "2. Script + Quiz Gen",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [840, 200]
+      "position": [1100, 300]
     },
     {
       "parameters": {
@@ -240,7 +240,7 @@
       "name": "Parse Script + Quiz",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1060, 200]
+      "position": [1320, 300]
     },
     {
       "parameters": {
@@ -262,7 +262,7 @@
       "name": "3. Quality Gate",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1280, 200]
+      "position": [1540, 300]
     },
     {
       "parameters": {
@@ -296,7 +296,7 @@
       "name": "Output Type Switch",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [1500, 100]
+      "position": [1760, 200]
     },
     {
       "parameters": {
@@ -306,7 +306,7 @@
       "name": "4a. Prepare Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1720, 200]
+      "position": [1980, 300]
     },
     {
       "parameters": {
@@ -324,7 +324,7 @@
       "name": "4a-2. Generate Image (Imagen)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1940, 100]
+      "position": [2200, 240]
     },
     {
       "parameters": {},
@@ -332,7 +332,7 @@
       "name": "4a-2b. Clone Data",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1940, 300]
+      "position": [2200, 360]
     },
     {
       "parameters": { "mode": "append" },
@@ -340,7 +340,7 @@
       "name": "4a-3. Merge",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [2160, 200]
+      "position": [2420, 300]
     },
     {
       "parameters": {
@@ -350,7 +350,7 @@
       "name": "4a-4. Combine Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2380, 200]
+      "position": [2640, 300]
     },
     {
       "parameters": {
@@ -360,7 +360,7 @@
       "name": "4a-5. Aggregate Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2600, 200]
+      "position": [2860, 300]
     },
     {
       "parameters": {
@@ -370,7 +370,7 @@
       "name": "Convert to Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2820, 200]
+      "position": [3080, 300]
     },
     {
       "parameters": {
@@ -380,7 +380,7 @@
       "name": "Generate TTS JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1100, 400]
+      "position": [1760, 500]
     },
     {
       "parameters": {
@@ -400,7 +400,7 @@
       "name": "Get TTS Token",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 400]
+      "position": [1980, 500]
     },
     {
       "parameters": {
@@ -422,7 +422,7 @@
       "name": "4b. TTS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 400]
+      "position": [2200, 500]
     },
     {
       "parameters": {
@@ -432,7 +432,7 @@
       "name": "Prepare Audio",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2820, 400]
+      "position": [2420, 500]
     },
     {
       "parameters": {
@@ -464,7 +464,7 @@
       "name": "Audio Router",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [2920, 400]
+      "position": [2640, 500]
     },
     {
       "parameters": { "mode": "append" },
@@ -472,7 +472,7 @@
       "name": "Merge Visual + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [3040, 300]
+      "position": [3300, 400]
     },
     {
       "parameters": {
@@ -482,7 +482,7 @@
       "name": "Combine Binaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3260, 300]
+      "position": [3520, 400]
     },
     {
       "parameters": {
@@ -511,7 +511,7 @@
       "name": "5. Compose (FFmpeg)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3480, 300]
+      "position": [3740, 400]
     },
     {
       "parameters": {
@@ -521,7 +521,7 @@
       "name": "Process Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3700, 300]
+      "position": [3960, 400]
     },
     {
       "parameters": {
@@ -534,7 +534,7 @@
       "name": "S3 Upload Video",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3920, 200],
+      "position": [4180, 340],
       "credentials": { "aws": { "name": "AWS" } }
     },
     {
@@ -548,7 +548,7 @@
       "name": "S3 Upload Thumbnail",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3920, 400],
+      "position": [4180, 460],
       "credentials": { "aws": { "name": "AWS" } }
     },
     {
@@ -557,7 +557,7 @@
       "name": "Merge S3",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [4140, 300]
+      "position": [4400, 400]
     },
     {
       "parameters": {
@@ -567,7 +567,7 @@
       "name": "Set S3 URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4360, 300]
+      "position": [4620, 400]
     },
     {
       "parameters": {
@@ -577,7 +577,7 @@
       "name": "6a. Prepare Insert",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4580, 300]
+      "position": [5500, 300]
     },
     {
       "parameters": {
@@ -589,7 +589,7 @@
       "name": "6b. Save to Pending",
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.4,
-      "position": [4800, 300],
+      "position": [5720, 300],
       "credentials": { "mySql": { "name": "Crawler MySQL" } }
     },
     {
@@ -600,7 +600,7 @@
       "name": "6c. Restore Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [5020, 300]
+      "position": [5940, 300]
     },
     {
       "parameters": {
@@ -612,7 +612,7 @@
       "name": "Telegram Success",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [5240, 300],
+      "position": [6160, 300],
       "credentials": { "telegramApi": { "name": "Telegram API" } }
     },
     {
@@ -625,7 +625,7 @@
       "name": "Telegram Fail",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [1500, 500],
+      "position": [1760, 550],
       "credentials": { "telegramApi": { "name": "Telegram API" } }
     },
     {
@@ -636,7 +636,7 @@
       "name": "4c-1. Prepare Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1720, -100]
+      "position": [1980, 0]
     },
     {
       "parameters": {
@@ -654,7 +654,7 @@
       "name": "4c-2. Generate Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1940, -200]
+      "position": [2200, -60]
     },
     {
       "parameters": {},
@@ -662,7 +662,7 @@
       "name": "4c-2b. Clone Data",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1940, 0]
+      "position": [2200, 60]
     },
     {
       "parameters": { "mode": "append" },
@@ -670,7 +670,7 @@
       "name": "4c-3. Merge",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [2160, -100]
+      "position": [2420, 0]
     },
     {
       "parameters": {
@@ -680,7 +680,7 @@
       "name": "4c-4. Combine Images",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2380, -100]
+      "position": [2640, 0]
     },
     {
       "parameters": {
@@ -690,7 +690,7 @@
       "name": "4c-5. Request Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2600, -100]
+      "position": [2860, 0]
     },
     {
       "parameters": {
@@ -700,7 +700,7 @@
       "name": "4c-6. Poll Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2820, -100]
+      "position": [3080, 0]
     },
     {
       "parameters": {
@@ -710,7 +710,7 @@
       "name": "4c-7. Download Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3040, -100]
+      "position": [3300, 0]
     },
     {
       "parameters": {
@@ -720,7 +720,7 @@
       "name": "4c-8. Aggregate Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3260, -100]
+      "position": [3520, 0]
     },
     {
       "parameters": {
@@ -730,7 +730,7 @@
       "name": "Convert Veo Binary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3480, -100]
+      "position": [3740, 0]
     },
     {
       "parameters": { "mode": "append" },
@@ -738,7 +738,7 @@
       "name": "Merge Veo + Audio",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [3040, 0]
+      "position": [3960, 100]
     },
     {
       "parameters": {
@@ -748,7 +748,7 @@
       "name": "Combine Veo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3260, 0]
+      "position": [4180, 100]
     },
     {
       "parameters": {
@@ -777,7 +777,7 @@
       "name": "5b. Compose Veo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3480, 0]
+      "position": [4400, 100]
     },
     {
       "parameters": {
@@ -787,7 +787,7 @@
       "name": "Process Veo Video",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3700, 0]
+      "position": [4620, 100]
     },
     {
       "parameters": {
@@ -800,7 +800,7 @@
       "name": "S3 Veo Upload",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3920, -50],
+      "position": [4840, 40],
       "credentials": { "aws": { "name": "AWS" } }
     },
     {
@@ -814,7 +814,7 @@
       "name": "S3 Veo Upload Thumbnail",
       "type": "n8n-nodes-base.awsS3",
       "typeVersion": 1,
-      "position": [3920, 50],
+      "position": [4840, 160],
       "credentials": { "aws": { "name": "AWS" } }
     },
     {
@@ -823,7 +823,7 @@
       "name": "Merge S3 Veo",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
-      "position": [4140, 0]
+      "position": [5060, 100]
     },
     {
       "parameters": {
@@ -833,7 +833,7 @@
       "name": "Set Veo URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4360, 0]
+      "position": [5280, 100]
     }
   ],
   "connections": {
