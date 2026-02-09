@@ -206,7 +206,7 @@ class ComposeService(
     /**
      * 임시 파일 정리
      */
-    private fun cleanup(composeId: String) {
+    fun cleanup(composeId: String) {
         try {
             ffmpegService.cleanup(composeId)
         } catch (e: Exception) {
