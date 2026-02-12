@@ -33,7 +33,7 @@ class ContentPublishService(
     private val llmClient: LlmClient,
     @Value("\${crawler.system-user-id:00000000-0000-0000-0000-000000000001}")
     private val systemUserId: String,
-    @Value("\${s3.bucket:upvy-ai-media}")
+    @Value("\${s3.bucket:upvy-ai-media-bucket}")
     private val s3Bucket: String,
     @Value("\${s3.region:ap-northeast-2}")
     private val s3Region: String

@@ -59,7 +59,7 @@ spring.cloud.aws:
     secret-key: ${AWS_SECRET_ACCESS_KEY:}
 
 s3:
-  bucket: ${S3_BUCKET:upvy-ai-media}
+  bucket: ${S3_BUCKET:upvy-ai-media-bucket}
   region: ${AWS_REGION:ap-northeast-2}
   prefix:
     raw-videos: raw-videos

@@ -144,7 +144,7 @@ export YOUTUBE_API_KEY=your-youtube-api-key
 export AWS_ACCESS_KEY_ID=your-access-key
 export AWS_SECRET_ACCESS_KEY=your-secret-key
 export AWS_REGION=ap-northeast-2
-export S3_BUCKET=upvy-ai-media
+export S3_BUCKET=upvy-ai-media-bucket
 
 # Database
 export MYSQL_HOST=localhost
@@ -161,7 +161,7 @@ export SYSTEM_USER_ID=00000000-0000-0000-0000-000000000001  # AI 콘텐츠 생�
 
 단일 버킷 + prefix 구조:
 ```
-upvy-ai-media/
+upvy-ai-media-bucket/
 ├── raw-videos/           # 원본 다운로드 영상
 ├── edited-videos/        # 편집된 숏폼 영상 (public-read)
 │   └── clips/{videoId}/{jobId}.mp4
@@ -180,8 +180,8 @@ upvy-ai-media/
             "Principal": "*",
             "Action": "s3:GetObject",
             "Resource": [
-                "arn:aws:s3:::upvy-ai-media/edited-videos/*",
-                "arn:aws:s3:::upvy-ai-media/thumbnails/*"
+                "arn:aws:s3:::upvy-ai-media-bucket/edited-videos/*",
+                "arn:aws:s3:::upvy-ai-media-bucket/thumbnails/*"
             ]
         }
     ]
@@ -202,7 +202,7 @@ ai:
     encoding: OGG_OPUS
 
 s3:
-  bucket: ${S3_BUCKET:upvy-ai-media}
+  bucket: ${S3_BUCKET:upvy-ai-media-bucket}
   region: ${AWS_REGION:ap-northeast-2}
   prefix:
     raw-videos: raw-videos
