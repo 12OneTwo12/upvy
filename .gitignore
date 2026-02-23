@@ -134,3 +134,6 @@ upvy-content-generator/credentials/*
 !upvy-content-generator/credentials/*.example
 upvy-content-generator/compose-service/build/
 upvy-content-generator/compose-service/.gradle/
+
+### log
+**/logs/**
