@@ -33,8 +33,11 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="createQuizCheckbox" checked>
                                 <input type="hidden" name="createQuiz" id="createQuizHidden" value="true">
-                                <label class="form-check-label" for="createQuizCheckbox">
-                                    퀴즈 생성
+                                <label class="form-check-label" for="createQuizCheckbox" th:if="${hasExistingQuiz}">
+                                    <i class="bi bi-check-circle-fill text-success"></i> n8n 퀴즈 사용
+                                </label>
+                                <label class="form-check-label" for="createQuizCheckbox" th:unless="${hasExistingQuiz}">
+                                    퀴즈 생성 (LLM)
                                 </label>
                             </div>
                             <button type="submit" class="btn btn-success">
@@ -108,6 +111,55 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- n8n Quiz Preview -->
+                <div class="card mt-4" th:if="${hasExistingQuiz}">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-patch-question"></i> n8n 생성 퀴즈</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="quizPreview">
+                            <p class="text-muted">퀴즈 로딩 중...</p>
+                        </div>
+                        <script th:inline="javascript">
+                            (function() {
+                                try {
+                                    const quizJson = /*[[${content.quiz}]]*/ '{}';
+                                    const quiz = JSON.parse(quizJson);
+                                    const quizPreviewDiv = document.getElementById('quizPreview');
+                                    quizPreviewDiv.innerHTML = '';
+
+                                    const questionP = document.createElement('p');
+                                    questionP.className = 'fw-bold mb-2';
+                                    questionP.textContent = quiz.question;
+                                    quizPreviewDiv.appendChild(questionP);
+
+                                    const ul = document.createElement('ul');
+                                    ul.className = 'list-group';
+
+                                    quiz.options.forEach(function(opt) {
+                                        const li = document.createElement('li');
+                                        li.className = 'list-group-item' + (opt.isCorrect ? ' list-group-item-success' : '');
+
+                                        const icon = document.createElement('i');
+                                        icon.className = opt.isCorrect ? 'bi bi-check-circle-fill text-success' : 'bi bi-circle';
+                                        li.appendChild(icon);
+                                        li.appendChild(document.createTextNode(' ' + opt.text));
+                                        ul.appendChild(li);
+                                    });
+                                    quizPreviewDiv.appendChild(ul);
+                                } catch(e) {
+                                    const quizPreviewDiv = document.getElementById('quizPreview');
+                                    quizPreviewDiv.innerHTML = '';
+                                    const errorP = document.createElement('p');
+                                    errorP.className = 'text-danger';
+                                    errorP.textContent = '퀴즈 파싱 실패';
+                                    quizPreviewDiv.appendChild(errorP);
+                                }
+                            })();
+                        </script>
                     </div>
                 </div>
 

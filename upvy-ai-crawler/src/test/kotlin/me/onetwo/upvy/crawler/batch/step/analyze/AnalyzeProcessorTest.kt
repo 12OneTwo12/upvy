@@ -8,6 +8,7 @@ import me.onetwo.upvy.crawler.domain.ContentLanguage
 import me.onetwo.upvy.crawler.domain.ContentMetadata
 import me.onetwo.upvy.crawler.domain.Difficulty
 import me.onetwo.upvy.crawler.domain.EditPlan
+import me.onetwo.upvy.crawler.domain.QuizData
 import me.onetwo.upvy.crawler.domain.EvaluatedVideo
 import me.onetwo.upvy.crawler.domain.JobStatus
 import me.onetwo.upvy.crawler.domain.Recommendation
@@ -136,5 +137,11 @@ class AnalyzeProcessorTest {
         override suspend fun generateMetadata(content: String, language: ContentLanguage): ContentMetadata = metadataResponse
         override suspend fun generateSearchQueries(context: SearchContext): List<SearchQuery> = emptyList()
         override suspend fun evaluateVideos(candidates: List<VideoCandidate>): List<EvaluatedVideo> = emptyList()
+        override suspend fun generateQuizFromDescription(
+            description: String,
+            title: String,
+            contentLanguage: ContentLanguage,
+            difficulty: Difficulty?
+        ): QuizData = QuizData(question = "Test quiz?", allowMultipleAnswers = false, options = emptyList())
     }
 }

@@ -22,7 +22,7 @@ module.exports = {
   expo: {
     name: 'Upvy',
     slug: 'upvy',
-    version: '1.5.0',
+    version: '1.6.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -57,6 +57,14 @@ module.exports = {
       googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      // Google Play 정책: Photo Picker API 사용으로 READ_MEDIA_* 권한 불필요
+      blockedPermissions: [
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.READ_MEDIA_VIDEO',
+        'android.permission.READ_MEDIA_AUDIO',
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+      ],
       intentFilters: [
         {
           action: 'VIEW',
@@ -116,7 +124,7 @@ module.exports = {
       policy: 'appVersion',
     },
     extra: {
-      otaVersion: '1.5.3',
+      otaVersion: '1.6.0',
       apiUrl: 'https://api.upvy.org',
       eas: {
         projectId: '4eeab4c9-332d-496a-a23d-f63e4726f221',

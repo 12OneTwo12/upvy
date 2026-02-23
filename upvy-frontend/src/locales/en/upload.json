@@ -3,6 +3,13 @@
   "main": {
     "title": "New Post",
     "selectMedia": "Select Photo or Video",
+    "selectVideo": "Select Video",
+    "selectPhotos": "Select Photos",
+    "maxDuration": "Up to 3 minutes",
+    "maxPhotos": "Up to 10 photos",
+    "or": "or",
+    "recordNew": "Record new",
+    "helpText": "You can upload videos up to 3 minutes and up to 10 photos",
     "camera": "Camera",
     "gallery": "Gallery",
     "video": "Video",

@@ -24,7 +24,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { trim, isValidFile } from 'react-native-video-trim';
-import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
@@ -169,8 +168,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
   }, [isDraggingStart, isDraggingEnd, trimStart, trimEnd, thumbnailUri, duration]);
 
   // 실제 파일 URI 로드
-  // expo-video는 ph:// URI를 직접 처리할 수 있음 (PHAsset 지원)
-  // 하지만 expo-video-thumbnails는 ph:// URI를 지원하지 않으므로 localUri도 가져옴
+  // ImagePicker(Photo Picker API)는 이미 file:// URI를 반환하므로 변환 불필요
   React.useEffect(() => {
     const loadVideoUri = async () => {
       try {
@@ -179,81 +177,17 @@ export default function VideoEditScreen({ navigation, route }: Props) {
         console.log('🎬 [VideoEdit] Loading video URI');
         console.log('   Platform:', Platform.OS);
         console.log('   Asset URI:', asset.uri);
-        console.log('   Asset ID:', asset.id);
 
-        // asset.uri가 file:// 형식이면 바로 사용 (카메라 촬영 등)
-        if (asset.uri && asset.uri.startsWith('file://')) {
-          const cleanUri = cleanIOSVideoUri(asset.uri);
-          console.log('✅ Using file:// URI directly:', cleanUri);
-          setVideoUri(cleanUri);
-          setThumbnailUri(cleanUri); // 썸네일도 같은 URI 사용
-          setIsLoadingVideo(false);
-          return;
+        if (!asset.uri) {
+          throw new Error('No video URI provided');
         }
 
-        // ph:// URI인 경우
-        if (asset.uri && asset.uri.startsWith('ph://')) {
-          setVideoUri(asset.uri); // expo-video는 ph:// 지원
-
-          // 썸네일 생성을 위해 localUri 가져오기
-          try {
-            const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id, {
-              shouldDownloadFromNetwork: true,
-            });
-            if (assetInfo.localUri) {
-              const cleanLocalUri = cleanIOSVideoUri(assetInfo.localUri);
-              setThumbnailUri(cleanLocalUri);
-            } else {
-              setThumbnailUri(''); // 썸네일 생성 불가
-            }
-          } catch (e) {
-            setThumbnailUri('');
-          }
-
-          setIsLoadingVideo(false);
-          return;
-        }
-
-        // Android content:// URI인 경우
-        if (asset.uri && asset.uri.startsWith('content://')) {
-          console.log('📱 [VideoEdit] Android content:// URI detected');
-          setVideoUri(asset.uri); // expo-video는 content:// 지원
-
-          // expo-video-thumbnails와 react-native-video-trim을 위해 localUri 가져오기
-          try {
-            console.log('   Fetching localUri from MediaLibrary...');
-            const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id, {
-              shouldDownloadFromNetwork: true,
-            });
-            console.log('   AssetInfo localUri:', assetInfo.localUri);
-
-            if (assetInfo.localUri) {
-              console.log('✅ Using localUri for trim and thumbnails:', assetInfo.localUri);
-              setThumbnailUri(assetInfo.localUri);
-            } else {
-              // localUri가 없으면 원본 URI 사용 (fallback)
-              console.warn('⚠️ No localUri available, using content:// URI as fallback');
-              setThumbnailUri(asset.uri);
-            }
-          } catch (e) {
-            console.error('❌ Failed to get localUri for Android:', e);
-            setThumbnailUri(asset.uri);
-          }
-
-          setIsLoadingVideo(false);
-          return;
-        }
-
-        // 기타 경우 (file:// 등)
-        if (asset.uri) {
-          const cleanUri = cleanIOSVideoUri(asset.uri);
-          setVideoUri(cleanUri);
-          setThumbnailUri(cleanUri);
-          setIsLoadingVideo(false);
-          return;
-        }
-
-        throw new Error('Could not get video URI from asset');
+        // ImagePicker는 file:// URI를 반환함 (Photo Picker API 사용)
+        const cleanUri = cleanIOSVideoUri(asset.uri);
+        console.log('✅ Using URI:', cleanUri);
+        setVideoUri(cleanUri);
+        setThumbnailUri(cleanUri);
+        setIsLoadingVideo(false);
       } catch (error) {
         console.error('❌ Failed to load video URI:', error);
         setIsLoadingVideo(false);
@@ -264,7 +198,7 @@ export default function VideoEditScreen({ navigation, route }: Props) {
       }
     };
     loadVideoUri();
-  }, [asset.id, asset.uri, navigation]);
+  }, [asset.uri, navigation]);
 
   // thumbnailUri가 로드되고 duration이 있으면 초기 썸네일 생성
   // expo-video-thumbnails는 ph:// URI를 지원하지 않으므로 thumbnailUri(localUri) 사용
