@@ -51,10 +51,16 @@
     sysctl_set: true
     reload: true
 
+- name: Check if swap is active
+  ansible.builtin.command: swapon --show
+  register: swap_status
+  changed_when: false
+
 - name: Create swap file
   ansible.builtin.command: fallocate -l 2G /swapfile
   args:
     creates: /swapfile
+  when: swap_status.stdout == ""
 
 - name: Set swap file permissions
   ansible.builtin.file:
@@ -63,14 +69,13 @@
 
 - name: Format swap file
   ansible.builtin.command: mkswap /swapfile
-  args:
-    creates: /swapfile
-  changed_when: false
+  when: swap_status.stdout == ""
+  changed_when: true
 
 - name: Enable swap file
   ansible.builtin.command: swapon /swapfile
-  changed_when: false
-  failed_when: false
+  when: swap_status.stdout == ""
+  changed_when: true
 
 - name: Add swap to fstab
   ansible.builtin.lineinfile:
