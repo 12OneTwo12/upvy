@@ -137,3 +137,14 @@ upvy-content-generator/compose-service/.gradle/
 
 ### log
 **/logs/**
+
+### Terraform ###
+upvy-infra/**/.terraform/
+upvy-infra/**/*.tfstate
+upvy-infra/**/*.tfstate.*
+upvy-infra/**/terraform.tfvars
+upvy-infra/**/.terraform.lock.hcl
+
+### Ansible ###
+upvy-infra/ansible/vars/secrets.yml
+upvy-infra/ansible/*.retry

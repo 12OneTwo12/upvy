@@ -1,0 +1,84 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - wget
+      - htop
+      - fail2ban
+      - ufw
+      - unzip
+    state: present
+
+- name: Set timezone
+  community.general.timezone:
+    name: Asia/Seoul
+
+- name: Configure UFW - allow SSH
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+
+- name: Configure UFW - allow HTTP
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: Configure UFW - enable
+  community.general.ufw:
+    state: enabled
+    default: deny
+    direction: incoming
+
+- name: Set sysctl - vm.max_map_count (Manticore)
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    sysctl_set: true
+    reload: true
+
+- name: Set sysctl - net.core.somaxconn
+  ansible.posix.sysctl:
+    name: net.core.somaxconn
+    value: "1024"
+    sysctl_set: true
+    reload: true
+
+- name: Check if swap is active
+  ansible.builtin.command: swapon --show
+  register: swap_status
+  changed_when: false
+
+- name: Create swap file
+  ansible.builtin.command: fallocate -l 2G /swapfile
+  args:
+    creates: /swapfile
+  when: swap_status.stdout == ""
+
+- name: Set swap file permissions
+  ansible.builtin.file:
+    path: /swapfile
+    mode: "0600"
+
+- name: Format swap file
+  ansible.builtin.command: mkswap /swapfile
+  when: swap_status.stdout == ""
+  changed_when: true
+
+- name: Enable swap file
+  ansible.builtin.command: swapon /swapfile
+  when: swap_status.stdout == ""
+  changed_when: true
+
+- name: Add swap to fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present

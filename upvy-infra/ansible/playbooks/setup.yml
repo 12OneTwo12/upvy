@@ -1,0 +1,11 @@
+---
+# 전체 서버 세팅 (최초 1회 또는 인프라 변경 시)
+# Usage: ansible-playbook playbooks/setup.yml --extra-vars "@vars/secrets.yml"
+- name: Setup upvy app server
+  hosts: app
+  become: true
+
+  roles:
+    - common
+    - docker
+    - app

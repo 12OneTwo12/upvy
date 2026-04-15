@@ -1,0 +1,126 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - /opt/upvy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - upvy-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  upvy-backend:
+    image: upvy/upvy-backend:prod-latest
+    env_file: .env
+    environment:
+      SPRING_APPLICATION_JSON: '{"server.port":8080,"spring.profiles.active":"prod"}'
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=75.0
+        -XX:+UseG1GC
+        -XX:+TieredCompilation
+        -XX:TieredStopAtLevel=1
+      # --- OTel (주석 해제하여 활성화) ---
+      # OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      # OTEL_SERVICE_NAME: upvy-service
+      # OTEL_RESOURCE_ATTRIBUTES: deployment.environment=prod
+    # volumes:
+    #   - otel-agent:/otel  # OTel 활성화 시 주석 해제
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # health check 제거 — JRE 이미지에 curl/wget 없음
+    # Spring Boot는 시작 실패 시 자동 종료 → restart: unless-stopped로 충분
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  manticore-search:
+    image: upvy/upvy-manticore-search:local
+    env_file: .env
+    volumes:
+      - manticore-data:/var/lib/manticore
+      - /opt/upvy/manticore/manticore.conf:/etc/manticoresearch/manticore.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -h 127.0.0.1 -P 9306 -e 'SHOW STATUS' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================
+  # 모니터링/OTel (나중에 주석 해제하여 활성화)
+  # ============================================================
+
+  # otel-agent-downloader:
+  #   image: curlimages/curl:8.7.1
+  #   command: >
+  #     sh -c "[ -f /otel/opentelemetry-javaagent.jar ] || curl -sSL -o /otel/opentelemetry-javaagent.jar
+  #     https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.20.1/opentelemetry-javaagent.jar"
+  #   volumes:
+  #     - otel-agent:/otel
+
+  # otel-collector:
+  #   image: otel/opentelemetry-collector-contrib:0.98.0
+  #   command: ["--config=/etc/otel/config.yaml"]
+  #   volumes:
+  #     - /opt/upvy/otel/config.yaml:/etc/otel/config.yaml:ro
+  #   restart: unless-stopped
+
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   command:
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #     - "--storage.tsdb.retention.time=30d"
+  #     - "--storage.tsdb.retention.size=2GB"
+  #     - "--enable-feature=otlp-write-receiver"
+  #     - "--web.enable-remote-write-receiver"
+  #   volumes:
+  #     - /opt/upvy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - prometheus-data:/prometheus
+  #   restart: unless-stopped
+
+  # grafana:
+  #   image: grafana/grafana:12.0.0
+  #   environment:
+  #     GF_SERVER_ROOT_URL: /grafana/
+  #     GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #   ports:
+  #     - "127.0.0.1:3000:3000"
+  #   restart: unless-stopped
+
+volumes:
+  manticore-data:
+  redis-data:
+  # otel-agent:
+  # prometheus-data:
+  # grafana-data:
+
+networks:
+  default:
+    name: upvy-network
