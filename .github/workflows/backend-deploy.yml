@@ -86,80 +86,70 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  update-manifest:
-    name: Update Kubernetes Manifest
+  deploy:
+    name: Deploy to EC2
     runs-on: ubuntu-latest
     needs: build-and-push
-    permissions:
-      contents: write
+    if: needs.build-and-push.outputs.environment == 'prod'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
         with:
-          ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /opt/upvy/app
+            docker compose pull upvy-backend
+            docker compose up -d upvy-backend
+            echo "Waiting for health check..."
+            sleep 15
+            curl -sf http://localhost:8080/actuator/health/liveness || exit 1
+            echo "Deploy successful!"
 
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-
-      - name: Update K8s Manifest
-        env:
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          ENVIRONMENT: ${{ needs.build-and-push.outputs.environment }}
-        run: |
-          set -e
-
-          echo "Updating manifest for environment: $ENVIRONMENT"
-
-          # 매니페스트 파일 경로
-          MANIFEST_PATH="manifest-ops/$ENVIRONMENT/upvy-backend/deployment.yaml"
-
-          # Docker 이미지 전체 경로
-          DOCKER_IMAGE="${{ env.DOCKER_IMAGE_REPO }}:$IMAGE_TAG"
-
-          echo "Docker Image: $DOCKER_IMAGE"
-          echo "Manifest Path: $MANIFEST_PATH"
-
-          # 파일 존재 여부 확인
-          if [ ! -f "$MANIFEST_PATH" ]; then
-            echo "Error: Manifest file not found at $MANIFEST_PATH"
-            exit 1
-          fi
-
-          # 기존 이미지 태그 확인
-          CURRENT_IMAGE=$(yq e '.spec.template.spec.containers[0].image' "$MANIFEST_PATH")
-          echo "Current Image: $CURRENT_IMAGE"
-
-          if [ "$CURRENT_IMAGE" = "$DOCKER_IMAGE" ]; then
-            echo "Image is already up to date. Skipping."
-            exit 0
-          fi
-
-          # 이미지 태그 업데이트
-          yq e ".spec.template.spec.containers[0].image = \"$DOCKER_IMAGE\"" -i "$MANIFEST_PATH"
-
-          echo "Manifest updated successfully!"
-
-      - name: Commit and Push Changes
-        env:
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          ENVIRONMENT: ${{ needs.build-and-push.outputs.environment }}
-        run: |
-          # Git 설정
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          MANIFEST_PATH="manifest-ops/$ENVIRONMENT/upvy-backend/deployment.yaml"
-
-          # 변경사항 확인
-          if git diff --quiet "$MANIFEST_PATH"; then
-            echo "No changes to commit."
-            exit 0
-          fi
-
-          # 커밋 및 푸시
-          git add "$MANIFEST_PATH"
-          git commit -m "chore: Update upvy-backend image to $IMAGE_TAG"
-          git push origin main
+  # ============================================================
+  # [LEGACY] K8s manifest 업데이트 — EKS 롤백 시 주석 해제
+  # ============================================================
+  # update-manifest:
+  #   name: Update Kubernetes Manifest
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-push
+  #   permissions:
+  #     contents: write
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: main
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #
+  #     - name: Install yq
+  #       run: |
+  #         sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+  #         sudo chmod +x /usr/local/bin/yq
+  #
+  #     - name: Update K8s Manifest
+  #       env:
+  #         IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+  #         ENVIRONMENT: ${{ needs.build-and-push.outputs.environment }}
+  #       run: |
+  #         set -e
+  #         MANIFEST_PATH="manifest-ops/$ENVIRONMENT/upvy-backend/deployment.yaml"
+  #         DOCKER_IMAGE="${{ env.DOCKER_IMAGE_REPO }}:$IMAGE_TAG"
+  #         if [ ! -f "$MANIFEST_PATH" ]; then exit 1; fi
+  #         CURRENT_IMAGE=$(yq e '.spec.template.spec.containers[0].image' "$MANIFEST_PATH")
+  #         if [ "$CURRENT_IMAGE" = "$DOCKER_IMAGE" ]; then exit 0; fi
+  #         yq e ".spec.template.spec.containers[0].image = \"$DOCKER_IMAGE\"" -i "$MANIFEST_PATH"
+  #
+  #     - name: Commit and Push Changes
+  #       env:
+  #         IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+  #         ENVIRONMENT: ${{ needs.build-and-push.outputs.environment }}
+  #       run: |
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+  #         MANIFEST_PATH="manifest-ops/$ENVIRONMENT/upvy-backend/deployment.yaml"
+  #         if git diff --quiet "$MANIFEST_PATH"; then exit 0; fi
+  #         git add "$MANIFEST_PATH"
+  #         git commit -m "chore: Update upvy-backend image to $IMAGE_TAG"
+  #         git push origin main
