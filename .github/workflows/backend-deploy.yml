@@ -104,7 +104,7 @@ jobs:
             docker compose up -d upvy-backend
             echo "Waiting for health check..."
             sleep 15
-            curl -sf http://localhost:8080/actuator/health/liveness || exit 1
+            curl -sf http://localhost/actuator/health || exit 1
             echo "Deploy successful!"
 
   # ============================================================
