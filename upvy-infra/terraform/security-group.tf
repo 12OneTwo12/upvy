@@ -1,7 +1,7 @@
 resource "aws_security_group" "rds" {
   name        = "UpvyDBSecurityGroup"
   description = "Created by RDS management console"
-  vpc_id      = "vpc-013cdfc535f2acec5"
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     description = "myip"
@@ -58,7 +58,7 @@ resource "aws_security_group" "rds" {
 resource "aws_security_group" "app" {
   name        = "upvy-app-sg"
   description = "Security group for upvy app server"
-  vpc_id      = "vpc-013cdfc535f2acec5"
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     description = "SSH"

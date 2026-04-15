@@ -50,3 +50,30 @@
     value: "1024"
     sysctl_set: true
     reload: true
+
+- name: Create swap file
+  ansible.builtin.command: fallocate -l 2G /swapfile
+  args:
+    creates: /swapfile
+
+- name: Set swap file permissions
+  ansible.builtin.file:
+    path: /swapfile
+    mode: "0600"
+
+- name: Format swap file
+  ansible.builtin.command: mkswap /swapfile
+  args:
+    creates: /swapfile
+  changed_when: false
+
+- name: Enable swap file
+  ansible.builtin.command: swapon /swapfile
+  changed_when: false
+  failed_when: false
+
+- name: Add swap to fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present

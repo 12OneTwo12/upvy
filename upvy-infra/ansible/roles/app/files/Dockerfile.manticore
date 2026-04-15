@@ -1,7 +1,7 @@
 FROM manticoresearch/manticore:latest
 
 # cron 설치
-RUN apt-get update && apt-get install -y cron
+RUN apt-get update && apt-get install -y cron mariadb-client && rm -rf /var/lib/apt/lists/*
 
 # cron job 스크립트 복사
 COPY cron-indexer.sh /usr/local/bin/cron-indexer.sh
