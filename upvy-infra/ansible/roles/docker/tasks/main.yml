@@ -46,7 +46,7 @@
       }
     dest: /etc/docker/daemon.json
     mode: "0644"
-  notify: Restart Docker
+  register: docker_daemon_config
 
 - name: Enable and start Docker
   ansible.builtin.systemd:
@@ -54,8 +54,14 @@
     enabled: true
     state: started
 
-handlers:
-  - name: Restart Docker
-    ansible.builtin.systemd:
-      name: docker
-      state: restarted
+- name: Restart Docker if config changed
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted
+  when: docker_daemon_config.changed
+
+- name: Login to Docker Hub
+  ansible.builtin.shell: docker login -u "{{ dockerhub_username }}" -p "{{ dockerhub_token }}"
+  become: true
+  no_log: true
+  when: dockerhub_username is defined and dockerhub_username | length > 0

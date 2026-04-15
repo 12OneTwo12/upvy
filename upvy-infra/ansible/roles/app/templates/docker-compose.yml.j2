@@ -6,11 +6,10 @@ services:
     volumes:
       - /opt/upvy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      upvy-backend:
-        condition: service_healthy
+      - upvy-backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -35,12 +34,8 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health/liveness"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
+    # health check 제거 — JRE 이미지에 curl/wget 없음
+    # Spring Boot는 시작 실패 시 자동 종료 → restart: unless-stopped로 충분
     deploy:
       resources:
         limits:

@@ -23,7 +23,7 @@
 
     - name: Wait for backend health check
       ansible.builtin.uri:
-        url: http://localhost:8080/actuator/health/liveness
+        url: http://localhost/actuator/health
         method: GET
       register: health
       until: health.status == 200
