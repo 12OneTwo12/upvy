@@ -22,3 +22,9 @@ output "ec2_instance_id" {
   description = "EC2 instance ID"
   value       = aws_instance.app.id
 }
+
+output "ssh_private_key" {
+  description = "SSH private key for EC2 access (save to ~/.ssh/upvy-ec2)"
+  value       = tls_private_key.deploy.private_key_openssh
+  sensitive   = true
+}

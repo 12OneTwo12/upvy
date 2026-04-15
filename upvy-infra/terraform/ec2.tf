@@ -13,9 +13,13 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+resource "tls_private_key" "deploy" {
+  algorithm = "ED25519"
+}
+
 resource "aws_key_pair" "deploy" {
   key_name   = "upvy-deploy"
-  public_key = var.ssh_public_key
+  public_key = tls_private_key.deploy.public_key_openssh
 }
 
 resource "aws_instance" "app" {
