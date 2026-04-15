@@ -5,7 +5,7 @@ variable "rds_password" {
 }
 
 variable "allowed_ssh_cidrs" {
-  description = "CIDR blocks allowed to SSH"
+  description = "CIDR blocks allowed to SSH (includes 0.0.0.0/0 for GitHub Actions CI/CD deploy)"
   type        = list(string)
-  default     = ["49.175.194.2/32", "182.220.181.34/32"]
+  default     = ["0.0.0.0/0"]
 }
