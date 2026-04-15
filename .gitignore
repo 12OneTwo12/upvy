@@ -137,3 +137,10 @@ upvy-content-generator/compose-service/.gradle/
 
 ### log
 **/logs/**
+
+### Terraform ###
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.*
+infra/**/terraform.tfvars
+infra/**/.terraform.lock.hcl
