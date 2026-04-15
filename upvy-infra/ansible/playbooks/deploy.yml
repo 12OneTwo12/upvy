@@ -1,0 +1,31 @@
+---
+# 앱 재배포 (CI/CD 또는 수동)
+# Usage: ansible-playbook playbooks/deploy.yml
+- name: Deploy upvy backend
+  hosts: app
+  become: true
+
+  tasks:
+    - name: Pull latest backend image
+      community.docker.docker_compose_v2:
+        project_src: /opt/upvy/app
+        services:
+          - upvy-backend
+        pull: always
+        state: present
+
+    - name: Restart backend
+      community.docker.docker_compose_v2:
+        project_src: /opt/upvy/app
+        services:
+          - upvy-backend
+        state: restarted
+
+    - name: Wait for backend health check
+      ansible.builtin.uri:
+        url: http://localhost:8080/actuator/health/liveness
+        method: GET
+      register: health
+      until: health.status == 200
+      retries: 30
+      delay: 5

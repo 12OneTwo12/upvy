@@ -1,0 +1,80 @@
+---
+- name: Create app directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0755"
+  loop:
+    - /opt/upvy/app
+    - /opt/upvy/nginx
+    - /opt/upvy/manticore
+
+- name: Deploy .env file
+  ansible.builtin.template:
+    src: .env.j2
+    dest: /opt/upvy/app/.env
+    owner: ubuntu
+    group: ubuntu
+    mode: "0600"
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/upvy/app/docker-compose.yml
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+
+- name: Deploy nginx.conf
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /opt/upvy/nginx/nginx.conf
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+
+- name: Deploy manticore.conf
+  ansible.builtin.template:
+    src: manticore.conf.j2
+    dest: /opt/upvy/manticore/manticore.conf
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+
+- name: Copy Manticore files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /opt/upvy/manticore/
+    owner: ubuntu
+    group: ubuntu
+    mode: "0755"
+  loop:
+    - start.sh
+    - cron-indexer.sh
+    - Dockerfile.manticore
+
+- name: Build Manticore custom image
+  community.docker.docker_image:
+    name: upvy/upvy-manticore-search
+    tag: local
+    source: build
+    build:
+      path: /opt/upvy/manticore
+      dockerfile: Dockerfile.manticore
+
+- name: Start all services
+  community.docker.docker_compose_v2:
+    project_src: /opt/upvy/app
+    state: present
+    pull: always
+
+- name: Wait for backend health check
+  ansible.builtin.uri:
+    url: http://localhost:8080/actuator/health/liveness
+    method: GET
+  register: health
+  until: health.status == 200
+  retries: 30
+  delay: 5

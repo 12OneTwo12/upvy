@@ -5,3 +5,7 @@
 
 # --- RDS ---
 rds_password = ""
+
+# --- EC2 ---
+ssh_public_key    = "ssh-ed25519 AAAA..."
+# allowed_ssh_cidrs = ["YOUR_IP/32"]

@@ -35,6 +35,14 @@ resource "aws_security_group" "rds" {
     cidr_blocks = ["34.22.74.100/32"]
   }
 
+  ingress {
+    description     = "ec2-app"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -44,5 +52,34 @@ resource "aws_security_group" "rds" {
 
   lifecycle {
     prevent_destroy = true
+  }
+}
+
+resource "aws_security_group" "app" {
+  name        = "upvy-app-sg"
+  description = "Security group for upvy app server"
+  vpc_id      = "vpc-013cdfc535f2acec5"
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidrs
+  }
+
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
